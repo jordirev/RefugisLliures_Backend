@@ -1,1 +1,16 @@
-# Serializers no utilitzats - utilitzem JSON directament des de Firestore
+# Serializers per a l'aplicació
+from .user_serializer import (
+    UserSerializer, 
+    UserCreateSerializer, 
+    UserUpdateSerializer,
+    UserListSerializer,
+    PaginationQuerySerializer
+)
+
+__all__ = [
+    'UserSerializer', 
+    'UserCreateSerializer', 
+    'UserUpdateSerializer',
+    'UserListSerializer',
+    'PaginationQuerySerializer'
+]

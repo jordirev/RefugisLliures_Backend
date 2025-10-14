@@ -1,3 +1,3 @@
-from .refugi_lliure_controller import RefugiLliureController
+from .user_controller import UserController
 
-__all__ = ['RefugiLliureController']
+__all__ = ['UserController']
