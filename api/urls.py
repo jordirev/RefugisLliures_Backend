@@ -2,8 +2,7 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 
 # Imports específics per evitar conflictes
-from .base_views import health_check  # Del fitxer base_views.py
-from .views.refugi_lliure_api import RefugiLliureApiView, refugi_lliure_list, refugi_lliure_detail
+from .views.refugi_lliure_api import RefugiLliureApiView, refugi_lliure_list, refugi_lliure_detail, health_check
 
 # Router per als ViewSets
 router = DefaultRouter()

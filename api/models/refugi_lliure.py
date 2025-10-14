@@ -21,7 +21,7 @@ class RefugiLliure(models.Model):
     # Atributos principales
     nom = models.CharField(max_length=200, verbose_name="Nom")
     descripcio = models.TextField(verbose_name="Descripció")
-    tipus = models.CharField(max_length=20, choices=TIPUS_CHOICES, verbose_name="Tipus")
+    tipus = models.CharField(max_length=50, choices=TIPUS_CHOICES, verbose_name="Tipus")
     imatges = models.JSONField(default=list, blank=True, verbose_name="Imatges")
     
     # Ubicació
