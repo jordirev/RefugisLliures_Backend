@@ -1,3 +1,1 @@
-from .refugi_lliure import RefugiLliure
-
-__all__ = ['RefugiLliure']
+# Models no utilitzats - utilitzem Firestore directament

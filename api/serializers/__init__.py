@@ -1,3 +1,1 @@
-from .refugi_lliure_serializer import RefugiLliureSerializer, RefugiLliureListSerializer
-
-__all__ = ['RefugiLliureSerializer', 'RefugiLliureListSerializer']
+# Serializers no utilitzats - utilitzem JSON directament des de Firestore
