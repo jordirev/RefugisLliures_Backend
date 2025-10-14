@@ -121,12 +121,62 @@ class RefugiAPITestCase(TestCase):
         self.assertIn('results', data)
         self.assertIn('filters', data)
     
+    @patch('api.services.firestore_service.firestore_service.get_db')
+    def test_refugi_coordinates(self, mock_get_db):
+        """Prova l'endpoint de coordenades de refugis des d'un sol document"""
+        # Mock de Firestore per al document únic
+        mock_db = MagicMock()
+        mock_collection = MagicMock()
+        mock_doc_ref = MagicMock()
+        mock_doc = MagicMock()
+        
+        # Mock del document únic amb totes les coordenades
+        mock_doc.exists = True
+        mock_doc.to_dict.return_value = {
+            'refugis_coordinates': [
+                {
+                    'refugi_id': 'test1',
+                    'refugi_name': 'Test Refugi 1',
+                    'coordinates': {'latitude': 42.123, 'longitude': 1.456},
+                    'geohash': 'sp3dr'
+                },
+                {
+                    'refugi_id': 'test2',
+                    'refugi_name': 'Test Refugi 2',
+                    'coordinates': {'latitude': 43.123, 'longitude': 2.456},
+                    'geohash': 'sp4dr'
+                }
+            ],
+            'total_refugis': 2,
+            'created_at': 'test_timestamp'
+        }
+        
+        mock_db.collection.return_value = mock_collection
+        mock_collection.document.return_value = mock_doc_ref
+        mock_doc_ref.get.return_value = mock_doc
+        mock_get_db.return_value = mock_db
+        
+        url = reverse('refugi_coordinates')
+        response = self.client.get(url)
+        
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertIn('count', data)
+        self.assertIn('coordinates', data)
+        self.assertIn('total_available', data)
+        self.assertEqual(data['count'], 2)
+        self.assertEqual(data['total_available'], 2)
+        self.assertEqual(len(data['coordinates']), 2)
+        self.assertIn('refugi_id', data['coordinates'][0])
+        self.assertIn('coordinates', data['coordinates'][0])
+    
     def test_url_patterns(self):
         """Prova que totes les URLs es resolguin correctament"""
         urls_to_test = [
             'health_check',
             'refugi_list',
             'search_refugis',
+            'refugi_coordinates',
         ]
         
         for url_name in urls_to_test:

@@ -40,43 +40,6 @@ def health_check(request):
 
 @api_view(['GET'])
 @permission_classes([AllowAny])
-def refugi_list(request):
-    """Llista tots els refugis des de Firestore"""
-    try:
-        db = firestore_service.get_db()
-        
-        # Obtenir paràmetres de consulta
-        limit = request.GET.get('limit', 10)
-        try:
-            limit = int(limit)
-            if limit > 100:  # Límit màxim per evitar sobrecàrrega
-                limit = 100
-        except ValueError:
-            limit = 10
-        
-        # Consulta a Firestore
-        refugis_ref = db.collection('data_refugis_lliures')
-        docs = refugis_ref.limit(limit).stream()
-        
-        refugis = []
-        for doc in docs:
-            refugi_data = doc.to_dict()
-            refugi_data['id'] = doc.id
-            refugis.append(refugi_data)
-        
-        return Response({
-            'count': len(refugis),
-            'results': refugis
-        }, status=status.HTTP_200_OK)
-        
-    except Exception as e:
-        logger.error(f'Error getting refugis list: {str(e)}')
-        return Response({
-            'error': f'Internal server error: {str(e)}'
-        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-@api_view(['GET'])
-@permission_classes([AllowAny])
 def refugi_detail(request, refugi_id):
     """Obtenir els detalls d'un refugi específic"""
     try:
@@ -155,6 +118,63 @@ def search_refugis(request):
         
     except Exception as e:
         logger.error(f'Error searching refugis: {str(e)}')
+        return Response({
+            'error': f'Internal server error: {str(e)}'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def refugi_coordinates(request):
+    """Obtenir només les coordenades de tots els refugis des d'un sol document"""
+    try:
+        db = firestore_service.get_db()
+        
+        # Obtenir paràmetre de límit
+        limit = request.GET.get('limit', 1000)
+        try:
+            limit = int(limit)
+            if limit > 1000:  # Límit més alt per a coordenades
+                limit = 1000
+        except ValueError:
+            limit = 1000
+        
+        # Obtenir el document únic amb totes les coordenades
+        doc_ref = db.collection('coords_refugis').document('all_refugis_coords')
+        doc = doc_ref.get()
+        
+        if not doc.exists:
+            return Response({
+                'count': 0,
+                'coordinates': [],
+                'message': 'No coordinates document found. Run extract_coords_to_firestore command first.'
+            }, status=status.HTTP_404_NOT_FOUND)
+        
+        data = doc.to_dict()
+        all_coordinates = data.get('refugis_coordinates', [])
+        
+        # Aplicar límit si és necessari
+        coordinates = all_coordinates[:limit]
+        
+        # Formatear la resposta
+        formatted_coordinates = []
+        for coord_data in coordinates:
+            formatted_coordinates.append({
+                'refugi_id': coord_data.get('refugi_id'),
+                'refugi_name': coord_data.get('refugi_name', 'Unknown'),
+                'coordinates': coord_data.get('coordinates', {}),
+                'geohash': coord_data.get('geohash', '')
+            })
+        
+        return Response({
+            'count': len(formatted_coordinates),
+            'total_available': len(all_coordinates),
+            'coordinates': formatted_coordinates,
+            'document_created_at': data.get('created_at'),
+            'document_updated_at': data.get('last_updated')
+        }, status=status.HTTP_200_OK)
+        
+    except Exception as e:
+        logger.error(f'Error getting refugi coordinates: {str(e)}')
         return Response({
             'error': f'Internal server error: {str(e)}'
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

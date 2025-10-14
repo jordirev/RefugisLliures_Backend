@@ -72,6 +72,33 @@ Aquesta API gestiona informació sobre refugis lliures utilitzant Google Firesto
   }
   ```
 
+### Coordenades dels Refugis
+- **URL**: `/api/refugis/coordinates/`
+- **Mètode**: GET
+- **Paràmetres de consulta**:
+  - `limit` (opcional): Nombre màxim de resultats (defecte: 1000, màxim: 1000)
+- **Descripció**: Retorna només les coordenades de tots els refugis des d'un document únic optimitzat
+- **Resposta**:
+  ```json
+  {
+    "count": 100,
+    "total_available": 100,
+    "coordinates": [
+      {
+        "refugi_id": "1",
+        "refugi_name": "Cabane Test",
+        "coordinates": {
+          "latitude": 42.71867,
+          "longitude": 1.167
+        },
+        "geohash": "sp3dr"
+      }
+    ],
+    "document_created_at": "2025-10-14T22:30:00Z",
+    "document_updated_at": "2025-10-14T22:30:00Z"
+  }
+  ```
+
 ## Estructura del Projecte
 
 ```
@@ -162,11 +189,14 @@ Els tests utilitzen mocks per simular la connexió amb Firestore, permetent prov
 ✅ Connexió amb Firestore  
 ✅ Endpoints RESTful per a refugis  
 ✅ Sistema de cerca amb filtres  
+✅ Endpoint optimitzat per a coordenades  
+✅ Col·lecció separada per a geolocalització  
 ✅ Gestió d'errors robusta  
 ✅ Tests unitaris complets  
 ✅ Logging i monitorització  
 ✅ Documentació d'API  
 ✅ Comando per pujar dades  
+✅ Comando per extreure coordenades  
 ✅ Configuració per a CORS  
 
 ## Següents Passos (Opcional)
