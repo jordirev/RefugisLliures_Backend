@@ -1,0 +1,3217 @@
+[
+  {
+    "coord": {
+      "long": 1.167,
+      "lat": 42.71867
+    },
+    "altitude": 2023,
+    "places": 0,
+    "remarque": "[b]Depuis 2020, cette cabane est réservée au berger en été, et fermée le reste de l'année. Elle ne peut plus servir d'abri aux randonneurs.[/b] Notez la présence d'un abri très sommaire au fond du Clos contre un gros rocher pouvant abriter deux personnes en cas d'urgence.",
+    "info_comp": {
+      "manque_un_mur": 0,
+      "cheminee": 0,
+      "poele": 0,
+      "couvertures": 0,
+      "latrines": 1,
+      "bois": 1,
+      "eau": 1,
+      "matelas": 0,
+      "couchage": 0,
+      "bas_flancs": 0,
+      "lits": 0,
+      "mezzanine/etage": 0
+    },
+    "description": "[b]Depuis 2020, cette cabane est réservée au berger en été, et fermée le reste de l'année. Elle ne peut plus servir d'abri aux randonneurs.[/b] Notez la présence d'un abri très sommaire au fond du Clos contre un gros rocher pouvant abriter deux personnes en cas d'urgence. Itinéraire d'accès compliqué et principalement hors sentier (malgré ce que la carte mentionne), et très exposé aux avalanches. Soyez très prudent, tout particulièrement en cas de présence de neige. Depuis le parking de Peyrots (980m) au Sud de Salau, prendre la piste au Sud pendant 30min. Au deuxième lacet, après avoir laissé la cascade de Léziou sur la gauche, prendre un petit sentier sur la gauche (1100m). Progresser dans une forêt où on laisse une grange fermée à clé à 1173m sur la droite et suivre la sente dans la forêt. 1430m, main courante qui permet de traverser un couloir à avalanche encore dans la forêt, passage délicat. Penser à prendre du bois en sortant de la forêt. 1570m, passage câblé pour passer un ravin vertigineux, rester habile. Névé persistant (1820m) qu'il ne faut pas hésiter à contourner par le bas. Le sentier se dirige enfin vers les deux cascades que nous voyons depuis un moment, et vous amène sur le Clos (creux) juste au dessus où se trouve la cabane. Occupée par un berger en période destive, fermée sinon.",
+    "links": [
+      "https://www.refuges.info/point/5554/cabane-non-gardee/cabane-des-Clos-de-Dessus/"
+    ],
+    "type": "Fermée",
+    "modified_at": "2024-01-24",
+    "name": "Cabane des Clos de Dessus",
+    "region": null,
+    "departement": null
+  },
+  {
+    "coord": {
+      "long": -1.62638,
+      "lat": 43.32671
+    },
+    "altitude": 331,
+    "places": 0,
+    "info_comp": {
+      "manque_un_mur": 1,
+      "cheminee": 0,
+      "poele": 0,
+      "couvertures": 0,
+      "latrines": 0,
+      "bois": 1,
+      "eau": 1,
+      "matelas": 0,
+      "couchage": 0,
+      "bas_flancs": 0,
+      "lits": 0,
+      "mezzanine/etage": 0
+    },
+    "description": "[b]À pied[/b] Depuis le parking de la Carrière d'Ascain, suivre la grosse piste qui monte vers la Rhune. la cabane est au bord du chemin.",
+    "links": [
+      "https://www.refuges.info/point/4834/cabane-non-gardee/cabane-basse-d-Ihizelai/"
+    ],
+    "type": "cabane ouverte",
+    "modified_at": "2015-09-12",
+    "name": "Cabane basse d'Ihizelai",
+    "region": null,
+    "departement": null,
+    "remarque": []
+  },
+  {
+    "coord": {
+      "long": 2.09795,
+      "lat": 42.67272
+    },
+    "altitude": 1700,
+    "places": 0,
+    "remarque": "Occupée l'été par un berger (Breton !), son chien et son chat et qui élève des chevaux IGN signale qu'elle est accessible en dehors de la période d'estive Un tuyau d'eau sur un des murs de la bergerie, marqué non potable (à traiter) Bois a profusion",
+    "info_comp": {
+      "manque_un_mur": 0,
+      "cheminee": 0,
+      "poele": 0,
+      "couvertures": 0,
+      "latrines": 1,
+      "bois": 1,
+      "eau": 1,
+      "matelas": 0,
+      "couchage": 0,
+      "bas_flancs": 0,
+      "lits": 0,
+      "mezzanine/etage": 0
+    },
+    "description": "Occupée l'été par un berger (Breton !), son chien et son chat et qui élève des chevaux IGN signale qu'elle est accessible en dehors de la période d'estive Un tuyau d'eau sur un des murs de la bergerie, marqué non potable (à traiter) Bois a profusion Depuis Quérigut, prendre la direction Montlouis A 4km, à un pseudo col à 1471m, prendre la route forestière à droite sur 3km La bergerie se trouve à main gauche à un coude de la piste",
+    "links": [
+      "https://www.refuges.info/point/3489/cabane-non-gardee/bergerie-Prat-Baillat/"
+    ],
+    "type": "cabane ouverte",
+    "modified_at": "2013-08-06",
+    "name": "Bergerie Prat Baillat",
+    "region": null,
+    "departement": null
+  },
+  {
+    "coord": {
+      "long": -0.09827613830566408,
+      "lat": 42.853330012446825
+    },
+    "altitude": 1371.0,
+    "name": "Refuge de La Fruitiére",
+    "surname": "Cabane de la Fruitière",
+    "links": [
+      "http://www.pyrenees-refuges.com/fr/affiche.php?numenr=148",
+      "https://www.refuges.info/point/6414/cabane-non-gardee/cabane-de-la-Fruitiere/"
+    ],
+    "type": "cabane ouverte",
+    "description": "Directement sur le parking de la Fruitière Hôtellerie de la fruitière.",
+    "remarque": "Directement sur le parking de la Fruitière",
+    "places": 0,
+    "info_comp": {
+      "latrines": 1,
+      "matelas": 0,
+      "couvertures": 0,
+      "couchage": 0,
+      "bas_flancs": 0,
+      "poele": 0,
+      "manque_un_mur": 0,
+      "mezzanine/etage": 0,
+      "bois": 1,
+      "lits": 0,
+      "cheminee": 0,
+      "eau": 1
+    },
+    "modified_at": "2018-08-26",
+    "region": "Cauterets",
+    "departement": "Haute-Pyrénées"
+  },
+  {
+    "coord": {
+      "long": 0.30630802094488,
+      "lat": 43.007577531605
+    },
+    "altitude": 1030.0,
+    "name": "Cabane du col de Couradabat",
+    "surname": "Cabane de Couradabat",
+    "links": [
+      "https://www.refuges.info/point/6175/cabane-non-gardee/cabane-de-Couradabat/",
+      "http://www.pyrenees-refuges.com/fr/affiche.php?numenr=1059"
+    ],
+    "type": "cabane ouverte",
+    "description": "Petite cabane sans bat-flanc, meublée d'1 canapé, 1 table et de chaises. https://www.visorando.com/images/inter/m-cabane-en-bon-etat-et-fonctionnelle-visorando-34317.jpg Les chiens sont interdits. Au col de Couradabat, sur le GRP Tour des baronnies de Bigorre. ?",
+    "remarque": "Petite cabane sans bat-flanc, meublée d'1 canapé, 1 table et de chaises. https://www.visorando.com/images/inter/m-cabane-en-bon-etat-et-fonctionnelle-visorando-34317.jpg Les chiens sont interdits.",
+    "places": 0,
+    "info_comp": {
+      "latrines": 1,
+      "matelas": 0,
+      "couvertures": 0,
+      "couchage": 0,
+      "bas_flancs": 0,
+      "poele": 0,
+      "manque_un_mur": 0,
+      "mezzanine/etage": 0,
+      "bois": 1,
+      "lits": 0,
+      "cheminee": 1,
+      "eau": 0
+    },
+    "modified_at": "2019-01-23",
+    "region": "Esparros",
+    "departement": "Haute-Pyrénées"
+  },
+  {
+    "coord": {
+      "long": 2.05065,
+      "lat": 42.54005
+    },
+    "altitude": 1740,
+    "places": 0,
+    "remarque": "Très sale. Ouverte à tous les vents. Impossible d'y dormir. Une grande cheminée.",
+    "info_comp": {
+      "manque_un_mur": 1,
+      "cheminee": 1,
+      "poele": 0,
+      "couvertures": 0,
+      "latrines": 0,
+      "bois": 1,
+      "eau": 1,
+      "matelas": 0,
+      "couchage": 0,
+      "bas_flancs": 0,
+      "lits": 0,
+      "mezzanine/etage": 0
+    },
+    "description": "Très sale. Ouverte à tous les vents. Impossible d'y dormir. Une grande cheminée. Du GR10, départ de Pyrénées 2000 vers Les Bouillouses, à mi chemin des Bouillouses, au croisement avec la piste qui vient du parking sur la D618, prendre la piste à droite puis une deuxième à droite 200m plus loin, à angle aigu. La cabane est sur une hauteur 150m plus loin.",
+    "links": [
+      "https://www.refuges.info/point/4421/cabane-non-gardee/cabane-de-la-Jaca-de-Los-cabres/"
+    ],
+    "type": "cabane ouverte",
+    "modified_at": "2014-07-29",
+    "name": "Cabane de la Jaça de Los cabres",
+    "region": null,
+    "departement": null
+  },
+  {
+    "coord": {
+      "long": 1.1202778,
+      "lat": 42.830278
+    },
+    "altitude": 1330.0,
+    "name": "Cabane de Lameza",
+    "surname": "Cabane forestière de Lameza",
+    "links": [
+      "http://www.pyrenees-refuges.com/fr/affiche.php?numenr=1075",
+      "https://www.refuges.info/point/7259/cabane-non-gardee/cabane-forestiere-de-Lameza/"
+    ],
+    "type": "cabane ouverte",
+    "description": "Cabane située à l'orée de la Forêt de Lamech, coté Ouest, au bord du GR10D, proche de la [->6263] un peu au Sud-Ouest en poursuivant ce même GR.",
+    "remarque": "mai 2020 cabane fermée",
+    "places": 0,
+    "info_comp": {
+      "latrines": 1,
+      "matelas": 0,
+      "couvertures": 0,
+      "couchage": 0,
+      "bas_flancs": 0,
+      "poele": 0,
+      "manque_un_mur": 0,
+      "mezzanine/etage": 0,
+      "bois": 1,
+      "lits": 0,
+      "cheminee": 0,
+      "eau": 1
+    },
+    "modified_at": "2020-10-08",
+    "region": "Seix",
+    "departement": "Ariège"
+  },
+  {
+    "coord": {
+      "long": 1.1515107,
+      "lat": 42.7436254
+    },
+    "altitude": 1550,
+    "places": 0,
+    "remarque": "L'ancienne cabane (avec partie berger et randonneur) avait été détruite durant l'hiver 2013. La cabane a été reconstruite pour \"Jean le berger\" et les éleveurs de la vallée. Travaux de la cabane financés par L'Europe, l'Etat et la commune d'Oust.",
+    "info_comp": {
+      "manque_un_mur": 0,
+      "cheminee": 1,
+      "poele": 1,
+      "couvertures": 0,
+      "latrines": 1,
+      "bois": 0,
+      "eau": 1,
+      "matelas": 0,
+      "couchage": 0,
+      "bas_flancs": 0,
+      "lits": 0,
+      "mezzanine/etage": 0
+    },
+    "description": "L'ancienne cabane (avec partie berger et randonneur) avait été détruite durant l'hiver 2013. La cabane a été reconstruite pour \"Jean le berger\" et les éleveurs de la vallée. Travaux de la cabane financés par L'Europe, l'Etat et la commune d'Oust. [b][u]Depuis Salau :[/u][/b] - Poursuivre sur la route au Sud, au 2ème lacet (panneau indicatif), poursuivre sur la piste vers le Sud ouest jusqu'au lieu dit \"Plagnau Long 1265m\", on traverse le torrent et on poursuit sur un bon chemin qui va traverser une forêt de Buis, à la sortie de la forêt, on va arriver à l'estive et à la Cabane Pastoral qui se trouve à gauche contre un rognon rocheux. Remarque : il y a un collecteur d'eau situé au bord du chemin un peu au dessus de la Cabane. Groupement Pastoral de Pouilh (Jean Bénazet). Cabane de «Jean le berger». [url=http://www.ladepeche.fr/article/2015/10/01/2188217-inauguration-de-la-cabane-de-jean-le-berger.html]Informations sur inauguration de la cabane.[/url]",
+    "links": [
+      "https://www.refuges.info/point/5623/cabane-non-gardee/abri-pastoral-de-Pouilh/"
+    ],
+    "type": "Fermée",
+    "modified_at": "2024-12-19",
+    "name": "Abri pastoral de Pouilh",
+    "region": null,
+    "departement": null
+  },
+  {
+    "name": "Cabane d'Arrieu Tort",
+    "region": "Bordères-Louron",
+    "altitude": 1630,
+    "type": "cabane fermee",
+    "departement": "Haute-Pyrénées",
+    "places": 0,
+    "info_comp": {
+      "cheminee": 1,
+      "bois": 1,
+      "eau": 1,
+      "couchage": 1,
+      "matelas": 0,
+      "bas_flancs": 1,
+      "lits": 0,
+      "mezzanine/etage": 0
+    },
+    "info_couchage": "Bas flancs",
+    "coord": {
+      "long": 0.442222,
+      "lat": 42.872222
+    },
+    "links": [
+      "http://www.pyrenees-refuges.com/fr/affiche.php?numenr=28"
+    ],
+    "description": "situee sur le chemin du lac balise en jaune et dont l autre extremite est accessible depuis la piste forestiere de risdifficile a trouver le chemin est tres peu visible cabane fermee pour l instant par l onf car trop endommagee ",
+    "remarque": "cabane toujours fermée le 20/4/2014",
+    "modified_at": null
+  },
+  {
+    "coord": {
+      "long": -1.6758,
+      "lat": 43.2995
+    },
+    "altitude": 291,
+    "places": 0,
+    "remarque": "- grande cabane en bois (40 m2), entretenue et en bon état en juillet 2020 - fenêtres vitrées, volets et porte qui ferment bien - deux grandes tables avec bancs - vaisselle et évier - fontaine aménagée à côté de la cabane - esplanade herbeuse avec tables en bois fixes pour piqueniquer - cabane et esplanade entourées d'une clôture pour maintenir à distance le bétail, penser à bien refermer le portail L'accès y est interdit pendant les mois d'octobre et novembre où elle est réservée aux chasseurs.",
+    "info_comp": {
+      "manque_un_mur": 0,
+      "cheminee": 1,
+      "poele": 0,
+      "couvertures": 0,
+      "latrines": 0,
+      "bois": 1,
+      "eau": 1,
+      "matelas": 0,
+      "couchage": 0,
+      "bas_flancs": 0,
+      "lits": 0,
+      "mezzanine/etage": 0
+    },
+    "description": "- grande cabane en bois (40 m2), entretenue et en bon état en juillet 2020 - fenêtres vitrées, volets et porte qui ferment bien - deux grandes tables avec bancs - vaisselle et évier - fontaine aménagée à côté de la cabane - esplanade herbeuse avec tables en bois fixes pour piqueniquer - cabane et esplanade entourées d'une clôture pour maintenir à distance le bétail, penser à bien refermer le portail L'accès y est interdit pendant les mois d'octobre et novembre où elle est réservée aux chasseurs. La cabane est à 90 m au WNW d'un col entre les collines Gartzin (ou Lartxin) au NW et Lizarnabarra à l'ESE, le long de la piste venant du col d'Ibardin au NW. A ce col près de la cabane se rejoignent 5 pistes forestières, la piste NE arrivant du col 369m au pied SW de la Rhune. Cabane propriété de la société de chasse de Bera Vera de Bidasoa. Un écriteau en espagnol informe que la cabane peut être utilisée par les promeneurs, pour une journée maximum. A condition de ne pas être occupée par les sociétaires.",
+    "links": [
+      "https://www.refuges.info/point/7607/cabane-non-gardee/cabane-du-Sagasti/"
+    ],
+    "type": "cabane ouverte",
+    "modified_at": "2022-10-10",
+    "name": "Cabane du Sagasti",
+    "region": null,
+    "departement": null
+  },
+  {
+    "name": "Cabane de Salontere (Neuve)",
+    "region": "Fos",
+    "altitude": 1450,
+    "type": "cabane ouverte",
+    "departement": "Haute-Garonne",
+    "places": 0,
+    "info_comp": {
+      "cheminee": 1,
+      "bois": 1,
+      "eau": 1,
+      "couchage": 0,
+      "matelas": 0,
+      "bas_flancs": 0,
+      "lits": 0,
+      "mezzanine/etage": 0
+    },
+    "coord": {
+      "long": 0.7838888,
+      "lat": 42.842778
+    },
+    "links": [
+      "http://www.pyrenees-refuges.com/fr/affiche.php?numenr=767"
+    ],
+    "description": "tes belle cabane construite recemment chenil attenant pour acces il faut demander la clef a la mairie de fos deconseillee en periode de chasse tel mairie de fos 0561794161",
+    "remarque": "Denis, juin 2014: Cabane fermée mais une autre cabane 20m en dessous (sur le chemin) est ouverte, peinture verte, table chaises, bois, cheminée, 2 lits métal 3 niveaux, matelas, eau, bref, tout confort.",
+    "modified_at": null
+  },
+  {
+    "name": "Cabane Peyrahitte",
+    "region": "Luz-Saint-Sauveur",
+    "altitude": 1812,
+    "type": "cabane ouverte",
+    "departement": "Haute-Pyrénées",
+    "places": 0,
+    "info_comp": {
+      "cheminee": 1,
+      "bois": 1,
+      "eau": 1,
+      "couchage": 1,
+      "matelas": 0,
+      "bas_flancs": 0,
+      "lits": 0,
+      "mezzanine/etage": 0
+    },
+    "info_couchage": "Détruit",
+    "coord": {
+      "long": 0.05072593,
+      "lat": 42.8467405
+    },
+    "links": [
+      "http://www.pyrenees-refuges.com/fr/affiche.php?numenr=464"
+    ],
+    "description": "cabane spacieuse mais pas de couchage la porte d entree ne ferme pas un volet est abime ",
+    "remarque": "Grande cabane effectivement mais rien dedans dommage ! Juste une cheminée et quelques pierres pour s'assoir. Ceux qui veulent y dormir devront rester par terre. Eau à proximité mais pas de bois.",
+    "modified_at": null
+  },
+  {
+    "name": "Cabane du Planet",
+    "region": "Burgalays",
+    "altitude": 1600,
+    "type": "cabane ouverte",
+    "departement": "Haute-Garonne",
+    "places": null,
+    "info_comp": {
+      "cheminee": 1,
+      "bois": 1,
+      "eau": 0,
+      "couchage": 1,
+      "matelas": 0,
+      "bas_flancs": 0,
+      "lits": 0,
+      "mezzanine/etage": 0
+    },
+    "info_couchage": "1",
+    "coord": {
+      "long": 0.6441666,
+      "lat": 42.872222
+    },
+    "links": [
+      "http://www.pyrenees-refuges.com/fr/affiche.php?numenr=1034"
+    ],
+    "description": "reportee comme ruines sur les cartes mais a ete retape petite cabane posee sur la crete a l ouest du pic du burat propre et en bon etat eau de pluie uniquement a traiter ",
+    "remarque": "J'y suis passé le 08.02.22. Cabane assez propre. Présence des matelas qui sont en fin de vie... table, bancs pour 6, bois à proximité. Pas d'eau. Fuites au toit non isolé. Cheminée fonctionnelle, un groupe passant après nous, y a fait griller leur viande pour midi.  Janmarc31",
+    "modified_at": null
+  },
+  {
+    "name": "Refuge Salvador",
+    "region": "Arrien-en-Bethmale",
+    "altitude": 1500,
+    "type": "cabane fermee",
+    "departement": "Ariège",
+    "places": 0,
+    "info_comp": {
+      "cheminee": 1,
+      "bois": 1,
+      "eau": 1,
+      "couchage": 0,
+      "matelas": 0,
+      "bas_flancs": 0,
+      "lits": 0,
+      "mezzanine/etage": 0
+    },
+    "coord": {
+      "long": 1.04933547,
+      "lat": 42.8569556
+    },
+    "links": [
+      "http://www.pyrenees-refuges.com/fr/affiche.php?numenr=560"
+    ],
+    "description": "vieille batisse de forme ogivale fermee porte scellee situee sous le pic du midi de bordes et au dessus d un abreuvoir la porte a une serrure hexagonale probablement ouverte avec une cle de 12 mais le refuge n a pas de lit seulement une cheminee et deux bancs rien de bien interessant si ce n est qu il montre la voie du pic du midi de bordes ",
+    "remarque": "Passé le 5 janvier. Porte fermée, eau en contrebas (dans un abreuvoir)",
+    "modified_at": null
+  },
+  {
+    "coord": {
+      "long": 1.97926,
+      "lat": 42.75326
+    },
+    "altitude": 1390,
+    "places": 0,
+    "remarque": "Refuge forestier Une grande cheminée, 1 table, 2 bancs. Pas de positions dédiées au couchage mais on doit pouvoir y dormir 4sur le sol en ciment (quelquefois humide: on note des traces de boue) en amenant des tapis de sol épais, en poussant les tables et en passant un coup de balai (à amener) On peut trouver de l'eau à la cascade 100m au dessus (coulait bien mi juillet), au pire en suivant la piste forestière sur 500m, le ruisseau est permanent. Bois sec dans le refuge et à profusion alentours.",
+    "info_comp": {
+      "manque_un_mur": 0,
+      "cheminee": 1,
+      "poele": 0,
+      "couvertures": 0,
+      "latrines": 0,
+      "bois": 1,
+      "eau": 1,
+      "matelas": 0,
+      "couchage": 0,
+      "bas_flancs": 0,
+      "lits": 0,
+      "mezzanine/etage": 0
+    },
+    "description": "Refuge forestier Une grande cheminée, 1 table, 2 bancs. Pas de positions dédiées au couchage mais on doit pouvoir y dormir 4sur le sol en ciment (quelquefois humide: on note des traces de boue) en amenant des tapis de sol épais, en poussant les tables et en passant un coup de balai (à amener) On peut trouver de l'eau à la cascade 100m au dessus (coulait bien mi juillet), au pire en suivant la piste forestière sur 500m, le ruisseau est permanent. Bois sec dans le refuge et à profusion alentours. En remontant la vallée du Rébenty, 4km après Méral, au coude nommé Pont de la Rouby, prendre la piste forestière qui longe le ruisseau de Font d'Argent jusqu'à un embranchement en T. Prendre à gauche sur 500m. Après la deuxième cascade, prendre un chemin forestier enherbé qui descend à gauche. Après 50m, la cabane est en contrebas à gauche. ONF",
+    "links": [
+      "https://www.refuges.info/point/4382/cabane-non-gardee/refuge-forestier-de-la-Grand-Gaute/"
+    ],
+    "type": "cabane ouverte",
+    "modified_at": "2014-07-13",
+    "name": "Refuge forestier de la Grand Gaute",
+    "region": null,
+    "departement": null
+  },
+  {
+    "coord": {
+      "long": 1.56833,
+      "lat": 42.8438
+    },
+    "altitude": 1000,
+    "places": 0,
+    "remarque": "Cheminée avec un poêle fort rouillé mais qui semble fonctionel. De vieux éléments de cuisine avec quelques menues provisions. Table et un banc. L'ensemble très sale, comme tout le reste de la cabane. Un bon coup de balai s'imposerait (balai qu'il faudrait amener d'ailleurs) Grenier en bon état mais très sale",
+    "info_comp": {
+      "manque_un_mur": 0,
+      "cheminee": 1,
+      "poele": 1,
+      "couvertures": 0,
+      "latrines": 0,
+      "bois": 1,
+      "eau": 0,
+      "matelas": 0,
+      "couchage": 0,
+      "bas_flancs": 0,
+      "lits": 0,
+      "mezzanine/etage": 0
+    },
+    "description": "Cheminée avec un poêle fort rouillé mais qui semble fonctionel. De vieux éléments de cuisine avec quelques menues provisions. Table et un banc. L'ensemble très sale, comme tout le reste de la cabane. Un bon coup de balai s'imposerait (balai qu'il faudrait amener d'ailleurs) Grenier en bon état mais très sale Juste avant l'entrée dans Gourbit, un remonter chemin forestier qui part à rebrousse poil vers l'est. Aller en ligne droite sur 3 km jusqu'à l'extrémité de rebroussement des camions Prendre sur 200m un chemin qui remonte vers l'ouest ONF",
+    "links": [
+      "https://www.refuges.info/point/3462/cabane-non-gardee/cabane-de-Ventefarine/"
+    ],
+    "type": "cabane ouverte",
+    "modified_at": "2013-08-24",
+    "name": "Cabane de Ventefarine",
+    "region": null,
+    "departement": null
+  },
+  {
+    "coord": {
+      "long": -1.01217985153198,
+      "lat": 42.954157127901
+    },
+    "altitude": 1315,
+    "places": 0,
+    "remarque": "Abri cantonnier très spartiate. 2 salles vides mais sèches, un reste de cheminée sans conduit.",
+    "info_comp": {
+      "manque_un_mur": 0,
+      "cheminee": 1,
+      "poele": 0,
+      "couvertures": 0,
+      "latrines": 0,
+      "bois": 1,
+      "eau": 1,
+      "matelas": 0,
+      "couchage": 0,
+      "bas_flancs": 0,
+      "lits": 0,
+      "mezzanine/etage": 0
+    },
+    "description": "Abri cantonnier très spartiate. 2 salles vides mais sèches, un reste de cheminée sans conduit. En montant au Port de Larrau, côté espagnol, au bord de la NA-2011, sur la droite entr e le km 6 &amp; 7. Nom donné en fonction d'une coline proche.",
+    "links": [
+      "https://www.refuges.info/point/5907/cabane-non-gardee/abri-de-Larrainxarra/"
+    ],
+    "type": "cabane ouverte",
+    "modified_at": "2017-08-02",
+    "name": "Abri de Larrainxarra",
+    "region": null,
+    "departement": null
+  },
+  {
+    "name": "Refuge Rocafumeda",
+    "region": "Serdinya",
+    "altitude": 1400,
+    "type": "cabane ouverte",
+    "departement": "Pyrénées-Orientales",
+    "places": 0,
+    "info_comp": {
+      "cheminee": 1,
+      "bois": 0,
+      "eau": 1,
+      "couchage": 1,
+      "matelas": 0,
+      "bas_flancs": 0,
+      "lits": 0,
+      "mezzanine/etage": 0
+    },
+    "info_couchage": "oui",
+    "coord": {
+      "long": 2.30495653,
+      "lat": 42.59138089
+    },
+    "links": [
+      "http://www.pyrenees-refuges.com/fr/affiche.php?numenr=373"
+    ],
+    "description": [],
+    "remarque": "Bonjour, le refuge est petit mais bien pratique.\r\nLa cheminée ne chauffe pas trop le refuge donc à conseiller plutôt l'été.\r\nPas loin du refuge , une petite visite culturelle vers les anciennes mines.",
+    "modified_at": null
+  },
+  {
+    "coord": {
+      "long": 1.38925015926361,
+      "lat": 42.9185203597304
+    },
+    "altitude": 1375.0,
+    "name": "Cabane du col de Peguere",
+    "surname": "Cabane du col de Péguère",
+    "links": [
+      "http://www.pyrenees-refuges.com/fr/affiche.php?numenr=977",
+      "https://www.refuges.info/point/6174/cabane-non-gardee/cabane-du-col-de-Peguere/"
+    ],
+    "type": "cabane ouverte",
+    "description": "Cabane en pierre sans porte ni fenêtre en 2 pièces au sol en terre battue. Il y a une cheminée et des bancs en pierre au fond. http://img.over-blog.com/300x224/1/50/07/71/velo/vac-paques-2010/paques-2010-029.jpg [url]http://img.over-blog.com/300x224/1/50/07/71/velo/vac-paques-2010/paques-2010-014.jpg[/url] (source photos : cols-et-pics.over-blog.com) La fontaine de Sauzet est à environ 600m à l'Est au bord de la route. A l'intersection du sentier balisé de la Tour Lafont et de la RD17 ?",
+    "remarque": "Cabane en pierre sans porte ni fenêtre en 2 pièces au sol en terre battue. Il y a une cheminée et des bancs en pierre au fond. http://img.over-blog.com/300x224/1/50/07/71/velo/vac-paques-2010/paques-2010-029.jpg [url]http://img.over-blog.com/300x224/1/50/07/71/velo/vac-paques-2010/paques-2010-014.jpg[/url] (source photos : cols-et-pics.over-blog.com) La fontaine de Sauzet est à environ 600m à l'Est au bord de la route.",
+    "places": 0,
+    "info_comp": {
+      "latrines": 0,
+      "matelas": 0,
+      "couvertures": 0,
+      "couchage": 0,
+      "bas_flancs": 0,
+      "poele": 0,
+      "manque_un_mur": 0,
+      "mezzanine/etage": 0,
+      "bois": 1,
+      "lits": 0,
+      "cheminee": 1,
+      "eau": 1
+    },
+    "modified_at": "2019-01-23",
+    "region": "Sentenac-de-Sérou",
+    "departement": "Ariège"
+  },
+  {
+    "coord": {
+      "long": 2.362,
+      "lat": 42.7524
+    },
+    "altitude": 1065,
+    "places": 0,
+    "remarque": "Refuge forestier fermé à clé en 2015.",
+    "info_comp": {
+      "manque_un_mur": 0,
+      "cheminee": 0,
+      "poele": 0,
+      "couvertures": 0,
+      "latrines": 1,
+      "bois": 1,
+      "eau": 1,
+      "matelas": 0,
+      "couchage": 0,
+      "bas_flancs": 0,
+      "lits": 0,
+      "mezzanine/etage": 0
+    },
+    "description": "Refuge forestier fermé à clé en 2015. Pistes forestières par Vira 66 ou Gindra 11",
+    "links": [
+      "https://www.refuges.info/point/6047/cabane-non-gardee/maison-forestiere-de-Gastepa/"
+    ],
+    "type": "Fermée",
+    "modified_at": "2017-12-30",
+    "name": "Maison forestière de Gastepa",
+    "region": null,
+    "departement": null
+  },
+  {
+    "coord": {
+      "long": 1.96843,
+      "lat": 42.56389
+    },
+    "altitude": 2150,
+    "places": 0,
+    "remarque": "Un refuge du 19e siècle en l'état d'origine ! Au pays des orris, 30 ans avant les méthodes modernes d’accès et le décollage de Font Romeu, ce devait être un palace Suivant les inscriptions, il aurait été créé en 1883, il est toujours dans son état d'origine Pour servir de camp de base pour l’ascension du Carlit, la sommité du coin, ou comme bergerie ? Une première pièce de 4 * 3m munie d'une cheminée, de quelques bancs de pierres et d'un réduit pour entreposer nourriture et quelques ustensiles Une deuxième pièce de même dimension sert de dortoir. Le sol assez plat et quelque peu humide est recouvert d'une bâche en plastique. Aux dernières nouvelles, le toit ne serait plus très étanche Bois à 1km. Ruisseau à quelques centaines de m (traiter impérativement très énergiquement car l'eau provient des très nombreux lacs qui se déversent les uns dans les autres, qui plus est en zone d'élevage)",
+    "info_comp": {
+      "manque_un_mur": 0,
+      "cheminee": 1,
+      "poele": 0,
+      "couvertures": 0,
+      "latrines": 0,
+      "bois": 1,
+      "eau": 1,
+      "matelas": 0,
+      "couchage": 0,
+      "bas_flancs": 0,
+      "lits": 0,
+      "mezzanine/etage": 0
+    },
+    "description": "Un refuge du 19e siècle en l'état d'origine ! Au pays des orris, 30 ans avant les méthodes modernes d’accès et le décollage de Font Romeu, ce devait être un palace Suivant les inscriptions, il aurait été créé en 1883, il est toujours dans son état d'origine Pour servir de camp de base pour l’ascension du Carlit, la sommité du coin, ou comme bergerie ? Une première pièce de 4 * 3m munie d'une cheminée, de quelques bancs de pierres et d'un réduit pour entreposer nourriture et quelques ustensiles Une deuxième pièce de même dimension sert de dortoir. Le sol assez plat et quelque peu humide est recouvert d'une bâche en plastique. Aux dernières nouvelles, le toit ne serait plus très étanche Bois à 1km. Ruisseau à quelques centaines de m (traiter impérativement très énergiquement car l'eau provient des très nombreux lacs qui se déversent les uns dans les autres, qui plus est en zone d'élevage) Assez difficile à trouver (ne pas confondre les nombreux lacs) Depuis le barrage des Bouillouses, prendre le chemin du pic Carlit (très fréquenté) laisser un premier étang à gauche (Estany Negre), puis un autre à droite (Estany del Viver). A ce niveau, laisser le chemin du Carlit qui part vers le nord et prendre une sente qui se dirige plein est. Continuer la sente, passer l'Estany de la Comassa sur la droite, puis l'Estany Sec sur la gauche. Tout de suite après ce lac, prendre à travers la pelouse plein ouest (il n'y a pas de trace menant au refuge !) Vous tombez alors sur le grand Estagny Llat dont vous suivez la rive par la droite. Le refuge est sur le bord de la grève.",
+    "links": [
+      "https://www.refuges.info/point/3500/cabane-non-gardee/refuge-des-Freres-Aymar-Coll/"
+    ],
+    "type": "cabane ouverte",
+    "modified_at": "2019-05-02",
+    "name": "Refuge des Frères Aymar-Coll",
+    "region": null,
+    "departement": null
+  },
+  {
+    "coord": {
+      "long": 1.60898,
+      "lat": 42.91634
+    },
+    "altitude": 940,
+    "places": 0,
+    "remarque": "Je crée ce point pour compléter les informations sur le picto abri de la carte IGN La porte principale est verrouillée et seule la partie de gauche est accessible (très sale et peu accueillante) A réserver à une urgence absolue quoi que à 1h de marche du centre de Foix, au bord d'une route forestière et avec une réception GSM parfaite, je ne vois pas bien l'intérêt sauf à s'être foulé la cheville par un orage en attendant les secours. Noter une bonne source juste derrière le refuge",
+    "info_comp": {
+      "manque_un_mur": 1,
+      "cheminee": 0,
+      "poele": 0,
+      "couvertures": 0,
+      "latrines": 0,
+      "bois": 1,
+      "eau": 1,
+      "matelas": 0,
+      "couchage": 0,
+      "bas_flancs": 0,
+      "lits": 0,
+      "mezzanine/etage": 0
+    },
+    "description": "Je crée ce point pour compléter les informations sur le picto abri de la carte IGN La porte principale est verrouillée et seule la partie de gauche est accessible (très sale et peu accueillante) A réserver à une urgence absolue quoi que à 1h de marche du centre de Foix, au bord d'une route forestière et avec une réception GSM parfaite, je ne vois pas bien l'intérêt sauf à s'être foulé la cheville par un orage en attendant les secours. Noter une bonne source juste derrière le refuge Depuis Prayol, par la route forestière (non goudronnée) A une épingle à cheveu, une piste barrée (un peu après là où l'indique la carte). 5m après la barrière, une autre piste forestière part sur la droite (invisible du coude de la route). la suivre sur 100m ONF",
+    "links": [
+      "https://www.refuges.info/point/4388/cabane-non-gardee/maison-Forestiere-du-Bartat/"
+    ],
+    "type": "cabane ouverte",
+    "modified_at": "2014-07-17",
+    "name": "Maison Forestière du Bartat",
+    "region": null,
+    "departement": null
+  },
+  {
+    "coord": {
+      "long": 1.95822,
+      "lat": 42.74527
+    },
+    "altitude": 1420,
+    "places": 0,
+    "remarque": "Refuge forestier Une grande cheminée, 2 tables, 3 bancs, 7 chaises. Pas de positions dédiées au couchage mais on doit pouvoir y dormir 4 ou 5 sur le sol en ciment (bien sec) en amenant des tapis de sol épais, en poussant les tables et en passant un coup de balai (à amener) quoi que le refuge était très propre aujourd'hui. Bois sec dans le refuge et à profusion alentours.",
+    "info_comp": {
+      "manque_un_mur": 0,
+      "cheminee": 1,
+      "poele": 0,
+      "couvertures": 0,
+      "latrines": 0,
+      "bois": 1,
+      "eau": 1,
+      "matelas": 0,
+      "couchage": 0,
+      "bas_flancs": 0,
+      "lits": 0,
+      "mezzanine/etage": 0
+    },
+    "description": "Refuge forestier Une grande cheminée, 2 tables, 3 bancs, 7 chaises. Pas de positions dédiées au couchage mais on doit pouvoir y dormir 4 ou 5 sur le sol en ciment (bien sec) en amenant des tapis de sol épais, en poussant les tables et en passant un coup de balai (à amener) quoi que le refuge était très propre aujourd'hui. Bois sec dans le refuge et à profusion alentours. Remonter les gorges du Rébenty presque jusqu'à la source Dans les derniers virages du col du Pradel (point 1432m sur la carte), s'arrêter sur une aire de stockage de bois à gauche de la route. Dévaler une petite prairie du côté droit de la route pour trouver un mauvais chemin forestier qui descend au ruisseau, le traverse puis remonte sur une dizaine de mètres vers le refuge. Ne pas avoir peur de se mouiller les peids dans les herbes foles et lors de la traversée du ruisseau à gué. ONF",
+    "links": [
+      "https://www.refuges.info/point/4381/cabane-non-gardee/refuge-forestier-de-Font-Rouge/"
+    ],
+    "type": "cabane ouverte",
+    "modified_at": "2014-07-13",
+    "name": "Refuge forestier de Font Rouge",
+    "region": null,
+    "departement": null
+  },
+  {
+    "coord": {
+      "long": -0.0958031415939331,
+      "lat": 42.84791256397539
+    },
+    "altitude": 1405,
+    "places": 0,
+    "remarque": "Depuis le parking de la Fruitière, prendre l'énorme sentier vers Estom. La cabane devrait se trouver sur la gauche, au bout de 15 minutes.",
+    "info_comp": {
+      "manque_un_mur": 0,
+      "cheminee": 0,
+      "poele": 0,
+      "couvertures": 0,
+      "latrines": 1,
+      "bois": 1,
+      "eau": 1,
+      "matelas": 0,
+      "couchage": 0,
+      "bas_flancs": 0,
+      "lits": 0,
+      "mezzanine/etage": 0
+    },
+    "description": "Depuis le parking de la Fruitière, prendre l'énorme sentier vers Estom. La cabane devrait se trouver sur la gauche, au bout de 15 minutes. OT de Cauterets",
+    "links": [
+      "https://www.refuges.info/point/6415/cabane-non-gardee/cabane-du-Lutour/"
+    ],
+    "type": "Détruite",
+    "modified_at": "2018-08-26",
+    "name": "Cabane du Lutour",
+    "region": null,
+    "departement": null
+  },
+  {
+    "name": "Cabane d'Escouret",
+    "region": "Borce",
+    "altitude": 1413,
+    "type": "cabane ouverte",
+    "departement": "Pyrénées-Atlantique",
+    "places": null,
+    "info_comp": {
+      "cheminee": 1,
+      "bois": 1,
+      "eau": 1,
+      "couchage": 0,
+      "matelas": 0,
+      "bas_flancs": 0,
+      "lits": 0,
+      "mezzanine/etage": 0
+    },
+    "coord": {
+      "long": -0.5592,
+      "lat": 42.8028
+    },
+    "links": [
+      "http://www.pyrenees-refuges.com/fr/affiche.php?numenr=1276"
+    ],
+    "description": "une des deux cabanes semble servir de refuge elle etait ouverte le 10 novembre 2014 deux pieces sont accessibles une premiere avec 2 tables lavabo et poele et une seconde avec couchage a l etage",
+    "remarque": "Août 2019, toute la cabane est réservé au berger",
+    "modified_at": null
+  },
+  {
+    "name": "Cabane Artigou",
+    "region": "Bonac-Irazein",
+    "altitude": 1599,
+    "type": "cabane ouverte",
+    "departement": "Ariège",
+    "places": 3,
+    "info_comp": {
+      "cheminee": 1,
+      "bois": 1,
+      "eau": 0,
+      "couchage": 1,
+      "matelas": 0,
+      "bas_flancs": 1,
+      "lits": 0,
+      "mezzanine/etage": 0
+    },
+    "info_couchage": "bat-flancs 3 personnes avec ma",
+    "coord": {
+      "long": 0.97405,
+      "lat": 42.858476
+    },
+    "links": [
+      "http://www.pyrenees-refuges.com/fr/affiche.php?numenr=535"
+    ],
+    "description": "petite cabane en bon etat sol en terre bois table bancs pas vu de source beaucoup d affaires berger ",
+    "remarque": "Visitée le 07/05/2008 : ouverte et en bon état. Cyril D.",
+    "modified_at": null
+  },
+  {
+    "name": "Cabane de la Hosse (vallée d'Aspe)",
+    "region": "Laruns",
+    "altitude": 1700,
+    "type": "cabane ouverte mais ocupee par le berger l ete",
+    "departement": "Pyrénées-Atlantique",
+    "places": 5,
+    "info_comp": {
+      "cheminee": 1,
+      "bois": 1,
+      "eau": 1,
+      "couchage": 0,
+      "matelas": 0,
+      "bas_flancs": 0,
+      "lits": 0,
+      "mezzanine/etage": 0
+    },
+    "coord": {
+      "long": -0.4764461517334,
+      "lat": 42.836832353239
+    },
+    "links": [
+      "http://www.pyrenees-refuges.com/fr/affiche.php?numenr=769"
+    ],
+    "description": "cabane propre pas de matelas occupe par le berger l ete ",
+    "remarque": "Passé le 05/11, la cabane était fermée ...",
+    "modified_at": null
+  },
+  {
+    "coord": {
+      "long": 1.99729,
+      "lat": 42.76369
+    },
+    "altitude": 1262,
+    "places": 2,
+    "remarque": "Baraque forestière en très bon état. Une grande cheminée, 1 table, 2 bancs, un sommier métallique en 120cm, 1 balai. Deux panneaux translucides sur le toit assurent une bonne luminosité.",
+    "info_comp": {
+      "manque_un_mur": 0,
+      "cheminee": 1,
+      "poele": 0,
+      "couvertures": 0,
+      "latrines": 0,
+      "bois": 1,
+      "eau": 1,
+      "matelas": 0,
+      "couchage": 0,
+      "bas_flancs": 0,
+      "lits": 0,
+      "mezzanine/etage": 0
+    },
+    "description": "Places prévues pour dormir: 2 Baraque forestière en très bon état. Une grande cheminée, 1 table, 2 bancs, un sommier métallique en 120cm, 1 balai. Deux panneaux translucides sur le toit assurent une bonne luminosité. En remontant la vallée du Rébenty, 200m après Méral, traverser un petit pont sur la gauche qui mène à une bâtisse abritant une turbine hydroélectrique. Suivre la piste forestière sur 3km jusqu'à un grand carrefour. Franchir le pont sur la gauche puis prendre immédiatement un chemin herbu qui descend le long du ruisseau sur 50m. ONF",
+    "links": [
+      "https://www.refuges.info/point/4383/cabane-non-gardee/refuge-forestier-de-Laval/"
+    ],
+    "type": "cabane ouverte",
+    "modified_at": "2014-07-14",
+    "name": "Refuge forestier de Laval",
+    "region": null,
+    "departement": null
+  },
+  {
+    "coord": {
+      "long": 1.8701890110969546,
+      "lat": 42.675021168221214
+    },
+    "altitude": 1380,
+    "places": 1,
+    "remarque": "Cabane d'une place seulement, en très bon état, en bord de piste ouverte à la circulation.",
+    "info_comp": {
+      "manque_un_mur": 0,
+      "cheminee": 1,
+      "poele": 0,
+      "couvertures": 0,
+      "latrines": 0,
+      "bois": 1,
+      "eau": 1,
+      "matelas": 1,
+      "couchage": 0,
+      "bas_flancs": 0,
+      "lits": 0,
+      "mezzanine/etage": 0
+    },
+    "description": "Places prévues pour dormir: 1 Places sur Matelas: 1 Cabane d'une place seulement, en très bon état, en bord de piste ouverte à la circulation. [b]En voiture[/b] Depuis Orgeix, traverser le petit pont et suivre une longue piste pendant 6km parfois bitumée jusqu'à la cabane, qui sera sur la droite, juste après un passage canadien.",
+    "links": [
+      "https://www.refuges.info/point/6253/cabane-non-gardee/cabane-de-l-Anyell-Morta/"
+    ],
+    "type": "cabane ouverte",
+    "modified_at": "2018-05-27",
+    "name": "Cabane de l'Anyell Morta",
+    "region": null,
+    "departement": null
+  },
+  {
+    "coord": {
+      "long": 0.4780555,
+      "lat": 42.83555599
+    },
+    "altitude": 1635.0,
+    "name": "Cabane de Conques",
+    "surname": "Cabane de Conques Luchonais",
+    "links": [
+      "http://www.pyrenees-refuges.com/fr/affiche.php?numenr=919",
+      "https://www.refuges.info/point/8637/cabane-non-gardee/cabane-de-Conques-Luchonais/"
+    ],
+    "type": "cabane ouverte",
+    "description": "Places prévues pour dormir: 3 Places sur Matelas: 3 [u][b]Équipement intérieur : [/b][/u] - 1 petite table - 2 chaises - 1 banc en pierre - 1 cheminée - 1 matelas (large) - 1 vieux canapé [u][b][color=blue]L'eau :[/color][/b][/u] - Une source captée alimente un bassin pour le bétail au dessus du refuge (vite à sec), - A volonté au fond du ravin au sud de la cabane (chemin de montée). [u]Depuis Portet de Luchon :[/u] Piste vers le Nord, puis bon chemin pour le Port de Pinate, on arrive à la cabane après un raidillon qui nous sort du ravin (Il y a de l'eau ici !). [u]Depuis Jurvielle :[/u] Piste qui s'élève au Nord jusqu'à la cabane. Cabane ouverte (partie randonneur à gauche).",
+    "remarque": "[u][b]Équipement intérieur : [/b][/u] - 1 petite table - 2 chaises - 1 banc en pierre - 1 cheminée - 1 matelas (large) - 1 vieux canapé [u][b][color=blue]L'eau :[/color][/b][/u] - Une source captée alimente un bassin pour le bétail au dessus du refuge (vite à sec), - A volonté au fond du ravin au sud de la cabane (chemin de montée).",
+    "places": 3,
+    "info_comp": {
+      "latrines": 0,
+      "matelas": 1,
+      "couvertures": 0,
+      "couchage": 1,
+      "bas_flancs": 1,
+      "poele": 0,
+      "manque_un_mur": 0,
+      "mezzanine/etage": 0,
+      "bois": 1,
+      "lits": 0,
+      "cheminee": 1,
+      "eau": 1
+    },
+    "modified_at": "2022-12-18",
+    "region": "Jurvielle",
+    "info_couchage": "non",
+    "departement": "Haute-Garonne"
+  },
+  {
+    "name": "Cabana de la font dels ocells ",
+    "region": "Alp",
+    "altitude": 1562,
+    "type": "cabane ouverte",
+    "departement": "Catalonia",
+    "places": 4,
+    "info_comp": {
+      "cheminee": 1,
+      "bois": 1,
+      "eau": 1,
+      "couchage": 1,
+      "matelas": 0,
+      "bas_flancs": 0,
+      "lits": 0,
+      "mezzanine/etage": 0
+    },
+    "info_couchage": "oui",
+    "coord": {
+      "long": 1.9118,
+      "lat": 42.3522
+    },
+    "links": [
+      "http://www.pyrenees-refuges.com/fr/affiche.php?numenr=1585"
+    ],
+    "description": "cabane qui semble ouverte cheminee lit table bancs source en bord de piste forestiere table en pierre a lexterieur demander l autorisation en mairie pour y dormir ",
+    "remarque": "Refugio adosado limpio, una mesa y fuente en la puerta ",
+    "modified_at": null
+  },
+  {
+    "name": "Cabane de l'Aoubère",
+    "region": "Ancizan",
+    "altitude": 1760,
+    "type": "cabane ouverte",
+    "departement": "Haute-Pyrénées",
+    "places": 4,
+    "info_comp": {
+      "cheminee": 1,
+      "bois": 0,
+      "eau": 1,
+      "couchage": 1,
+      "matelas": 1,
+      "bas_flancs": 0,
+      "lits": 1,
+      "mezzanine/etage": 0
+    },
+    "info_couchage": "1 lit avec matelas",
+    "coord": {
+      "long": 0.26173040759292,
+      "lat": 42.905378173663
+    },
+    "links": [
+      "http://www.pyrenees-refuges.com/fr/affiche.php?numenr=895"
+    ],
+    "description": "un peu en desordre mais un bon abri pour 4 situe en dessous du col de crabe ",
+    "remarque": "Fermée le 15/12/21 à notre passage. ",
+    "modified_at": null
+  },
+  {
+    "coord": {
+      "long": 2.0042,
+      "lat": 42.54065
+    },
+    "altitude": 1940.0,
+    "name": "Abri de la Calma Nord",
+    "surname": "Cabane de Calma Nord",
+    "links": [
+      "http://www.pyrenees-refuges.com/fr/affiche.php?numenr=1176",
+      "https://www.refuges.info/point/9477/cabane-non-gardee/cabane-de-Calma-Nord/"
+    ],
+    "type": "cabane ouverte",
+    "description": "Places prévues pour dormir: 4 -2 bas-flancs de 2 personnes superposés -vaisselle et crochets pour la suspendre -table, bancs -scie, balais, pelle -placard servant de garde-manger -patères -chèvre pour couper du bois -abri bois attenant à la cabane rempli une fois l'an par la Communauté de Communes -source eau plus haut le long du télésiège de Calma Nord \"Fontaine de la Mola\" Depuis le sud du lac des Bouillouses suivre le GR de pays du Tour du Carlit puis très vite le quitter pour suivre la piste qui mène à l'étang de la Pradelle et la suivre jusqu'au pied des télésièges de la Calma Nord. La cabane se situe hors sentier au sud de la zone marécageuse. Compter 30 à 45min. Cabane rénovée par la Communauté de Communes des Pyrénées Catalanes",
+    "remarque": "-2 bas-flancs de 2 personnes superposés -vaisselle et crochets pour la suspendre -table, bancs -scie, balais, pelle -placard servant de garde-manger -patères -chèvre pour couper du bois -abri bois attenant à la cabane rempli une fois l'an par la Communauté de Communes -source eau plus haut le long du télésiège de Calma Nord \"Fontaine de la Mola\"",
+    "places": 4,
+    "info_comp": {
+      "latrines": 0,
+      "matelas": 0,
+      "couvertures": 0,
+      "couchage": 1,
+      "bas_flancs": 0,
+      "poele": 1,
+      "manque_un_mur": 0,
+      "mezzanine/etage": 0,
+      "bois": 1,
+      "lits": 0,
+      "cheminee": 0,
+      "eau": 1
+    },
+    "modified_at": "2023-11-28",
+    "region": "Font-Romeu-Odeillo-Via",
+    "info_couchage": "3 places",
+    "departement": "Pyrénées-Orientales"
+  },
+  {
+    "coord": {
+      "long": 0.69235324859619,
+      "lat": 42.862863960846
+    },
+    "altitude": 1350.0,
+    "name": "Cabane Artigue",
+    "surname": "Cabane Artigue",
+    "links": [
+      "http://www.pyrenees-refuges.com/fr/affiche.php?numenr=426",
+      "https://www.refuges.info/point/9930/cabane-non-gardee/cabane-Artigue/"
+    ],
+    "type": "cabane ouverte",
+    "description": "Places prévues pour dormir: 3 Possibilité de planter une tente immédiatement proximité, la clairière étant en pente. Sur le GR 10. Cabane en pierre équipée d'une grosse plateforme en bois de 6m² permettant de dormir, manger ou s'asseoir.",
+    "remarque": "Possibilité de planter une tente immédiatement proximité, la clairière étant en pente.",
+    "places": 4,
+    "info_comp": {
+      "latrines": 0,
+      "matelas": 1,
+      "couvertures": 0,
+      "couchage": 1,
+      "bas_flancs": 1,
+      "poele": 0,
+      "manque_un_mur": 0,
+      "mezzanine/etage": 0,
+      "bois": 0,
+      "lits": 0,
+      "cheminee": 0,
+      "eau": 1
+    },
+    "region": "Arlos",
+    "info_eau": "Source sous la cabane près du ",
+    "departement": "Haute-Garonne",
+    "modified_at": "2024-08-17",
+    "info_couchage": "Matelas et bas flanc"
+  },
+  {
+    "coord": {
+      "long": -0.012922883033752,
+      "lat": 43.0405437632589
+    },
+    "altitude": 945.0,
+    "name": "Soum de Trées",
+    "surname": "Cabane de la Soum des Trées",
+    "links": [
+      "http://www.pyrenees-refuges.com/fr/affiche.php?numenr=1787",
+      "https://www.refuges.info/point/6752/cabane-non-gardee/cabane-de-la-Soum-des-Trees/"
+    ],
+    "type": "cabane ouverte",
+    "description": "Places prévues pour dormir: 2 Petite cabane sur la crête de la Soum des Trées, avec des vues magnifiques. L'eau se trouve en suivant la crête sur 1 km, les abreuvoirs sont en contrebas à gauche. Uniquement accessible à pied, en partant de Ousté ou Ourdon, en suivant le balisage.",
+    "remarque": "Petite cabane sur la crête de la Soum des Trées, avec des vues magnifiques. L'eau se trouve en suivant la crête sur 1 km, les abreuvoirs sont en contrebas à gauche.",
+    "places": 4,
+    "info_comp": {
+      "latrines": 0,
+      "matelas": 0,
+      "couvertures": 0,
+      "couchage": 0,
+      "bas_flancs": 0,
+      "poele": 0,
+      "manque_un_mur": 0,
+      "mezzanine/etage": 0,
+      "bois": 1,
+      "lits": 0,
+      "cheminee": 1,
+      "eau": 1
+    },
+    "modified_at": "2019-10-15",
+    "region": "",
+    "departement": ""
+  },
+  {
+    "coord": {
+      "long": 2.01139,
+      "lat": 42.52167
+    },
+    "altitude": 1996,
+    "places": 1,
+    "remarque": "Orri de belle taille et facture Est muni d'une couchette en pierre (prévoir un matelas pneumatique) et d'un emplacement pour faire le feu surmonté d'un trou dans le mur. Peut servir d'abri précaire ou aux amateurs de très authentique. Le tout très sain après 2 nuits d'orage.",
+    "info_comp": {
+      "manque_un_mur": 1,
+      "cheminee": 1,
+      "poele": 0,
+      "couvertures": 0,
+      "latrines": 0,
+      "bois": 1,
+      "eau": 1,
+      "matelas": 0,
+      "couchage": 0,
+      "bas_flancs": 0,
+      "lits": 0,
+      "mezzanine/etage": 0
+    },
+    "description": "Places prévues pour dormir: 1 Orri de belle taille et facture Est muni d'une couchette en pierre (prévoir un matelas pneumatique) et d'un emplacement pour faire le feu surmonté d'un trou dans le mur. Peut servir d'abri précaire ou aux amateurs de très authentique. Le tout très sain après 2 nuits d'orage. Du parking du stade de biathlon, prendre un chemin qui part vers le sud puis s'infléchi vers l'ouest. Aprés 1 km, l'orri est bien en vue sur une bute.",
+    "links": [
+      "https://www.refuges.info/point/4405/cabane-non-gardee/orri-de-la-jasse-d-Amunt/"
+    ],
+    "type": "cabane ouverte",
+    "modified_at": "2024-11-03",
+    "name": "Orri de la jasse d'Amunt",
+    "region": null,
+    "departement": null
+  },
+  {
+    "coord": {
+      "long": 0.8745,
+      "lat": 42.882751
+    },
+    "altitude": 1355.0,
+    "name": "Cabane de Barguerasses",
+    "surname": "Cabane de Barguérasses",
+    "links": [
+      "http://www.pyrenees-refuges.com/fr/affiche.php?numenr=1115",
+      "https://www.refuges.info/point/6304/cabane-non-gardee/cabane-de-Barguerasses/"
+    ],
+    "type": "cabane ouverte",
+    "description": "Petite cabane en pierre avec un toit à 2 pans, notée comme abri sur la carte IGN. Aucune isolation, charpente refaite mais passoire thermique,table,bancs, pas d'emplacement de couchage. Près du sentier balisé en jaune qui monte du parking de Ruech au col de l'Herbe Soulette.",
+    "remarque": "Petite cabane en pierre avec un toit à 2 pans, notée comme abri sur la carte IGN. Aucune isolation, charpente refaite mais passoire thermique,table,bancs, pas d'emplacement de couchage.",
+    "places": 2,
+    "info_comp": {
+      "latrines": 0,
+      "matelas": 0,
+      "couvertures": 0,
+      "couchage": 0,
+      "bas_flancs": 1,
+      "poele": 0,
+      "manque_un_mur": 0,
+      "mezzanine/etage": 0,
+      "bois": 1,
+      "lits": 0,
+      "cheminee": 0,
+      "eau": 1
+    },
+    "modified_at": "2020-09-25",
+    "region": "Saint-Lary",
+    "departement": "Ariège"
+  },
+  {
+    "coord": {
+      "long": 1.3838911307585,
+      "lat": 42.809361227284
+    },
+    "altitude": 1300.0,
+    "name": "Cabane Bastard",
+    "surname": "Courtal de Bastard",
+    "links": [
+      "https://www.refuges.info/point/3455/cabane-non-gardee/Courtal-de-Bastard/",
+      "http://www.pyrenees-refuges.com/fr/affiche.php?numenr=600"
+    ],
+    "type": "cabane ouverte",
+    "description": "Places prévues pour dormir: 3 Le toit qui semble récent étant partiellement envolé (état 2010), la cabane peut servir d'abri en cas de besoin absolu mais n'est guère habitable. Un âtre de coin, une planche d'aglo pour une couchette de 60cm. Sol en ciment. 2 autres places sur le sol si nécessité. Depuis Vicdessos la D18, depuis Massat prendre la D18 vers le Port de Lers, depuis Aulus la D8f. La cabane se trouve au bord de la D18, direction nord, à 100m l'étang de Lers. Son peu d'intérêt apparent vu sa proximité avec la route prend tout son sens en hiver car le col n'est pas déneigé.",
+    "remarque": "Le toit qui semble récent étant partiellement envolé (état 2010), la cabane peut servir d'abri en cas de besoin absolu mais n'est guère habitable. Un âtre de coin, une planche d'aglo pour une couchette de 60cm. Sol en ciment. 2 autres places sur le sol si nécessité.",
+    "places": 3,
+    "info_comp": {
+      "latrines": 0,
+      "matelas": 0,
+      "couvertures": 0,
+      "couchage": 0,
+      "bas_flancs": 0,
+      "poele": 0,
+      "manque_un_mur": 1,
+      "mezzanine/etage": 0,
+      "bois": 1,
+      "lits": 0,
+      "cheminee": 1,
+      "eau": 0
+    },
+    "modified_at": "2013-06-09",
+    "region": "Le Port",
+    "departement": "Ariège"
+  },
+  {
+    "coord": {
+      "long": 2.4712,
+      "lat": 42.57183
+    },
+    "altitude": 849,
+    "places": 4,
+    "remarque": "Si besoin de planter la tente il y a de la place. Très propre et en superbe état. Il y a 1 lit superposé de 2 places par étage et de la place par terre. Place à feu a l'extérieur et cheminée ouverte l'intérieur. Table de pique-nique. Le manque de latrines est un problème, les alentours sont pollués...",
+    "info_comp": {
+      "manque_un_mur": 0,
+      "cheminee": 1,
+      "poele": 0,
+      "couvertures": 0,
+      "latrines": 0,
+      "bois": 1,
+      "eau": 1,
+      "matelas": 0,
+      "couchage": 0,
+      "bas_flancs": 0,
+      "lits": 0,
+      "mezzanine/etage": 0
+    },
+    "description": "Places prévues pour dormir: 4 Si besoin de planter la tente il y a de la place. Très propre et en superbe état. Il y a 1 lit superposé de 2 places par étage et de la place par terre. Place à feu a l'extérieur et cheminée ouverte l'intérieur. Table de pique-nique. Le manque de latrines est un problème, les alentours sont pollués... Accessible en voiture. ONF",
+    "links": [
+      "https://www.refuges.info/point/5046/cabane-non-gardee/refuge-forestier-du-Mas-Malet/"
+    ],
+    "type": "cabane ouverte",
+    "modified_at": "2025-08-02",
+    "name": "Refuge forestier du Mas Malet",
+    "region": null,
+    "departement": null
+  },
+  {
+    "coord": {
+      "long": 1.0635522007942202,
+      "lat": 42.852205267313735
+    },
+    "altitude": 1400.0,
+    "name": "Cabane Campuls",
+    "surname": "Cabane de Campuls",
+    "links": [
+      "https://www.refuges.info/point/5797/cabane-non-gardee/cabane-de-Campuls/",
+      "http://www.pyrenees-refuges.com/fr/affiche.php?numenr=540"
+    ],
+    "type": "cabane ouverte",
+    "description": "Places prévues pour dormir: 5 Places sur Matelas: 3 Cabane sur deux niveaux, potentiellement utilisée par un berger l'été au vu des l'estive où elle est placée. Table, chaises, nombreuses poêles mais chauffage à la cheminée. Un torrent en extérieur. Au niveau supérieur quelques matelas pour dormir. En voiture ou à pied, poursuivre la piste après le Lac de Bethmale. Après une longue portion de piste, on arrive au parking de Mount Ner (une barrière empêche d'aller plus loin en voiture). Poursuivre la piste après la barrière à pied pendant 1500m environ, en légère descente. La cabane est au terminus de la piste.",
+    "remarque": "Cabane sur deux niveaux, potentiellement utilisée par un berger l'été au vu des l'estive où elle est placée. Table, chaises, nombreuses poêles mais chauffage à la cheminée. Un torrent en extérieur. Au niveau supérieur quelques matelas pour dormir.",
+    "places": 5,
+    "info_comp": {
+      "latrines": 0,
+      "matelas": 1,
+      "couvertures": 0,
+      "couchage": 1,
+      "bas_flancs": 0,
+      "poele": 0,
+      "manque_un_mur": 0,
+      "mezzanine/etage": 1,
+      "bois": 1,
+      "lits": 0,
+      "cheminee": 1,
+      "eau": 1
+    },
+    "modified_at": "2017-04-19",
+    "region": "Bethmale",
+    "info_couchage": "couchage en mezzanine (2 matel",
+    "departement": "Ariège"
+  },
+  {
+    "coord": {
+      "long": 2.45997519,
+      "lat": 42.53829189
+    },
+    "altitude": 2040.0,
+    "name": "Cabane Cortalets",
+    "surname": "Refuge de la Jasse des Cortalets",
+    "links": [
+      "https://www.refuges.info/point/6575/cabane-non-gardee/refuge-de-la-Jasse-des-Cortalets/",
+      "http://www.pyrenees-refuges.com/fr/affiche.php?numenr=397"
+    ],
+    "type": "cabane ouverte",
+    "description": "Places prévues pour dormir: 4 Petite cabane non testée mais en bon état : 4 places pour dormir, cheminée, table à l'intérieur ; point feu et fontaine à l'extérieur Un peu en-dessous du refuge des Cortalets Syndicat Mixte Canigo Grand Site ?",
+    "remarque": "Petite cabane non testée mais en bon état : 4 places pour dormir, cheminée, table à l'intérieur ; point feu et fontaine à l'extérieur",
+    "places": 4,
+    "info_comp": {
+      "latrines": 0,
+      "matelas": 0,
+      "couvertures": 0,
+      "couchage": 0,
+      "bas_flancs": 0,
+      "poele": 0,
+      "manque_un_mur": 0,
+      "mezzanine/etage": 0,
+      "bois": 1,
+      "lits": 0,
+      "cheminee": 1,
+      "eau": 1
+    },
+    "modified_at": "2021-05-07",
+    "region": "Taurinya",
+    "departement": "Pyrénées-Orientales"
+  },
+  {
+    "coord": {
+      "long": 1.93026,
+      "lat": 42.54495
+    },
+    "altitude": 2435.0,
+    "name": "Abri de Coll Roig",
+    "surname": "Abri de Coll Roig",
+    "links": [
+      "https://www.refuges.info/point/3523/cabane-non-gardee/abri-de-Coll-Roig/",
+      "http://www.pyrenees-refuges.com/fr/affiche.php?numenr=949"
+    ],
+    "type": "cabane ouverte",
+    "description": "Places prévues pour dormir: 2 Places sur Matelas: 2 [b]L'ancien abri métallique, détruit, a été déblayé et la cabane a été reconstruite en maçonnerie. Voir la page en lien.[/b] Cabane en très bon état, deux couchages + un au sol. Le poêle est tout neuf. Il y a une scie et une petite réserve de bois. Seule la partie droite de la cabane (voir photo) est accessible, l'autre partie est fermée, réservée au berger. Depuis Angoustrine, suivre une piste 4x4 jusqu'à la source de Trés Fonts A partir de là, vous cheminez 2km assez raides nord ouest en pleine pelouse : aucun chemin ne mène au lac. Attention de ne pas trop obliquer vers l'est ou vous tomberez sur le chaos de Targassonne, vaste éboulis de très grosses pierres (jusqu'à 10m de diamètre) quasi infranchissable ?",
+    "remarque": "[b]L'ancien abri métallique, détruit, a été déblayé et la cabane a été reconstruite en maçonnerie. Voir la page en lien.[/b] Cabane en très bon état, deux couchages + un au sol. Le poêle est tout neuf. Il y a une scie et une petite réserve de bois. Seule la partie droite de la cabane (voir photo) est accessible, l'autre partie est fermée, réservée au berger.",
+    "places": 2,
+    "info_comp": {
+      "latrines": 0,
+      "matelas": 1,
+      "couvertures": 1,
+      "couchage": 1,
+      "bas_flancs": 0,
+      "poele": 1,
+      "manque_un_mur": 0,
+      "mezzanine/etage": 0,
+      "bois": 0,
+      "lits": 0,
+      "cheminee": 1,
+      "eau": 1
+    },
+    "modified_at": "2021-09-27",
+    "region": "Dorres",
+    "info_couchage": "2",
+    "departement": "Pyrénées-Orientales"
+  },
+  {
+    "name": "Cabane de Lauzeron",
+    "region": "Couflens",
+    "altitude": 1570,
+    "type": "cabane ouverte",
+    "departement": "Ariège",
+    "places": 2,
+    "info_comp": {
+      "cheminee": 1,
+      "bois": 1,
+      "eau": 1,
+      "couchage": 0,
+      "matelas": 0,
+      "bas_flancs": 0,
+      "lits": 0,
+      "mezzanine/etage": 0
+    },
+    "coord": {
+      "long": 1.15103797,
+      "lat": 42.7353426
+    },
+    "links": [
+      "http://www.pyrenees-refuges.com/fr/affiche.php?numenr=869"
+    ],
+    "description": "petite cabane en bon etat pas toujours reportee sur les cartes construite a cote des ruines de la precedente cabane bon etat general",
+    "remarque": "Visitée le 06/05/2008, depuis la cabane de Pouill. Toujours ouverte et en bon état. pas de bat-flanc : couchage sur le sol. Cyril D.",
+    "modified_at": null
+  },
+  {
+    "coord": {
+      "long": 0.25361109,
+      "lat": 42.5375
+    },
+    "altitude": 1528.0,
+    "name": "Cabane de Santa Isabel",
+    "surname": "Refuge Santa Isabel",
+    "links": [
+      "https://www.refuges.info/point/5845/cabane-non-gardee/refuge-Santa-Isabel/",
+      "http://www.pyrenees-refuges.com/fr/affiche.php?numenr=726"
+    ],
+    "type": "cabane ouverte",
+    "description": "Places prévues pour dormir: 2 Places sur Matelas: 2 [b][i]Equipement intérieur :[/i][/b] - 1 table - 1 banc - 1 cheminée - 1 bat-flanc avec 2 matelas mousse (étroit et mince) [b][i]Attention :[/i][/b] La source qui alimente le bassin à proximité s'assèche vite ..., les barrancos déjà un peu éloignés s'assèchent très vite en début d'été ... (en montant de Savarillo, on traverse un barranco au croisement de la piste qui monte au [->5843], ce barranco était presque à sec mi-juin 2017, une petite source à 20m sous le gué). Refuge situé au Collado de Santa Isabel. [b][i]Depuis Savarillo (Vallée de Gistain) :[/i][/b] - Une bonne piste très roulante permet d'atteindre le refuge en véhicule.",
+    "remarque": "[b][i]Equipement intérieur :[/i][/b] - 1 table - 1 banc - 1 cheminée - 1 bat-flanc avec 2 matelas mousse (étroit et mince) [b][i]Attention :[/i][/b] La source qui alimente le bassin à proximité s'assèche vite ..., les barrancos déjà un peu éloignés s'assèchent très vite en début d'été ... (en montant de Savarillo, on traverse un barranco au croisement de la piste qui monte au [->5843], ce barranco était presque à sec mi-juin 2017, une petite source à 20m sous le gué).",
+    "places": 2,
+    "info_comp": {
+      "latrines": 0,
+      "matelas": 1,
+      "couvertures": 0,
+      "couchage": 0,
+      "bas_flancs": 0,
+      "poele": 0,
+      "manque_un_mur": 0,
+      "mezzanine/etage": 0,
+      "bois": 1,
+      "lits": 0,
+      "cheminee": 1,
+      "eau": 0
+    },
+    "modified_at": "2022-12-16",
+    "region": "Plan",
+    "departement": "Aragon"
+  },
+  {
+    "coord": {
+      "long": 1.63080923,
+      "lat": 42.6580086
+    },
+    "altitude": 1780.0,
+    "name": "Cabane de Bela",
+    "surname": "Cabane de Bela",
+    "links": [
+      "https://www.refuges.info/point/5399/cabane-non-gardee/cabane-de-Bela/",
+      "http://www.pyrenees-refuges.com/fr/affiche.php?numenr=54"
+    ],
+    "type": "cabane ouverte",
+    "description": "Places prévues pour dormir: 4 Places sur Matelas: 4 [b][i]Equipement :[/b][/i] - 1 bat-flanc - 1 table (petite) - 1 banc (petit, tout est petit à Bela ...) - A l'extérieur, une table pique-nique en bois avec ses 2 bancs solidaires. [b][i]Depuis la vallée de l'Aston :[/b][/i] Monter en voiture jusqu'au parking au 1er lacet juste au dessus du barrage de Riète, après la centrale EDF. De la on descend quelques dizaines de mètres vers le Nord pour traverser sur la gauche le torrent (2 passerelles), puis on monte en forêt par un bon sentier, qui va s'incurver vers le Sud, jusqu'au Pont du Pas de la Crabe que l'on atteint après une petite descente. On traverse le pont pour changer de rive et on monte toujours pour atteindre, après être sortie de la forêt, une autre passerelle que l'on emprunte, on monte alors sur la gauche pour atteindre une piste qui longe à plat vers le Sud Ouest Est une conduite forcée à demi enterrée, on atteint alors une prise d'eau près d'un petit barrage où se déverse des quantités astronomiques d'eau (au printemps tout du moins !). La montée est quasiment terminée, on continuer rive droite du torrent dans une zone qui peut s'avèrer un peu humide ... au printemps tout du moins !, on arrive alors sur la Cabane de Quioulès, comme elle est bondée, il faut poursuivre jusqu'à la Cabane de Bela qui se trouve sur le plat au dessus du ressaut au Sud de la Cabane. On continue vers le Sud (on ne passe pas sur la passerelle évidente qui permet de monter vers l'Ouest à la Cabane de la Sabine), on trouve une autre passerelle plus loin pour traverser le torrent puis remonter le raidillon par une bonne sente, on arrive alors sur le plat, on voit la Cabane, divisée en 2 partie (à droite pour les randonneurs, attention, \"les\" <= 3/4 !). [b][i]Attention :[/b][/i] Au printemps, le torrent qui descend peut atteindre des proportions très importantes et inonder en partie le plat qui permet d'accéder au pont après la Cabane de Quioulès, le pont peut même être submergé ... Mairie - Place de la Paichere - 09310 Aston Tél: 05 61 64 77 39 La partie de gauche de la Cabane est fermée et réservée au berger.",
+    "remarque": "[b][i]Equipement :[/b][/i] - 1 bat-flanc - 1 table (petite) - 1 banc (petit, tout est petit à Bela ...) - A l'extérieur, une table pique-nique en bois avec ses 2 bancs solidaires.",
+    "places": 4,
+    "info_comp": {
+      "latrines": 0,
+      "matelas": 1,
+      "couvertures": 0,
+      "couchage": 1,
+      "bas_flancs": 1,
+      "poele": 0,
+      "manque_un_mur": 0,
+      "mezzanine/etage": 0,
+      "bois": 1,
+      "lits": 0,
+      "cheminee": 1,
+      "eau": 1
+    },
+    "modified_at": "2021-11-07",
+    "region": "Aston",
+    "info_couchage": "bat-flanc pour 3 ou 4",
+    "departement": "Ariège"
+  },
+  {
+    "name": "Cabane des Toucouets",
+    "region": "Sers",
+    "altitude": 1738,
+    "type": "cabane ouverte",
+    "departement": "Haute-Pyrénées",
+    "places": 5,
+    "info_comp": {
+      "cheminee": 1,
+      "bois": 0,
+      "eau": 0,
+      "couchage": 1,
+      "matelas": 0,
+      "bas_flancs": 1,
+      "lits": 0,
+      "mezzanine/etage": 0
+    },
+    "info_couchage": "Bas flancs",
+    "coord": {
+      "long": 0.04890719,
+      "lat": 42.9132623
+    },
+    "links": [
+      "http://www.pyrenees-refuges.com/fr/affiche.php?numenr=311"
+    ],
+    "description": "cabane en tres bon etat bas flancs en betons ",
+    "remarque": "Nuit du 10 au 11 mai 2024. Cabane en bon état et accessible, mais l'eau est rentrée (probablement par le tuyau du poêle). Une ou des souris. Emplacement magnifique",
+    "modified_at": null
+  },
+  {
+    "name": "Cabane de la Baigt de Saint-Cours",
+    "region": "Etsaut",
+    "altitude": 1600,
+    "type": "cabane ouverte mais ocupee par le berger l ete",
+    "departement": "Pyrénées-Atlantique",
+    "places": 3,
+    "info_comp": {
+      "cheminee": 1,
+      "bois": 1,
+      "eau": 1,
+      "couchage": 1,
+      "matelas": 0,
+      "bas_flancs": 1,
+      "lits": 0,
+      "mezzanine/etage": 0
+    },
+    "info_couchage": "Bas flancs",
+    "coord": {
+      "long": -0.5074934,
+      "lat": 42.8783197
+    },
+    "links": [
+      "http://www.pyrenees-refuges.com/fr/affiche.php?numenr=43"
+    ],
+    "description": "occupee par berger du 15 06 au 15 09 donc on dort a cote mezzanine poele a bois table",
+    "remarque": "J'y ai passé une nuit exceptionnelle seule à l'abri de la tempête à l'exterieur...venant de Lescun! Bien dormi sur le matelas en croisant les doigts que le toit soit bien accroché: c'est le cas!",
+    "modified_at": null
+  },
+  {
+    "name": "Cabane de Douly",
+    "region": "Ferrère",
+    "altitude": 1440,
+    "type": "",
+    "departement": "Haute-Pyrénées",
+    "places": 2,
+    "info_comp": {
+      "cheminee": 1,
+      "bois": 1,
+      "eau": 1,
+      "couchage": 0,
+      "matelas": 0,
+      "bas_flancs": 0,
+      "lits": 0,
+      "mezzanine/etage": 0
+    },
+    "coord": {
+      "long": 0.49079,
+      "lat": 42.96253
+    },
+    "links": [
+      "http://www.pyrenees-refuges.com/fr/affiche.php?numenr=1495"
+    ],
+    "description": "un lit 2 places table banc poele propre et occupee en ete ",
+    "remarque": "Super cabane, qui a été l'inspiration d'un livre : \"Ma cabane\", d'Olivier Garance. Elle est petite mais très bien entretenue : des matelas propres suffisants pour dormir à quatre, une bouteille de gaz et des plaques, des livres, quelques provisions, des jeux... Un poêle à bois en très bon état pour chauffer, et un foyer bien délimité pour faire des grillades dehors. Des bancs, une chaise. Elle est ouverte. Pas vraiment d'eau à côté en revanche, du moins en cette saison ; mais je crois qu'il y a un ruisseau à côté en temps normal.",
+    "modified_at": null
+  },
+  {
+    "coord": {
+      "long": 0.84814843,
+      "lat": 42.86714229
+    },
+    "altitude": 2020.0,
+    "name": "Cabane du Col de La Terme",
+    "surname": "Cabane du Col de La Terme",
+    "links": [
+      "http://www.pyrenees-refuges.com/fr/affiche.php?numenr=562",
+      "https://www.refuges.info/point/7024/cabane-non-gardee/cabane-du-Col-de-La-Terme/"
+    ],
+    "type": "cabane ouverte",
+    "description": "Places prévues pour dormir: 2 [u][b]Équipement intérieur : [/b][/u] - 1 grande table - 2 bancs - 1 cheminée - 2 lits superposés en bois [u][b][color=blue]L'eau :[/color][/b][/u] Source qui se trouve juste sur le versant en face de la cabane (on voit l'écoulement depuis la porte de la cabane). Cabane ouverte située juste sous le Col de la Terme, coté Nord.",
+    "remarque": "[u][b]Équipement intérieur : [/b][/u] - 1 grande table - 2 bancs - 1 cheminée - 2 lits superposés en bois [u][b][color=blue]L'eau :[/color][/b][/u] Source qui se trouve juste sur le versant en face de la cabane (on voit l'écoulement depuis la porte de la cabane).",
+    "places": 4,
+    "info_comp": {
+      "latrines": 0,
+      "matelas": 0,
+      "couvertures": 0,
+      "couchage": 0,
+      "bas_flancs": 0,
+      "poele": 0,
+      "manque_un_mur": 0,
+      "mezzanine/etage": 0,
+      "bois": 0,
+      "lits": 1,
+      "cheminee": 1,
+      "eau": 1
+    },
+    "modified_at": "2020-06-27",
+    "region": "Saint-Lary",
+    "departement": "Ariège"
+  },
+  {
+    "coord": {
+      "long": 2.35718312,
+      "lat": 42.4456774
+    },
+    "altitude": 1900.0,
+    "name": "Cabane Da Silva ou dels Clots",
+    "surname": "Refuge Da Silva",
+    "links": [
+      "http://www.pyrenees-refuges.com/fr/affiche.php?numenr=1208",
+      "https://www.refuges.info/point/7966/cabane-non-gardee/refuge-Da-Silva/"
+    ],
+    "type": "cabane ouverte",
+    "description": "Places prévues pour dormir: 4 Places sur Matelas: 4 Edifice restauré, manifestement fréquenté par une majorité de cavaliers. Plusieurs compartiments (chasseurs, bergers ?) dont un seul est ouvert aux randonneurs. Accessible aux voitures lorsqu'il n'y a pas de neige. Grande salle à l'architecture absolument inadaptée (plafond de plus de 4 m.au centre...).Bat flanc avec matelas pour environ 4 personnes. Table, bancs. La cheminée est tout aussi mal conçue que le reste : ouverture et avaloir minuscules, conduit sous dimensionné et très haut. cet engin est totalement incapable de chauffer quoi que ce soit, et sûrement pas le local au plafond de cathédrale. Très bien pour jouer au cow-boy l'été, mais en hiver, avec 80 cm de neige et -18, l'eau gèle dans les quarts, la neige tombée par le conduit sur la pierre de l'âtre ne fond pas...à supposer qu'on ait trouvé du bois mort et sec. Eau dans le torrent à proximité. Les choses ont peut-être évolué depuis mon passage. Un seul cliché (argentique) extérieur Accessible depuis le col de Mantet via une piste forestière, ou bien depuis la crête (Les Esquerdes de Rotja) en descendant de la Porteille de Rotja. Propriété de la BPCE / Caisse d'Epargne",
+    "remarque": "Edifice restauré, manifestement fréquenté par une majorité de cavaliers. Plusieurs compartiments (chasseurs, bergers ?) dont un seul est ouvert aux randonneurs. Accessible aux voitures lorsqu'il n'y a pas de neige. Grande salle à l'architecture absolument inadaptée (plafond de plus de 4 m.au centre...).Bat flanc avec matelas pour environ 4 personnes. Table, bancs. La cheminée est tout aussi mal conçue que le reste : ouverture et avaloir minuscules, conduit sous dimensionné et très haut. cet engin est totalement incapable de chauffer quoi que ce soit, et sûrement pas le local au plafond de cathédrale. Très bien pour jouer au cow-boy l'été, mais en hiver, avec 80 cm de neige et -18, l'eau gèle dans les quarts, la neige tombée par le conduit sur la pierre de l'âtre ne fond pas...à supposer qu'on ait trouvé du bois mort et sec. Eau dans le torrent à proximité. Les choses ont peut-être évolué depuis mon passage. Un seul cliché (argentique) extérieur",
+    "places": 4,
+    "info_comp": {
+      "latrines": 0,
+      "matelas": 1,
+      "couvertures": 0,
+      "couchage": 1,
+      "bas_flancs": 0,
+      "poele": 0,
+      "manque_un_mur": 0,
+      "mezzanine/etage": 0,
+      "bois": 1,
+      "lits": 0,
+      "cheminee": 1,
+      "eau": 1
+    },
+    "modified_at": "2021-12-16",
+    "region": "Py",
+    "info_couchage": "?",
+    "departement": "Pyrénées-Orientales"
+  },
+  {
+    "coord": {
+      "long": 1.07549459,
+      "lat": 42.8528211
+    },
+    "altitude": 1700.0,
+    "name": "Cabane du Col d'Eliet",
+    "surname": "Cabane du Col d'Eliet",
+    "links": [
+      "https://www.refuges.info/point/3875/cabane-non-gardee/cabane-du-Col-d-Eliet/",
+      "http://www.pyrenees-refuges.com/fr/affiche.php?numenr=545"
+    ],
+    "type": "cabane ouverte",
+    "description": "Places prévues pour dormir: 6 Places sur Matelas: 2 Remarques diverses: -table, bancs -source (indiquée dans le topoguide de la FFRP) introuvable malgré les recherches à 4 randonneurs avertis. -Il est difficile de trouver du bois sec aux alentours de la cabane. à partir de Bethmale (D17) : de l'étang ou d'un peu plus loin (parking au croisement des GR10 et GR10 E sur la départementale)",
+    "remarque": "Remarques diverses: -table, bancs -source (indiquée dans le topoguide de la FFRP) introuvable malgré les recherches à 4 randonneurs avertis. -Il est difficile de trouver du bois sec aux alentours de la cabane.",
+    "places": 6,
+    "info_comp": {
+      "latrines": 0,
+      "matelas": 1,
+      "couvertures": 0,
+      "couchage": 0,
+      "bas_flancs": 0,
+      "poele": 0,
+      "manque_un_mur": 0,
+      "mezzanine/etage": 0,
+      "bois": 1,
+      "lits": 0,
+      "cheminee": 1,
+      "eau": 1
+    },
+    "modified_at": "2020-09-23",
+    "region": "Bethmale",
+    "departement": "Ariège"
+  },
+  {
+    "coord": {
+      "long": 2.445091009140015,
+      "lat": 42.50388590442148
+    },
+    "altitude": 2136.0,
+    "name": "refuge Arago",
+    "surname": "Refuge Arago",
+    "links": [
+      "https://www.refuges.info/point/5752/cabane-non-gardee/refuge-Arago/",
+      "http://www.pyrenees-refuges.com/fr/affiche.php?numenr=19"
+    ],
+    "type": "cabane ouverte",
+    "description": "Places prévues pour dormir: 5 Entièrement retapée et réaménagée (avec goût !) par le Syndicat mixte Canigo Grand Site lors de notre passage la Toussaint 2016. Petite cabane en bord de chemin, avec bas-flancs, poêle (non testé), étagères... Sur le tour du Canigou en partant de Mariailles, en bord de chemin en direction du Pic. ? Syndicat mixte Canigo grand site ?",
+    "remarque": "Entièrement retapée et réaménagée (avec goût !) par le Syndicat mixte Canigo Grand Site lors de notre passage la Toussaint 2016. Petite cabane en bord de chemin, avec bas-flancs, poêle (non testé), étagères...",
+    "places": 6,
+    "info_comp": {
+      "latrines": 0,
+      "matelas": 0,
+      "couvertures": 0,
+      "couchage": 1,
+      "bas_flancs": 0,
+      "poele": 1,
+      "manque_un_mur": 0,
+      "mezzanine/etage": 0,
+      "bois": 1,
+      "lits": 0,
+      "cheminee": 1,
+      "eau": 1
+    },
+    "modified_at": "2017-01-20",
+    "region": "Casteil",
+    "info_couchage": "Oui",
+    "departement": "Pyrénées-Orientales"
+  },
+  {
+    "name": "Cabane Melloux",
+    "region": "Melles",
+    "altitude": 1410,
+    "type": "cabane ouverte",
+    "departement": "Haute-Garonne",
+    "places": 6,
+    "info_comp": {
+      "cheminee": 1,
+      "bois": 1,
+      "eau": 1,
+      "couchage": 0,
+      "matelas": 0,
+      "bas_flancs": 0,
+      "lits": 0,
+      "mezzanine/etage": 0
+    },
+    "coord": {
+      "long": 0.804444,
+      "lat": 42.85138899
+    },
+    "links": [
+      "http://www.pyrenees-refuges.com/fr/affiche.php?numenr=512"
+    ],
+    "description": "cabane en bon etat ouverte bois capacite de couchage environ 6 personnes ete comme hiver",
+    "remarque": "Passé le 13 sept 2010\r\ncabane en bon état, ouverte, bois...\r\ncapacité de couchage environ 6 personnes été comme hiver (et non zéro comme indiqué dans le descriptif)",
+    "modified_at": null
+  },
+  {
+    "coord": {
+      "long": -0.48937,
+      "lat": 42.94492
+    },
+    "altitude": 1345.0,
+    "name": "Cabane de Cujalate",
+    "surname": "Cabane de Cujalate",
+    "links": [
+      "http://www.pyrenees-refuges.com/fr/affiche.php?numenr=999",
+      "https://www.refuges.info/point/9531/cabane-non-gardee/cabane-de-Cujalate/"
+    ],
+    "type": "cabane ouverte",
+    "description": "Places prévues pour dormir: 6 Cabane en dur. Il y a juste l'indispensable. Une cheminée et de quoi dormir. Prévoir son matelas. Environ 6 places max. Pas de point d'eau sur place mais ruisseaux aux alentours dont une source au nord-est en lisière des arbres. Prévoir du bois, arbres à proximité. Prendre la D934. Passez Laruns, Eaux Chaudes. Un peu après la centrale électrique de Miégebat, il y a un petit parking. Et commencez à pied par la route forestière du Bitet. Prendre la route forestière jusqu'à la prise d'eau. Évitez en hiver le sentier qui part du pont (risque d'avalanche). A la prise d'eau , prendre à droite pour le sentier, direction la cabane Laiterine.",
+    "remarque": "Cabane en dur. Il y a juste l'indispensable. Une cheminée et de quoi dormir. Prévoir son matelas. Environ 6 places max. Pas de point d'eau sur place mais ruisseaux aux alentours dont une source au nord-est en lisière des arbres. Prévoir du bois, arbres à proximité.",
+    "places": 6,
+    "info_comp": {
+      "latrines": 0,
+      "matelas": 0,
+      "couvertures": 0,
+      "couchage": 1,
+      "bas_flancs": 0,
+      "poele": 0,
+      "manque_un_mur": 0,
+      "mezzanine/etage": 0,
+      "bois": 1,
+      "lits": 0,
+      "cheminee": 1,
+      "eau": 1
+    },
+    "modified_at": "2025-08-13",
+    "region": "Laruns",
+    "info_couchage": "oui",
+    "departement": "Pyrénées-Atlantique"
+  },
+  {
+    "coord": {
+      "long": 1.5612802,
+      "lat": 42.6403728
+    },
+    "altitude": 1990,
+    "places": 6,
+    "remarque": "Solide batisse en pierre (comme tous les refuges Andorran). [b]Ouvert toute l'année.[/b] [b][i]Equipement :[/i][/b] - 6 lits superposés (-> couchette en métal) - [b][color=red]Matelas et sac de couchage obligatoire ! le métal c'est froid ![/color][/b] - 1 table - 1 banc (une couchette faisant office de 2ème banc) - Pharmacie - 1 grill - 1 Scie - 1 balai - Pas beaucoup de bois dans les environs ... [b][i]L'Eau :[/i][/b] - Un captage amène l'eau au refuge (pas toujours en fonction) - Le torrent à coté ... - Si on est allergique à l'eau du torrent ne sachant pas il y a un troupeau de vaches plus haut, on trouvera de l'eau plus près des sources au dessus du refuge 50m au dessus du refuge en suivant le chemin, il y a de l'eau qui descend à volonté (je pense que le captage est branché dessus mais un peu plus haut). [b][i]A noter :[/i][/b] - Tous les printemps, les refuges sont passés en revue pour \"refaire les niveaux\" si on peut dire par des personnes gérant ces refuges, et visités régulièrement. - Ne soyez pas surpris d'avoir la visite des gardes, qui tournent et controlent régulièrement l'état de tous les refuges du pays mis à disposition et entretenus donc par le Gouvernement Andorran. [color=blue] Dans chaque refuge Andorran, on trouve (parfois y'en a plus ...) un \"Passeport de Refugis\" avec un tampon à appliquer sur la case qui va bien. Lorsque vous avez parcouru l'un des chemins traversant le pays (GR11, HRP, ...), vous présentez le passeport à l'office National de Tourisme qui vous remet un diplôme correspondant et un cadeau ! [/color]",
+    "info_comp": {
+      "manque_un_mur": 0,
+      "cheminee": 1,
+      "poele": 0,
+      "couvertures": 0,
+      "latrines": 0,
+      "bois": 1,
+      "eau": 1,
+      "matelas": 0,
+      "couchage": 0,
+      "bas_flancs": 0,
+      "lits": 0,
+      "mezzanine/etage": 0
+    },
+    "description": "Places prévues pour dormir: 6 Solide batisse en pierre (comme tous les refuges Andorran). [b]Ouvert toute l'année.[/b] [b][i]Equipement :[/i][/b] - 6 lits superposés (-> couchette en métal) - [b][color=red]Matelas et sac de couchage obligatoire ! le métal c'est froid ![/color][/b] - 1 table - 1 banc (une couchette faisant office de 2ème banc) - Pharmacie - 1 grill - 1 Scie - 1 balai - Pas beaucoup de bois dans les environs ... [b][i]L'Eau :[/i][/b] - Un captage amène l'eau au refuge (pas toujours en fonction) - Le torrent à coté ... - Si on est allergique à l'eau du torrent ne sachant pas il y a un troupeau de vaches plus haut, on trouvera de l'eau plus près des sources au dessus du refuge 50m au dessus du refuge en suivant le chemin, il y a de l'eau qui descend à volonté (je pense que le captage est branché dessus mais un peu plus haut). [b][i]A noter :[/i][/b] - Tous les printemps, les refuges sont passés en revue pour \"refaire les niveaux\" si on peut dire par des personnes gérant ces refuges, et visités régulièrement. - Ne soyez pas surpris d'avoir la visite des gardes, qui tournent et controlent régulièrement l'état de tous les refuges du pays mis à disposition et entretenus donc par le Gouvernement Andorran. [color=blue] Dans chaque refuge Andorran, on trouve (parfois y'en a plus ...) un \"Passeport de Refugis\" avec un tampon à appliquer sur la case qui va bien. Lorsque vous avez parcouru l'un des chemins traversant le pays (GR11, HRP, ...), vous présentez le passeport à l'office National de Tourisme qui vous remet un diplôme correspondant et un cadeau ! [/color] [b][i]Depuis la France ! Vicdessos, Siguer, parking du Bouychet :[/i][/b] On remonte toute la vallée jusqu'au Port de Siguer et on descend sur le refuge, c'est longuet ... (il y a exactement 10km à vol de gypaète ...). [b][i]Depuis le parking de Sorteny :[/i][/b] Accès routier par l'Andorre, Ordino (point de départ de l'extraOrdino ! Andorra Mythic Ultra Trail !!! Je sais , c'est facile), on remonte la vallée jusqu'à El Serrat (hotels), puis on continue sur Arcalis mais on prend la 1ère route à droite qui se termine après 1km par un parking à l'entrée du Parc Naturel de Sorteny. Le chemin monte au Nord Est, rive gauche du torrent, on monte tranquillement jusqu'à une passerelle en fer, que l'on ne traverse pas, le refuge est juste un peu au dessus sur la droite ! Compter 30/40mn pour monter. Propriétaire : [url=http://www.andorramania.com/]Gouvernement Andorran[/url] Departament de Patrimoni Natural C. Prat de la creu, 62-64, 1r pis AD500 Andorra la Vella Téléphone : +376 875 707 Mail : patrimoni_natural@govern.ad [url=https://www.mediambient.ad/medi-natural/llista-de-refugis-d-andorra]Liste des Refuges d'Andorre[/url] [url=https://www.patrimoninatural.ad/images/stories/Mapa_Refugis_GR.pdf]Situation globale de tous les refuges + infos (Attention 8Mo)[/url]",
+    "links": [
+      "https://www.refuges.info/point/5408/cabane-non-gardee/refuge-de-Rialb/",
+      "http://visitandorra.com/dormir/refugi-de-rialb/"
+    ],
+    "type": "cabane ouverte",
+    "modified_at": "2024-12-29",
+    "name": "Refuge de Rialb",
+    "region": null,
+    "departement": null
+  },
+  {
+    "coord": {
+      "long": -0.90483,
+      "lat": 42.98857
+    },
+    "altitude": 850.0,
+    "name": "Cayolar d'Olhadubi",
+    "surname": "Cayolar d'Olhadubi",
+    "links": [
+      "https://association-bortukariak.jimdo.com/r%C3%A9novation-de-cayolars-projet-olha/",
+      "http://www.pyrenees-refuges.com/fr/affiche.php?numenr=1252",
+      "https://www.refuges.info/point/3753/cabane-non-gardee/Cayolar-d-Olhadubi/"
+    ],
+    "type": "cabane ouverte",
+    "description": "Places prévues pour dormir: 6 Une jolie cabane, bien située, entretenue par l'association Bortükariak qui l'a restaurée en 2013 : [url]https://association-bortukariak.jimdo.com/r%C3%A9novation-de-cayolars-projet-olha/[/url] 24/10/21 : Cheminée fonctionnelle; table et bancs; une scie et une hache pour refaire du bois; des bougies chauffe plat en dépannage; plancher pour dormir pour environs 6 personnes; eau au torrent à 20 m (Infos données par Gilles Mercier) Larrau -> Parking de Logibaria. Suivre le balisage du circuit très fréquenté : s'enfoncer dans la vallée d'Holzarté, franchir la passerelle du même nom (160m au dessus du ruisseau quand même !), continuer à monter le chemin, prendre à gauche à la bifurcation jusqu'à l'endroit où le chemin traverse le ruisseau d'Olhadibi. A partir de ce point, la cabane est assez difficile à trouver: Traverser la passerelle, suivre le chemin normal sur la gauche sur 25m jusqu’à un petit gué. Ne pas traverser ce gué: Chercher juste avant, à droite, une trace qui monte raide au milieu des arbres pendant 10m, puis à découvert au milieu des orties sur 10m Ancienne cabane pastorale collective qui appartient toujours à un groupe d'éleveurs. Elle est ouverte aux randonneurs.",
+    "remarque": "Une jolie cabane, bien située, entretenue par l'association Bortükariak qui l'a restaurée en 2013 : [url]https://association-bortukariak.jimdo.com/r%C3%A9novation-de-cayolars-projet-olha/[/url] 24/10/21 : Cheminée fonctionnelle; table et bancs; une scie et une hache pour refaire du bois; des bougies chauffe plat en dépannage; plancher pour dormir pour environs 6 personnes; eau au torrent à 20 m (Infos données par Gilles Mercier)",
+    "places": 6,
+    "info_comp": {
+      "latrines": 0,
+      "matelas": 0,
+      "couvertures": 0,
+      "couchage": 0,
+      "bas_flancs": 0,
+      "poele": 0,
+      "manque_un_mur": 0,
+      "mezzanine/etage": 0,
+      "bois": 1,
+      "lits": 0,
+      "cheminee": 1,
+      "eau": 1
+    },
+    "modified_at": "2021-11-23",
+    "region": "Larrau",
+    "departement": "Pyrénées-Atlantique"
+  },
+  {
+    "coord": {
+      "long": 0.1120442,
+      "lat": 42.7564068
+    },
+    "altitude": 2285.0,
+    "name": "Cabane Aguilous",
+    "surname": "Cabane des Aguilous",
+    "links": [
+      "http://www.pyrenees-refuges.com/fr/affiche.php?numenr=739",
+      "https://www.refuges.info/point/5864/cabane-non-gardee/cabane-des-Aguilous/"
+    ],
+    "type": "cabane ouverte",
+    "description": "Places prévues pour dormir: 6 Places sur Matelas: 6 Cabane de berger, réservée aux bergers, mais qui est laissée ouverte quand ils ne sont pas là. Un torrent à proximité (à traiter). Pas de bois en vue. La cabane n'a qu'une pièce, avec deux bas flancs, et une cheminée. Depuis Héas (où il a de nombreux parkings), remonter la route vers Troumouse et tourner à gauche avant le péage sur un sentier. 150m plus loin, prendre à gauche, vers la Hourquette de Héas, et laisser tout droit le sentier vers Troumouse. Le sentier s'élève alors à la gauche d'un ruisseau. Vers 1750m, laisser une prise d'eau sur la gauche et continuer du même côté du ruisseau. Arrive sur le Pla, à 1881m, ne pas traverser le ruisseau et continuer rive gauche le sentier qui passe devant un oratoire et reprends la montée. Vers 2250m, le sentier arrive sur un second vallon suspendu. La cabane est là. Compter 2h de montée depuis Héas. OT de Gavarnie ?",
+    "remarque": "Cabane de berger, réservée aux bergers, mais qui est laissée ouverte quand ils ne sont pas là. Un torrent à proximité (à traiter). Pas de bois en vue. La cabane n'a qu'une pièce, avec deux bas flancs, et une cheminée.",
+    "places": 8,
+    "info_comp": {
+      "latrines": 0,
+      "matelas": 1,
+      "couvertures": 0,
+      "couchage": 1,
+      "bas_flancs": 1,
+      "poele": 0,
+      "manque_un_mur": 0,
+      "mezzanine/etage": 0,
+      "bois": 0,
+      "lits": 0,
+      "cheminee": 1,
+      "eau": 1
+    },
+    "modified_at": "2022-12-14",
+    "region": "Gavarnie-Gèdre",
+    "info_couchage": "Bas flancs",
+    "departement": "Haute-Pyrénées"
+  },
+  {
+    "coord": {
+      "long": 2.4331065,
+      "lat": 42.5364579
+    },
+    "altitude": 1741.0,
+    "name": "Refuge Bonne-Aigue",
+    "surname": "Refuge de Bonne-Aigue",
+    "links": [
+      "https://www.refuges.info/point/5754/cabane-non-gardee/refuge-de-Bonne-Aigue/",
+      "http://www.pyrenees-refuges.com/fr/affiche.php?numenr=392"
+    ],
+    "type": "cabane ouverte",
+    "description": "Places prévues pour dormir: 10 Grande bâtisse appartenant à l'ONF en 2 parties. Ensemble en cours de rénovation (extérieur fait) mais permet de dormir au sec à une dizaine (bas-flancs). Tables, bancs, placard à l'intérieur, poêle (tubage récent en 2021). Première pièce : mezzanine pour 3/4 personnes. Deuxième pièce : mezzanine pour 3 personnes et bas-flancs pour 6 personnes. Fontaine et barbecue juste à côté. Sur le GR 10 et le Tour du Canigou, juste en contrebas du chemin. ONF",
+    "remarque": "Grande bâtisse appartenant à l'ONF en 2 parties. Ensemble en cours de rénovation (extérieur fait) mais permet de dormir au sec à une dizaine (bas-flancs). Tables, bancs, placard à l'intérieur, poêle (tubage récent en 2021). Première pièce : mezzanine pour 3/4 personnes. Deuxième pièce : mezzanine pour 3 personnes et bas-flancs pour 6 personnes. Fontaine et barbecue juste à côté.",
+    "places": 14,
+    "info_comp": {
+      "latrines": 0,
+      "matelas": 0,
+      "couvertures": 0,
+      "couchage": 1,
+      "bas_flancs": 1,
+      "poele": 1,
+      "manque_un_mur": 0,
+      "mezzanine/etage": 0,
+      "bois": 1,
+      "lits": 0,
+      "cheminee": 1,
+      "eau": 1
+    },
+    "modified_at": "2021-08-20",
+    "region": "Vernet-les-Bains",
+    "info_couchage": "Bas flancs sans matelas",
+    "departement": "Pyrénées-Orientales"
+  },
+  {
+    "name": "Cabane Yerse / Espadre",
+    "region": "Asson",
+    "altitude": 1300,
+    "type": "cabane ouverte",
+    "departement": "Pyrénées-Atlantique",
+    "places": 12,
+    "info_comp": {
+      "cheminee": 1,
+      "bois": 1,
+      "eau": 1,
+      "couchage": 1,
+      "matelas": 1,
+      "bas_flancs": 0,
+      "lits": 0,
+      "mezzanine/etage": 0
+    },
+    "info_couchage": "7 matelas",
+    "coord": {
+      "long": -0.19871967810351,
+      "lat": 43.048506182431
+    },
+    "links": [
+      "http://www.pyrenees-refuges.com/fr/affiche.php?numenr=1295"
+    ],
+    "description": "cabane tres sympa equipee de 7 matelas un poele a bois des casseroles une table des bancs balai une pelle pour l hiver et des scies cabane propre et tres accueillante de nombreux matelas et couvertures a l etage prevoir un drap de lit pour les matelas deux lits metalliques dont un avec un montant raccommode l autre lit est en bon etat je n ai pas teste le poele mais semble fonctionner de nombreux accessoires une grande table des bancs et quelques chaises il y a du bois sec coupe dans la cabane et du bois a proximite pour refaire des reserves un robinet avec de l eau non potable a 20 metres seul bemol les chevaux ont desserti de nombreuses pierres de la cabane en particulier aux angles ",
+    "remarque": "Superbe cabane de luxe! Nous avons passé une nuit merveilleuse autour feu du bois dehors. Bois à proximité, cabane très propre et vue magnifique. Pour info, l'eau se trouve dans le ruisseau tout en bas (à 200m). On a essayé de réparer la connexion d'eau pour le robinet à 20m sans réussir car il manque une jointe. La balade pour arriver n'est pas balisé mais il n'y a pas de souci pour la suivre (sans neige). ",
+    "modified_at": null
+  },
+  {
+    "coord": {
+      "long": 0.23898465817799,
+      "lat": 43.014140030594
+    },
+    "altitude": 1395.0,
+    "name": "Cabane de Cot Dessus",
+    "surname": "Cabane de Cot Dessus",
+    "links": [
+      "https://www.refuges.info/point/10391/cabane-non-gardee/Cabane-de-Cot-Dessus/",
+      "http://www.pyrenees-refuges.com/fr/affiche.php?numenr=1054"
+    ],
+    "type": "cabane ouverte",
+    "description": "Places prévues pour dormir: 10 Places sur Matelas: 10 Une première cabane en béton, équipée de panneaux solaires, permettant l'éclairage intérieur. Tables, bancs, tabourets et chaises à disposition. Grill, poêles et casseroles. Bois et scies. La cheminée est présente dans cette cabane. Quatre matelas superposés. Une deuxième cabane juste à côté en métal, uniquement pour le couchage (6 matelas). Les deux cabanes sont très propres et en excellent état. Table extérieure avec superbe vue. Absence de source, le point d'eau le plus proche semble être la source située plus bas, à la cabane des Mails. Après la cabane des Mails, suivre un sentier qui monte dans la zone boisée au dessus de la cabane, puis qui longe la crête. Elle se situe alors en bas du sentier qui monte au Casque du Lhéris. Cabane entièrement rénovée par les bénévoles Asquais. Ouverte toute l'année. Présente sur PRC : https://www.pyrenees-refuges.com/fr/affiche.php?numenr=1054",
+    "remarque": "Une première cabane en béton, équipée de panneaux solaires, permettant l'éclairage intérieur. Tables, bancs, tabourets et chaises à disposition. Grill, poêles et casseroles. Bois et scies. La cheminée est présente dans cette cabane. Quatre matelas superposés. Une deuxième cabane juste à côté en métal, uniquement pour le couchage (6 matelas). Les deux cabanes sont très propres et en excellent état. Table extérieure avec superbe vue. Absence de source, le point d'eau le plus proche semble être la source située plus bas, à la cabane des Mails.",
+    "places": 11,
+    "info_comp": {
+      "latrines": 0,
+      "matelas": 1,
+      "couvertures": 1,
+      "couchage": 1,
+      "bas_flancs": 0,
+      "poele": 0,
+      "manque_un_mur": 0,
+      "mezzanine/etage": 0,
+      "bois": 1,
+      "lits": 0,
+      "cheminee": 1,
+      "eau": 0
+    },
+    "modified_at": "2025-04-21",
+    "region": "Asque",
+    "info_couchage": "Couchage sur matelas au total ",
+    "departement": "Haute-Pyrénées"
+  },
+  {
+    "coord": {
+      "long": 1.00450441,
+      "lat": 42.8286477
+    },
+    "altitude": 1828.0,
+    "name": "Cabane Clot du Lac",
+    "surname": "Cabane du Clot du Lac",
+    "links": [
+      "https://www.refuges.info/point/3878/cabane-non-gardee/cabane-du-Clot-du-Lac/",
+      "http://www.pyrenees-refuges.com/fr/affiche.php?numenr=551"
+    ],
+    "type": "cabane ouverte",
+    "description": "Places prévues pour dormir: 10 Places sur Matelas: 10 La cabane est aussi connue sous le nom de Cabane du Bomboi. Cabane en 2 parties. La partie Est de la cabane ne peut servir qu'à dormir puisqu'il n'y a aucune place pour se mouvoir (et de l'eau stagne en période \"humide\"). [u][b]Équipement intérieur (partie Ouest, spacieuse) :[/b][/u] - 1 table - 2 bancs - 1 bat-flanc avec un grand matelas - 1 poële - A l'étage : 4 matelas [u][b]Équipement intérieur (partie Est, spartiate) :[/b][/u] - Au RDC : 2 matelas mousse - A l'étage : 2 matelas mousse A partir de la Vallée du Ribérot, coté Est de la cabane, remonter le GR10 depuis le parking du Pla de la lau. A partir de la Vallée, coté Ouest de la cabane, remonter le GR10 que l'on rejoint au Sud depuis le Parking de la Pucelle.",
+    "remarque": "La cabane est aussi connue sous le nom de Cabane du Bomboi. Cabane en 2 parties. La partie Est de la cabane ne peut servir qu'à dormir puisqu'il n'y a aucune place pour se mouvoir (et de l'eau stagne en période \"humide\"). [u][b]Équipement intérieur (partie Ouest, spacieuse) :[/b][/u] - 1 table - 2 bancs - 1 bat-flanc avec un grand matelas - 1 poële - A l'étage : 4 matelas [u][b]Équipement intérieur (partie Est, spartiate) :[/b][/u] - Au RDC : 2 matelas mousse - A l'étage : 2 matelas mousse",
+    "places": 10,
+    "info_comp": {
+      "latrines": 0,
+      "matelas": 1,
+      "couvertures": 0,
+      "couchage": 1,
+      "bas_flancs": 0,
+      "poele": 1,
+      "manque_un_mur": 0,
+      "mezzanine/etage": 0,
+      "bois": 0,
+      "lits": 0,
+      "cheminee": 1,
+      "eau": 1
+    },
+    "modified_at": "2020-07-01",
+    "region": "Bonac-Irazein",
+    "info_couchage": "oui",
+    "departement": "Ariège"
+  },
+  {
+    "name": "Cabane de Bious Artigues",
+    "region": "Laruns",
+    "altitude": 1440,
+    "type": "cabane ouverte",
+    "departement": "Pyrénées-Atlantique",
+    "places": 8,
+    "info_comp": {
+      "cheminee": 1,
+      "bois": 1,
+      "eau": 1,
+      "couchage": 1,
+      "matelas": 0,
+      "bas_flancs": 1,
+      "lits": 0,
+      "mezzanine/etage": 0
+    },
+    "info_couchage": "Bas flancs",
+    "coord": {
+      "long": -0.4506791,
+      "lat": 42.8659314
+    },
+    "links": [
+      "http://www.pyrenees-refuges.com/fr/affiche.php?numenr=748"
+    ],
+    "description": "cabane situee au sud du refuge pyrenea bon etat ",
+    "remarque": "Good spot to spend the night, even though the chimney doesn’t vent the smoke properly, so at your own risk. There are a few chairs. Visited at Oct 2021",
+    "modified_at": null
+  },
+  {
+    "coord": {
+      "long": 0.96104621887207,
+      "lat": 42.843767059286
+    },
+    "altitude": 1497.0,
+    "name": "Cabane du col des Cassaings",
+    "surname": "Cabane du Col des Cassaings",
+    "links": [
+      "https://www.refuges.info/point/7219/cabane-non-gardee/cabane-du-Col-des-Cassaings/",
+      "http://www.pyrenees-refuges.com/fr/affiche.php?numenr=541"
+    ],
+    "type": "cabane ouverte",
+    "description": "Places prévues pour dormir: 6 Places sur Matelas: 2 [u][b]Equipement intérieur des 2 parties: [/b][/u] - 1 table - 2 bancs - 1 cheminée - A l'étage : un plancher en bon état et 2 matelas mousse. [u][b][color=blue]L'eau :[/color][/b][/u] Sur le GR10E, coté Sud, on trouvera plusieurs sources, mais elles sont éloignées. On peut accéder au Col des Cassaing et la cabane de plusieurs chemins : - Depuis Bonac au Nord, par le GR10E, - Depuis la vallée d'Orle, GR10 en direction du Col de l'Arech puis chemin à flanc direction Col des Cassaings avant la cabane d'Arech, - Depuis le Bocard d'Eylie, par le GR10, puis GR10E (panneau Bonac à la bifurcation où se trouve un abri en pierre), - Depuis Estoéou, en aval d'Eylie, par un chemin plus direct. Groupement pastoral de Las Planes - Ourdouas: 05 61 96 07 76 Cabane pastorale ouverte.",
+    "remarque": "[u][b]Equipement intérieur des 2 parties: [/b][/u] - 1 table - 2 bancs - 1 cheminée - A l'étage : un plancher en bon état et 2 matelas mousse. [u][b][color=blue]L'eau :[/color][/b][/u] Sur le GR10E, coté Sud, on trouvera plusieurs sources, mais elles sont éloignées.",
+    "places": 6,
+    "info_comp": {
+      "latrines": 0,
+      "matelas": 1,
+      "couvertures": 0,
+      "couchage": 0,
+      "bas_flancs": 0,
+      "poele": 0,
+      "manque_un_mur": 0,
+      "mezzanine/etage": 1,
+      "bois": 1,
+      "lits": 0,
+      "cheminee": 1,
+      "eau": 1
+    },
+    "modified_at": "2025-08-17",
+    "region": "Sentein",
+    "departement": "Ariège"
+  },
+  {
+    "name": "Cabane de Tariolle",
+    "region": "Bethmale",
+    "altitude": 1192,
+    "type": "cabane ouverte",
+    "departement": "Ariège",
+    "places": 10,
+    "info_comp": {
+      "cheminee": 1,
+      "bois": 1,
+      "eau": 1,
+      "couchage": 0,
+      "matelas": 0,
+      "bas_flancs": 0,
+      "lits": 0,
+      "mezzanine/etage": 1
+    },
+    "coord": {
+      "long": 1.1147222,
+      "lat": 42.855278
+    },
+    "links": [
+      "http://www.pyrenees-refuges.com/fr/affiche.php?numenr=1074"
+    ],
+    "description": "grande cabane ouverte et en bon etat en bas cheminee et deux grandes tables en haut plancher pour dormir place pour 10 1 grand matelas du bois autour cabane situee sur le gr10 entre le col de la core et seix presque accessible en voiture par la piste forestiere 5 mn de marche un ruisseau qui coule bien se trouve a 10 mins de marche en remontant la piste forestiere en terre a droite du panneau sur la photo direction opposee au gite d esbintz vous la verrez couler a gauche du sentier apres les granges ",
+    "remarque": "Nous y avons passé la nuit du dimanche 29 juillet 2018. Grande cabane très propre, avec une grande capacité. Nous y avons déposé un colis de victuailles sèches et 1 bidon de 5L d'eau potable. Le ruisseau se trouve à 10 minutes de la cabane. Si vous partez de la cabane, remonter vers le Col de la Core. Au panneau col de Hougarouse, continuer de remonter la piste en terre forestière. Passer les granges du Goulet. Le ruisseau se trouve sur la gauche après le passage canadien. Si vous venez du col de la Core. Au panneau, Col de Hougarouse, tournez à gauche continuer de remonter la piste en terre forestière. Passer les granges du Goulet. Le ruisseau se trouve sur la gauche après le passage canadien. Eau à purifier mais franchement on l'a bu et pas de problèmes. Bois à profusion autour mais cheminée trop grande pour faire un feu. Beaucoup de passage car sur le GR10. ",
+    "modified_at": null
+  },
+  {
+    "coord": {
+      "long": 1.04211,
+      "lat": 42.69666
+    },
+    "altitude": 2203,
+    "places": 12,
+    "remarque": "Refuge métallique, intérieur bois vernis ! très chaleureux. - 6 matelas dans leur housse en plastique - 1 table - 6 tabourets - 1 poêle - 1 radio de secours - Pharmacie Grande table en bois + banc à l'extérieur du refuge. Arrivée d'eau captée à l'extérieur du refuge.",
+    "info_comp": {
+      "manque_un_mur": 0,
+      "cheminee": 0,
+      "poele": 1,
+      "couvertures": 0,
+      "latrines": 0,
+      "bois": 1,
+      "eau": 1,
+      "matelas": 1,
+      "couchage": 0,
+      "bas_flancs": 0,
+      "lits": 0,
+      "mezzanine/etage": 0
+    },
+    "description": "Places prévues pour dormir: 12 Places sur Matelas: 6 Refuge métallique, intérieur bois vernis ! très chaleureux. - 6 matelas dans leur housse en plastique - 1 table - 6 tabourets - 1 poêle - 1 radio de secours - Pharmacie Grande table en bois + banc à l'extérieur du refuge. Arrivée d'eau captée à l'extérieur du refuge. [b][i]Depuis Isil :[/i][/b] Emprunter la raide ruelle qui va vers l'Ouest (sur la gauche quand on arrive au village, en venant par le sud en principe) et qui aboutit rapidement sur une sente qui tourne d'abord vers le Nord puis poursuit vers l'Ouest en suivant le torrent rive gauche, torrent que l'on va traverser plus haut pour atteindre le refuge. [b][i]Depuis Alos Isil :[/i][/b] Emprunter la ruelle \"Carrer de Moredo\" (panneau sur mur de la maison à gauche en montant), à gauche au Sud du village (en arrivant du sud). Il faut rejoindre les Bordes de Moredo en montant vers le Nord Ouest (le chemin va remonter à flanc rive gauche le vallon dans lequel on est), le chemin n'est pas très bien marqué et herbeux. A partir des Bordes de Moredo, direction plein Ouest en direction du Collada del Clot de Moredo (entre le Pic de Moredo à droite et le Pic de Qüenca à gauche). Puis descendre sur le refuge, on va laisser le chemin qui vient d'Isil sur notre gauche pour atteindre le refuge quelques minutes après. [b][i]Depuis la station de ski Baqueira-Beret :[/i][/b] Monter aux Lacs de Baciver vers l'Est, puis au Collada dels Estanys de Rosari, au pied Nord du Tuc de Rosari, puis toujours vers l'Est, on va rejoindre le collet au Sud du sommet Nord de la Serra des Plans, au collet, on aperçoit le refuge orange clinquant au milieu des sapins (direction E/SE). [b]-->[/b] Si la visibilité est mauvaise, l'orientation peut être compliquée sans boussole, car chemin non marqué, pas de cairns, du hors sentier en somme. [b][i]Depuis le Nord[/i][/b] A partir du Refuge Amics de Montgarri ou du parking de la station de ski nordique de Bonabé, rejoindre au Sud le Coll d'Airoto 2590m, à l'Ouest du Pic de Bonabé, puis descendre toujours au Sud vers le Lac d'Airoto que l'on va contourner par sa rive droite (le chemin passe haut au dessus du Lac avant de redescendre vers sa pointe Sud puis poursuivre sur le refuge toujours vers le Sud (chemin). [i]Remarque :[/i] Après avoir atteint le 1er replat en bas du Col d'Airoto, on peut aussi contourner le sommet Nord de la Serra des Plans par l'Ouest pour se retrouver au collet Sud (ceci permet d'éviter des zones de blocs, le chemin est plus long mais plus facile. [b][i]Depuis Boren :[/i][/b] Un chemin direction Nord Ouest va d'abord atteindre l'Estany del Rosari d'Arreu, puis monter vers le Nord pour atteindre le collet Sud pré-cité. [b][i]Depuis le Port de la Bonaigua :[/i][/b] Se garer dans la courbe qui précéde les lacets qui descendent sur le parking de la Peula. Un chemin en traverser permet de passer le ressaut qui ce présente à nous, ensuite on passe au dessus et à l'ouest d'un petit lac rond, puis on franchit le Coll de l'Estany Pudo, puis on passe à l'ouest de l'Estany Pudo, le chemin va alors s'incurver vers l'Est pour passer un collet (Serrat de Garrabea) et descendre sur l'Estany de Garrabea. A partir de là, on peut se diriger vers l'Est (sente) pour descendre avant de repiquer au Nord pour gagner le Collet pré-cité pour franchir la Serrat des Plans avant de descendre sur le refuge. [b]-->[/b] Cette étape peut être compliquée par mauvaise visibilité. Propriétaire : UEC Uniò Excursionista de Catalunya (http://www.uec.cat/) Gran Via de les Corts Catalanes, 576, 1r 2na 08011 Barcelona Catalunya E-mail : secretaria@uec.cat Téléphone : + 34 934 543 247",
+    "links": [
+      "https://www.refuges.info/point/5397/cabane-non-gardee/refuge-Gracia-Airoto/"
+    ],
+    "type": "cabane ouverte",
+    "modified_at": "2023-06-04",
+    "name": "Refuge Gracia-Airoto",
+    "region": null,
+    "departement": null
+  },
+  {
+    "name": "Cabane Estiouere",
+    "region": "Juzet-de-Luchon",
+    "altitude": 1680,
+    "type": "cabane ouverte mais ocupee par le berger l ete",
+    "departement": "Haute-Garonne",
+    "places": 6,
+    "info_comp": {
+      "cheminee": 1,
+      "bois": 1,
+      "eau": 0,
+      "couchage": 1,
+      "matelas": 1,
+      "bas_flancs": 0,
+      "lits": 0,
+      "mezzanine/etage": 1
+    },
+    "info_couchage": "Couchage à l'étage, 2 matelas ",
+    "coord": {
+      "long": 0.64937418,
+      "lat": 42.8003117
+    },
+    "links": [
+      "http://www.pyrenees-refuges.com/fr/affiche.php?numenr=506"
+    ],
+    "description": "tres bonne cabane en tres bon etat laissee ouverte par le berger en hiver une partie fermee en permanence la partie ouverte en hiver est sans doute fermee en ete ou du moins reservee au berger tables bancs cheminee evier pas d eau en hiver pas vu de source ",
+    "remarque": "Cabane fermée à clé , le 28 décembre 2019 , dommage et pourquoi ?",
+    "modified_at": null
+  },
+  {
+    "coord": {
+      "long": -0.4692256391707,
+      "lat": 42.840380439617
+    },
+    "altitude": 1645.0,
+    "name": "Cap de Pount",
+    "surname": "Cabane de Cap de Pount",
+    "links": [
+      "http://www.pyrenees-refuges.com/fr/affiche.php?numenr=778",
+      "https://www.refuges.info/point/5531/cabane-non-gardee/cabane-de-Cap-de-Pount/"
+    ],
+    "type": "cabane ouverte",
+    "description": "Places prévues pour dormir: 8 Places sur Matelas: 8 -vaisselle -table, bancs -outils disponibles -cabane occupée l'été par le berger avec possibilité d'achat de fromage. -bibliothèque -petite pièce annexe où dormir en apportant son matelas -eau courante car robinet, même si ça fonctionnait pas ce 19 Juin 2016 -espace très propre en très bon état Selon Fred79 (merci à lui !) : il y a un étage sur toute la surface de la cabane avec 3 matelas deux place et deux d'une place. Donc huit places et il reste de l'espace. Environ pour 3 au sol. Placer sur la H.R.P. et sur le G.R.P. du tour du Pic du Midi d'Ossau. Depuis le lac de Bious, direction Peyreget et suivre \"vente de fromage\". [b]Le berger sur place occupe la cabane de juillet à septembre : elle est donc inaccessible aux randonneurs pendant cette période ![/b]",
+    "remarque": "-vaisselle -table, bancs -outils disponibles -cabane occupée l'été par le berger avec possibilité d'achat de fromage. -bibliothèque -petite pièce annexe où dormir en apportant son matelas -eau courante car robinet, même si ça fonctionnait pas ce 19 Juin 2016 -espace très propre en très bon état Selon Fred79 (merci à lui !) : il y a un étage sur toute la surface de la cabane avec 3 matelas deux place et deux d'une place. Donc huit places et il reste de l'espace. Environ pour 3 au sol.",
+    "places": 8,
+    "info_comp": {
+      "latrines": 1,
+      "matelas": 1,
+      "couvertures": 1,
+      "couchage": 1,
+      "bas_flancs": 1,
+      "poele": 1,
+      "manque_un_mur": 0,
+      "mezzanine/etage": 1,
+      "bois": 1,
+      "lits": 0,
+      "cheminee": 1,
+      "eau": 1
+    },
+    "modified_at": "2023-07-25",
+    "region": "Laruns",
+    "info_couchage": "Bas flancs en mezzanine",
+    "departement": "Pyrénées-Atlantique"
+  },
+  {
+    "coord": {
+      "long": 0.98997383,
+      "lat": 42.8053791
+    },
+    "altitude": 1470.0,
+    "name": "Cabane de Hounta",
+    "surname": "Cabane de la Hounta",
+    "links": [
+      "https://www.refuges.info/point/5512/cabane-non-gardee/cabane-de-la-Hounta/",
+      "http://www.pyrenees-refuges.com/fr/affiche.php?numenr=142"
+    ],
+    "type": "cabane ouverte",
+    "description": "Places prévues pour dormir: 6 Places sur Matelas: 6 Petite cabane restaurée en 2012 en très bon état, ouverte aux randonneurs toute l'année. Au rez de chaussé : * Un très très bon poêle qui permet d'avoir rapidement très chaud. * Une table et deux bancs, fixes, prévus pour pouvoir dormir dessus. * Une cocotte minute contient les restes alimentaires sains. * Un peu de vaisselle, petite casseroles. * Une bonne scie. * Un balai * Du bois (il y a aussi une trappe à gauche de la porte d'entrée, à l'extérieur, avec d'autre bois). À l'étage : * matelas pour 6 personnes. En 2008, une équipe a dévié une source vers la cabane, lors de mon passage en 2016, il y avait bien des morceaux de tuyaux, mais aucune source détectée. Il fallait marcher 5 minutes pour retourner au ruisseau. [b]En voiture[/b] Depuis Saint Girons, prendre la D618 direction Castillon en Couserans. Traverser le village et continuer tout droit direction Sentein sur la D4. À Lascoux, faire attention à bien prendre sur la droite la D704A (toute petite route) sur la gauche, il faut suivre les panneaux \"La Pucelle\" jusqu'au parking aménagé (tables, toilettes, barbecues). [b]À pied[/b] Depuis le parking de La Pucelle, prendre le sentier vers le port d'Orle, balisé GR transfrontalier, qui longe l'Orle. À un moment, le GR10 traverse le chemin transfrontalier, ne pas abandonner son chemin. Lorsque l'on traverse l'Orle, à 1450m, rester attentif car 150m plus loin, un panneau indique la cabane de Hounta sur la gauche. Mairie de Bonac-Irazein.",
+    "remarque": "Petite cabane restaurée en 2012 en très bon état, ouverte aux randonneurs toute l'année. Au rez de chaussé : * Un très très bon poêle qui permet d'avoir rapidement très chaud. * Une table et deux bancs, fixes, prévus pour pouvoir dormir dessus. * Une cocotte minute contient les restes alimentaires sains. * Un peu de vaisselle, petite casseroles. * Une bonne scie. * Un balai * Du bois (il y a aussi une trappe à gauche de la porte d'entrée, à l'extérieur, avec d'autre bois). À l'étage : * matelas pour 6 personnes. En 2008, une équipe a dévié une source vers la cabane, lors de mon passage en 2016, il y avait bien des morceaux de tuyaux, mais aucune source détectée. Il fallait marcher 5 minutes pour retourner au ruisseau.",
+    "places": 6,
+    "info_comp": {
+      "latrines": 0,
+      "matelas": 1,
+      "couvertures": 0,
+      "couchage": 0,
+      "bas_flancs": 0,
+      "poele": 1,
+      "manque_un_mur": 0,
+      "mezzanine/etage": 0,
+      "bois": 1,
+      "lits": 0,
+      "cheminee": 1,
+      "eau": 1
+    },
+    "modified_at": "2024-12-29",
+    "region": "Bonac-Irazein",
+    "departement": "Ariège"
+  },
+  {
+    "coord": {
+      "long": -0.34862,
+      "lat": 43.04808
+    },
+    "altitude": 1370,
+    "places": 8,
+    "remarque": "Nombreuses sources alentour. Cabane sur deux étages: bois et matériel de réparation au rez de chaussée, partie vie à l'étage. Cheminée ouverte qui ne chauffe pas beaucoup la pièce avec grilles pour BBQ, petit matériel de cuisine, estrade pour 8 couchages au fond. Attention, plancher précaire avec quelques trous.",
+    "info_comp": {
+      "manque_un_mur": 0,
+      "cheminee": 1,
+      "poele": 0,
+      "couvertures": 0,
+      "latrines": 0,
+      "bois": 1,
+      "eau": 1,
+      "matelas": 0,
+      "couchage": 0,
+      "bas_flancs": 0,
+      "lits": 0,
+      "mezzanine/etage": 0
+    },
+    "description": "Places prévues pour dormir: 8 Nombreuses sources alentour. Cabane sur deux étages: bois et matériel de réparation au rez de chaussée, partie vie à l'étage. Cheminée ouverte qui ne chauffe pas beaucoup la pièce avec grilles pour BBQ, petit matériel de cuisine, estrade pour 8 couchages au fond. Attention, plancher précaire avec quelques trous. Nombreux chemins pédestres pour y accéder depuis le port de Castet, en direct, ou en boucle par le Mail. Cabane située sur la commune de Castet.",
+    "links": [
+      "https://www.refuges.info/point/7590/cabane-non-gardee/cabane-de-Couscouilha/"
+    ],
+    "type": "cabane ouverte",
+    "modified_at": "2021-04-08",
+    "name": "Cabane de Couscouilha",
+    "region": null,
+    "departement": null
+  },
+  {
+    "coord": {
+      "long": -0.7172694,
+      "lat": 42.8974612
+    },
+    "altitude": 1557.0,
+    "name": "Cabane d'Ansabère",
+    "surname": "Cabanes d'Ansabère",
+    "links": [
+      "http://www.pyrenees-refuges.com/fr/affiche.php?numenr=12",
+      "https://www.refuges.info/point/4248/cabane-non-gardee/cabanes-d-Ansabere/"
+    ],
+    "type": "cabane ouverte",
+    "description": "Places prévues pour dormir: 12 Places sur Matelas: 5 Il y a deux cabanes pour les randonneurs, et celle du berger. La première cabane randonneur, située à gauche avant d'arriver à la cabane du berger, est équipée d'une porte, et d'un bas flanc pour 3 personnes. La seconde cabane randonneur, située à droite juste après la cabane de berger, est équipée d'une porte, de rangements vides, et d'un poêle à bois. L'éclairage électrique est installé mais coupé en hiver (à confirmer en été). La cabane du berger, lui est réservée tout l'été. L'hiver, on trouve à l'extérieur une fontaine, et à l'intérieur l'éclairage électrique, une poêle à bois qui fume par temps venteux, une grande table pour 8 au rez-de-chaussé. A l'étage, où on peut dormir à 8, on trouve 5 places sur matelas (dont trois sur sommier, et un matelas double au sol), et un sommier sans matelas, mais confortable avec une petite mousse. L'eau se trouve pas loin (le berger se réserve la fontaine quand il est là), et il y a profusion de bois mort aux environs. Aucune scie en vue ! De Lescun, monter la route vers le caillou du curé, la continuer jusqu'au parking Masousa au pont Lamareich et y laisser la voiture. Les courageux continuerons en voiture pendant 2km sur une piste vers le parking du pont Lamary, les autres le feront à pied. Prendre alors, pendant 1h30, la mini-piste qui mène directement aux cabanes D'ansabère.",
+    "remarque": "Il y a deux cabanes pour les randonneurs, et celle du berger. La première cabane randonneur, située à gauche avant d'arriver à la cabane du berger, est équipée d'une porte, et d'un bas flanc pour 3 personnes. La seconde cabane randonneur, située à droite juste après la cabane de berger, est équipée d'une porte, de rangements vides, et d'un poêle à bois. L'éclairage électrique est installé mais coupé en hiver (à confirmer en été). La cabane du berger, lui est réservée tout l'été. L'hiver, on trouve à l'extérieur une fontaine, et à l'intérieur l'éclairage électrique, une poêle à bois qui fume par temps venteux, une grande table pour 8 au rez-de-chaussé. A l'étage, où on peut dormir à 8, on trouve 5 places sur matelas (dont trois sur sommier, et un matelas double au sol), et un sommier sans matelas, mais confortable avec une petite mousse. L'eau se trouve pas loin (le berger se réserve la fontaine quand il est là), et il y a profusion de bois mort aux environs. Aucune scie en vue !",
+    "places": 12,
+    "info_comp": {
+      "latrines": 0,
+      "matelas": 1,
+      "couvertures": 0,
+      "couchage": 1,
+      "bas_flancs": 0,
+      "poele": 1,
+      "manque_un_mur": 0,
+      "mezzanine/etage": 1,
+      "bois": 1,
+      "lits": 0,
+      "cheminee": 0,
+      "eau": 1
+    },
+    "modified_at": "2018-11-26",
+    "region": "Lescun",
+    "info_couchage": "Etage",
+    "departement": "Pyrénées-Atlantique"
+  },
+  {
+    "coord": {
+      "long": 1.32743078,
+      "lat": 42.7338359
+    },
+    "altitude": 2100.0,
+    "name": "Cabane de Turguilla",
+    "surname": "Cabane de Turguilla",
+    "links": [
+      "http://www.pyrenees-refuges.com/fr/affiche.php?numenr=317",
+      "https://www.refuges.info/point/6277/cabane-non-gardee/cabane-de-Turguilla/"
+    ],
+    "type": "cabane ouverte",
+    "description": "Places prévues pour dormir: 8 Places sur Matelas: 7 Cabane en pierre avec un toit à double pans, ouverte toute l'année. Équipée d'une table, de bancs et de bat-flancs en bois. - 8 couchages en bât-flanc avec des tapis de sol (plutôt mince) - 7 couchettes mais l'une d'elle en haut en vaut 2. Inventaire 07/2019 : - 7 couvertures (08-2024) - grill - gobelets - bougie [b]Le Bois :[/b] - Un dépot de bois, réservé à la cabane, est disponible tout au bout de piste, peut avant d'arriver au 1er passage rocheux éboulé (il faut juste qu'il n'est pas trop pris le bouillon ... mais on peut en monter 2 ou 3 bouts qui sécheront dans la cabane pour les suivants ! et ainsi de suite ...). http://www.pyrenees-refuges.com/fr/affiche.php?numenr=317#15/42.7338/1.3274 Depuis le parking terminus de la piste qui monte au cirque de Gérac : - Emprunter le chemin balisé en jaune qui va en direction des étangs de la Piède, de las Toues et de Réglisse. --> Passage par 2 sections \"délicates\" sur vires sécurisées, équipées de chaines, barreaux et marches pour passer les dalles. Communauté des communes Couserans-Pyrénées.",
+    "remarque": "Cabane en pierre avec un toit à double pans, ouverte toute l'année. Équipée d'une table, de bancs et de bat-flancs en bois. - 8 couchages en bât-flanc avec des tapis de sol (plutôt mince) - 7 couchettes mais l'une d'elle en haut en vaut 2. Inventaire 07/2019 : - 7 couvertures (08-2024) - grill - gobelets - bougie [b]Le Bois :[/b] - Un dépot de bois, réservé à la cabane, est disponible tout au bout de piste, peut avant d'arriver au 1er passage rocheux éboulé (il faut juste qu'il n'est pas trop pris le bouillon ... mais on peut en monter 2 ou 3 bouts qui sécheront dans la cabane pour les suivants ! et ainsi de suite ...). http://www.pyrenees-refuges.com/fr/affiche.php?numenr=317#15/42.7338/1.3274",
+    "places": 8,
+    "info_comp": {
+      "latrines": 0,
+      "matelas": 1,
+      "couvertures": 1,
+      "couchage": 1,
+      "bas_flancs": 0,
+      "poele": 1,
+      "manque_un_mur": 0,
+      "mezzanine/etage": 0,
+      "bois": 1,
+      "lits": 1,
+      "cheminee": 1,
+      "eau": 1
+    },
+    "modified_at": "2024-08-18",
+    "region": "Ustou",
+    "info_couchage": "couchettes superposées",
+    "departement": "Ariège"
+  },
+  {
+    "coord": {
+      "long": 0.87380987603356,
+      "lat": 42.795219581763
+    },
+    "altitude": 2310.0,
+    "name": "Refuge de Liat",
+    "surname": "Refuge de Liat",
+    "links": [
+      "http://www.pyrenees-refuges.com/fr/affiche.php?numenr=1117",
+      "https://www.refuges.info/point/7193/cabane-non-gardee/refuge-de-Liat/"
+    ],
+    "type": "cabane ouverte",
+    "description": "Places prévues pour dormir: 8 Places sur Matelas: 3 [b]Équipement intérieur :[/b] - 1 table avec 6 tabourets - 1 gros poêle - 4 lits métalliques superposés (avec 3 matelas) - 1 mezzanine avec plancher en bois - 1 poste de secours [b][color=blue]L'Eau :[/color][/b] Un écoulement coupe la piste peu avant le refuge (coté Est). [b][color=black]Le bois :[/color][/b] Pas de forêt à l'horizon, mais dans les ruines environnantes, on pourra fouiller et trouver des vieux morceaux de charpente ... Refuge situé au nord de la piste de Liat qui dessert l'ancien site minier abandonné. Le refuge se trouve à l'extrémité Est du téléphérique en ruine qui parcours le versant Nord du site minier. [url=https://www.feec.cat/]F.E.E.C - Federació d'Entitats Excursionistes de Catalunya.[/url]",
+    "remarque": "[b]Équipement intérieur :[/b] - 1 table avec 6 tabourets - 1 gros poêle - 4 lits métalliques superposés (avec 3 matelas) - 1 mezzanine avec plancher en bois - 1 poste de secours [b][color=blue]L'Eau :[/color][/b] Un écoulement coupe la piste peu avant le refuge (coté Est). [b][color=black]Le bois :[/color][/b] Pas de forêt à l'horizon, mais dans les ruines environnantes, on pourra fouiller et trouver des vieux morceaux de charpente ...",
+    "places": 8,
+    "info_comp": {
+      "latrines": 0,
+      "matelas": 1,
+      "couvertures": 0,
+      "couchage": 1,
+      "bas_flancs": 0,
+      "poele": 1,
+      "manque_un_mur": 0,
+      "mezzanine/etage": 0,
+      "bois": 0,
+      "lits": 1,
+      "cheminee": 0,
+      "eau": 1
+    },
+    "modified_at": "2020-09-21",
+    "region": "Vielha e Mijaran",
+    "info_couchage": "4 lits métalliques en bas avec",
+    "departement": "Catalonia"
+  },
+  {
+    "coord": {
+      "long": 1.11183944,
+      "lat": 42.8460129
+    },
+    "altitude": 1410.0,
+    "name": "Cabane de Luzurs",
+    "surname": "Cabane de Luzurs",
+    "links": [
+      "https://www.refuges.info/point/7038/cabane-non-gardee/cabane-de-Luzurs/",
+      "http://www.pyrenees-refuges.com/fr/affiche.php?numenr=339"
+    ],
+    "type": "cabane ouverte",
+    "description": "Places prévues pour dormir: 2 Places sur Matelas: 2 Cabane située au bord du GR10D, au Sud du Col de la Core, au 1er lacet au sud du Col, prendre la piste de Luzurs, qui va en aussi en direction de la [->6263]. A la fin de la piste, poursuivre sur le sentier, on atteint alors le haut d'une clairière, la cabane trone au milieu de celle-ci, sur la gauche du chemin. Cabane pastorale occupée en saison estivale par un berger. La cabane n’est pas verrouillée hors saison d’estive. Au rdc, table + bancs + poêle. À l’étage, deux matelas et des couvertures suspendues. Le tout propre et ordonné. Une fenêtre avec volet, qui a l’air bien fonctionnelle.",
+    "remarque": "Cabane située au bord du GR10D, au Sud du Col de la Core, au 1er lacet au sud du Col, prendre la piste de Luzurs, qui va en aussi en direction de la [->6263]. A la fin de la piste, poursuivre sur le sentier, on atteint alors le haut d'une clairière, la cabane trone au milieu de celle-ci, sur la gauche du chemin.",
+    "places": 6,
+    "info_comp": {
+      "latrines": 0,
+      "matelas": 1,
+      "couvertures": 1,
+      "couchage": 0,
+      "bas_flancs": 0,
+      "poele": 1,
+      "manque_un_mur": 0,
+      "mezzanine/etage": 1,
+      "bois": 1,
+      "lits": 0,
+      "cheminee": 1,
+      "eau": 1
+    },
+    "modified_at": "2025-05-03",
+    "region": "Bethmale",
+    "departement": "Ariège"
+  },
+  {
+    "name": "Cabane de Aret",
+    "region": "",
+    "altitude": 1720,
+    "type": "cabane ouverte",
+    "departement": "",
+    "places": 6,
+    "info_comp": {
+      "cheminee": 0,
+      "bois": 1,
+      "eau": 1,
+      "couchage": 1,
+      "matelas": 0,
+      "bas_flancs": 0,
+      "lits": 0,
+      "mezzanine/etage": 0
+    },
+    "info_couchage": "Oui",
+    "coord": {
+      "long": 0.2955,
+      "lat": 42.7629
+    },
+    "links": [
+      "http://www.pyrenees-refuges.com/fr/affiche.php?numenr=1384"
+    ],
+    "description": "cabane renovee en 2014 situee au nord est du pic d aret en lisiere du bois partie ouverte cote nord table bancs 6 places avec un bas flancs en hauteur et en comptant les 2 bancs larges et assez longs pas de cheminee alors qu il y a le conduit exterieur plusieurs sources boueuses a proximite ",
+    "remarque": "Cabane ouverte et toujours aussi accueillante.",
+    "modified_at": null
+  },
+  {
+    "name": "Cabane du lac de Montarrouye",
+    "region": "Ancizan",
+    "altitude": 1920,
+    "type": "cabane ouverte",
+    "departement": "Haute-Pyrénées",
+    "places": 6,
+    "info_comp": {
+      "cheminee": 0,
+      "bois": 0,
+      "eau": 1,
+      "couchage": 1,
+      "matelas": 1,
+      "bas_flancs": 0,
+      "lits": 1,
+      "mezzanine/etage": 0
+    },
+    "info_couchage": "6 lits avec matelas",
+    "coord": {
+      "long": 0.235555,
+      "lat": 42.896944
+    },
+    "links": [
+      "http://www.pyrenees-refuges.com/fr/affiche.php?numenr=1062"
+    ],
+    "description": "cabane en tole situee 50 m au dessus de l etang de montarrouye une table avec chaises et 6 lits avec matelas cabane propre en bon etat et fonctionnel rnrnrnrntrouve une source au bord du lac juste sous la cabane ",
+    "remarque": "Visitée il y a 2 jours, conforme au descriptif! Jean-Christophe G.",
+    "modified_at": null
+  },
+  {
+    "coord": {
+      "long": -1.0774326,
+      "lat": 43.0295922
+    },
+    "altitude": 1000.0,
+    "name": "Chalet forestier de la Soule",
+    "surname": "Chalet forestier de la Soule",
+    "links": [
+      "https://www.refuges.info/point/3750/cabane-non-gardee/chalet-forestier-de-la-Soule/",
+      "http://www.pyrenees-refuges.com/fr/affiche.php?numenr=870"
+    ],
+    "type": "cabane ouverte",
+    "description": "Places prévues pour dormir: 16 Places sur Matelas: 2 Cabane tout en bois très saine 1 pièce principale avec cheminée, table et banc 1 pièce avec 2 lits 1 place en fer + matelas 4 pièces vides Le tout pas tout neuf, mais en très bon état Eau au ruisseau (traiter impérativement !) Bois à profusion alentour De St Jean de Pied de Port, prendre la direction de la station d'Iraty jusqu'au lac Iratiko Etchola, continuer en direction du chalet Pedro. Continuer 1km jusqu'à un embranchement d'une piste forestière vers la gauche La piste traverse la rivière sur un pont de bois puis commence à monter Après 200m, la cabane se trouve sur la gauche",
+    "remarque": "Cabane tout en bois très saine 1 pièce principale avec cheminée, table et banc 1 pièce avec 2 lits 1 place en fer + matelas 4 pièces vides Le tout pas tout neuf, mais en très bon état Eau au ruisseau (traiter impérativement !) Bois à profusion alentour",
+    "places": 16,
+    "info_comp": {
+      "latrines": 0,
+      "matelas": 1,
+      "couvertures": 0,
+      "couchage": 1,
+      "bas_flancs": 0,
+      "poele": 0,
+      "manque_un_mur": 0,
+      "mezzanine/etage": 0,
+      "bois": 1,
+      "lits": 0,
+      "cheminee": 1,
+      "eau": 1
+    },
+    "modified_at": "2013-06-07",
+    "region": "Larrau",
+    "info_couchage": "Matelas",
+    "departement": "Pyrénées-Atlantique"
+  },
+  {
+    "coord": {
+      "long": 1.6723292,
+      "lat": 42.6115021
+    },
+    "altitude": 2295,
+    "places": 20,
+    "remarque": "Solide bâtisse en pierre (comme tous les refuges Andorran). [b]Ouvert toute l'année.[/b] J'ai eu l'occasion d'y dormir plusieurs fois dont un 2 juin, c'était encore l'hiver la-haut, et en entrant dans le refuge fermé, c'était comme entrer dans un frigidaire, ça meulait grave ! éviter les sacs de couchage confort 10 ° SVP. [b][i]Équipement :[/i][/b] - 12 sommiers métalliques superposés (-> pas de matelas !) - [b][color=red]Matelas et sac de couchage obligatoire ! le métal c'est froid ![/color][/b] - L'intérieur du refuge est spacieux, on peut se poser à condition d'avoir son matelas sinon ... - 2 tables - 4 bancs - Pharmacie - 1 balai/pelle - Pas beaucoup de bois dans les environs ... [b][i]L'Eau :[/i][/b] - Le déversoir du Lac - En venant d'Incles, on trouve de l'eau en montant. [b][i]A noter :[/i][/b] - Tous les printemps, les refuges sont passés en revue pour \"refaire les niveaux\" si on peut dire par des personnes gérant ces refuges, et visités régulièrement. - Ne soyez pas surpris d'avoir la visite des gardes, qui tournent et controlent régulièrement l'état de tous les refuges du pays mis à disposition et entretenus donc par le Gouvernement Andorran. [color=blue] Dans chaque refuge Andorran, on trouve (parfois y'en a plus ...) un \"Passeport de Refugis\" avec un tampon à appliquer sur la case qui va bien. Lorsque vous avez parcouru l'un des chemins traversant le pays (GR11, HRP, ...), vous présentez le passeport à l'office National de Tourisme qui vous remet un diplôme correspondant et un cadeau ! [/color]",
+    "info_comp": {
+      "manque_un_mur": 0,
+      "cheminee": 1,
+      "poele": 0,
+      "couvertures": 0,
+      "latrines": 1,
+      "bois": 0,
+      "eau": 1,
+      "matelas": 0,
+      "couchage": 0,
+      "bas_flancs": 0,
+      "lits": 0,
+      "mezzanine/etage": 0
+    },
+    "description": "Places prévues pour dormir: 20 Solide bâtisse en pierre (comme tous les refuges Andorran). [b]Ouvert toute l'année.[/b] J'ai eu l'occasion d'y dormir plusieurs fois dont un 2 juin, c'était encore l'hiver la-haut, et en entrant dans le refuge fermé, c'était comme entrer dans un frigidaire, ça meulait grave ! éviter les sacs de couchage confort 10 ° SVP. [b][i]Équipement :[/i][/b] - 12 sommiers métalliques superposés (-> pas de matelas !) - [b][color=red]Matelas et sac de couchage obligatoire ! le métal c'est froid ![/color][/b] - L'intérieur du refuge est spacieux, on peut se poser à condition d'avoir son matelas sinon ... - 2 tables - 4 bancs - Pharmacie - 1 balai/pelle - Pas beaucoup de bois dans les environs ... [b][i]L'Eau :[/i][/b] - Le déversoir du Lac - En venant d'Incles, on trouve de l'eau en montant. [b][i]A noter :[/i][/b] - Tous les printemps, les refuges sont passés en revue pour \"refaire les niveaux\" si on peut dire par des personnes gérant ces refuges, et visités régulièrement. - Ne soyez pas surpris d'avoir la visite des gardes, qui tournent et controlent régulièrement l'état de tous les refuges du pays mis à disposition et entretenus donc par le Gouvernement Andorran. [color=blue] Dans chaque refuge Andorran, on trouve (parfois y'en a plus ...) un \"Passeport de Refugis\" avec un tampon à appliquer sur la case qui va bien. Lorsque vous avez parcouru l'un des chemins traversant le pays (GR11, HRP, ...), vous présentez le passeport à l'office National de Tourisme qui vous remet un diplôme correspondant et un cadeau ! [/color] [b][i]A partir du Val d'Incles :[/i][/b] On peut remonter en véhicule le Val d'Incles, depuis Soldeu (pied O du Port d'Envalira) jusqu'au Pont de la Baladosa (Parking), mais attention de mi-juin à mi-septembre, la route est barrée à la [u]montée[/u] de 9H00 à 18H au Pont d'Incles (début de la vallée), donc il faut prendre ses précautions et se lever tôt ... A partir du Pont de la Baladosa, on prend la direction du Port d'Incles par une première partie raide le long du torrent, arrivé sur le plat, une passerelle va permettre de traverser le torrent pour opérer quasiment un demi tour et effectuer une traversée ascendante moins raide vers l'Ouest, on atteint un plat, petite descente puis montée finale sur des plaques rocheuses jusqu'au Lac, le refuge est juste avant. [b][i]A partir du Val d'Incles :[/i][/b] Depuis de Pont de la Bonavida, avant le Pont de la Baladosa, un chemin NNO permet aussi de rejoindre le refuge . [b][i]A partir du Val de Ransol :[/i][/b] De fond du val de Ransol, on rejoint la [->5411], de la on suit vers l'Est le chemin qui permet de franchir la crête de la Coma de Varilles (d'où l'on voit le refuge), va suivre une descente bien raide qui va effectuer un mouvement tournant pour rejoindre le refuge. Propriétaire : [url=http://www.andorramania.com/]Gouvernement Andorran[/url] Departament de Patrimoni Natural C. Prat de la creu, 62-64, 1r pis AD500 Andorra la Vella Téléphone : +376 875 707 Mail : patrimoni_natural@govern.ad [url=https://www.mediambient.ad/medi-natural/llista-de-refugis-d-andorra]Liste des Refuges d'Andorre[/url] [url=https://www.patrimoninatural.ad/images/stories/Mapa_Refugis_GR.pdf]Situation globale de tous les refuges + infos (Attention 8Mo)[/url]",
+    "links": [
+      "https://www.refuges.info/point/5412/cabane-non-gardee/cabana-Sorda/",
+      "http://visitandorra.com/fr/itineraires/sentier-de-randonnee-estanys-i-refugi-de-cabana-sorda/"
+    ],
+    "type": "cabane ouverte",
+    "modified_at": "2024-12-29",
+    "name": "Cabana Sorda",
+    "region": null,
+    "departement": null
+  },
+  {
+    "coord": {
+      "long": 1.1075161099543,
+      "lat": 42.783677163116
+    },
+    "altitude": 1550.0,
+    "name": "Cabane d'Aula",
+    "surname": "Cabane d'Aula",
+    "links": [
+      "https://www.pyrenees-refuges.com/fr/affiche.php?numenr=37",
+      "https://www.refuges.info/point/3876/cabane-non-gardee/cabane-d-Aula/",
+      "http://www.pyrenees-refuges.com/fr/affiche.php?numenr=37"
+    ],
+    "type": "cabane ouverte",
+    "description": "Places prévues pour dormir: 18 Places sur Matelas: 12 2020 : Très bon état. Restaurée en 2014 (toiture neuve) et 2019 par des bénévoles de l'association \"Les Amis Gr'distes, GR10\". - 1 grande pièce chaulée au RDC avec 1 grande table, 2 bancs, des tabourets, 1 cantine avec de la vaisselle et 6 lits superposés neufs en métal avec housses, matelas et couvertures. - 1 autre pièce à côté avec 6 vieux lits superposés métalliques sans matelas. - Plancher en bois au 1er étage accessible par une échelle ; environ 8 places dont 6 avec matelas, 1 cantine pour ranger les couvertures. - 1 gros poêle (penser à monter du bois bien sec car il y a surtout du bois vert dans la forêt en contrebas de la cabane, à 15 mn à pied). - Eau (torrent) située à 3 minutes à pied de la cabane ; pastilles Micropure néanmoins recommandées. Enormément de passage de randonneurs car située en plein milieu d'une étape du GR10 ; et point de départ du sentier de l'ascension du Mont Valier par les superbes pas de la Clauère et col de Peyre Blanc [b][u]Rénovation de la Cabane en juin 2019 :[/u][/b] [url=https://www.ladepeche.fr/2019/06/16/la-cabane-daula-relookee-en-2-jours-pour-le-plus-grand-bonheur-des-randonneurs,8259572.php]La cabane d'Aula relookée en 2 jours.[/url] D3 à partir de Seix puis vers les carrières d'Estour (GR10) Mairie - Place Pierre Gaston-Toureille - 09140 Seix Tél : 05 61 66 83 55 Cabane communale ouverte à tous",
+    "remarque": "2020 : Très bon état. Restaurée en 2014 (toiture neuve) et 2019 par des bénévoles de l'association \"Les Amis Gr'distes, GR10\". - 1 grande pièce chaulée au RDC avec 1 grande table, 2 bancs, des tabourets, 1 cantine avec de la vaisselle et 6 lits superposés neufs en métal avec housses, matelas et couvertures. - 1 autre pièce à côté avec 6 vieux lits superposés métalliques sans matelas. - Plancher en bois au 1er étage accessible par une échelle ; environ 8 places dont 6 avec matelas, 1 cantine pour ranger les couvertures. - 1 gros poêle (penser à monter du bois bien sec car il y a surtout du bois vert dans la forêt en contrebas de la cabane, à 15 mn à pied). - Eau (torrent) située à 3 minutes à pied de la cabane ; pastilles Micropure néanmoins recommandées. Enormément de passage de randonneurs car située en plein milieu d'une étape du GR10 ; et point de départ du sentier de l'ascension du Mont Valier par les superbes pas de la Clauère et col de Peyre Blanc [b][u]Rénovation de la Cabane en juin 2019 :[/u][/b] [url=https://www.ladepeche.fr/2019/06/16/la-cabane-daula-relookee-en-2-jours-pour-le-plus-grand-bonheur-des-randonneurs,8259572.php]La cabane d'Aula relookée en 2 jours.[/url]",
+    "places": 18,
+    "info_comp": {
+      "latrines": 0,
+      "matelas": 1,
+      "couvertures": 1,
+      "couchage": 1,
+      "bas_flancs": 0,
+      "poele": 1,
+      "manque_un_mur": 0,
+      "mezzanine/etage": 0,
+      "bois": 1,
+      "lits": 1,
+      "cheminee": 1,
+      "eau": 1
+    },
+    "modified_at": "2021-11-18",
+    "region": "Seix",
+    "info_couchage": "6 lits en bas et 6 matelas en ",
+    "departement": "Ariège"
+  },
+  {
+    "coord": {
+      "long": 0.65216355595669,
+      "lat": 42.857083602754
+    },
+    "altitude": 1549.0,
+    "name": "Cabane Salode",
+    "surname": "Cabane Salode",
+    "links": [
+      "https://www.refuges.info/point/8653/cabane-non-gardee/cabane-Salode/",
+      "http://www.pyrenees-refuges.com/fr/affiche.php?numenr=521"
+    ],
+    "type": "cabane ouverte",
+    "description": "Places prévues pour dormir: 20 Places sur Matelas: 16 [u][b]Équipement intérieur : [/b][/u] - 2 grandes tables et bancs qui les entourent - 1 cheminée - Au RDC : 4 matelas (sous housse plastique) - A l'étage : 9 matelas (dont 6 sous housse plastique) Grande cabane spacieuse, très propre, bon nombre de matelas et de la place libre pour se poser (au RDC où à l'étage). [u][b][color=blue]L'eau :[/color][/b][/u] L'eau coule dans la ravine à proximité de la cabane. [b]Attention :[/b] présence de nombreux bovins et ovins au-dessus. Cabane située le long de la piste qui monte depuis Gouaux de Luchon au pied du Pic de Burat. Cabane ouverte.",
+    "remarque": "[u][b]Équipement intérieur : [/b][/u] - 2 grandes tables et bancs qui les entourent - 1 cheminée - Au RDC : 4 matelas (sous housse plastique) - A l'étage : 9 matelas (dont 6 sous housse plastique) Grande cabane spacieuse, très propre, bon nombre de matelas et de la place libre pour se poser (au RDC où à l'étage). [u][b][color=blue]L'eau :[/color][/b][/u] L'eau coule dans la ravine à proximité de la cabane. [b]Attention :[/b] présence de nombreux bovins et ovins au-dessus.",
+    "places": 20,
+    "info_comp": {
+      "latrines": 0,
+      "matelas": 1,
+      "couvertures": 0,
+      "couchage": 0,
+      "bas_flancs": 0,
+      "poele": 0,
+      "manque_un_mur": 0,
+      "mezzanine/etage": 1,
+      "bois": 1,
+      "lits": 0,
+      "cheminee": 1,
+      "eau": 1
+    },
+    "modified_at": "2022-12-17",
+    "region": "Gouaux-de-Luchon",
+    "departement": "Haute-Garonne"
+  },
+  {
+    "coord": {
+      "long": 0.75107216835022,
+      "lat": 42.9224290790761
+    },
+    "altitude": 1600.0,
+    "name": "Refuge de l'Escalette",
+    "surname": "Cabane de l'Escalette",
+    "links": [
+      "https://www.refuges.info/point/5793/cabane-non-gardee/cabane-de-l-Escalette/",
+      "http://www.pyrenees-refuges.com/fr/affiche.php?numenr=514"
+    ],
+    "type": "cabane ouverte",
+    "description": "Places prévues pour dormir: 20 Places sur Matelas: 16 Grande cabane, accessible en voiture ce qui explique son état. Nombreux matelas, accès à l'eau à l'extérieur. Coin bouffe, bas flanc, et deux mezzanines. Depuis le Col de Menté, suivre la piste qui mène directement à la cabane.",
+    "remarque": "Grande cabane, accessible en voiture ce qui explique son état. Nombreux matelas, accès à l'eau à l'extérieur. Coin bouffe, bas flanc, et deux mezzanines.",
+    "places": 20,
+    "info_comp": {
+      "latrines": 0,
+      "matelas": 1,
+      "couvertures": 0,
+      "couchage": 1,
+      "bas_flancs": 1,
+      "poele": 0,
+      "manque_un_mur": 0,
+      "mezzanine/etage": 0,
+      "bois": 1,
+      "lits": 0,
+      "cheminee": 1,
+      "eau": 1
+    },
+    "modified_at": "2017-04-11",
+    "region": "Boutx",
+    "info_couchage": "Bas flancs",
+    "departement": "Haute-Garonne"
+  },
+  {
+    "coord": {
+      "long": 0.83315,
+      "lat": 42.90641
+    },
+    "altitude": 1459,
+    "places": 17,
+    "remarque": "Très belle cabane de crête qui peut-être réservée par des chasseurs à l'occasion. La porte d'entrée force beaucoup et nécessite un bon coup d'épaule. La fontaine est à 20m de la porte et coulait doucement lors de notre passage fin août 2016. Entourée de forêt. Nombreux ustensiles de cuisine. Scie + balai. Quelques matelas, il y a un bas flanc en bas et tout l'étage est accessible (indique comme parfois fermé à clés sur internet).",
+    "info_comp": {
+      "manque_un_mur": 0,
+      "cheminee": 1,
+      "poele": 0,
+      "couvertures": 0,
+      "latrines": 0,
+      "bois": 1,
+      "eau": 1,
+      "matelas": 1,
+      "couchage": 0,
+      "bas_flancs": 0,
+      "lits": 0,
+      "mezzanine/etage": 0
+    },
+    "description": "Places prévues pour dormir: 17 Places sur Matelas: 3 Très belle cabane de crête qui peut-être réservée par des chasseurs à l'occasion. La porte d'entrée force beaucoup et nécessite un bon coup d'épaule. La fontaine est à 20m de la porte et coulait doucement lors de notre passage fin août 2016. Entourée de forêt. Nombreux ustensiles de cuisine. Scie + balai. Quelques matelas, il y a un bas flanc en bas et tout l'étage est accessible (indique comme parfois fermé à clés sur internet). Depuis le Couéu, monter vers Coume longue en fond de vallée pendant 1h30. On arrive au col, ma cabane est juste à droite. Le sentier est très bon et emprunté par des bergers modernes en 4x4.",
+    "links": [
+      "https://www.refuges.info/point/5604/cabane-non-gardee/cabane-forestiere-du-Piejau/"
+    ],
+    "type": "cabane ouverte",
+    "modified_at": "2021-04-05",
+    "name": "Cabane forestière du Piéjau",
+    "region": null,
+    "departement": null
+  },
+  {
+    "coord": {
+      "long": -0.4719239473342896,
+      "lat": 42.97502533650215
+    },
+    "altitude": 1530.0,
+    "name": "Refuge d'Arrioutort",
+    "surname": "Cabane d'Arrioutort",
+    "links": [
+      "http://www.pyrenees-refuges.com/fr/affiche.php?numenr=30",
+      "https://www.refuges.info/point/5799/cabane-non-gardee/cabane-d-Arrioutort/"
+    ],
+    "type": "cabane ouverte",
+    "description": "Places prévues pour dormir: 15 Places sur Matelas: 5 Cabane étape du GRP Tour de la vallée d'Ossau Une belle bâtisse bien hermétique. Au rez de chaussée, une pièce principale avec deux fenêtres vitrées plus volet en métal. Une table et deux bancs. 2-3 chaises et des casiers métalliques. Une cheminée à foyer ouvert. Peu de bois à proximité immédiate. Mais on peux en trouver en marchant un peu. Bois visible depuis la cabane. La pièce adjacente est un dortoir (deux fenêtres aussi). Il y a 3 lits simples et 1 lit double. 2 matelas sur trois des lits simples ont un revêtement plastique. Une autre pièce adjacente doit appartenir à un berger. Elle est fermée à clef. A l'étage, accès par une échelle depuis la pièce principale, deux pièces avec plancher en bois où peuvent dormir environ 10 personnes. 1 seul fenêtre à l'étage. Les tôles de la toiture craquent beaucoup... et toute la nuit. Petite rivière en contrebas, pour l'accès à l'eau, à 25m. En plein sur le tracé du GRP Tour de la vallée d'Ossau Au plus rapide : Accès depuis Laruns",
+    "remarque": "Cabane étape du GRP Tour de la vallée d'Ossau Une belle bâtisse bien hermétique. Au rez de chaussée, une pièce principale avec deux fenêtres vitrées plus volet en métal. Une table et deux bancs. 2-3 chaises et des casiers métalliques. Une cheminée à foyer ouvert. Peu de bois à proximité immédiate. Mais on peux en trouver en marchant un peu. Bois visible depuis la cabane. La pièce adjacente est un dortoir (deux fenêtres aussi). Il y a 3 lits simples et 1 lit double. 2 matelas sur trois des lits simples ont un revêtement plastique. Une autre pièce adjacente doit appartenir à un berger. Elle est fermée à clef. A l'étage, accès par une échelle depuis la pièce principale, deux pièces avec plancher en bois où peuvent dormir environ 10 personnes. 1 seul fenêtre à l'étage. Les tôles de la toiture craquent beaucoup... et toute la nuit. Petite rivière en contrebas, pour l'accès à l'eau, à 25m.",
+    "places": 25,
+    "info_comp": {
+      "latrines": 0,
+      "matelas": 1,
+      "couvertures": 0,
+      "couchage": 0,
+      "bas_flancs": 0,
+      "poele": 0,
+      "manque_un_mur": 0,
+      "mezzanine/etage": 0,
+      "bois": 1,
+      "lits": 0,
+      "cheminee": 1,
+      "eau": 1
+    },
+    "modified_at": "2017-04-23",
+    "region": "Laruns",
+    "departement": "Pyrénées-Atlantique"
+  },
+  {
+    "coord": {
+      "long": -0.0865161,
+      "lat": 42.8255601
+    },
+    "altitude": 1980.0,
+    "name": "Refuge Russell",
+    "surname": "Refuge Russel",
+    "links": [
+      "https://www.refuges.info/point/3743/cabane-non-gardee/refuge-Russel/",
+      "http://www.pyrenees-refuges.com/fr/affiche.php?numenr=295"
+    ],
+    "type": "cabane ouverte",
+    "description": "Places prévues pour dormir: 16 Places sur Matelas: 16 Cabane en trois pièces : * Une entrée, avec cheminée hors d'usage, qui sert de salle hors sac / stockage bois. * Pièce principale : deux tables, 4 bancs, une cheminée qui carbure, nombreuses étagères, ustensiles de cuisine, un stock de nourriture (café, pâtes, sel, poivre). * Dortoir à l'étage, avec 16 matelas (bien bien serrés), une dizaine de couvertures. Le tout est équipé d'une installation solaire et de lumières. Une extension a été ajoutée, mais est fermée à clé. Il y a une fontaine devant la porte. Refuge construit en 1910. Accès voiture : Après Cauteret monter à l'hotel de la fruitière. Prendre le santier en direction du lac d'Estom. A mi chemin avant d'arriver au lac, prendre sur la gauche pour monter en direction du refuge. Ballade facile en forêt, très agréable l'été. Compter 2h depuis le parking. CAF Toulouse Un don de 3€ est conseillé par nuit, dans le refuge.",
+    "remarque": "Cabane en trois pièces : * Une entrée, avec cheminée hors d'usage, qui sert de salle hors sac / stockage bois. * Pièce principale : deux tables, 4 bancs, une cheminée qui carbure, nombreuses étagères, ustensiles de cuisine, un stock de nourriture (café, pâtes, sel, poivre). * Dortoir à l'étage, avec 16 matelas (bien bien serrés), une dizaine de couvertures. Le tout est équipé d'une installation solaire et de lumières. Une extension a été ajoutée, mais est fermée à clé. Il y a une fontaine devant la porte. Refuge construit en 1910.",
+    "places": 16,
+    "info_comp": {
+      "latrines": 0,
+      "matelas": 1,
+      "couvertures": 1,
+      "couchage": 0,
+      "bas_flancs": 0,
+      "poele": 0,
+      "manque_un_mur": 0,
+      "mezzanine/etage": 0,
+      "bois": 1,
+      "lits": 0,
+      "cheminee": 1,
+      "eau": 1
+    },
+    "modified_at": "2022-07-12",
+    "region": "Cauterets",
+    "departement": "Haute-Pyrénées"
+  },
+  {
+    "coord": {
+      "long": 0.14366448416147,
+      "lat": 42.840305703757
+    },
+    "altitude": 2160.0,
+    "name": "Refuge du Lac d'Aubert",
+    "surname": "Abri hivernal du lac d'Aubert",
+    "links": [
+      "http://www.pyrenees-refuges.com/fr/affiche.php?numenr=36",
+      "https://www.refuges.info/point/3498/cabane-non-gardee/abri-hivernal-du-lac-d-Aubert/"
+    ],
+    "type": "cabane ouverte",
+    "description": "Places prévues pour dormir: 12 Abri fermé l'été à cause de la grande affluence au parking, qui prend tout son sens l'hiver. Indispensable pour une hivernale du pic de Néouvielle. Ressources inconnues (de moi). Renseignements sur la fiche PRC : http://www.pyrenees-refuges.com/fr/affiche.php?numenr=36 A 50m du parking du lac d'Aubert, à mi chemin du barrage, sur la gauche. PNP. Abri alloué aux gardes du Parc National. 12 places [b]en hiver[/b] pour les randonneurs/alpinistes",
+    "remarque": "Abri fermé l'été à cause de la grande affluence au parking, qui prend tout son sens l'hiver. Indispensable pour une hivernale du pic de Néouvielle. Ressources inconnues (de moi). Renseignements sur la fiche PRC : http://www.pyrenees-refuges.com/fr/affiche.php?numenr=36",
+    "places": 16,
+    "info_comp": {
+      "latrines": 0,
+      "matelas": 0,
+      "couvertures": 0,
+      "couchage": 1,
+      "bas_flancs": 0,
+      "poele": 0,
+      "manque_un_mur": 0,
+      "mezzanine/etage": 0,
+      "bois": 1,
+      "lits": 0,
+      "cheminee": 0,
+      "eau": 1
+    },
+    "region": "Vielle-Aure",
+    "info_eau": "ruisseau à proximité ",
+    "departement": "Haute-Pyrénées",
+    "modified_at": "2013-08-06",
+    "info_couchage": "dortoirs"
+  },
+  {
+    "coord": {
+      "long": 0.2822,
+      "lat": 42.66825
+    },
+    "altitude": 2370,
+    "places": 20,
+    "remarque": "Incroyable cabane (ou plutôt refuge) non gardée. Ce devait être un refuge gardé ou un bâtiment qui servait pour le barrage d'à coté avant. Maintenant l'accès est libre. Il y a un rez-de-chaussé avec trois tables et bancs fixés au sol ainsi qu'un poêle. A l'étage, il y a des sommiers et des matelas propres et confortables. On doit pouvoir dormir à 16 rien que sur les matelas à l'étage, donc on peut même y dormir à bien plus avec ses propres matelas. La cabane est très saine et propre, le sol est carrelé. Ce refuge a un grand potentiel, merci d'en prendre soin ! Pour l'eau, il y a le lac à coté et des écoulements qui alimentent le lac au bout Sud-Ouest de celui-ci (voir photo). Pas de bois aux alentours. [u][b]Équipement intérieur : [/b][/u] - 3 tables et 6 bancs - 1 poêle - 8 matelas double (à l'étage) - 1 poste de secours - 1 pièce vide carrelée à l'arrière",
+    "info_comp": {
+      "manque_un_mur": 0,
+      "cheminee": 0,
+      "poele": 1,
+      "couvertures": 0,
+      "latrines": 0,
+      "bois": 0,
+      "eau": 1,
+      "matelas": 1,
+      "couchage": 0,
+      "bas_flancs": 0,
+      "lits": 0,
+      "mezzanine/etage": 0
+    },
+    "description": "Places prévues pour dormir: 20 Places sur Matelas: 16 Incroyable cabane (ou plutôt refuge) non gardée. Ce devait être un refuge gardé ou un bâtiment qui servait pour le barrage d'à coté avant. Maintenant l'accès est libre. Il y a un rez-de-chaussé avec trois tables et bancs fixés au sol ainsi qu'un poêle. A l'étage, il y a des sommiers et des matelas propres et confortables. On doit pouvoir dormir à 16 rien que sur les matelas à l'étage, donc on peut même y dormir à bien plus avec ses propres matelas. La cabane est très saine et propre, le sol est carrelé. Ce refuge a un grand potentiel, merci d'en prendre soin ! Pour l'eau, il y a le lac à coté et des écoulements qui alimentent le lac au bout Sud-Ouest de celui-ci (voir photo). Pas de bois aux alentours. [u][b]Équipement intérieur : [/b][/u] - 3 tables et 6 bancs - 1 poêle - 8 matelas double (à l'étage) - 1 poste de secours - 1 pièce vide carrelée à l'arrière Depuis le passo de los caballos, où il y a une autre cabane non gardée, prendre la piste qui quitte le GR, le refuge se trouve à moins d'un 1km, à coté du lac d'Urdiceto",
+    "links": [
+      "https://www.refuges.info/point/8544/cabane-non-gardee/refugio-de-Urdiceto/"
+    ],
+    "type": "cabane ouverte",
+    "modified_at": "2022-12-15",
+    "name": "Refugio de Urdiceto",
+    "region": null,
+    "departement": null
+  },
+  {
+    "coord": {
+      "long": 0.3470778465271,
+      "lat": 42.5240838511411
+    },
+    "altitude": 1860,
+    "places": 16,
+    "remarque": "Solide cabane en très bon état. [b][i]Équipement intérieur :[/i][/b] - 1 grande table - 4 bancs - 1 mezzanine avec 5 matelas - 1 étage supérieur accessible par une échelle (on y trouve 9 matelas) - 1 pharmacie (peu achalandée ...) - 1 poste d'appel de secours [b][i]Équipement extérieur :[/i][/b] - 1 terrasse bétonnée (peut faire office de place de couchage) [b][i]Le bois :[/i][/b] On traverse une petite zone boisée qui borde un lac avant d'arriver au refuge quand on monte depuis Barbaruens, mais pas beaucoup de bois mort qui traine, on a intérêt à se charger en montant quand on traverse la forêt qui précède, donc portage ...) [b][i]L'eau :[/i][/b] On trouvera la [->5842], 70 m à plat, après le refuge en continuant vers le NO en direction du Colledeta de l'Ibon, pas utile de descendre en contrebas du refuge ... (voir photo). On trouve de l'eau dans la forêt en montant de Barbaruens. [b][i]Attention :[/i][/b] Présence de souris, protéger votre nourriture la nuit ...",
+    "info_comp": {
+      "manque_un_mur": 0,
+      "cheminee": 1,
+      "poele": 0,
+      "couvertures": 0,
+      "latrines": 0,
+      "bois": 1,
+      "eau": 1,
+      "matelas": 1,
+      "couchage": 0,
+      "bas_flancs": 0,
+      "lits": 0,
+      "mezzanine/etage": 0
+    },
+    "description": "Places prévues pour dormir: 16 Places sur Matelas: 14 Solide cabane en très bon état. [b][i]Équipement intérieur :[/i][/b] - 1 grande table - 4 bancs - 1 mezzanine avec 5 matelas - 1 étage supérieur accessible par une échelle (on y trouve 9 matelas) - 1 pharmacie (peu achalandée ...) - 1 poste d'appel de secours [b][i]Équipement extérieur :[/i][/b] - 1 terrasse bétonnée (peut faire office de place de couchage) [b][i]Le bois :[/i][/b] On traverse une petite zone boisée qui borde un lac avant d'arriver au refuge quand on monte depuis Barbaruens, mais pas beaucoup de bois mort qui traine, on a intérêt à se charger en montant quand on traverse la forêt qui précède, donc portage ...) [b][i]L'eau :[/i][/b] On trouvera la [->5842], 70 m à plat, après le refuge en continuant vers le NO en direction du Colledeta de l'Ibon, pas utile de descendre en contrebas du refuge ... (voir photo). On trouve de l'eau dans la forêt en montant de Barbaruens. [b][i]Attention :[/i][/b] Présence de souris, protéger votre nourriture la nuit ... [b][i]Vallée de Benasque :[/i][/b] A la hauteur du village de Seira au Sud de Castejon de Sos (par où on peut rejoindre le tunnel de Vielha), rentrer dans ce village et poursuivre sur Barbaruens, 200m avant le village où il est interdit de rentrer en voiture, prendre la piste qui monte à gauche, celle-ci caillouteuse est assez roulante, prendre le premier chemin forestier qui prolonge un lacet (le 3ème), on arrive sur un parking aménagé au bulldozer, on peut éventuellement poursuivre un peu sur la piste qui finit en cul de sac où passe le chemin qui part du parking et qui monte au refuge (panneau). Depuis le parking, on poursuit sur le large chemin qui monte raide en forêt, on va alors tomber sur le chemin balisé (qui monte de Barbaruens) qu'on suit jusqu'au refuge (compter 1H30). On peut aussi partir de Barbaruens, chemin balisé rouge/blanc.",
+    "links": [
+      "https://www.refuges.info/point/5840/cabane-non-gardee/refuge-de-Armena/"
+    ],
+    "type": "cabane ouverte",
+    "modified_at": "2017-06-22",
+    "name": "Refuge de Armeña",
+    "region": null,
+    "departement": null
+  },
+  {
+    "coord": {
+      "long": 2.45681762695313,
+      "lat": 42.5489980445673
+    },
+    "altitude": 1680.0,
+    "name": "Refuge de Balatg",
+    "surname": "Refuge de Balatg",
+    "links": [
+      "https://www.refuges.info/point/6576/cabane-non-gardee/refuge-de-Balatg/",
+      "http://www.pyrenees-refuges.com/fr/affiche.php?numenr=396"
+    ],
+    "type": "cabane ouverte",
+    "description": "Places prévues pour dormir: 25 Très grande bâtisse qui mériterait quelques travaux de rafraîchissement. Bâtiment difficile à chauffer du fait de sa hauteur et de sa cheminée peu efficace. En bas table + lit superposé + cheminée A l'étage : dortoir A l'extérieur, tables et place à feu. La fontaine ne coule pas toujours(pas?). On trouve une source en remontant a piste. ONF / Syndicat Mixte du Canigo Grand Site",
+    "remarque": "Très grande bâtisse qui mériterait quelques travaux de rafraîchissement. Bâtiment difficile à chauffer du fait de sa hauteur et de sa cheminée peu efficace. En bas table + lit superposé + cheminée A l'étage : dortoir A l'extérieur, tables et place à feu. La fontaine ne coule pas toujours(pas?). On trouve une source en remontant a piste.",
+    "places": 25,
+    "info_comp": {
+      "latrines": 0,
+      "matelas": 0,
+      "couvertures": 0,
+      "couchage": 0,
+      "bas_flancs": 0,
+      "poele": 0,
+      "manque_un_mur": 0,
+      "mezzanine/etage": 0,
+      "bois": 1,
+      "lits": 0,
+      "cheminee": 1,
+      "eau": 1
+    },
+    "modified_at": "2019-02-17",
+    "region": "Taurinya",
+    "departement": "Pyrénées-Orientales"
+  },
+  {
+    "coord": {
+      "long": 2.412979433835,
+      "lat": 42.476188135964
+    },
+    "altitude": 2275.0,
+    "name": "Refuge de Pla Guillem",
+    "surname": "Refuge de Pla Guillem",
+    "links": [
+      "https://www.refuges.info/point/6374/cabane-non-gardee/refuge-de-Pla-Guillem/",
+      "http://www.pyrenees-refuges.com/fr/affiche.php?numenr=262"
+    ],
+    "type": "cabane ouverte",
+    "description": "Places prévues pour dormir: 12 Cheminée, table, bancs. Il semble y avoir une source pas loin. Depuis le refuge de Mariailles, prendre une piste, presque horizontale, plein Sud, en direction de Pla Guillem, balisée GR. Ne surtout pas prendre le GR10 en direction du Canigou. Quand la piste fait deux lacets, le GR les coupe pour arriver à un col, puis continue assez raide. Il arrive à la cabane juste avant le Pla Guillem. ?",
+    "remarque": "Cheminée, table, bancs. Il semble y avoir une source pas loin.",
+    "places": 20,
+    "info_comp": {
+      "latrines": 0,
+      "matelas": 0,
+      "couvertures": 0,
+      "couchage": 1,
+      "bas_flancs": 0,
+      "poele": 1,
+      "manque_un_mur": 0,
+      "mezzanine/etage": 1,
+      "bois": 1,
+      "lits": 0,
+      "cheminee": 1,
+      "eau": 0
+    },
+    "modified_at": "2023-06-12",
+    "region": "Py",
+    "info_couchage": "En bois, sur 2 étages",
+    "departement": "Pyrénées-Orientales"
+  },
+  {
+    "coord": {
+      "long": 2.46476,
+      "lat": 42.53451
+    },
+    "altitude": 2150,
+    "places": 19,
+    "remarque": "Le refuge d'hiver des Cortalets est un bâtiment séparé du refuge CAF (gardé à la belle saison. [b]Dégradations signalées en avril 2025. La fiche n'est peut-être pas à jour. Si vous y passez, merci de faire un retour sur refuges.info.[/b] Rez-de chaussée : grande cheminée, tables, bancs -> Ambiance métallo-parpinique pas très chaleureuse mais correcte Étage : 19 places sur lits superposés avec matelas Pour l'eau : aller en amont, rive droite du lac des Estagnols, pour trouver une sortie de tuyau PVC, trop plein de la source de-là perdrix (eau non contrôlée)",
+    "info_comp": {
+      "manque_un_mur": 0,
+      "cheminee": 1,
+      "poele": 0,
+      "couvertures": 0,
+      "latrines": 0,
+      "bois": 1,
+      "eau": 1,
+      "matelas": 1,
+      "couchage": 0,
+      "bas_flancs": 0,
+      "lits": 0,
+      "mezzanine/etage": 0
+    },
+    "description": "Places prévues pour dormir: 19 Places sur Matelas: 19 Le refuge d'hiver des Cortalets est un bâtiment séparé du refuge CAF (gardé à la belle saison. [b]Dégradations signalées en avril 2025. La fiche n'est peut-être pas à jour. Si vous y passez, merci de faire un retour sur refuges.info.[/b] Rez-de chaussée : grande cheminée, tables, bancs -> Ambiance métallo-parpinique pas très chaleureuse mais correcte Étage : 19 places sur lits superposés avec matelas Pour l'eau : aller en amont, rive droite du lac des Estagnols, pour trouver une sortie de tuyau PVC, trop plein de la source de-là perdrix (eau non contrôlée) 2h de marche depuis le Parking Esquena d'Ase (Prades -> Villerach puis 11km de piste carossable (en mauvais état). CAF de Prades",
+    "links": [
+      "https://www.refuges.info/point/6574/cabane-non-gardee/refuge-des-Cortalets-refuge-d-hiver/",
+      "https://refugedescortalets.ffcam.fr/home.html"
+    ],
+    "type": "cabane ouverte",
+    "modified_at": "2025-04-07",
+    "name": "Refuge des Cortalets (refuge d'hiver)",
+    "region": null,
+    "departement": null
+  },
+  {
+    "coord": {
+      "long": 0.7191666,
+      "lat": 42.628333
+    },
+    "altitude": 2390.0,
+    "name": "Refuge de Mulleres (ou Molieres)",
+    "surname": "Refuge de Mulleres (de Molières)",
+    "links": [
+      "https://www.refuges.info/point/5393/cabane-non-gardee/refuge-de-Mulleres-de-Molieres/",
+      "http://www.pyrenees-refuges.com/fr/affiche.php?numenr=667",
+      "http://www.feec.cat/refugi/refugi-molieres/"
+    ],
+    "type": "cabane ouverte",
+    "description": "Places prévues pour dormir: 18 Places sur Matelas: 18 L'ancien refuge non gardé a été remplacé, le 16 Aout 2011, par un nouveau refuge, beaucoup plus confortable, ultime évolution des refuges/bivouacs Espagnol (type Enric Pujol, Broate). Infos : http://www.revue-pyrenees.com/spip.php?article1070 Equipement : - Couchettes, - Matelas, - Couvertures, - Table, - Etagères, - Extincteur, - Eclairage photovoltaïque, - Radio de secours. Pour l'eau : il y a l'eau des lacs, sinon en montant on peut trouver de l'eau plus près des sources ... [b][i]A partir de la bouche Sud du tunnel de Vielha :[/i][/b] Grand parking, à proximité de l'ancien Hospital de Vielha, maintenant fermé (dommage !), on va se diriger plein Ouest en remontant vers le Col de Mulleres, sur la route de l'Aneto, le refuge se trouve au Nord de l'Estany inferieur de Mulleres. [b][i]Depuis le refuge de la Rencluse :[/i][/b] Par le Col de Mulleres (descente très raide), puis pierrier, puis on va découvrir le refuge et sa vue magnifique sur l'entrée Ouest des Encantats. Propriétaire : [url=https://www.feec.cat/]FEEC - Federació d'Entitats Excursionistes de Catalunya[/url] Adresse : Rambla 41, pral. 08002 Barcelona, Espagne Téléphone : +34 934 120 777 Fax : +34 934 126 353 Mail : feec@feec.cat",
+    "remarque": "L'ancien refuge non gardé a été remplacé, le 16 Aout 2011, par un nouveau refuge, beaucoup plus confortable, ultime évolution des refuges/bivouacs Espagnol (type Enric Pujol, Broate). Infos : http://www.revue-pyrenees.com/spip.php?article1070 Equipement : - Couchettes, - Matelas, - Couvertures, - Table, - Etagères, - Extincteur, - Eclairage photovoltaïque, - Radio de secours. Pour l'eau : il y a l'eau des lacs, sinon en montant on peut trouver de l'eau plus près des sources ...",
+    "places": 18,
+    "info_comp": {
+      "latrines": 0,
+      "matelas": 1,
+      "couvertures": 1,
+      "couchage": 1,
+      "bas_flancs": 0,
+      "poele": 0,
+      "manque_un_mur": 0,
+      "mezzanine/etage": 0,
+      "bois": 0,
+      "lits": 0,
+      "cheminee": 0,
+      "eau": 1
+    },
+    "modified_at": "2018-06-18",
+    "region": "Vielha e Mijaran",
+    "info_couchage": "9 de 2 places tête-bêche",
+    "departement": "Catalonia"
+  },
+  {
+    "name": "Refugio d'Armena",
+    "region": "Seira",
+    "altitude": 1860,
+    "type": "cabane ouverte",
+    "departement": "Aragon",
+    "places": 20,
+    "info_comp": {
+      "cheminee": 1,
+      "bois": 1,
+      "eau": 1,
+      "couchage": 1,
+      "matelas": 1,
+      "bas_flancs": 1,
+      "lits": 0,
+      "mezzanine/etage": 0
+    },
+    "info_couchage": "Bas flancs, matelas",
+    "coord": {
+      "long": 0.34706711769104,
+      "lat": 42.524044315728
+    },
+    "links": [
+      "http://www.pyrenees-refuges.com/fr/affiche.php?numenr=25"
+    ],
+    "description": "joli refuge non garde en bon etat grande table et bancs cheminee telephone de secours armoire premiers secours grille de barbecue casserolles inox trepier pour poser sur le feu balai terrasse exterieure au milieu des paturages clairsemes de pins eau a la fuente de rianzes a 2 min ",
+    "remarque": "Excellent refuge comme précisé dans le descriptif. La randonnée qui y mène de Saravillo ou de Seira sur le GR15 offre de très jolies vues",
+    "modified_at": null
+  },
+  {
+    "name": "Refuge de Azpegi",
+    "region": "Orbaitzeta",
+    "altitude": 980,
+    "type": "cabane ouverte",
+    "departement": "Navarre",
+    "places": 20,
+    "info_comp": {
+      "cheminee": 1,
+      "bois": 1,
+      "eau": 1,
+      "couchage": 0,
+      "matelas": 0,
+      "bas_flancs": 0,
+      "lits": 0,
+      "mezzanine/etage": 0
+    },
+    "coord": {
+      "long": -1.227288,
+      "lat": 43.032262
+    },
+    "links": [
+      "http://www.pyrenees-refuges.com/fr/affiche.php?numenr=1234"
+    ],
+    "description": "grande batisse dont l etat est quasi neuf septembre 2013 on entre dans une grande piece carrelee equipee de deux tables et 4 bancs fixes au sol et une grande cheminee a droite une salle de taille moyenne avec un evier et un robinet et encore pas mal de place libre de la grande piece un escalier donne acces a la mezzanine au dessus de la petite piece tout en plancher qui peut accueillir une 10aine de duvets dehors une fontaine d un gros debit a 10 metres de la porte lieu situee sur le bord de la route qui monte d espagne vers orgambide juste avant qu elle ne sorte de la foret seul soucis la cheminee refoule pas mal de fumee dans la cabane",
+    "remarque": "Refugioa bikaina da. Iturri eder bat du kanpoan. Bigarren solairuan lo egiteko leku asko dago.\r\nVery good place to sleep. It has a wather source out. In the second floor, ther is a big place to sleep",
+    "modified_at": null
+  },
+  {
+    "name": "Cabane det Caillau",
+    "region": "Accous",
+    "altitude": 1456,
+    "type": "cabane ouverte mais ocupee par le berger l ete",
+    "departement": "Pyrénées-Atlantique",
+    "places": 20,
+    "info_comp": {
+      "cheminee": 1,
+      "bois": 0,
+      "eau": 0,
+      "couchage": 1,
+      "matelas": 0,
+      "bas_flancs": 0,
+      "lits": 1,
+      "mezzanine/etage": 1
+    },
+    "info_couchage": "lits, mezzanine",
+    "coord": {
+      "long": -0.64115999,
+      "lat": 42.87368
+    },
+    "links": [
+      "http://www.pyrenees-refuges.com/fr/affiche.php?numenr=76"
+    ],
+    "description": "grande cabane habitee par un berger l ete propre et confortable 3 pieces une avec table une chambre avec lits et mezzanine poele a l interieur mais pas de bois a proximite eau",
+    "remarque": "Visitada el 17/12/2020 en buenas condiciones, incluso electricidad",
+    "modified_at": null
+  },
+  {
+    "name": "Refugi Costabona",
+    "region": "Setcases",
+    "altitude": 2180,
+    "type": "cabane ouverte",
+    "departement": "Catalonia",
+    "places": 18,
+    "info_comp": {
+      "cheminee": 0,
+      "bois": 0,
+      "eau": 1,
+      "couchage": 1,
+      "matelas": 1,
+      "bas_flancs": 1,
+      "lits": 0,
+      "mezzanine/etage": 0
+    },
+    "info_couchage": "matelas, bas-flancs sur 3 nive",
+    "coord": {
+      "long": 2.3398033957015,
+      "lat": 42.410708297797
+    },
+    "links": [
+      "http://www.pyrenees-refuges.com/fr/affiche.php?numenr=383"
+    ],
+    "description": "tres accueillant table et bacs source a proximite quelques matelas et couvertures quelques provisions a disposition le systeme de lumiere est defectueux plus de poele ni de cheminee ",
+    "remarque": "18/10/2020 : fidèle au descriptif, pas de chauffage mais des couverture et bien isolé. 18 places me parait un peu exagéré, plutôt 12 sachant que le refuge est petit.",
+    "modified_at": null
+  },
+  {
+    "name": "Cabane de Sarnès ou Crabioules",
+    "region": "Cazeaux-de-Larboust",
+    "altitude": 2240,
+    "type": "cabane ouverte",
+    "departement": "Haute-Garonne",
+    "places": 16,
+    "info_comp": {
+      "cheminee": 0,
+      "bois": 0,
+      "eau": 1,
+      "couchage": 1,
+      "matelas": 0,
+      "bas_flancs": 1,
+      "lits": 0,
+      "mezzanine/etage": 0
+    },
+    "info_couchage": "Bas flancs",
+    "coord": {
+      "long": 0.53044373128491,
+      "lat": 42.724561392068
+    },
+    "links": [
+      "http://www.pyrenees-refuges.com/fr/affiche.php?numenr=335"
+    ],
+    "description": "partie berger fermee partie randonneur 6 places sur bas flancs 9 10 places au grenier petite table pas de cheminee reconstruite en 2016",
+    "remarque": "Que savez de la cabane du Clot dès Pitches au fond du cirque du Lys, où s’installèrent Fontan de Négrin et Jean d'Ussel la veille de l'ascension de la face Nord du Crabioules en 1906. Cordialement",
+    "modified_at": null
+  },
+  {
+    "name": "Refuge d'Ordizeto (ou Urdicetou)",
+    "region": "Bielsa",
+    "altitude": 2385,
+    "type": "cabane ouverte",
+    "departement": "Aragon",
+    "places": 24,
+    "info_comp": {
+      "cheminee": 1,
+      "bois": 0,
+      "eau": 1,
+      "couchage": 1,
+      "matelas": 0,
+      "bas_flancs": 0,
+      "lits": 0,
+      "mezzanine/etage": 0
+    },
+    "info_couchage": "Oui",
+    "coord": {
+      "long": 0.282308,
+      "lat": 42.668244
+    },
+    "links": [
+      "http://www.pyrenees-refuges.com/fr/affiche.php?numenr=1089"
+    ],
+    "description": "tres beau refuge pas encore totalement fini a l heure ou j ecris ces lignes brhall d entre separe grande salle au rez de chausse avec 3 tables et bancs poele en fonte pas encore fonctionnel mais reserve de bois a disposition et petite piece separee fonction bra l etage 8 matelas plastifies pouvant accueillir jusqu a 3 personnes chacun brvisiblement un telephone d urgence va etre installe dans le hall d entre antenne et mini panneau solaire bra l arriere du refuge il y a une petite piece environs 2 5m 1 5m avec une table des chaises et un autre poele mais pas reellement possible d y dormir brje ne sais pas si ce refuge sera garde mais il ne semble pas y avoir de partie privative pour un futur gardien ",
+    "remarque": "Març 2022. La situació del refugi és manté bastant semblant al que indica la descripció. La porta d'entrada està trencada, amb el que entra neu dins del cancell, i acaba entrant aigua a la sala principal del refugi, el que li dona molta humitat i fredor. Matalassos en bones condicions. Estufa però sense llenya. La ràdio d'emergència està operativa.",
+    "modified_at": null
+  },
+  {
+    "name": "Cabane de Sorda",
+    "region": "Canillo",
+    "altitude": 2295,
+    "type": "cabane ouverte",
+    "departement": "Andorre",
+    "places": 20,
+    "info_comp": {
+      "cheminee": 1,
+      "bois": 1,
+      "eau": 0,
+      "couchage": 1,
+      "matelas": 0,
+      "bas_flancs": 0,
+      "lits": 0,
+      "mezzanine/etage": 0
+    },
+    "info_couchage": "une dizaine, métalliques sur 2",
+    "coord": {
+      "long": 1.67146723,
+      "lat": 42.6112587
+    },
+    "links": [
+      "http://www.pyrenees-refuges.com/fr/affiche.php?numenr=303"
+    ],
+    "description": "cheminee 2 tables mais pas de matelas 4 bancs bois a proximite vers incles a une petite centaine de m plus bas environ 500m lineaire compter une bonne demi heure pour la remontee eau du lac partagee avec les chevaux en periode d estive possibilite carcasses d animaux pourrissants ",
+    "remarque": "El refugi segueix tal i com s'indica a les descripcions anteriors, en bon estat. La latrina seca està fora de servei.",
+    "modified_at": null
+  },
+  {
+    "name": "Refuge de Tabernes",
+    "region": "Gista",
+    "altitude": 1740,
+    "type": "cabane ouverte",
+    "departement": "Aragon",
+    "places": 30,
+    "info_comp": {
+      "cheminee": 1,
+      "bois": 1,
+      "eau": 1,
+      "couchage": 0,
+      "matelas": 1,
+      "bas_flancs": 0,
+      "lits": 0,
+      "mezzanine/etage": 0
+    },
+    "coord": {
+      "long": 0.361314,
+      "lat": 42.673617
+    },
+    "links": [
+      "http://www.pyrenees-refuges.com/fr/affiche.php?numenr=784"
+    ],
+    "description": "la longue piste de viados y mene bien pratique pour y dormir et demarer au point du jour bois pas de scie et eau tout proche remise en etat en 2007 il se compose de deux pieces une petite ou se trouve la cheminee et un table basse carree avec 4 bancs et une grande piece qui fait penser a une gigantesque cantine desaffectee grande table et des bancs le terrain de bivouac a cote est idyllique ",
+    "remarque": "Passé le 6.9.2022. Conforme au déscriptions. Plus des matelas.  Assez propre. JK  ",
+    "modified_at": null
+  },
+  {
+    "coord": {
+      "long": 1.6398092,
+      "lat": 42.4850065
+    },
+    "altitude": 2230.0,
+    "name": "Cabane Riu dels Orris",
+    "surname": "Refuge Riu dels Orris",
+    "links": [
+      "https://www.refuges.info/point/5444/cabane-non-gardee/refuge-Riu-dels-Orris/",
+      "http://www.pyrenees-refuges.com/fr/affiche.php?numenr=591",
+      "http://visitandorra.com/es/dormir/refugio-riu-dels-orris/"
+    ],
+    "type": "cabane ouverte",
+    "description": "Places prévues pour dormir: 6 Solide bâtisse en pierre (comme tous les refuges Andorran). [b]Ouvert toute l'année.[/b] [b][i]Équipement intérieur :[/i][/b] - 6 sommiers métalliques superposés (-> pas de matelas !) - [b][color=red]Matelas et sac de couchage obligatoire ! le métal c'est froid ![/color][/b] - 1 table - 1 banc - Pharmacie - 1 balai/pelle [b][i]A noter :[/i][/b] - Tous les printemps, les refuges sont passés en revue pour \"refaire les niveaux\" si on peut dire par des personnes gérant ces refuges, et visités régulièrement. - Ne soyez pas surpris d'avoir la visite des gardes, qui tournent et contrôlent régulièrement l'état de tous les refuges du pays mis à disposition et entretenus donc par le Gouvernement Andorran. [color=blue] Dans chaque refuge Andorran, on trouve (parfois y'en a plus ...) un \"Passeport de Refugis\" avec un tampon à appliquer sur la case qui va bien. Lorsque vous avez parcouru l'un des chemins traversant le pays (GR11, HRP, ...), vous présentez le passeport à l'office National de Tourisme qui vous remet un diplôme correspondant et un cadeau ! [/color] Le refuge se trouve dans la vallée du Madriu, entre le Coll Jovell à l'Ouest et le refuge Riu dels Orris à l'Est. La vallée du Madriu est classée au Patrimoine Mondial de l'Unesco ! rien que ça !, infos UNESCO : [url=http://whc.unesco.org/fr/list/1160]La Vallée du Madriu-Perafita-Claror[/url] [b][i]Depuis la [->5413] :[/i][/b] - On remontant le Val Madriu d'abord vers le SE, puis après un plat reposant vers le NE. [b][i]Depuis le [->5435] :[/i][/b] On continue de descendre la vallée ...jusqu'au refuge. Propriétaire : [url=http://www.andorramania.com/]Gouvernement Andorran[/url] Departament de Patrimoni Natural C. Prat de la creu, 62-64, 1r pis AD500 Andorra la Vella Téléphone : +376 875 712 Téléphone : +376 875 723 Mail : patrimoni_natural@govern.ad [url=https://www.mediambient.ad/medi-natural/llista-de-refugis-d-andorra]Liste des Refuges d'Andorre[/url] [url=https://www.patrimoninatural.ad/images/stories/Mapa_Refugis_GR.pdf]Situation globale de tous les refuges + infos (Attention 8Mo)[/url]",
+    "remarque": "Solide bâtisse en pierre (comme tous les refuges Andorran). [b]Ouvert toute l'année.[/b] [b][i]Équipement intérieur :[/i][/b] - 6 sommiers métalliques superposés (-> pas de matelas !) - [b][color=red]Matelas et sac de couchage obligatoire ! le métal c'est froid ![/color][/b] - 1 table - 1 banc - Pharmacie - 1 balai/pelle [b][i]A noter :[/i][/b] - Tous les printemps, les refuges sont passés en revue pour \"refaire les niveaux\" si on peut dire par des personnes gérant ces refuges, et visités régulièrement. - Ne soyez pas surpris d'avoir la visite des gardes, qui tournent et contrôlent régulièrement l'état de tous les refuges du pays mis à disposition et entretenus donc par le Gouvernement Andorran. [color=blue] Dans chaque refuge Andorran, on trouve (parfois y'en a plus ...) un \"Passeport de Refugis\" avec un tampon à appliquer sur la case qui va bien. Lorsque vous avez parcouru l'un des chemins traversant le pays (GR11, HRP, ...), vous présentez le passeport à l'office National de Tourisme qui vous remet un diplôme correspondant et un cadeau ! [/color]",
+    "places": 6,
+    "info_comp": {
+      "latrines": 0,
+      "matelas": 0,
+      "couvertures": 0,
+      "couchage": 0,
+      "bas_flancs": 0,
+      "poele": 0,
+      "manque_un_mur": 0,
+      "mezzanine/etage": 0,
+      "bois": 1,
+      "lits": 0,
+      "cheminee": 1,
+      "eau": 1
+    },
+    "modified_at": "2024-12-29",
+    "region": "Escaldes-Engordany",
+    "departement": "Andorre"
+  },
+  {
+    "name": "Refugi Pla de Satlla",
+    "region": "Vilallonga de Ter",
+    "altitude": 1555,
+    "type": "cabane ouverte",
+    "departement": "Catalonia",
+    "places": 4,
+    "info_comp": {
+      "cheminee": 1,
+      "bois": 1,
+      "eau": 1,
+      "couchage": 1,
+      "matelas": 0,
+      "bas_flancs": 1,
+      "lits": 0,
+      "mezzanine/etage": 0
+    },
+    "info_couchage": "Bas-flanc en bois",
+    "coord": {
+      "long": 2.270866,
+      "lat": 42.307092
+    },
+    "links": [
+      "http://www.pyrenees-refuges.com/fr/affiche.php?numenr=1658"
+    ],
+    "description": "cabane ouverte mai 2018 berger et troupeaux en saison peut etre qu une partie lui est reservee cheminee et bas flanc en bois pour au moins 4 personnes a visiter pour des informations plus precises situe entre abella et le collada verda ",
+    "remarque": "Refugi en estat precari, una de les habitacions està completament inhabitable: porta que no tanca i tot ple de fems del bestiar (em vaig trobar un cavall a dins!).\r\nL'altra no té pany, però tanca millor i no hi havia rastre d'animals, això si, moltes deixalles i menjar podrit.\r\nA part d'això la xemaneia va bé i hi vaig passar una bona nit quan hi vaig dormir.",
+    "modified_at": null
+  }
+]

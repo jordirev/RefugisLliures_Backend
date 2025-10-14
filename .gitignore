@@ -144,6 +144,13 @@ ENV/
 env.bak/
 venv.bak/
 
+# Environment configuration files (carpeta env)
+env/.env
+env/.env.local
+env/.env.development
+env/api-keys.env
+env/firebase-service-account*.json
+
 # Spyder project settings
 .spyderproject
 .spyproject
