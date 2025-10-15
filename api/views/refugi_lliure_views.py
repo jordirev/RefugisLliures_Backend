@@ -10,10 +10,8 @@ from ..controllers.refugi_lliure_controller import RefugiLliureController
 from ..serializers.refugi_lliure_serializer import (
     RefugiSerializer, 
     RefugiSearchResponseSerializer,
-    RefugiCoordinatesResponseSerializer,
     HealthCheckResponseSerializer,
-    RefugiSearchFiltersSerializer,
-    RefugiCoordinatesFiltersSerializer
+    RefugiSearchFiltersSerializer
 )
 
 # Configurar logging
@@ -81,8 +79,12 @@ def refugi_detail(request, refugi_id):
 
 @api_view(['GET'])
 @permission_classes([AllowAny])
-def search_refugis(request):
-    """Cerca refugis amb filtres"""
+def refugis_collection(request):
+    """
+    Endpoint unificat per obtenir refugis amb o sense filtres
+    - Sense filtres: retorna totes les coordenades dels refugis
+    - Amb filtres: cerca i retorna refugis que compleixen els criteris
+    """
     try:
         # Validar paràmetres d'entrada
         filters_serializer = RefugiSearchFiltersSerializer(data=request.GET)
@@ -108,45 +110,7 @@ def search_refugis(request):
             return Response(search_result, status=status.HTTP_200_OK)
         
     except Exception as e:
-        logger.error(f'Error searching refugis: {str(e)}')
-        return Response({
-            'error': f'Internal server error: {str(e)}'
-        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-@api_view(['GET'])
-@permission_classes([AllowAny])
-def refugi_coordinates(request):
-    """Obtenir només les coordenades de tots els refugis des d'un sol document"""
-    try:
-        # Validar paràmetres d'entrada
-        filters_serializer = RefugiCoordinatesFiltersSerializer(data=request.GET)
-        if not filters_serializer.is_valid():
-            return Response({
-                'error': 'Invalid query parameters',
-                'details': filters_serializer.errors
-            }, status=status.HTTP_400_BAD_REQUEST)
-        
-        controller = RefugiLliureController()
-        coordinates_result, error = controller.get_refugi_coordinates(filters_serializer.validated_data)
-        
-        if error:
-            return Response({
-                'error': error
-            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        
-        # Si no s'han trobat coordenades, retornar 404
-        if coordinates_result.get('count', 0) == 0 and 'message' in coordinates_result:
-            return Response(coordinates_result, status=status.HTTP_404_NOT_FOUND)
-        
-        # Serialitzar la resposta
-        response_serializer = RefugiCoordinatesResponseSerializer(data=coordinates_result)
-        if response_serializer.is_valid():
-            return Response(response_serializer.validated_data, status=status.HTTP_200_OK)
-        else:
-            return Response(coordinates_result, status=status.HTTP_200_OK)
-        
-    except Exception as e:
-        logger.error(f'Error getting refugi coordinates: {str(e)}')
+        logger.error(f'Error processing refugis request: {str(e)}')
         return Response({
             'error': f'Internal server error: {str(e)}'
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

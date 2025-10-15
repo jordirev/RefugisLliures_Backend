@@ -52,11 +52,7 @@ class RefugiSearchResponseSerializer(serializers.Serializer):
     results = RefugiSerializer(many=True)
     filters = serializers.DictField()
 
-class RefugiCoordinatesResponseSerializer(serializers.Serializer):
-    """Serializer per a resposta de coordenades"""
-    count = serializers.IntegerField()
-    total_available = serializers.IntegerField()
-    coordinates = RefugiCoordinatesSerializer(many=True)
+
 
 class HealthCheckResponseSerializer(serializers.Serializer):
     """Serializer per a resposta de health check"""
@@ -68,9 +64,78 @@ class HealthCheckResponseSerializer(serializers.Serializer):
 
 class RefugiSearchFiltersSerializer(serializers.Serializer):
     """Serializer per a filtres de cerca"""
+    # Text search
     q = serializers.CharField(required=False, default='', allow_blank=True)
-    limit = serializers.IntegerField(required=False, default=10, min_value=1, max_value=100)
+    name = serializers.CharField(required=False, default='', allow_blank=True)
+    
+    # Location filters
+    region = serializers.CharField(required=False, default='', allow_blank=True)
+    departement = serializers.CharField(required=False, default='', allow_blank=True)
 
-class RefugiCoordinatesFiltersSerializer(serializers.Serializer):
+    # Characteristics filters
+    type = serializers.CharField(required=False, default='', allow_blank=True)
+    
+    # Numeric range filters
+    places_min = serializers.IntegerField(required=False, allow_null=True, min_value=0)
+    places_max = serializers.IntegerField(required=False, allow_null=True, min_value=0)
+    altitude_min = serializers.IntegerField(required=False, allow_null=True, min_value=0)
+    altitude_max = serializers.IntegerField(required=False, allow_null=True, min_value=0)
+    
+    # Info complementaria filters (1 = required feature)
+    cheminee = serializers.IntegerField(required=False, allow_null=True, min_value=0, max_value=1)
+    poele = serializers.IntegerField(required=False, allow_null=True, min_value=0, max_value=1)
+    couvertures = serializers.IntegerField(required=False, allow_null=True, min_value=0, max_value=1)
+    latrines = serializers.IntegerField(required=False, allow_null=True, min_value=0, max_value=1)
+    bois = serializers.IntegerField(required=False, allow_null=True, min_value=0, max_value=1)
+    eau = serializers.IntegerField(required=False, allow_null=True, min_value=0, max_value=1)
+    matelas = serializers.IntegerField(required=False, allow_null=True, min_value=0, max_value=1)
+    couchage = serializers.IntegerField(required=False, allow_null=True, min_value=0, max_value=1)
+    lits = serializers.IntegerField(required=False, allow_null=True, min_value=0, max_value=1)
+    
+    def validate(self, data):
+        """Validació personalitzada per assegurar que min < max i que siguin enters positius"""
+        # Validar places_min < places_max i que siguin enters positius
+        places_min = data.get('places_min')
+        places_max = data.get('places_max')
+
+        if places_min is not None:
+            if places_min < 0:
+                raise serializers.ValidationError({
+                    'places_min': 'places_min ha de ser un enter positiu'
+                })
+        if places_max is not None:
+            if places_max < 0:
+                raise serializers.ValidationError({
+                    'places_max': 'places_max ha de ser un enter positiu'
+                })
+        if places_min is not None and places_max is not None:
+            if places_min > places_max:
+                raise serializers.ValidationError({
+                    'places_min': 'places_min ha de ser menor o igual que places_max'
+                })
+
+        # Validar altitude_min < altitude_max i que siguin enters positius
+        altitude_min = data.get('altitude_min')
+        altitude_max = data.get('altitude_max')
+
+        if altitude_min is not None:
+            if altitude_min < 0:
+                raise serializers.ValidationError({
+                    'altitude_min': 'altitude_min ha de ser un enter positiu'
+                })
+        if altitude_max is not None:
+            if altitude_max < 0:
+                raise serializers.ValidationError({
+                    'altitude_max': 'altitude_max ha de ser un enter positiu'
+                })
+        if altitude_min is not None and altitude_max is not None:
+            if altitude_min > altitude_max:
+                raise serializers.ValidationError({
+                    'altitude_min': 'altitude_min ha de ser menor o igual que altitude_max'
+                })
+
+        return data
+
+#class RefugiCoordinatesFiltersSerializer(serializers.Serializer):
     """Serializer per a filtres de coordenades"""
-    limit = serializers.IntegerField(required=False, default=1000, min_value=1, max_value=1000)
+    """Serà util per quan haguem de filtrar per ubicació"""

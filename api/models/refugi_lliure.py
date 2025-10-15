@@ -196,12 +196,34 @@ class RefugiCoordinates:
 @dataclass
 class RefugiSearchFilters:
     """Model per representar filtres de cerca"""
+    # Text search
     query_text: str = ""
-    limit: int = 10
+    name: str = ""
+    
+    # Location filters
+    region: str = ""
+    departement: str = ""
+
+    # Characteristics filters
+    type: str = ""
+    
+    # Numeric range filters
+    places_min: Optional[int] = None
+    places_max: Optional[int] = None
+    altitude_min: Optional[int] = None
+    altitude_max: Optional[int] = None
+    
+    # Info complementaria filters (1 = has feature, 0 or None = ignore)
+    cheminee: Optional[int] = None
+    poele: Optional[int] = None
+    couvertures: Optional[int] = None
+    latrines: Optional[int] = None
+    bois: Optional[int] = None
+    eau: Optional[int] = None
+    matelas: Optional[int] = None
+    couchage: Optional[int] = None
+    lits: Optional[int] = None
     
     def __post_init__(self):
         """Validacions dels filtres"""
-        if self.limit > 100:
-            self.limit = 100
-        elif self.limit < 1:
-            self.limit = 1
+            
