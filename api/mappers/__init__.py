@@ -2,5 +2,6 @@
 Mappers per a la transformació de dades entre Firebase i Django
 """
 from .user_mapper import UserMapper
+from .refugi_lliure_mapper import RefugiLliureMapper
 
-__all__ = ['UserMapper']
+__all__ = ['UserMapper', 'RefugiLliureMapper']

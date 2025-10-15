@@ -6,11 +6,31 @@ from .user_serializer import (
     UserListSerializer,
     PaginationQuerySerializer
 )
+from .refugi_lliure_serializer import (
+    RefugiSerializer,
+    RefugiCoordinatesSerializer,
+    RefugiSearchResponseSerializer,
+    RefugiCoordinatesResponseSerializer,
+    HealthCheckResponseSerializer,
+    RefugiSearchFiltersSerializer,
+    RefugiCoordinatesFiltersSerializer,
+    CoordinatesSerializer,
+    InfoComplementariaSerializer
+)
 
 __all__ = [
     'UserSerializer', 
     'UserCreateSerializer', 
     'UserUpdateSerializer',
     'UserListSerializer',
-    'PaginationQuerySerializer'
+    'PaginationQuerySerializer',
+    'RefugiSerializer',
+    'RefugiCoordinatesSerializer',
+    'RefugiSearchResponseSerializer',
+    'RefugiCoordinatesResponseSerializer',
+    'HealthCheckResponseSerializer',
+    'RefugiSearchFiltersSerializer',
+    'RefugiCoordinatesFiltersSerializer',
+    'CoordinatesSerializer',
+    'InfoComplementariaSerializer'
 ]

@@ -104,7 +104,7 @@ class RefugiAPITestCase(TestCase):
         mock_collection = MagicMock()
         mock_query = MagicMock()
         mock_docs = [
-            MagicMock(id='test1', to_dict=lambda: {'nom': 'Cabane Test', 'comarca': 'TestComarca'}),
+            MagicMock(id='test1', to_dict=lambda: {'nom': 'Cabane Test'}),
         ]
         
         mock_db.collection.return_value = mock_collection

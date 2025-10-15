@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import health_check, refugi_detail, search_refugis, refugi_coordinates
+from .views.refugi_lliure_views import health_check, refugi_detail, search_refugis, refugi_coordinates
 from .views.user_views import (
     users_collection,
     user_detail, 
