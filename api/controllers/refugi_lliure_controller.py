@@ -42,7 +42,6 @@ class RefugiLliureController:
         try:
             # Crear filtres de cerca des dels query_params validats
             filters = RefugiSearchFilters(
-                query_text=query_params.get('q', '').strip(),
                 name=query_params.get('name', '').strip(),
                 region=query_params.get('region', '').strip(),
                 departement=query_params.get('departement', '').strip(),
@@ -67,7 +66,6 @@ class RefugiLliureController:
             
             # Prepare applied filters for response
             applied_filters = {
-                'query': filters.query_text,
                 'name': filters.name,
                 'region': filters.region,
                 'departement': filters.departement,
@@ -78,8 +76,8 @@ class RefugiLliureController:
             
             # Check if we have any active filters to determine response format
             has_filters = bool(applied_filters or 
-                             (filters.places_min is not None and filters.places_max is not None) or
-                             (filters.altitude_min is not None and filters.altitude_max is not None) or
+                             (filters.places_min is not None or filters.places_max is not None) or
+                             (filters.altitude_min is not None or filters.altitude_max is not None) or
                              any([filters.cheminee, filters.poele, filters.couvertures, filters.latrines,
                                   filters.bois, filters.eau, filters.matelas, filters.couchage, filters.lits]))
             

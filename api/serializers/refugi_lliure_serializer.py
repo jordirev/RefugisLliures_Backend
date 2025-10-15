@@ -65,7 +65,6 @@ class HealthCheckResponseSerializer(serializers.Serializer):
 class RefugiSearchFiltersSerializer(serializers.Serializer):
     """Serializer per a filtres de cerca"""
     # Text search
-    q = serializers.CharField(required=False, default='', allow_blank=True)
     name = serializers.CharField(required=False, default='', allow_blank=True)
     
     # Location filters

@@ -35,7 +35,7 @@ class RefugiLliureDao:
             raise
     
     def search_refugis(self, filters: RefugiSearchFilters) -> List[Dict[str, Any]]:
-        """Cercar refugis amb filtres"""
+        """Cercar refugis amb filtres optimitzats per índexs composats"""
         try:
             db = firestore_service.get_db()
             
@@ -46,49 +46,147 @@ class RefugiLliureDao:
                 # No filters applied - use coordinate collection for efficiency
                 return self._get_coordinates_as_refugi_list()
             else:
-                # Filters applied - need full data from main collection
-                refugis_ref = db.collection(self.collection_name)
-                
-                # Obtenir tots els documents (Firestore no permet filtres complexos en una sola query)
-                docs = refugis_ref.stream()
-                
-                refugis = []
-                for doc in docs:
-                    refugi_data = doc.to_dict()
-                    
-                    # Apply all filters
-                    if self._matches_filters(refugi_data, filters):
-                        refugis.append(refugi_data)
-                
-                return refugis
+                # Filters applied - build optimized query
+                return self._build_optimized_query(db, filters)
             
         except Exception as e:
             logger.error(f'Error searching refugis: {str(e)}')
             raise
-    
-    def _matches_filters(self, refugi_data: Dict[str, Any], filters: RefugiSearchFilters) -> bool:
-        """Check if a refugi matches all the provided filters"""
+
+    def _build_optimized_query(self, db, filters: RefugiSearchFilters) -> List[Dict[str, Any]]:
+        """Build query optimized for composite indexes"""
         
-        # Exact name match
+        # Exact name match - most specific, use direct query
         if filters.name:
-            if refugi_data.get('name', '').lower() != filters.name.lower():
-                return False
+            return self._query_by_name(db, filters.name)
         
-        # Location filters
-        if filters.region and refugi_data.get('region') != filters.region:
-            return False
-        if filters.departement and refugi_data.get('departement') != filters.departement:
-            return False
+        # Try composite index patterns (order matters for Firestore)
+        refugis_ref = db.collection(self.collection_name)
         
-        # Type filter
-        if filters.type and refugi_data.get('type') != filters.type:
-            return False
+        # Pattern 1: (departement, region, type, places) - most specific composite
+        if all([filters.departement, filters.region, filters.type, 
+               filters.places_min is not None or filters.places_max is not None]):
+            query = refugis_ref.where('departement', '==', filters.departement) \
+                              .where('region', '==', filters.region) \
+                              .where('type', '==', filters.type)
+            
+            # Both min and max can be applied to the same field
+            if filters.places_min is not None:
+                query = query.where('places', '>=', filters.places_min)
+            if filters.places_max is not None:
+                query = query.where('places', '<=', filters.places_max)
+            
+            return self._execute_query_with_memory_filters(query, filters)
         
-        # Numeric range filters - if field is null, refugi fails the filter
+        # Pattern 2: (departement, region, places)
+        elif all([filters.departement, filters.region, 
+                 filters.places_min is not None or filters.places_max is not None]):
+            query = refugis_ref.where('departement', '==', filters.departement) \
+                              .where('region', '==', filters.region)
+            
+            # Both min and max can be applied to the same field
+            if filters.places_min is not None:
+                query = query.where('places', '>=', filters.places_min)
+            if filters.places_max is not None:
+                query = query.where('places', '<=', filters.places_max)
+            
+            return self._execute_query_with_memory_filters(query, filters)
+        
+        # Pattern 3: (departement, region, altitude)
+        elif all([filters.departement, filters.region,
+                 filters.altitude_min is not None or filters.altitude_max is not None]):
+            query = refugis_ref.where('departement', '==', filters.departement) \
+                              .where('region', '==', filters.region)
+            
+            # Both min and max can be applied to the same field
+            if filters.altitude_min is not None:
+                query = query.where('altitude', '>=', filters.altitude_min)
+            if filters.altitude_max is not None:
+                query = query.where('altitude', '<=', filters.altitude_max)
+            
+            return self._execute_query_with_memory_filters(query, filters)
+        
+        # Pattern 4: (departement, region) - basic location composite
+        elif filters.departement and filters.region:
+            query = refugis_ref.where('departement', '==', filters.departement) \
+                              .where('region', '==', filters.region)
+            
+            return self._execute_query_with_memory_filters(query, filters)
+        
+        # Pattern 5: Single field queries with chained where clauses
+        else:
+            return self._build_chained_where_query(refugis_ref, filters)
+
+    def _query_by_name(self, db, name: str) -> List[Dict[str, Any]]:
+        """Direct query by name - exact match"""
+        refugis_ref = db.collection(self.collection_name)
+        docs = refugis_ref.where('name', '==', name).stream()
+        
+        results = []
+        for doc in docs:
+            refugi_data = doc.to_dict()
+            refugi_data['id'] = doc.id
+            results.append(refugi_data)
+        
+        return results
+
+    def _build_chained_where_query(self, refugis_ref, filters: RefugiSearchFilters) -> List[Dict[str, Any]]:
+        """Build query using chained where clauses for non-composite scenarios"""
+        query = refugis_ref
+        
+        # Apply single-field equality filters first (most selective)
+        if filters.departement:
+            query = query.where('departement', '==', filters.departement)
+        
+        if filters.region:
+            query = query.where('region', '==', filters.region)
+        
+        if filters.type:
+            query = query.where('type', '==', filters.type)
+        
+        # Apply range filters - Firestore allows multiple ranges on same field
+        range_applied = False
+        
+        # Prioritize places range over altitude if both present (can't have ranges on different fields)
+        if filters.places_min is not None or filters.places_max is not None:
+            if filters.places_min is not None:
+                query = query.where('places', '>=', filters.places_min)
+            if filters.places_max is not None:
+                query = query.where('places', '<=', filters.places_max)
+            range_applied = True
+        
+        elif filters.altitude_min is not None or filters.altitude_max is not None:
+            if filters.altitude_min is not None:
+                query = query.where('altitude', '>=', filters.altitude_min)
+            if filters.altitude_max is not None:
+                query = query.where('altitude', '<=', filters.altitude_max)
+            range_applied = True
+        
+        return self._execute_query_with_memory_filters(query, filters)
+
+    def _execute_query_with_memory_filters(self, query, filters: RefugiSearchFilters) -> List[Dict[str, Any]]:
+        """Execute Firestore query and apply remaining filters in memory"""
+        docs = query.stream()
+        
+        results = []
+        for doc in docs:
+            refugi_data = doc.to_dict()
+            refugi_data['id'] = doc.id
+            
+            # Apply filters that couldn't be handled by Firestore query
+            if self._matches_memory_filters(refugi_data, filters):
+                results.append(refugi_data)
+        
+        return results
+
+    def _matches_memory_filters(self, refugi_data: Dict[str, Any], filters: RefugiSearchFilters) -> bool:
+        """Apply filters in memory that weren't handled by the Firestore query"""
+        
+        # Check numeric ranges that might not have been applied in query
         places = refugi_data.get('places')
         if filters.places_min is not None or filters.places_max is not None:
             if places is None:
-                return False  # Refugi with null places fails filter
+                return False
             if filters.places_min is not None and places < filters.places_min:
                 return False
             if filters.places_max is not None and places > filters.places_max:
@@ -97,16 +195,16 @@ class RefugiLliureDao:
         altitude = refugi_data.get('altitude')
         if filters.altitude_min is not None or filters.altitude_max is not None:
             if altitude is None:
-                return False  # Refugi with null altitude fails filter
+                return False
             if filters.altitude_min is not None and altitude < filters.altitude_min:
                 return False
             if filters.altitude_max is not None and altitude > filters.altitude_max:
                 return False
         
-        # Info complementaria filters (only check if filter value is 1)
+        # Check info_comp filters (amenities)
         info_comp = refugi_data.get('info_comp', {})
         
-        filter_checks = [
+        amenity_filters = [
             ('cheminee', filters.cheminee),
             ('poele', filters.poele),
             ('couvertures', filters.couvertures),
@@ -118,7 +216,7 @@ class RefugiLliureDao:
             ('lits', filters.lits)
         ]
         
-        for field_name, filter_value in filter_checks:
+        for field_name, filter_value in amenity_filters:
             if filter_value == 1:  # Only check when specifically requesting this feature
                 if info_comp.get(field_name, 0) != 1:
                     return False
@@ -126,9 +224,8 @@ class RefugiLliureDao:
         return True
     
     def _has_active_filters(self, filters: RefugiSearchFilters) -> bool:
-        """Check if any filters are active (excluding limit)"""
+        """Check if any filters are active"""
         return bool(
-            filters.query_text or
             filters.name or
             filters.region or
             filters.departement or
@@ -137,15 +234,15 @@ class RefugiLliureDao:
             filters.places_max is not None or
             filters.altitude_min is not None or
             filters.altitude_max is not None or
-            filters.cheminee is not None or
-            filters.poele is not None or
-            filters.couvertures is not None or
-            filters.latrines is not None or
-            filters.bois is not None or
-            filters.eau is not None or
-            filters.matelas is not None or
-            filters.couchage is not None or
-            filters.lits is not None
+            filters.cheminee == 1 or
+            filters.poele == 1 or
+            filters.couvertures == 1 or
+            filters.latrines == 1 or
+            filters.bois == 1 or
+            filters.eau == 1 or
+            filters.matelas == 1 or
+            filters.couchage == 1 or
+            filters.lits == 1
         )
     
     def _get_coordinates_as_refugi_list(self) -> List[Dict[str, Any]]:

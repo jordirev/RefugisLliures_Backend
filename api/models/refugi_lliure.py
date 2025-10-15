@@ -197,7 +197,6 @@ class RefugiCoordinates:
 class RefugiSearchFilters:
     """Model per representar filtres de cerca"""
     # Text search
-    query_text: str = ""
     name: str = ""
     
     # Location filters
