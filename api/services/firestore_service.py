@@ -2,6 +2,7 @@
 Servei per gestionar la connexió amb Firestore
 """
 import os
+import json
 import logging
 from django.conf import settings
 import firebase_admin
@@ -37,13 +38,30 @@ class FirestoreService:
     def _initialize_firebase(self):
         """Inicialitza Firebase Admin SDK"""
         try:
-            cred_path = os.path.join(settings.BASE_DIR, 'env', 'firebase-service-account.json')
+            cred = None
             
-            if not os.path.exists(cred_path):
-                logger.error(f'Firebase credentials file not found at {cred_path}')
-                raise FileNotFoundError(f'Firebase credentials file not found at {cred_path}')
+            # Primer, intentem utilitzar la variable d'entorn FIREBASE_SERVICE_ACCOUNT_KEY
+            if hasattr(settings, 'FIREBASE_SERVICE_ACCOUNT_KEY') and settings.FIREBASE_SERVICE_ACCOUNT_KEY:
+                try:
+                    # Parsejem el JSON de la variable d'entorn
+                    service_account_info = json.loads(settings.FIREBASE_SERVICE_ACCOUNT_KEY)
+                    cred = credentials.Certificate(service_account_info)
+                    logger.info('Firebase credentials loaded from environment variable')
+                except json.JSONDecodeError as e:
+                    logger.error(f'Error parsing Firebase credentials from environment variable: {str(e)}')
+                    raise e
+            else:
+                # Si no hi ha variable d'entorn, intentem llegir des del fitxer
+                cred_path = os.path.join(settings.BASE_DIR, settings.GOOGLE_APPLICATION_CREDENTIALS)
                 
-            cred = credentials.Certificate(cred_path)
+                if not os.path.exists(cred_path):
+                    logger.error(f'Firebase credentials file not found at {cred_path}')
+                    raise FileNotFoundError(f'Firebase credentials file not found at {cred_path}')
+                    
+                cred = credentials.Certificate(cred_path)
+                logger.info(f'Firebase credentials loaded from file: {cred_path}')
+            
+            # Inicialitzem Firebase amb les credencials
             firebase_admin.initialize_app(cred)
             self._db = firestore.client()
             
