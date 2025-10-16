@@ -5,3 +5,4 @@ django-cors-headers==4.4.0
 firebase-admin==6.5.0
 whitenoise==6.6.0
 gunicorn==21.2.0
+drf_yasg
