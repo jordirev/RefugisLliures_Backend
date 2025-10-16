@@ -20,7 +20,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Detect environment and load appropriate .env file
 if os.environ.get('RENDER') or os.environ.get('PRODUCTION'):
     # Production environment (Render or other production)
-    env_file = BASE_DIR / 'env' / '.env'
+    env_file = BASE_DIR / 'env' / '.env.production'
 else:
     # Development environment
     env_file = BASE_DIR / 'env' / '.env.development'
@@ -66,7 +66,7 @@ MIDDLEWARE = [
     'django.contrib.sessions.middleware.SessionMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
-    'django.middleware.csrf.CsrfViewMiddleware',
+    #'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
