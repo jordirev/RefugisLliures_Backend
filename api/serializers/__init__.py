@@ -10,10 +10,8 @@ from .refugi_lliure_serializer import (
     RefugiSerializer,
     RefugiCoordinatesSerializer,
     RefugiSearchResponseSerializer,
-    RefugiCoordinatesResponseSerializer,
     HealthCheckResponseSerializer,
     RefugiSearchFiltersSerializer,
-    RefugiCoordinatesFiltersSerializer,
     CoordinatesSerializer,
     InfoComplementariaSerializer
 )
