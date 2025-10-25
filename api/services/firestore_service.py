@@ -23,7 +23,9 @@ class FirestoreService:
     
     def get_db(self):
         """Obté la connexió amb Firestore"""
+        logger.log(22, 'FirestoreService.get_db called')
         if self._db is not None:
+            logger.log(22, 'Returning existing Firestore client')
             return self._db
         
         try:
@@ -46,7 +48,7 @@ class FirestoreService:
                     # Parsejem el JSON de la variable d'entorn
                     service_account_info = json.loads(settings.FIREBASE_SERVICE_ACCOUNT_KEY)
                     cred = credentials.Certificate(service_account_info)
-                    logger.info('Firebase credentials loaded from environment variable')
+                    logger.log(22, 'Firebase credentials loaded from environment variable')
                 except json.JSONDecodeError as e:
                     logger.error(f'Error parsing Firebase credentials from environment variable: {str(e)}')
                     raise e
@@ -59,13 +61,13 @@ class FirestoreService:
                     raise FileNotFoundError(f'Firebase credentials file not found at {cred_path}')
                     
                 cred = credentials.Certificate(cred_path)
-                logger.info(f'Firebase credentials loaded from file: {cred_path}')
+                logger.log(22, f'Firebase credentials loaded from file: {cred_path}')
             
             # Inicialitzem Firebase amb les credencials
             firebase_admin.initialize_app(cred)
             self._db = firestore.client()
             
-            logger.info('Firebase initialized successfully')
+            logger.log(22, 'Firebase initialized successfully')
             return self._db
             
         except Exception as e:

@@ -171,3 +171,89 @@ SECURE_SSL_REDIRECT = config('SECURE_SSL_REDIRECT', default=False, cast=bool)
 SESSION_COOKIE_SECURE = config('SESSION_COOKIE_SECURE', default=False, cast=bool)
 CSRF_COOKIE_SECURE = config('CSRF_COOKIE_SECURE', default=False, cast=bool)
 
+# Redis Cache Configuration
+
+REDIS_URL = config('REDIS_URL', default='redis://localhost:6379/1')
+
+CACHES = {
+    'default': {
+        'BACKEND': 'django_redis.cache.RedisCache',
+        'LOCATION': REDIS_URL,
+        'OPTIONS': {
+            'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+            'SOCKET_CONNECT_TIMEOUT': 5,
+            'SOCKET_TIMEOUT': 5,
+            'CONNECTION_POOL_KWARGS': {
+                'max_connections': 50,
+                'retry_on_timeout': True
+            },
+            'COMPRESSOR': 'django_redis.compressors.zlib.ZlibCompressor',
+        },
+        'KEY_PREFIX': 'refugis',
+        'TIMEOUT': 300,  # 5 minuts per defecte
+    }
+}
+
+# Cache timeouts personalitzats
+CACHE_TIMEOUTS = {
+    'refugi_detail': config('CACHE_TIMEOUT_REFUGI_DETAIL', default=600, cast=int),  # 10 minuts
+    'refugi_list': config('CACHE_TIMEOUT_REFUGI_LIST', default=300, cast=int),  # 5 minuts
+    'refugi_search': config('CACHE_TIMEOUT_REFUGI_SEARCH', default=180, cast=int),  # 3 minuts
+    'refugi_coords': config('CACHE_TIMEOUT_REFUGI_COORDS', default=36000, cast=int),  # 1 hora
+    'user_detail': config('CACHE_TIMEOUT_USER_DETAIL', default=300, cast=int),  # 5 minuts
+}
+
+
+# Logging configuration: enable INFO logs for cache and firestore access tracing
+import logging
+
+# Define custom levels so logs can show friendly level names for quick identification
+# Numeric values chosen between standard levels (DEBUG=10, INFO=20, WARNING=30)
+CACHE_LEVEL = 21
+FIRESTORE_LEVEL = 22
+DAO_LEVEL = 23
+
+# Register the custom level names so they appear as 'CACHE', 'FIRESTORE', 'DAO'
+logging.addLevelName(CACHE_LEVEL, 'CACHE')
+logging.addLevelName(FIRESTORE_LEVEL, 'FIRESTORE')
+logging.addLevelName(DAO_LEVEL, 'DAO')
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'standard': {
+            'format': '%(asctime)s [%(levelname)s] %(name)s: %(message)s'
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'standard',
+        },
+    },
+    'loggers': {
+        'api.services.cache_service': {
+            'handlers': ['console'],
+            'level': CACHE_LEVEL,
+            'propagate': False,
+        },
+        'api.services.firestore_service': {
+            'handlers': ['console'],
+            'level': FIRESTORE_LEVEL,
+            'propagate': False,
+        },
+        'api.daos': {
+            'handlers': ['console'],
+            'level': DAO_LEVEL,
+            'propagate': False,
+        },
+        # Fallback for whole api package
+        'api': {
+            'handlers': ['console'],
+            'level': 'WARNING',
+            'propagate': False,
+        },
+    }
+}
+

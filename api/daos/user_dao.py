@@ -4,6 +4,7 @@ DAO per a la gestió d'usuaris amb Firestore
 import logging
 from typing import List, Optional, Dict, Any
 from ..services.firestore_service import FirestoreService
+from ..services.cache_service import cache_service
 
 logger = logging.getLogger(__name__)
 
@@ -28,6 +29,7 @@ class UserDAO:
         """
         try:
             db = self.firestore_service.get_db()
+            logger.log(23, f"Firestore WRITE: collection={self.COLLECTION_NAME} (create document with uid={user_data.get('uid')})")
             
             # Utilitza el uid com a document ID
             uid = user_data.get('uid')
@@ -39,6 +41,9 @@ class UserDAO:
             doc_ref = db.collection(self.COLLECTION_NAME).document(uid)
             doc_ref.set(user_data)
             
+            # Invalida cache relacionada
+            cache_service.delete_pattern('user_list')
+            
             logger.info(f"Usuari creat amb UID: {uid}")
             return uid
             
@@ -48,7 +53,7 @@ class UserDAO:
     
     def get_user_by_uid(self, uid: str) -> Optional[Dict[str, Any]]:
         """
-        Obté un usuari per UID
+        Obté un usuari per UID amb cache
         
         Args:
             uid: UID de l'usuari
@@ -56,15 +61,29 @@ class UserDAO:
         Returns:
             Dict amb les dades de l'usuari o None si no existeix
         """
+        # Genera clau de cache
+        cache_key = cache_service.generate_key('user_detail', uid=uid)
+        
+        # Intenta obtenir de cache
+        cached_data = cache_service.get(cache_key)
+        if cached_data is not None:
+            return cached_data
+        
         try:
             db = self.firestore_service.get_db()
             doc_ref = db.collection(self.COLLECTION_NAME).document(uid)
+            logger.log(23, f"Firestore READ: collection={self.COLLECTION_NAME} document={uid}")
             doc = doc_ref.get()
             
             if doc.exists:
                 user_data = doc.to_dict()
                 user_data['uid'] = doc.id  # Assegura que l'UID estigui inclòs
-                logger.info(f"Usuari trobat amb UID: {uid}")
+                
+                # Guarda a cache
+                timeout = cache_service.get_timeout('user_detail')
+                cache_service.set(cache_key, user_data, timeout)
+                
+                logger.log(23, f"Usuari trobat amb UID: {uid}")
                 return user_data
             else:
                 logger.warning(f"Usuari no trobat amb UID: {uid}")
@@ -76,7 +95,7 @@ class UserDAO:
     
     def get_user_by_email(self, email: str) -> Optional[Dict[str, Any]]:
         """
-        Obté un usuari per email
+        Obté un usuari per email amb cache
         
         Args:
             email: Email de l'usuari
@@ -84,15 +103,29 @@ class UserDAO:
         Returns:
             Dict amb les dades de l'usuari o None si no existeix
         """
+        # Genera clau de cache
+        cache_key = cache_service.generate_key('user_email', email=email.lower())
+        
+        # Intenta obtenir de cache
+        cached_data = cache_service.get(cache_key)
+        if cached_data is not None:
+            return cached_data
+        
         try:
             db = self.firestore_service.get_db()
+            logger.log(23, f"Firestore QUERY: collection={self.COLLECTION_NAME} filter=email=={email}")
             query = db.collection(self.COLLECTION_NAME).where('email', '==', email).limit(1)
             docs = query.stream()
             
             for doc in docs:
                 user_data = doc.to_dict()
                 user_data['uid'] = doc.id
-                logger.info(f"Usuari trobat amb email: {email}")
+                
+                # Guarda a cache
+                timeout = cache_service.get_timeout('user_detail')
+                cache_service.set(cache_key, user_data, timeout)
+                
+                logger.log(23, f"Usuari trobat amb email: {email}")
                 return user_data
             
             logger.warning(f"Usuari no trobat amb email: {email}")
@@ -118,13 +151,21 @@ class UserDAO:
             doc_ref = db.collection(self.COLLECTION_NAME).document(uid)
             
             # Comprova que l'usuari existeixi
+            logger.log(23, f"Firestore READ (exists check): collection={self.COLLECTION_NAME} document={uid}")
             if not doc_ref.get().exists:
                 logger.warning(f"No es pot actualitzar, usuari no trobat amb UID: {uid}")
                 return False
             
             # Actualitza les dades
             doc_ref.update(user_data)
-            logger.info(f"Usuari actualitzat amb UID: {uid}")
+            
+            # Invalida cache relacionada
+            cache_service.delete(cache_service.generate_key('user_detail', uid=uid))
+            if 'email' in user_data:
+                cache_service.delete(cache_service.generate_key('user_email', email=user_data['email']))
+            cache_service.delete_pattern('user_list')
+            
+            logger.log(23, f"Usuari actualitzat amb UID: {uid}")
             return True
             
         except Exception as e:
@@ -146,12 +187,19 @@ class UserDAO:
             doc_ref = db.collection(self.COLLECTION_NAME).document(uid)
             
             # Comprova que l'usuari existeixi
+            logger.info(f"Firestore READ (exists check): collection={self.COLLECTION_NAME} document={uid}")
             if not doc_ref.get().exists:
                 logger.warning(f"No es pot eliminar, usuari no trobat amb UID: {uid}")
                 return False
             
+            # Elimina l'usuari
             doc_ref.delete()
-            logger.info(f"Usuari eliminat amb UID: {uid}")
+            
+            # Invalida cache relacionada
+            cache_service.delete(cache_service.generate_key('user_detail', uid=uid))
+            cache_service.delete_pattern('user_list')
+            
+            logger.log(23, f"Usuari eliminat amb UID: {uid}")
             return True
             
         except Exception as e:
@@ -160,7 +208,7 @@ class UserDAO:
     
     def list_users(self, limit: int = 100, offset: int = 0) -> List[Dict[str, Any]]:
         """
-        Obté una llista d'usuaris
+        Obté una llista d'usuaris amb cache
         
         Args:
             limit: Nombre màxim d'usuaris a retornar
@@ -169,8 +217,17 @@ class UserDAO:
         Returns:
             List amb les dades dels usuaris
         """
+        # Genera clau de cache
+        cache_key = cache_service.generate_key('user_list', limit=limit, offset=offset)
+        
+        # Intenta obtenir de cache
+        cached_data = cache_service.get(cache_key)
+        if cached_data is not None:
+            return cached_data
+        
         try:
             db = self.firestore_service.get_db()
+            logger.log(23, f"Firestore QUERY: collection={self.COLLECTION_NAME} limit={limit} offset={offset}")
             query = db.collection(self.COLLECTION_NAME).limit(limit).offset(offset)
             docs = query.stream()
             
@@ -180,7 +237,11 @@ class UserDAO:
                 user_data['uid'] = doc.id
                 users.append(user_data)
             
-            logger.info(f"Obtinguts {len(users)} usuaris")
+            # Guarda a cache
+            timeout = cache_service.get_timeout('user_list')
+            cache_service.set(cache_key, users, timeout)
+            
+            logger.log(23, f"Obtinguts {len(users)} usuaris")
             return users
             
         except Exception as e:
@@ -200,6 +261,7 @@ class UserDAO:
         try:
             db = self.firestore_service.get_db()
             doc_ref = db.collection(self.COLLECTION_NAME).document(uid)
+            logger.log(23, f"Firestore READ (exists check): collection={self.COLLECTION_NAME} document={uid}")
             return doc_ref.get().exists
             
         except Exception as e:

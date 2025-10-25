@@ -225,4 +225,77 @@ class RefugiSearchFilters:
     
     def __post_init__(self):
         """Validacions dels filtres"""
+        # Normalize empty strings to defaults
+        if self.name is None:
+            self.name = ""
+        if self.region is None:
+            self.region = ""
+        if self.departement is None:
+            self.departement = ""
+        if self.type is None:
+            self.type = ""
+
+    def to_dict(self) -> dict:
+        """Retorna una representació dict dels filtres.
+
+        Aquesta representació s'utilitza per generar claus de cache
+        basades en els valors dels filtres. Només incloem camps
+        que siguin rellevants i establim valors normals per a None.
+        """
+        out: Dict[str, Any] = {}
+
+        # Include text filters only when non-empty
+        if isinstance(self.name, str) and self.name.strip():
+            out['name'] = self.name.strip()
+        if isinstance(self.region, str) and self.region.strip():
+            out['region'] = self.region.strip()
+        if isinstance(self.departement, str) and self.departement.strip():
+            out['departement'] = self.departement.strip()
+        if isinstance(self.type, str) and self.type.strip():
+            out['type'] = self.type.strip()
+
+        # Numeric ranges
+        if self.places_min is not None:
+            out['places_min'] = self.places_min
+        if self.places_max is not None:
+            out['places_max'] = self.places_max
+        if self.altitude_min is not None:
+            out['altitude_min'] = self.altitude_min
+        if self.altitude_max is not None:
+            out['altitude_max'] = self.altitude_max
+
+        # Include amenity filters only when explicitly requested (== 1)
+        amenity_fields = [
+            'cheminee', 'poele', 'couvertures', 'latrines',
+            'bois', 'eau', 'matelas', 'couchage', 'lits'
+        ]
+        for field_name in amenity_fields:
+            value = getattr(self, field_name)
+            if value == 1:
+                out[field_name] = 1
+
+        return out
+
+    @classmethod
+    def from_dict(cls, data: dict) -> 'RefugiSearchFilters':
+        """Crea un RefugiSearchFilters a partir d'un dict (opcional)."""
+        return cls(
+            name=data.get('name', ''),
+            region=data.get('region', ''),
+            departement=data.get('departement', ''),
+            type=data.get('type', ''),
+            places_min=data.get('places_min'),
+            places_max=data.get('places_max'),
+            altitude_min=data.get('altitude_min'),
+            altitude_max=data.get('altitude_max'),
+            cheminee=data.get('cheminee'),
+            poele=data.get('poele'),
+            couvertures=data.get('couvertures'),
+            latrines=data.get('latrines'),
+            bois=data.get('bois'),
+            eau=data.get('eau'),
+            matelas=data.get('matelas'),
+            couchage=data.get('couchage'),
+            lits=data.get('lits'),
+        )
             

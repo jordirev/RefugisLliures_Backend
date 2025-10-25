@@ -5,6 +5,7 @@ from .views.user_views import (
     user_detail, 
     search_user_by_email
 )
+from .views.cache_views import cache_stats, cache_clear, cache_invalidate
 
 urlpatterns = [
     # Health check endpoint
@@ -18,4 +19,9 @@ urlpatterns = [
     path('users/search/', search_user_by_email, name='search_user_by_email'),  # GET /users/search/?email=
     path('users/', users_collection, name='users_collection'),  # GET /users/ (llistar) + POST /users/ (crear)
     path('users/<str:uid>/', user_detail, name='user_detail'),  # GET + PUT + DELETE /users/{uid}/
+    
+    # Cache management endpoints
+    path('cache/stats/', cache_stats, name='cache_stats'),
+    path('cache/clear/', cache_clear, name='cache_clear'),
+    path('cache/invalidate/', cache_invalidate, name='cache_invalidate'),
 ]

@@ -3,7 +3,7 @@ DAO per a la gestió de refugis amb Firestore
 """
 import logging
 from typing import List, Optional, Dict, Any
-from ..services import firestore_service
+from ..services import firestore_service, cache_service
 from ..models.refugi_lliure import Refugi, RefugiCoordinates, RefugiSearchFilters
 
 logger = logging.getLogger(__name__)
@@ -17,10 +17,19 @@ class RefugiLliureDao:
         self.coords_document_name = 'all_refugis_coords'
     
     def get_by_id(self, refugi_id: str) -> Optional[Dict[str, Any]]:
-        """Obtenir un refugi per ID"""
+        """Obtenir un refugi per ID amb cache"""
+        # Genera clau de cache
+        cache_key = cache_service.generate_key('refugi_detail', refugi_id=refugi_id)
+        
+        # Intenta obtenir de cache
+        cached_data = cache_service.get(cache_key)
+        if cached_data is not None:
+            return cached_data
+        
         try:
             db = firestore_service.get_db()
             doc_ref = db.collection(self.collection_name).document(str(refugi_id))
+            logger.log(23, f"Firestore READ: collection={self.collection_name} document={refugi_id}")
             doc = doc_ref.get()
             
             if not doc.exists:
@@ -28,6 +37,11 @@ class RefugiLliureDao:
             
             refugi_data = doc.to_dict()
             #refugi_data['id'] = doc.id
+            
+            # Guarda a cache
+            timeout = cache_service.get_timeout('refugi_detail')
+            cache_service.set(cache_key, refugi_data, timeout)
+            
             return refugi_data
             
         except Exception as e:
@@ -35,7 +49,18 @@ class RefugiLliureDao:
             raise
     
     def search_refugis(self, filters: RefugiSearchFilters) -> List[Dict[str, Any]]:
-        """Cercar refugis amb filtres optimitzats per índexs composats"""
+        """Cercar refugis amb filtres optimitzats per índexs composats i cache"""
+        # Genera clau de cache basada en filtres
+        cache_key = cache_service.generate_key(
+            'refugi_search',
+            **filters.to_dict()
+        )
+        
+        # Intenta obtenir de cache
+        cached_data = cache_service.get(cache_key)
+        if cached_data is not None:
+            return cached_data
+        
         try:
             db = firestore_service.get_db()
             
@@ -44,10 +69,16 @@ class RefugiLliureDao:
             
             if not has_filters:
                 # No filters applied - use coordinate collection for efficiency
-                return self._get_coordinates_as_refugi_list()
+                results = self._get_coordinates_as_refugi_list()
             else:
                 # Filters applied - build optimized query
-                return self._build_optimized_query(db, filters)
+                results = self._build_optimized_query(db, filters)
+            
+            # Guarda a cache
+            timeout = cache_service.get_timeout('refugi_search')
+            cache_service.set(cache_key, results, timeout)
+            
+            return results
             
         except Exception as e:
             logger.error(f'Error searching refugis: {str(e)}')
@@ -120,6 +151,7 @@ class RefugiLliureDao:
     def _query_by_name(self, db, name: str) -> List[Dict[str, Any]]:
         """Direct query by name - exact match"""
         refugis_ref = db.collection(self.collection_name)
+        logger.log(23, f"Firestore QUERY: collection={self.collection_name} filter=name=={name}")
         docs = refugis_ref.where('name', '==', name).stream()
         
         results = []
@@ -166,6 +198,7 @@ class RefugiLliureDao:
 
     def _execute_query_with_memory_filters(self, query, filters: RefugiSearchFilters) -> List[Dict[str, Any]]:
         """Execute Firestore query and apply remaining filters in memory"""
+        logger.log(23, f"Firestore QUERY (stream) executed for refugis with post-filters applied in memory")
         docs = query.stream()
         
         results = []
@@ -246,12 +279,21 @@ class RefugiLliureDao:
         )
     
     def _get_coordinates_as_refugi_list(self) -> List[Dict[str, Any]]:
-        """Get refugi data from coordinates collection when no filters are applied"""
+        """Get refugi data from coordinates collection when no filters are applied amb cache"""
+        # Clau de cache per coordenades
+        cache_key = cache_service.generate_key('refugi_coords', document='all')
+        
+        # Intenta obtenir de cache
+        cached_data = cache_service.get(cache_key)
+        if cached_data is not None:
+            return cached_data
+        
         try:
             db = firestore_service.get_db()
             
             # Get coordinates document
             doc_ref = db.collection(self.coords_collection_name).document(self.coords_document_name)
+            logger.log(23, f"Firestore READ: collection={self.coords_collection_name} document={self.coords_document_name} (coordinates) ")
             doc = doc_ref.get()
             
             if not doc.exists:
@@ -274,6 +316,10 @@ class RefugiLliureDao:
                     'geohash': coord_data.get('geohash', None)
                 }
                 refugis.append(refugi_data)
+            
+            # Guarda a cache (timeout llarg per coordenades)
+            timeout = cache_service.get_timeout('refugi_coords')
+            cache_service.set(cache_key, refugis, timeout)
             
             return refugis
             
