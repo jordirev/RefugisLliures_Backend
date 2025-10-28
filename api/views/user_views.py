@@ -13,7 +13,6 @@ from ..serializers.user_serializer import (
     UserSerializer, 
     UserCreateSerializer, 
     UserUpdateSerializer,
-    PaginationQuerySerializer
 )
 
 # Configurar logging
@@ -21,31 +20,6 @@ logger = logging.getLogger(__name__)
 
 # ========== COLLECTION ENDPOINT: /users/ ==========
 
-@swagger_auto_schema(
-    methods=['get'],
-    operation_description="Obté una llista d'usuaris amb paginació",
-    manual_parameters=[
-        openapi.Parameter('limit', openapi.IN_QUERY, description="Nombre màxim d'usuaris a retornar (màx: 100)", 
-                         type=openapi.TYPE_INTEGER, default=20),
-        openapi.Parameter('offset', openapi.IN_QUERY, description="Nombre d'usuaris a saltar", 
-                         type=openapi.TYPE_INTEGER, default=0)
-    ],
-    responses={
-        200: openapi.Response(
-            description="Llista d'usuaris",
-            schema=openapi.Schema(
-                type=openapi.TYPE_OBJECT,
-                properties={
-                    'users': openapi.Schema(type=openapi.TYPE_ARRAY, items=openapi.Schema(type=openapi.TYPE_OBJECT)),
-                    'total_count': openapi.Schema(type=openapi.TYPE_INTEGER),
-                    'limit': openapi.Schema(type=openapi.TYPE_INTEGER),
-                    'offset': openapi.Schema(type=openapi.TYPE_INTEGER),
-                    'has_next': openapi.Schema(type=openapi.TYPE_BOOLEAN)
-                }
-            )
-        )
-    }
-)
 @swagger_auto_schema(
     methods=['post'],
     operation_description="Crea un nou usuari",
@@ -56,67 +30,15 @@ logger = logging.getLogger(__name__)
         409: 'Usuari ja existeix'
     }
 )
-@api_view(['GET', 'POST'])
+@api_view(['POST'])
 @permission_classes([AllowAny])
 def users_collection(request):
     """
     Gestiona col·lecció d'usuaris:
-    - GET: Llistar usuaris amb paginació  
     - POST: Crear nou usuari
     """
-    
-    if request.method == 'GET':
-        return _list_users(request)
-    elif request.method == 'POST':
+    if request.method == 'POST':
         return _create_user(request)
-
-def _list_users(request):
-    """Llistar usuaris amb paginació"""
-    try:
-        # Valida paràmetres de paginació
-        pagination_data = {
-            'limit': request.GET.get('limit', 20),
-            'offset': request.GET.get('offset', 0)
-        }
-        
-        pagination_serializer = PaginationQuerySerializer(data=pagination_data)
-        if not pagination_serializer.is_valid():
-            return Response({
-                'error': 'Paràmetres de paginació invàlids',
-                'details': pagination_serializer.errors
-            }, status=status.HTTP_400_BAD_REQUEST)
-        
-        limit = pagination_serializer.validated_data['limit']
-        offset = pagination_serializer.validated_data['offset']
-        
-        # Obté els usuaris
-        controller = UserController()
-        success, users, error_message = controller.list_users(limit, offset)
-        
-        if not success:
-            return Response({
-                'error': error_message
-            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        
-        # Serialitza els usuaris
-        users_serializer = UserSerializer(users, many=True)
-        
-        # Prepara la resposta amb metadades de paginació
-        response_data = {
-            'users': users_serializer.data,
-            'total_count': len(users),
-            'limit': limit,
-            'offset': offset,
-            'has_next': len(users) == limit
-        }
-        
-        return Response(response_data, status=status.HTTP_200_OK)
-        
-    except Exception as e:
-        logger.error(f"Error en list_users: {str(e)}")
-        return Response({
-            'error': 'Error intern del servidor'
-        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 def _create_user(request):
     """Crear nou usuari"""
@@ -260,49 +182,6 @@ def _delete_user(request, uid):
         
     except Exception as e:
         logger.error(f"Error en delete_user: {str(e)}")
-        return Response({
-            'error': 'Error intern del servidor'
-        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-# ========== SEARCH ENDPOINT: /users/search/ ==========
-
-@swagger_auto_schema(
-    method='get',
-    operation_description="Cerca un usuari per email",
-    manual_parameters=[
-        openapi.Parameter('email', openapi.IN_QUERY, description="Email de l'usuari a cercar", 
-                         type=openapi.TYPE_STRING, required=True)
-    ],
-    responses={
-        200: UserSerializer,
-        400: 'Email no proporcionat',
-        404: 'Usuari no trobat'
-    }
-)
-@api_view(['GET'])
-@permission_classes([AllowAny])
-def search_user_by_email(request):
-    """Cerca un usuari per email"""
-    try:
-        email = request.GET.get('email')
-        if not email:
-            return Response({
-                'error': 'Email no proporcionat'
-            }, status=status.HTTP_400_BAD_REQUEST)
-        
-        controller = UserController()
-        success, user, error_message = controller.get_user_by_email(email)
-        
-        if not success:
-            return Response({
-                'error': error_message
-            }, status=status.HTTP_404_NOT_FOUND)
-        
-        serializer = UserSerializer(user)
-        return Response(serializer.data, status=status.HTTP_200_OK)
-        
-    except Exception as e:
-        logger.error(f"Error en search_user_by_email: {str(e)}")
         return Response({
             'error': 'Error intern del servidor'
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

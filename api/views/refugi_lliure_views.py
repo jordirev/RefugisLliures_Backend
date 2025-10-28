@@ -17,6 +17,9 @@ from ..serializers.refugi_lliure_serializer import (
 # Configurar logging
 logger = logging.getLogger(__name__)
 
+# ========== ITEM ENDPOINT: /health/ ==========
+# Verifica l'estat de l'API
+
 @api_view(['GET'])
 @permission_classes([AllowAny])
 def health_check(request):
@@ -49,6 +52,8 @@ def health_check(request):
         }
         return Response(error_data, status=status.HTTP_503_SERVICE_UNAVAILABLE)
 
+# ========== ITEM ENDPOINT: /refugis/{id}/ ==========
+
 @api_view(['GET'])
 @permission_classes([AllowAny])
 def refugi_detail(request, refugi_id):
@@ -76,6 +81,8 @@ def refugi_detail(request, refugi_id):
         return Response({
             'error': f'Internal server error: {str(e)}'
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+# ========== ITEM ENDPOINT: /refugis/ ==========
 
 @api_view(['GET'])
 @permission_classes([AllowAny])

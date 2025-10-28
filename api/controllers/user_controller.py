@@ -27,30 +27,20 @@ class UserController:
         Returns:
             tuple: (success, user_object, error_message)
         """
-        try:
-            # Neteja i valida les dades
-            cleaned_data = self.user_mapper.clean_firebase_data(user_data)
-            is_valid, validation_error = self.user_mapper.validate_firebase_data(cleaned_data)
-            
-            if not is_valid:
-                return False, None, validation_error
-            
-            # Comprova si l'usuari ja existeix
-            if self.user_dao.user_exists(cleaned_data['uid']):
-                return False, None, f"Usuari amb UID {cleaned_data['uid']} ja existeix"
-            
+        try:            
             # Comprova si l'email ja està en ús
-            existing_user = self.user_dao.get_user_by_email(cleaned_data['email'])
+            existing_user = self.user_dao.get_user_by_email(user_data['email'])
             if existing_user:
-                return False, None, f"Email {cleaned_data['email']} ja està en ús"
+                return False, None, f"Email {user_data['email']} ja està en ús"
             
             # Crea l'usuari a Firebase
-            created_uid = self.user_dao.create_user(cleaned_data)
+            created_uid = self.user_dao.create_user(user_data)
             if not created_uid:
                 return False, None, "Error creant usuari a la base de dades"
             
             # Converteix a model
-            user = self.user_mapper.dict_to_model(cleaned_data)
+            user = self.user_mapper.dict_to_model(user_data)
+            user.uid = created_uid
             logger.info(f"Usuari creat correctament amb UID: {created_uid}")
             return True, user, None
             
@@ -126,26 +116,17 @@ class UserController:
             # Comprova que l'usuari existeixi
             if not self.user_dao.user_exists(uid):
                 return False, None, f"Usuari amb UID {uid} no trobat"
-            
-            # Neteja les dades (sense UID per evitar modificar-lo)
-            update_data = {}
-            if 'username' in user_data:
-                update_data['username'] = str(user_data['username']).strip()
-            if 'email' in user_data:
-                new_email = str(user_data['email']).strip().lower()
-                # Comprova si el nou email ja està en ús per un altre usuari
-                existing_user = self.user_dao.get_user_by_email(new_email)
-                if existing_user and existing_user.get('uid') != uid:
-                    return False, None, f"Email {new_email} ja està en ús per un altre usuari"
-                update_data['email'] = new_email
-            if 'avatar' in user_data:
-                update_data['avatar'] = str(user_data['avatar']).strip()
-            
-            if not update_data:
+        
+            # Comprova si l'email ja està en ús
+            existing_user = self.user_dao.get_user_by_email(user_data['email'])
+            if existing_user:
+                return False, None, f"Email {user_data['email']} ja està en ús"
+
+            if not user_data:
                 return False, None, "No s'han proporcionat dades per actualitzar"
             
             # Actualitza a Firebase
-            success = self.user_dao.update_user(uid, update_data)
+            success = self.user_dao.update_user(uid, user_data)
             if not success:
                 return False, None, "Error actualitzant usuari a la base de dades"
             
@@ -190,29 +171,4 @@ class UserController:
             logger.error(f"Error en delete_user: {str(e)}")
             return False, f"Error intern: {str(e)}"
     
-    def list_users(self, limit: int = 100, offset: int = 0) -> tuple[bool, List[User], Optional[str]]:
-        """
-        Obté una llista d'usuaris
-        
-        Args:
-            limit: Nombre màxim d'usuaris a retornar
-            offset: Nombre d'usuaris a saltar
-            
-        Returns:
-            tuple: (success, user_list, error_message)
-        """
-        try:
-            # Validació de paràmetres
-            if limit < 1:
-                limit = 100
-            if offset < 0:
-                offset = 0
-            
-            users_data = self.user_dao.list_users(limit, offset)
-            users = [self.user_mapper.firebase_to_model(user_data) for user_data in users_data]
-            
-            return True, users, None
-            
-        except Exception as e:
-            logger.error(f"Error en list_users: {str(e)}")
-            return False, [], f"Error intern: {str(e)}"
+    

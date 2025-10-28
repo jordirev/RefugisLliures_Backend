@@ -29,20 +29,11 @@ class UserDAO:
         """
         try:
             db = self.firestore_service.get_db()
-            logger.log(23, f"Firestore WRITE: collection={self.COLLECTION_NAME} (create document with uid={user_data.get('uid')})")
-            
-            # Utilitza el uid com a document ID
-            uid = user_data.get('uid')
-            if not uid:
-                logger.error("No s'ha proporcionat UID per al nou usuari")
-                return None
-            
-            # Crea el document amb l'UID com a ID
-            doc_ref = db.collection(self.COLLECTION_NAME).document(uid)
+
+            #crea un usuari i assigna uid automàticament
+            doc_ref = db.collection(self.COLLECTION_NAME).document()
             doc_ref.set(user_data)
-            
-            # Invalida cache relacionada
-            cache_service.delete_pattern('user_list')
+            uid = doc_ref.id
             
             logger.info(f"Usuari creat amb UID: {uid}")
             return uid
@@ -115,9 +106,10 @@ class UserDAO:
             db = self.firestore_service.get_db()
             logger.log(23, f"Firestore QUERY: collection={self.COLLECTION_NAME} filter=email=={email}")
             query = db.collection(self.COLLECTION_NAME).where('email', '==', email).limit(1)
-            docs = query.stream()
-            
-            for doc in docs:
+            docs = query.get()
+
+            if docs:
+                doc = docs[0]  # Agafa el primer document
                 user_data = doc.to_dict()
                 user_data['uid'] = doc.id
                 
@@ -163,7 +155,6 @@ class UserDAO:
             cache_service.delete(cache_service.generate_key('user_detail', uid=uid))
             if 'email' in user_data:
                 cache_service.delete(cache_service.generate_key('user_email', email=user_data['email']))
-            cache_service.delete_pattern('user_list')
             
             logger.log(23, f"Usuari actualitzat amb UID: {uid}")
             return True
@@ -197,7 +188,6 @@ class UserDAO:
             
             # Invalida cache relacionada
             cache_service.delete(cache_service.generate_key('user_detail', uid=uid))
-            cache_service.delete_pattern('user_list')
             
             logger.log(23, f"Usuari eliminat amb UID: {uid}")
             return True
@@ -205,48 +195,6 @@ class UserDAO:
         except Exception as e:
             logger.error(f"Error eliminant usuari amb UID {uid}: {str(e)}")
             return False
-    
-    def list_users(self, limit: int = 100, offset: int = 0) -> List[Dict[str, Any]]:
-        """
-        Obté una llista d'usuaris amb cache
-        
-        Args:
-            limit: Nombre màxim d'usuaris a retornar
-            offset: Nombre d'usuaris a saltar (per paginació)
-            
-        Returns:
-            List amb les dades dels usuaris
-        """
-        # Genera clau de cache
-        cache_key = cache_service.generate_key('user_list', limit=limit, offset=offset)
-        
-        # Intenta obtenir de cache
-        cached_data = cache_service.get(cache_key)
-        if cached_data is not None:
-            return cached_data
-        
-        try:
-            db = self.firestore_service.get_db()
-            logger.log(23, f"Firestore QUERY: collection={self.COLLECTION_NAME} limit={limit} offset={offset}")
-            query = db.collection(self.COLLECTION_NAME).limit(limit).offset(offset)
-            docs = query.stream()
-            
-            users = []
-            for doc in docs:
-                user_data = doc.to_dict()
-                user_data['uid'] = doc.id
-                users.append(user_data)
-            
-            # Guarda a cache
-            timeout = cache_service.get_timeout('user_list')
-            cache_service.set(cache_key, users, timeout)
-            
-            logger.log(23, f"Obtinguts {len(users)} usuaris")
-            return users
-            
-        except Exception as e:
-            logger.error(f"Error obtenint llista d'usuaris: {str(e)}")
-            return []
     
     def user_exists(self, uid: str) -> bool:
         """

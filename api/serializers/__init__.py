@@ -3,8 +3,6 @@ from .user_serializer import (
     UserSerializer, 
     UserCreateSerializer, 
     UserUpdateSerializer,
-    UserListSerializer,
-    PaginationQuerySerializer
 )
 from .refugi_lliure_serializer import (
     RefugiSerializer,

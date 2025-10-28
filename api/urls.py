@@ -2,8 +2,7 @@ from django.urls import path
 from .views.refugi_lliure_views import health_check, refugi_detail, refugis_collection
 from .views.user_views import (
     users_collection,
-    user_detail, 
-    search_user_by_email
+    user_detail
 )
 from .views.cache_views import cache_stats, cache_clear, cache_invalidate
 
@@ -16,7 +15,6 @@ urlpatterns = [
     path('refugis/<str:refugi_id>/', refugi_detail, name='refugi_detail'),
     
     # Users endpoints (REST estàndard)
-    path('users/search/', search_user_by_email, name='search_user_by_email'),  # GET /users/search/?email=
     path('users/', users_collection, name='users_collection'),  # GET /users/ (llistar) + POST /users/ (crear)
     path('users/<str:uid>/', user_detail, name='user_detail'),  # GET + PUT + DELETE /users/{uid}/
     

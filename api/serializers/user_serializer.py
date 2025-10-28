@@ -4,49 +4,121 @@ Serializers per a l'API d'usuaris
 from rest_framework import serializers
 from ..models.user import User
 
-class UserSerializer(serializers.Serializer):
-    """Serializer per a usuaris"""
+class UserValidatorMixin:
+    """Mixin amb validadors comuns per a usuaris"""
     
-    uid = serializers.CharField(max_length=255, help_text="Identificador únic de l'usuari")
-    username = serializers.CharField(max_length=255, allow_blank=True, required=False, 
-                                   help_text="Nom d'usuari")
-    email = serializers.EmailField(help_text="Adreça de correu electrònic")
-    avatar = serializers.URLField(allow_blank=True, required=False, 
-                                help_text="URL de l'avatar de l'usuari")
+    VALID_LANGUAGES = ['ca', 'es', 'en', 'fr']
     
-    def validate_uid(self, value):
-        """Validació personalitzada per a UID"""
+    @staticmethod
+    def validate_email_field(value, required=True):
+        """Validador reutilitzable per a email"""
         if not value or not value.strip():
-            raise serializers.ValidationError("UID no pot estar buit")
-        return value.strip()
-    
-    def validate_email(self, value):
-        """Validació personalitzada per a email"""
-        if not value or not value.strip():
-            raise serializers.ValidationError("Email no pot estar buit")
+            if required:
+                raise serializers.ValidationError("Email és requerit")
+            return value
         return value.strip().lower()
     
-    def validate_username(self, value):
-        """Validació personalitzada per a username"""
+    @staticmethod
+    def validate_username_field(value, required=False):
+        """Validador reutilitzable per a username"""
+        if value is None:
+            return "" if not required else None
+        
         if value and len(value.strip()) < 2:
             raise serializers.ValidationError("El nom d'usuari ha de tenir almenys 2 caràcters")
         return value.strip() if value else ""
     
-    def validate_avatar(self, value):
-        """Validació personalitzada per a avatar URL"""
-        if value and not value.strip():
-            return ""
-        return value.strip() if value else ""
+    @staticmethod
+    def validate_idioma_field(value, required=False):
+        """Validador reutilitzable per a idioma"""
+        if value is None:
+            return 'ca' if required else None
+            
+        if value.strip().lower() not in UserValidatorMixin.VALID_LANGUAGES:
+            raise serializers.ValidationError(
+                f"Idioma no vàlid. Opcions vàlides: {', '.join(UserValidatorMixin.VALID_LANGUAGES)}"
+            )
+        return value.strip().lower()
+    
+    @staticmethod
+    def validate_uid_field(value):
+        """Validador reutilitzable per a UID"""
+        if not value or not value.strip():
+            raise serializers.ValidationError("UID no pot estar buit")
+        return value.strip()
+
+
+class UserSerializer(UserValidatorMixin, serializers.Serializer):
+    """Serializer per a usuaris"""
+    
+    uid = serializers.CharField(
+        max_length=255, 
+        help_text="Identificador únic de l'usuari",
+        read_only=True
+    )
+    username = serializers.CharField(
+        max_length=255, 
+        allow_blank=True, 
+        required=False, 
+        help_text="Nom d'usuari"
+    )
+    email = serializers.EmailField(
+        help_text="Adreça de correu electrònic"
+    )
+    avatar = serializers.URLField(
+        allow_blank=True, 
+        required=False, 
+        help_text="URL de l'avatar de l'usuari"
+    )
+    idioma = serializers.CharField(
+        max_length=5,
+        default='ca',
+        help_text="Idioma preferit de l'usuari (codi ISO 639-1)"
+    )
+    refugis_favorits = serializers.ListField(
+        child=serializers.CharField(),
+        help_text="Refugis favorits de l'usuari",
+        read_only=True
+    )
+    refugis_visitats = serializers.ListField(
+        child=serializers.CharField(),
+        help_text="Refugis visitats de l'usuari",
+        read_only=True
+    )
+    reformes = serializers.ListField(
+        child=serializers.CharField(),
+        help_text="Refugis reformats de l'usuari",
+        read_only=True
+    )
+    num_fotos_pujades = serializers.IntegerField(
+        help_text="Nombre de fotos pujades per l'usuari",
+        read_only=True
+    )
+    num_experiencies_compartides = serializers.IntegerField(
+        help_text="Nombre d'experiències compartides per l'usuari",
+        read_only=True
+    )
+    num_refugis_reformats = serializers.IntegerField(
+        help_text="Nombre de refugis reformats per l'usuari",
+        read_only=True
+    )
+
+    def validate_uid(self, value):
+        return self.validate_uid_field(value)
+    
+    def validate_email(self, value):
+        return self.validate_email_field(value, required=True)
+    
+    def validate_username(self, value):
+        return self.validate_username_field(value, required=False)
+    
+    def validate_idioma(self, value):
+        return self.validate_idioma_field(value, required=False)
     
     def to_representation(self, instance):
         """Converteix instància a representació JSON"""
         if isinstance(instance, User):
-            return {
-                'uid': instance.uid,
-                'username': instance.username,
-                'email': instance.email,
-                'avatar': instance.avatar
-            }
+            return instance.to_dict()
         return super().to_representation(instance)
     
     def create(self, validated_data):
@@ -58,32 +130,29 @@ class UserSerializer(serializers.Serializer):
         instance.username = validated_data.get('username', instance.username)
         instance.email = validated_data.get('email', instance.email)
         instance.avatar = validated_data.get('avatar', instance.avatar)
-        # UID no es pot actualitzar
         return instance
 
-class UserCreateSerializer(serializers.Serializer):
+class UserCreateSerializer(UserValidatorMixin, serializers.Serializer):
     """Serializer per a creació d'usuaris"""
-    
-    uid = serializers.CharField(max_length=255, help_text="Identificador únic de l'usuari")
+
     username = serializers.CharField(max_length=255, allow_blank=True, required=False, 
                                    help_text="Nom d'usuari")
     email = serializers.EmailField(help_text="Adreça de correu electrònic")
     avatar = serializers.URLField(allow_blank=True, required=False, 
                                 help_text="URL de l'avatar de l'usuari")
-    
-    def validate_uid(self, value):
-        """Validació personalitzada per a UID"""
-        if not value or not value.strip():
-            raise serializers.ValidationError("UID és requerit")
-        return value.strip()
+    idioma = serializers.CharField(default='ca', max_length=5, required=False,
+                                help_text="Idioma preferit de l'usuari (codi ISO 639-1)")
     
     def validate_email(self, value):
-        """Validació personalitzada per a email"""
-        if not value or not value.strip():
-            raise serializers.ValidationError("Email és requerit")
-        return value.strip().lower()
+        return self.validate_email_field(value, required=True)
+    
+    def validate_username(self, value):
+        return self.validate_username_field(value, required=False)
+    
+    def validate_idioma(self, value):
+        return self.validate_idioma_field(value, required=False)
 
-class UserUpdateSerializer(serializers.Serializer):
+class UserUpdateSerializer(UserValidatorMixin, serializers.Serializer):
     """Serializer per a actualització d'usuaris"""
     
     username = serializers.CharField(max_length=255, allow_blank=True, required=False, 
@@ -91,36 +160,20 @@ class UserUpdateSerializer(serializers.Serializer):
     email = serializers.EmailField(required=False, help_text="Adreça de correu electrònic")
     avatar = serializers.URLField(allow_blank=True, required=False, 
                                 help_text="URL de l'avatar de l'usuari")
+    idioma = serializers.CharField(default='ca', max_length=5, required=False,
+                                help_text="Idioma preferit de l'usuari (codi ISO 639-1)")
     
     def validate_email(self, value):
-        """Validació personalitzada per a email"""
-        if value is not None:
-            return value.strip().lower()
-        return value
+        return self.validate_email_field(value, required=False)
     
     def validate_username(self, value):
-        """Validació personalitzada per a username"""
-        if value is not None and len(value.strip()) < 2:
-            raise serializers.ValidationError("El nom d'usuari ha de tenir almenys 2 caràcters")
-        return value.strip() if value else ""
+        return self.validate_username_field(value, required=False)
+    
+    def validate_idioma(self, value):
+        return self.validate_idioma_field(value, required=False)
     
     def validate(self, attrs):
         """Validació global"""
         if not any(attrs.values()):
             raise serializers.ValidationError("Almenys un camp ha de ser proporcionat per actualitzar")
         return attrs
-
-class UserListSerializer(serializers.Serializer):
-    """Serializer per a llistes d'usuaris amb paginació"""
-    
-    users = UserSerializer(many=True, help_text="Llista d'usuaris")
-    total_count = serializers.IntegerField(help_text="Nombre total d'usuaris")
-    has_next = serializers.BooleanField(help_text="Hi ha més usuaris disponibles")
-    
-class PaginationQuerySerializer(serializers.Serializer):
-    """Serializer per a paràmetres de paginació"""
-    
-    limit = serializers.IntegerField(min_value=1, max_value=100, default=20, 
-                                   help_text="Nombre màxim d'usuaris a retornar")
-    offset = serializers.IntegerField(min_value=0, default=0, 
-                                    help_text="Nombre d'usuaris a saltar")
