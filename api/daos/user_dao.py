@@ -17,12 +17,13 @@ class UserDAO:
         """Inicialitza el DAO amb la connexió a Firestore"""
         self.firestore_service = FirestoreService()
     
-    def create_user(self, user_data: Dict[str, Any]) -> Optional[str]:
+    def create_user(self, user_data: Dict[str, Any], uid: str) -> Optional[str]:
         """
-        Crea un nou usuari a Firestore
+        Crea un nou usuari a Firestore amb el UID del token de Firebase
         
         Args:
             user_data: Diccionari amb les dades de l'usuari
+            uid: UID del token de Firebase que s'utilitzarà com a ID del document
             
         Returns:
             str: UID de l'usuari creat o None si hi ha error
@@ -30,10 +31,9 @@ class UserDAO:
         try:
             db = self.firestore_service.get_db()
 
-            #crea un usuari i assigna uid automàticament
-            doc_ref = db.collection(self.COLLECTION_NAME).document()
+            # Crea un usuari amb l'UID del token de Firebase com a ID del document
+            doc_ref = db.collection(self.COLLECTION_NAME).document(uid)
             doc_ref.set(user_data)
-            uid = doc_ref.id
             
             logger.info(f"Usuari creat amb UID: {uid}")
             return uid

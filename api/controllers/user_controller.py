@@ -17,30 +17,38 @@ class UserController:
         self.user_dao = UserDAO()
         self.user_mapper = UserMapper()
     
-    def create_user(self, user_data: Dict[str, Any]) -> tuple[bool, Optional[User], Optional[str]]:
+    def create_user(self, user_data: Dict[str, Any], uid: str) -> tuple[bool, Optional[User], Optional[str]]:
         """
-        Crea un nou usuari
+        Crea un nou usuari amb el UID del token de Firebase
         
         Args:
             user_data: Diccionari amb les dades de l'usuari
+            uid: UID del token de Firebase
             
         Returns:
             tuple: (success, user_object, error_message)
         """
         try:            
+            # Comprova si l'usuari ja existeix amb aquest UID
+            existing_user = self.user_dao.get_user_by_uid(uid)
+            if existing_user:
+                return False, None, f"Usuari amb UID {uid} ja existeix"
+            
             # Comprova si l'email ja està en ús
             existing_user = self.user_dao.get_user_by_email(user_data['email'])
             if existing_user:
                 return False, None, f"Email {user_data['email']} ja està en ús"
             
-            # Crea l'usuari a Firebase
-            created_uid = self.user_dao.create_user(user_data)
+            # Afegeix el UID a les dades de l'usuari
+            user_data['uid'] = uid
+            
+            # Crea l'usuari a Firestore amb l'UID del token
+            created_uid = self.user_dao.create_user(user_data, uid)
             if not created_uid:
                 return False, None, "Error creant usuari a la base de dades"
             
             # Converteix a model
-            user = self.user_mapper.dict_to_model(user_data)
-            user.uid = created_uid
+            user = self.user_mapper.firebase_to_model(user_data)
             logger.info(f"Usuari creat correctament amb UID: {created_uid}")
             return True, user, None
             
