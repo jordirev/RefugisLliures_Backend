@@ -73,7 +73,7 @@ class FirebaseAuthenticationMiddleware(MiddlewareMixin):
             
         except Exception as e:
             logger.error(f"Error verificant token: {str(e)}")
-            return self._unauthorized_response('Error verificant el token')
+            return self._unauthorized_response('Error verificant el token: ' + str(e))
     
     def _is_path_excluded(self, path):
         """Comprova si el path està exclòs de l'autenticació"""
