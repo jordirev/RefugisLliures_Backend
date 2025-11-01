@@ -20,11 +20,24 @@ def initialize_firebase():
             cred_path = os.path.join(settings.BASE_DIR, 'env', 'firebase-service-account.json')
             
             if os.path.exists(cred_path):
+                logger.info(f"📁 Carregant credencials de: {cred_path}")
+                
+                # Llegeix el fitxer per obtenir el project_id
+                import json
+                with open(cred_path, 'r') as f:
+                    service_account_info = json.load(f)
+                
+                project_id = service_account_info.get('project_id')
+                logger.info(f"🔑 Project ID: {project_id}")
+                
                 cred = credentials.Certificate(cred_path)
-                firebase_admin.initialize_app(cred)
+                firebase_admin.initialize_app(cred, {
+                    'projectId': project_id
+                })
                 logger.info("✅ Firebase Admin SDK inicialitzat correctament amb credencials JSON")
             else:
                 # Si no troba el fitxer, intenta amb les credencials per defecte
+                logger.warning(f"⚠️ No s'ha trobat el fitxer: {cred_path}")
                 firebase_admin.initialize_app()
                 logger.info("✅ Firebase Admin SDK inicialitzat amb credencials per defecte")
                 
