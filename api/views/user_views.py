@@ -5,6 +5,7 @@ import logging
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
@@ -15,6 +16,7 @@ from ..serializers.user_serializer import (
     UserUpdateSerializer,
 )
 from ..permissions import IsSameUser
+from ..permissions import IsSameUser
 
 # Configurar logging
 logger = logging.getLogger(__name__)
@@ -24,7 +26,17 @@ logger = logging.getLogger(__name__)
 @swagger_auto_schema(
     methods=['post'],
     operation_description="Crea un nou usuari. Requereix autenticació amb token JWT de Firebase.",
+    operation_description="Crea un nou usuari. Requereix autenticació amb token JWT de Firebase.",
     request_body=UserCreateSerializer,
+    manual_parameters=[
+        openapi.Parameter(
+            'Authorization',
+            openapi.IN_HEADER,
+            description="Token JWT de Firebase (format: Bearer <token>)",
+            type=openapi.TYPE_STRING,
+            required=True
+        )
+    ],
     manual_parameters=[
         openapi.Parameter(
             'Authorization',
@@ -38,9 +50,12 @@ logger = logging.getLogger(__name__)
         201: UserSerializer,
         400: 'Dades invàlides',
         401: 'No autoritzat',
+        401: 'No autoritzat',
         409: 'Usuari ja existeix'
     }
 )
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def users_collection(request):
@@ -111,7 +126,7 @@ def _create_user(request):
     }
 )
 @swagger_auto_schema(
-    methods=['put'],
+    methods=['patch'],
     operation_description="Actualitza les dades d'un usuari. Requereix autenticació amb token JWT de Firebase.",
     request_body=UserUpdateSerializer,
     manual_parameters=[
@@ -126,6 +141,8 @@ def _create_user(request):
     responses={
         200: UserSerializer,
         400: 'Dades invàlides',
+        401: 'No autoritzat',
+        403: 'Permís denegat',
         401: 'No autoritzat',
         403: 'Permís denegat',
         404: 'Usuari no trobat'
@@ -143,28 +160,44 @@ def _create_user(request):
             required=True
         )
     ],
+    operation_description="Elimina un usuari. Requereix autenticació amb token JWT de Firebase.",
+    manual_parameters=[
+        openapi.Parameter(
+            'Authorization',
+            openapi.IN_HEADER,
+            description="Token JWT de Firebase (format: Bearer <token>)",
+            type=openapi.TYPE_STRING,
+            required=True
+        )
+    ],
     responses={
         204: 'Usuari eliminat correctament',
+        401: 'No autoritzat',
+        403: 'Permís denegat',
         401: 'No autoritzat',
         403: 'Permís denegat',
         404: 'Usuari no trobat'
     }
 )
+@api_view(['GET', 'PATCH', 'DELETE'])
+@permission_classes([IsAuthenticated, IsSameUser])
 @api_view(['GET', 'PUT', 'DELETE'])
 @permission_classes([IsAuthenticated, IsSameUser])
 def user_detail(request, uid):
     """
     Gestiona operacions sobre un usuari específic:
     - GET: Obtenir usuari per UID
-    - PUT: Actualitzar usuari  
+    - PATCH: Actualitzar usuari  
     - DELETE: Eliminar usuari
+    
+    Requereix autenticació i que l'usuari accedeixi a les seves pròpies dades
     
     Requereix autenticació i que l'usuari accedeixi a les seves pròpies dades
     """
     
     if request.method == 'GET':
         return _get_user(request, uid)
-    elif request.method == 'PUT':
+    elif request.method == 'PATCH':
         return _update_user(request, uid)
     elif request.method == 'DELETE':
         return _delete_user(request, uid)
