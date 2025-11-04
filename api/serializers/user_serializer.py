@@ -102,6 +102,10 @@ class UserSerializer(UserValidatorMixin, serializers.Serializer):
         help_text="Nombre de refugis reformats per l'usuari",
         read_only=True
     )
+    created_at = serializers.DateTimeField(
+        help_text="Data de creació de l'usuari",
+        read_only=True
+    )
 
     def validate_uid(self, value):
         return self.validate_uid_field(value)

@@ -6,6 +6,8 @@ from typing import List, Optional, Dict, Any
 from ..daos.user_dao import UserDAO
 from ..mappers.user_mapper import UserMapper
 from ..models.user import User
+from datetime import datetime
+from zoneinfo import ZoneInfo
 
 logger = logging.getLogger(__name__)
 
@@ -41,6 +43,9 @@ class UserController:
             
             # Afegeix el UID a les dades de l'usuari
             user_data['uid'] = uid
+
+            # Estableix la data de creació
+            user_data['created_at'] = datetime.now(ZoneInfo("Europe/Madrid")).isoformat()
             
             # Crea l'usuari a Firestore amb l'UID del token
             created_uid = self.user_dao.create_user(user_data, uid)

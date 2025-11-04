@@ -18,6 +18,7 @@ class User:
     num_fotos_pujades: int = 0
     num_experiencies_compartides: int = 0
     num_refugis_reformats: int = 0
+    created_at: str = ''
 
     def __post_init__(self):
         """Validacions després de la inicialització"""
@@ -41,7 +42,8 @@ class User:
             'reformes': self.reformes,
             'num_fotos_pujades': self.num_fotos_pujades,
             'num_experiencies_compartides': self.num_experiencies_compartides,
-            'num_refugis_reformats': self.num_refugis_reformats
+            'num_refugis_reformats': self.num_refugis_reformats,
+            'created_at': self.created_at
         }
     
     @classmethod
@@ -58,7 +60,8 @@ class User:
             reformes=data.get('reformes', []),
             num_fotos_pujades=data.get('num_fotos_pujades', 0),
             num_experiencies_compartides=data.get('num_experiencies_compartides', 0),
-            num_refugis_reformats=data.get('num_refugis_reformats', 0)
+            num_refugis_reformats=data.get('num_refugis_reformats', 0),
+            created_at=data.get('created_at', '')
         )
     
     def __str__(self) -> str:
