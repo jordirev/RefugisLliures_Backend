@@ -1,22 +1,26 @@
 from django.urls import path
-from .views.refugi_lliure_views import health_check, refugi_detail, refugis_collection
+from .views.refugi_lliure_views import (
+    HealthCheckAPIView,
+    RefugiDetailAPIView,
+    RefugisCollectionAPIView
+)
 from .views.user_views import (
-    users_collection,
-    user_detail
+    UsersCollectionAPIView,
+    UserDetailAPIView
 )
 from .views.cache_views import cache_stats, cache_clear, cache_invalidate
 
 urlpatterns = [
     # Health check endpoint
-    path('health/', health_check, name='health_check'),
+    path('health/', HealthCheckAPIView.as_view(), name='health_check'),
     
     # Refugis endpoints 
-    path('refugis/', refugis_collection, name='refugis_collection'),
-    path('refugis/<str:refugi_id>/', refugi_detail, name='refugi_detail'),
+    path('refugis/', RefugisCollectionAPIView.as_view(), name='refugis_collection'),
+    path('refugis/<str:refugi_id>/', RefugiDetailAPIView.as_view(), name='refugi_detail'),
     
     # Users endpoints (REST estàndard)
-    path('users/', users_collection, name='users_collection'),  # GET /users/ (llistar) + POST /users/ (crear)
-    path('users/<str:uid>/', user_detail, name='user_detail'),  # GET + PUT + DELETE /users/{uid}/
+    path('users/', UsersCollectionAPIView.as_view(), name='users_collection'),  # POST /users/ (crear)
+    path('users/<str:uid>/', UserDetailAPIView.as_view(), name='user_detail'),  # GET + PATCH + DELETE /users/{uid}/
     
     # Cache management endpoints
     path('cache/stats/', cache_stats, name='cache_stats'),
