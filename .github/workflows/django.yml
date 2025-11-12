@@ -2,9 +2,9 @@ name: Django CI
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "main", "develop" ]
   pull_request:
-    branches: [ "main" ]
+    branches: [ "main", "develop" ]
 
 jobs:
   build:
@@ -28,7 +28,7 @@ jobs:
         pip install pytest pytest-cov pytest-django
     - name: Run Tests with Coverage
       run: |
-        pytest --cov --cov-branch --cov-report=xml
+        pytest --cov=api --cov-branch --cov-report=xml
     - name: Upload coverage reports to Codecov
       uses: codecov/codecov-action@v5
       with:
