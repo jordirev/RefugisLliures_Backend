@@ -17,7 +17,14 @@ def initialize_firebase():
     Inicialitza Firebase Admin SDK si encara no s'ha inicialitzat.
     - A Render: usa la variable d'entorn FIREBASE_SERVICE_ACCOUNT_KEY
     - En local: carrega les variables d'entorn des de env/.env.development i busca el fitxer JSON
+    - En tests: no inicialitza Firebase
     """
+    # No inicialitzar Firebase durant els tests
+    import sys
+    if 'pytest' in sys.modules or os.environ.get('TESTING') == 'true':
+        logger.info("🧪 Entorn de testing detectat - Firebase NO s'inicialitza")
+        return
+    
     if not firebase_admin._apps:
         try:
             # Detecta si estem a Render (servidor de producció)

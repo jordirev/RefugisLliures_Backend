@@ -9,6 +9,22 @@ from api.models.user import User
 from api.models.refugi_lliure import Refugi, Coordinates, InfoComplementaria, RefugiSearchFilters
 
 
+# ============= CONFIGURACIÓ GLOBAL =============
+
+@pytest.fixture(scope='session', autouse=True)
+def setup_test_environment():
+    """
+    Configuració global que s'executa una vegada al principi de tots els tests.
+    Assegura que Firebase no s'inicialitza durant els tests.
+    """
+    import os
+    os.environ['TESTING'] = 'true'
+    yield
+    # Cleanup
+    if 'TESTING' in os.environ:
+        del os.environ['TESTING']
+
+
 # ============= FIXTURES D'USUARIS =============
 
 @pytest.fixture
