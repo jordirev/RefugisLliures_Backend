@@ -5,7 +5,7 @@ This file remains at the repository root for backwards compatibility.
 It delegates execution to `api.tests.test_auth_setup`.
 """
 
-from api.tests import test_auth_setup as _mod
+from api.utils import auth_setup_manual_test as _mod
 
 
 def main():
