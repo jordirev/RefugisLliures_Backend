@@ -19,7 +19,6 @@ from api.serializers.user_serializer import (
 )
 from api.controllers.user_controller import UserController
 from api.daos.user_dao import UserDAO
-from api.mappers.user_mapper import UserMapper
 from api.views.user_views import UsersCollectionAPIView, UserDetailAPIView
 
 
