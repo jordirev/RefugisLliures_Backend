@@ -348,7 +348,7 @@ class TestUserDAO:
     """Tests per al UserDAO"""
     
     @patch('api.daos.user_dao.FirestoreService')
-    @patch('api.services.cache_service.cache_service')
+    @patch('api.daos.user_dao.cache_service')
     def test_create_user_success(self, mock_cache, mock_firestore_service, sample_user_data):
         """Test creació d'usuari exitosa"""
         # Configurar mocks
@@ -408,7 +408,7 @@ class TestUserDAO:
         mock_cache.set.assert_called_once()
     
     @patch('api.daos.user_dao.FirestoreService')
-    @patch('api.services.cache_service.cache_service')
+    @patch('api.daos.user_dao.cache_service')
     def test_get_user_by_uid_not_found(self, mock_cache, mock_firestore_service):
         """Test obtenció d'usuari per UID (no trobat)"""
         mock_cache.get.return_value = None
@@ -448,7 +448,7 @@ class TestUserDAO:
         mock_firestore_service.return_value.get_db.assert_not_called()
     
     @patch('api.daos.user_dao.FirestoreService')
-    @patch('api.services.cache_service.cache_service')
+    @patch('api.daos.user_dao.cache_service')
     def test_get_user_by_email_found(self, mock_cache, mock_firestore_service, sample_user_data):
         """Test obtenció d'usuari per email (trobat)"""
         mock_cache.get.return_value = None
@@ -503,7 +503,7 @@ class TestUserDAO:
         mock_cache.delete.assert_called()
     
     @patch('api.daos.user_dao.FirestoreService')
-    @patch('api.services.cache_service.cache_service')
+    @patch('api.daos.user_dao.cache_service')
     def test_update_user_not_found(self, mock_cache, mock_firestore_service):
         """Test actualització d'usuari no existent"""
         mock_db = MagicMock()
@@ -554,7 +554,7 @@ class TestUserDAO:
         mock_cache.delete.assert_called()
     
     @patch('api.daos.user_dao.FirestoreService')
-    @patch('api.services.cache_service.cache_service')
+    @patch('api.daos.user_dao.cache_service')
     def test_user_exists_true(self, mock_cache, mock_firestore_service):
         """Test comprovació d'existència d'usuari (existeix)"""
         mock_db = MagicMock()
@@ -577,7 +577,7 @@ class TestUserDAO:
         assert exists is True
     
     @patch('api.daos.user_dao.FirestoreService')
-    @patch('api.services.cache_service.cache_service')
+    @patch('api.daos.user_dao.cache_service')
     def test_user_exists_false(self, mock_cache, mock_firestore_service):
         """Test comprovació d'existència d'usuari (no existeix)"""
         mock_db = MagicMock()
@@ -957,9 +957,13 @@ class TestUserIntegration:
     """Tests d'integració entre components"""
     
     @patch('api.daos.user_dao.FirestoreService')
-    @patch('api.services.cache_service.cache_service')
+    @patch('api.daos.user_dao.cache_service')
     def test_full_user_creation_flow(self, mock_cache, mock_firestore_service, sample_user_data):
         """Test flux complet de creació d'usuari"""
+        # Configurar cache mock
+        mock_cache.get.return_value = None  # Cache miss
+        mock_cache.generate_key.return_value = 'test_cache_key'
+        
         # Configurar mocks de Firestore
         mock_db = MagicMock()
         mock_firestore_instance = mock_firestore_service.return_value
@@ -968,12 +972,12 @@ class TestUserIntegration:
         mock_collection = MagicMock()
         mock_db.collection.return_value = mock_collection
         
-        # Mock per comprovar que no existeix
-        mock_doc_snapshot = MagicMock()
-        mock_doc_snapshot.exists = False
+        # Mock per comprovar que no existeix (get_user_by_uid)
+        mock_doc_snapshot_not_exists = MagicMock()
+        mock_doc_snapshot_not_exists.exists = False
         
         mock_doc_ref = MagicMock()
-        mock_doc_ref.get.return_value = mock_doc_snapshot
+        mock_doc_ref.get.return_value = mock_doc_snapshot_not_exists
         mock_collection.document.return_value = mock_doc_ref
         
         # Mock per cerca per email (no existeix)
@@ -986,7 +990,9 @@ class TestUserIntegration:
         success, user, error = controller.create_user(sample_user_data, 'test_uid')
         
         # Verificacions
-        assert success is True
+        if not success:
+            print(f"Error: {error}")
+        assert success is True, f"Expected success=True but got error: {error}"
         assert user is not None
         assert error is None
         assert isinstance(user, User)
