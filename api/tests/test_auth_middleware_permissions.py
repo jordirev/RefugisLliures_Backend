@@ -3,7 +3,7 @@ Tests per a middleware, authentication i permissions de l'API
 Comprova el funcionament de Firebase Auth Middleware, FirebaseAuthentication i permissions personalitzades
 """
 import pytest
-from unittest.mock import Mock, MagicMock, patch, PropertyMock
+from unittest.mock import Mock, patch
 from django.http import JsonResponse
 from django.test import RequestFactory
 from rest_framework import status
