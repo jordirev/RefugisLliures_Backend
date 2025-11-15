@@ -4,8 +4,32 @@ python-decouple==3.8
 python-dotenv==1.0.0
 django-cors-headers==4.4.0
 firebase-admin==6.5.0
+
+# Gestió d'arxius estàtics
 whitenoise==6.6.0
+
+# Servei de producció
 gunicorn==21.2.0
+
+# Documentació API
 drf_yasg
+
+# Cache i Redis
 redis==5.0.1
 django-redis==5.4.0
+
+# Testing
+pytest==7.4.3
+pytest-cov==4.1.0
+pytest-django==4.7.0
+pytest-mock==3.12.0
+tox
+
+# Coverage
+coverage==7.3.2
+
+# Faker per generar dades de prova 
+Faker==20.1.0
+
+# Debugging 
+ipdb==0.13.13
