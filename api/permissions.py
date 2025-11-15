@@ -73,3 +73,15 @@ class IsSameUser(permissions.BasePermission):
         
         # Comprova que l'UID de la URL coincideix amb l'UID de l'usuari autenticat
         return url_uid == request.user.uid
+
+
+class SafeMethodsOnly(permissions.BasePermission):
+    """
+    Permís que només permet mètodes HTTP segurs (GET, HEAD, OPTIONS)
+    """
+    
+    def has_permission(self, request, view):
+        """
+        Només permet mètodes HTTP segurs
+        """
+        return request.method in permissions.SAFE_METHODS

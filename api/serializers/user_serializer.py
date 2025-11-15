@@ -4,6 +4,11 @@ Serializers per a l'API d'usuaris
 from rest_framework import serializers
 from ..models.user import User
 
+USERNAME_HELPER_TEXT = "Nom d'usuari (mínim 2 caràcters)"
+EMAIL_HELPER_TEXT = "Adreça de correu electrònic"
+URL_AVATAR_HELPER_TEXT = "URL de l'avatar de l'usuari"
+LANGUAGE_HELPER_TEXT = "Idioma preferit de l'usuari (codi ISO 639-1, ex: 'ca', 'es', 'en', 'fr')"
+
 class UserValidatorMixin:
     """Mixin amb validadors comuns per a usuaris"""
     
@@ -60,20 +65,20 @@ class UserSerializer(UserValidatorMixin, serializers.Serializer):
         max_length=255, 
         allow_blank=True, 
         required=False, 
-        help_text="Nom d'usuari"
+        help_text=USERNAME_HELPER_TEXT
     )
     email = serializers.EmailField(
-        help_text="Adreça de correu electrònic"
+        help_text=EMAIL_HELPER_TEXT
     )
     avatar = serializers.URLField(
         allow_blank=True, 
         required=False, 
-        help_text="URL de l'avatar de l'usuari"
+        help_text=URL_AVATAR_HELPER_TEXT
     )
     idioma = serializers.CharField(
         max_length=5,
         default='ca',
-        help_text="Idioma preferit de l'usuari (codi ISO 639-1)"
+        help_text=LANGUAGE_HELPER_TEXT
     )
     refugis_favorits = serializers.ListField(
         child=serializers.CharField(),
@@ -140,12 +145,12 @@ class UserCreateSerializer(UserValidatorMixin, serializers.Serializer):
     """Serializer per a creació d'usuaris"""
 
     username = serializers.CharField(max_length=255, allow_blank=True, required=False, 
-                                   help_text="Nom d'usuari")
-    email = serializers.EmailField(help_text="Adreça de correu electrònic")
+                                   help_text=USERNAME_HELPER_TEXT)
+    email = serializers.EmailField(help_text=EMAIL_HELPER_TEXT)
     avatar = serializers.URLField(allow_blank=True, required=False, 
-                                help_text="URL de l'avatar de l'usuari")
+                                help_text=URL_AVATAR_HELPER_TEXT)
     idioma = serializers.CharField(default='ca', max_length=5, required=False,
-                                help_text="Idioma preferit de l'usuari (codi ISO 639-1)")
+                                help_text=LANGUAGE_HELPER_TEXT)
     
     def validate_email(self, value):
         return self.validate_email_field(value, required=True)
@@ -160,12 +165,12 @@ class UserUpdateSerializer(UserValidatorMixin, serializers.Serializer):
     """Serializer per a actualització d'usuaris"""
     
     username = serializers.CharField(max_length=255, allow_blank=True, required=False, 
-                                   help_text="Nom d'usuari")
-    email = serializers.EmailField(required=False, help_text="Adreça de correu electrònic")
+                                   help_text=USERNAME_HELPER_TEXT)
+    email = serializers.EmailField(required=False, help_text=EMAIL_HELPER_TEXT)
     avatar = serializers.URLField(allow_blank=True, required=False, 
-                                help_text="URL de l'avatar de l'usuari")
+                                help_text=URL_AVATAR_HELPER_TEXT)
     idioma = serializers.CharField(default='ca', max_length=5, required=False,
-                                help_text="Idioma preferit de l'usuari (codi ISO 639-1)")
+                                help_text=LANGUAGE_HELPER_TEXT)
     
     def validate_email(self, value):
         return self.validate_email_field(value, required=False)

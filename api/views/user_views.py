@@ -17,6 +17,18 @@ from ..serializers.user_serializer import (
 )
 from ..permissions import IsSameUser
 
+
+# Definim constants d'errors
+INTERNAL_SERVER_ERROR = 'Error intern del servidor'
+UID_NOT_FOUND_ERROR = 'UID no trobat al token d\'autenticació'
+ERROR_400_INVALID_DATA = 'Dades invàlides'
+ERROR_401_UNAUTHORIZED = 'No autoritzat'
+ERROR_403_FORBIDDEN = 'Permís denegat'
+ERROR_404_USER_NOT_FOUND = 'Usuari no trobat'
+ERROR_409_USER_EXISTS = 'L\'usuari ja existeix'
+ERROR_204_NO_CONTENT = 'Usuari eliminat correctament'
+
+
 # Configurar logging
 logger = logging.getLogger(__name__)
 
@@ -43,9 +55,9 @@ class UsersCollectionAPIView(APIView):
         ],
         responses={
             201: UserSerializer,
-            400: 'Dades invàlides',
-            401: 'No autoritzat',
-            409: 'Usuari ja existeix'
+            400: ERROR_400_INVALID_DATA,
+            401: ERROR_401_UNAUTHORIZED,
+            409: ERROR_409_USER_EXISTS
         }
     )
     def post(self, request):
@@ -55,14 +67,14 @@ class UsersCollectionAPIView(APIView):
             uid = getattr(request, 'user_uid', None)
             if not uid:
                 return Response({
-                    'error': 'UID no trobat al token d\'autenticació'
+                    'error': UID_NOT_FOUND_ERROR
                 }, status=status.HTTP_401_UNAUTHORIZED)
             
             # Valida les dades d'entrada
             serializer = UserCreateSerializer(data=request.data)
             if not serializer.is_valid():
                 return Response({
-                    'error': 'Dades invàlides',
+                    'error': ERROR_400_INVALID_DATA,
                     'details': serializer.errors
                 }, status=status.HTTP_400_BAD_REQUEST)
             
@@ -83,7 +95,7 @@ class UsersCollectionAPIView(APIView):
         except Exception as e:
             logger.error(f"Error en create_user: {str(e)}")
             return Response({
-                'error': 'Error intern del servidor'
+                'error': INTERNAL_SERVER_ERROR
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 # ========== ITEM ENDPOINT: /users/{uid}/ ==========
@@ -119,9 +131,9 @@ class UserDetailAPIView(APIView):
         ],
         responses={
             200: UserSerializer,
-            401: 'No autoritzat',
-            403: 'Permís denegat',
-            404: 'Usuari no trobat'
+            401: ERROR_401_UNAUTHORIZED,
+            403: ERROR_403_FORBIDDEN,
+            404: ERROR_404_USER_NOT_FOUND
         }
     )
     def get(self, request, uid):
@@ -141,7 +153,7 @@ class UserDetailAPIView(APIView):
         except Exception as e:
             logger.error(f"Error en get_user: {str(e)}")
             return Response({
-                'error': 'Error intern del servidor'
+                'error': INTERNAL_SERVER_ERROR
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
     @swagger_auto_schema(
@@ -158,10 +170,10 @@ class UserDetailAPIView(APIView):
         ],
         responses={
             200: UserSerializer,
-            400: 'Dades invàlides',
-            401: 'No autoritzat',
-            403: 'Permís denegat',
-            404: 'Usuari no trobat'
+            400: ERROR_400_INVALID_DATA,
+            401: ERROR_401_UNAUTHORIZED,
+            403: ERROR_403_FORBIDDEN,
+            404: ERROR_404_USER_NOT_FOUND
         }
     )
     def patch(self, request, uid):
@@ -171,7 +183,7 @@ class UserDetailAPIView(APIView):
             serializer = UserUpdateSerializer(data=request.data)
             if not serializer.is_valid():
                 return Response({
-                    'error': 'Dades invàlides',
+                    'error': ERROR_400_INVALID_DATA,
                     'details': serializer.errors
                 }, status=status.HTTP_400_BAD_REQUEST)
             
@@ -192,7 +204,7 @@ class UserDetailAPIView(APIView):
         except Exception as e:
             logger.error(f"Error en update_user: {str(e)}")
             return Response({
-                'error': 'Error intern del servidor'
+                'error': INTERNAL_SERVER_ERROR
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
     @swagger_auto_schema(
@@ -207,10 +219,10 @@ class UserDetailAPIView(APIView):
             )
         ],
         responses={
-            204: 'Usuari eliminat correctament',
-            401: 'No autoritzat',
-            403: 'Permís denegat',
-            404: 'Usuari no trobat'
+            204: ERROR_204_NO_CONTENT,
+            401: ERROR_401_UNAUTHORIZED,
+            403: ERROR_403_FORBIDDEN,
+            404: ERROR_404_USER_NOT_FOUND
         }
     )
     def delete(self, request, uid):
@@ -229,5 +241,5 @@ class UserDetailAPIView(APIView):
         except Exception as e:
             logger.error(f"Error en delete_user: {str(e)}")
             return Response({
-                'error': 'Error intern del servidor'
+                'error': INTERNAL_SERVER_ERROR
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

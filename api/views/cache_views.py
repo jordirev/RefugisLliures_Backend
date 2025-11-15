@@ -4,7 +4,8 @@ Views per gestionar la cache
 import logging
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAdminUser
+from ..permissions import SafeMethodsOnly
 from rest_framework.response import Response
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
@@ -30,7 +31,7 @@ logger = logging.getLogger(__name__)
     }
 )
 @api_view(['GET'])
-@permission_classes([AllowAny])
+@permission_classes([SafeMethodsOnly])
 def cache_stats(request):
     """Obté estadístiques de la cache"""
     try:
@@ -53,7 +54,7 @@ def cache_stats(request):
     }
 )
 @api_view(['DELETE'])
-@permission_classes([AllowAny])  # TODO: Canviar a IsAdminUser en producció
+@permission_classes([IsAdminUser])
 def cache_clear(request):
     """Neteja tota la cache"""
     try:
@@ -89,7 +90,7 @@ def cache_clear(request):
     }
 )
 @api_view(['DELETE'])
-@permission_classes([AllowAny])  # TODO: Canviar a IsAdminUser en producció
+@permission_classes([IsAdminUser]) 
 def cache_invalidate(request):
     """Elimina claus que coincideixin amb un patró"""
     try:

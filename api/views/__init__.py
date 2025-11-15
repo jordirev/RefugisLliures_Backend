@@ -8,9 +8,11 @@ importar-les de manera neta.
 # Views d'usuaris
 from .user_views import UsersCollectionAPIView, UserDetailAPIView
 
+# Views de health check
+from .health_check_views import HealthCheckAPIView
+
 # Views de refugis
 from .refugi_lliure_views import (
-	HealthCheckAPIView,
 	RefugisCollectionAPIView,
 	RefugiDetailAPIView,
 )

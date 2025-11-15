@@ -36,7 +36,6 @@ class RefugiLliureDao:
                 return None
             
             refugi_data = doc.to_dict()
-            #refugi_data['id'] = doc.id
             
             # Guarda a cache
             timeout = cache_service.get_timeout('refugi_detail')
@@ -176,23 +175,18 @@ class RefugiLliureDao:
         if filters.type:
             query = query.where('type', '==', filters.type)
         
-        # Apply range filters - Firestore allows multiple ranges on same field
-        range_applied = False
-        
         # Prioritize places range over altitude if both present (can't have ranges on different fields)
         if filters.places_min is not None or filters.places_max is not None:
             if filters.places_min is not None:
                 query = query.where('places', '>=', filters.places_min)
             if filters.places_max is not None:
                 query = query.where('places', '<=', filters.places_max)
-            range_applied = True
         
         elif filters.altitude_min is not None or filters.altitude_max is not None:
             if filters.altitude_min is not None:
                 query = query.where('altitude', '>=', filters.altitude_min)
             if filters.altitude_max is not None:
                 query = query.where('altitude', '<=', filters.altitude_max)
-            range_applied = True
         
         return self._execute_query_with_memory_filters(query, filters)
 

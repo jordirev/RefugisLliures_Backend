@@ -1,6 +1,6 @@
 from django.urls import path
+from .views.health_check_views import HealthCheckAPIView
 from .views.refugi_lliure_views import (
-    HealthCheckAPIView,
     RefugiDetailAPIView,
     RefugisCollectionAPIView
 )
