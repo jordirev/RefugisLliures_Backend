@@ -90,7 +90,7 @@ def cache_clear(request):
     }
 )
 @api_view(['DELETE'])
-@permission_classes([IsAdminUser]) 
+@permission_classes([IsAdminUser])
 def cache_invalidate(request):
     """Elimina claus que coincideixin amb un patró"""
     try:
