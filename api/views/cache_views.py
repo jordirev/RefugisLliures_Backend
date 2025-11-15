@@ -31,7 +31,7 @@ logger = logging.getLogger(__name__)
     }
 )
 @api_view(['GET'])
-@permission_classes([SafeMethodsOnly])
+@permission_classes([IsAdminUser])
 def cache_stats(request):
     """Obté estadístiques de la cache"""
     try:
