@@ -4,7 +4,7 @@ Serializers per a l'API d'usuaris
 from rest_framework import serializers
 from ..models.user import User
 
-USERNAME_HELPER_TEXT = "Nom d'usuari (mínim 2 caràcters)"
+USERNAME_HELPER_TEXT = "Nom d'usuari"
 EMAIL_HELPER_TEXT = "Adreça de correu electrònic"
 URL_AVATAR_HELPER_TEXT = "URL de l'avatar de l'usuari"
 LANGUAGE_HELPER_TEXT = "Idioma preferit de l'usuari (codi ISO 639-1, ex: 'ca', 'es', 'en', 'fr')"
