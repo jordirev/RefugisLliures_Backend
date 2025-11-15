@@ -903,6 +903,76 @@ class TestRefugiViews:
         assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
         assert response.data['status'] == 'unhealthy'
     
+    @patch('api.views.health_check_views.RefugiLliureController')
+    def test_health_check_success_invalid_serializer(self, mock_controller_class):
+        """Test health check exitós amb dades que no passen validació del serialitzador"""
+        mock_controller = mock_controller_class.return_value
+        # Retornem dades amb un camp extra que no està al serialitzador
+        mock_controller.health_check.return_value = (
+            {
+                'status': 'healthy',
+                'message': 'OK',
+                'firebase': True,
+                'firestore': True,
+                'collections_count': 5,
+                'extra_field': 'extra_value'  # Camp extra
+            },
+            None
+        )
+        
+        factory = APIRequestFactory()
+        request = factory.get('/health/')
+        
+        view = HealthCheckAPIView.as_view()
+        response = view(request)
+        
+        # Tot i que el serialitzador no és vàlid, retorna 200 amb les dades originals
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['status'] == 'healthy'
+    
+    @patch('api.views.health_check_views.RefugiLliureController')
+    def test_health_check_unhealthy_invalid_serializer(self, mock_controller_class):
+        """Test health check unhealthy amb dades que no passen validació del serialitzador"""
+        mock_controller = mock_controller_class.return_value
+        # Retornem dades amb un camp extra
+        mock_controller.health_check.return_value = (
+            {
+                'status': 'unhealthy',
+                'message': 'Error',
+                'firebase': False,
+                'extra_field': 'extra_value'  # Camp extra
+            },
+            'Connection error'
+        )
+        
+        factory = APIRequestFactory()
+        request = factory.get('/health/')
+        
+        view = HealthCheckAPIView.as_view()
+        response = view(request)
+        
+        # Tot i que el serialitzador no és vàlid, retorna 503 amb les dades originals
+        assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
+        assert response.data['status'] == 'unhealthy'
+    
+    @patch('api.views.health_check_views.RefugiLliureController')
+    def test_health_check_exception(self, mock_controller_class):
+        """Test health check quan es produeix una excepció"""
+        mock_controller = mock_controller_class.return_value
+        mock_controller.health_check.side_effect = Exception("Database connection failed")
+        
+        factory = APIRequestFactory()
+        request = factory.get('/health/')
+        
+        view = HealthCheckAPIView.as_view()
+        response = view(request)
+        
+        # Verifica que retorna error 503
+        assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
+        assert response.data['status'] == 'unhealthy'
+        assert 'Error: Database connection failed' in response.data['message']
+        assert response.data['firebase'] is False
+    
     @patch('api.views.refugi_lliure_views.RefugiLliureController')
     def test_get_refugi_detail_success(self, mock_controller_class, sample_refugi):
         """Test obtenció de detall de refugi exitosa"""
