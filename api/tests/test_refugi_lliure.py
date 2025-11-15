@@ -8,7 +8,6 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 from rest_framework import status
 from rest_framework.test import APIRequestFactory
-
 from api.models.refugi_lliure import (
     Refugi, 
     Coordinates, 
@@ -29,9 +28,15 @@ from api.daos.refugi_lliure_dao import RefugiLliureDao
 from api.mappers.refugi_lliure_mapper import RefugiLliureMapper
 from api.views.refugi_lliure_views import (
     RefugiDetailAPIView,
-    RefugisCollectionAPIView,
-    HealthCheckAPIView
+    RefugisCollectionAPIView
 )
+from api.views.health_check_views import HealthCheckAPIView
+import math
+
+
+def floats_are_close(a, b):
+    """Comprova si dos floats són gairebé iguals"""
+    return math.isclose(a, b, rel_tol=1e-9)
 
 
 # ==================== TESTS DE MODELS ====================
@@ -44,16 +49,16 @@ class TestRefugiModels:
         """Test creació de coordenades"""
         coord = Coordinates(long=1.5, lat=42.5)
         
-        assert coord.long == 1.5
-        assert coord.lat == 42.5
+        assert floats_are_close(coord.long, 1.5)
+        assert floats_are_close(coord.lat, 42.5)
     
     def test_coordinates_to_dict(self, sample_coordinates):
         """Test conversió de coordenades a diccionari"""
         coord_dict = sample_coordinates.to_dict()
         
         assert isinstance(coord_dict, dict)
-        assert coord_dict['long'] == 1.5
-        assert coord_dict['lat'] == 42.5
+        assert floats_are_close(coord_dict['long'], 1.5)
+        assert floats_are_close(coord_dict['lat'], 42.5)
     
     def test_coordinates_from_dict(self):
         """Test creació de coordenades des de diccionari"""
@@ -61,16 +66,16 @@ class TestRefugiModels:
         coord = Coordinates.from_dict(data)
         
         assert isinstance(coord, Coordinates)
-        assert coord.long == 1.5
-        assert coord.lat == 42.5
+        assert floats_are_close(coord.long, 1.5)
+        assert floats_are_close(coord.lat, 42.5)
     
     def test_coordinates_from_dict_alternative_format(self):
         """Test coordenades amb format alternatiu (longitude, latitude)"""
         data = {'longitude': 1.5, 'latitude': 42.5}
         coord = Coordinates.from_dict(data)
         
-        assert coord.long == 1.5
-        assert coord.lat == 42.5
+        assert floats_are_close(coord.long, 1.5)
+        assert floats_are_close(coord.lat, 42.5)
     
     def test_info_complementaria_creation(self):
         """Test creació d'InfoComplementaria"""
@@ -177,7 +182,8 @@ class TestRefugiModels:
         
         assert coord.refugi_id == 'test_001'
         assert coord.refugi_name == 'Test Refugi'
-        assert coord.coordinates.long == 1.5
+        assert floats_are_close(coord.coordinates.long, 1.5)
+        assert floats_are_close(coord.coordinates.lat, 42.5)
         assert coord.geohash == 'abc123'
     
     def test_refugi_search_filters_creation(self):
@@ -232,8 +238,8 @@ class TestRefugiSerializers:
         serializer = CoordinatesSerializer(data=data)
         
         assert serializer.is_valid()
-        assert serializer.validated_data['long'] == 1.5
-        assert serializer.validated_data['lat'] == 42.5
+        assert floats_are_close(serializer.validated_data['long'], 1.5)
+        assert floats_are_close(serializer.validated_data['lat'], 42.5)
     
     def test_coordinates_serializer_invalid(self):
         """Test serialització de coordenades invàlides"""
@@ -851,7 +857,7 @@ class TestRefugiController:
 class TestRefugiViews:
     """Tests per a les views de refugis"""
     
-    @patch('api.views.refugi_lliure_views.RefugiLliureController')
+    @patch('api.views.health_check_views.RefugiLliureController')
     def test_health_check_success(self, mock_controller_class):
         """Test endpoint health check exitós"""
         mock_controller = mock_controller_class.return_value
@@ -875,7 +881,7 @@ class TestRefugiViews:
         assert response.status_code == status.HTTP_200_OK
         assert response.data['status'] == 'healthy'
     
-    @patch('api.views.refugi_lliure_views.RefugiLliureController')
+    @patch('api.views.health_check_views.RefugiLliureController')
     def test_health_check_unhealthy(self, mock_controller_class):
         """Test endpoint health check amb error"""
         mock_controller = mock_controller_class.return_value
@@ -896,6 +902,76 @@ class TestRefugiViews:
         
         assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
         assert response.data['status'] == 'unhealthy'
+    
+    @patch('api.views.health_check_views.RefugiLliureController')
+    def test_health_check_success_invalid_serializer(self, mock_controller_class):
+        """Test health check exitós amb dades que no passen validació del serialitzador"""
+        mock_controller = mock_controller_class.return_value
+        # Retornem dades amb un camp extra que no està al serialitzador
+        mock_controller.health_check.return_value = (
+            {
+                'status': 'healthy',
+                'message': 'OK',
+                'firebase': True,
+                'firestore': True,
+                'collections_count': 5,
+                'extra_field': 'extra_value'  # Camp extra
+            },
+            None
+        )
+        
+        factory = APIRequestFactory()
+        request = factory.get('/health/')
+        
+        view = HealthCheckAPIView.as_view()
+        response = view(request)
+        
+        # Tot i que el serialitzador no és vàlid, retorna 200 amb les dades originals
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['status'] == 'healthy'
+    
+    @patch('api.views.health_check_views.RefugiLliureController')
+    def test_health_check_unhealthy_invalid_serializer(self, mock_controller_class):
+        """Test health check unhealthy amb dades que no passen validació del serialitzador"""
+        mock_controller = mock_controller_class.return_value
+        # Retornem dades amb un camp extra
+        mock_controller.health_check.return_value = (
+            {
+                'status': 'unhealthy',
+                'message': 'Error',
+                'firebase': False,
+                'extra_field': 'extra_value'  # Camp extra
+            },
+            'Connection error'
+        )
+        
+        factory = APIRequestFactory()
+        request = factory.get('/health/')
+        
+        view = HealthCheckAPIView.as_view()
+        response = view(request)
+        
+        # Tot i que el serialitzador no és vàlid, retorna 503 amb les dades originals
+        assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
+        assert response.data['status'] == 'unhealthy'
+    
+    @patch('api.views.health_check_views.RefugiLliureController')
+    def test_health_check_exception(self, mock_controller_class):
+        """Test health check quan es produeix una excepció"""
+        mock_controller = mock_controller_class.return_value
+        mock_controller.health_check.side_effect = Exception("Database connection failed")
+        
+        factory = APIRequestFactory()
+        request = factory.get('/health/')
+        
+        view = HealthCheckAPIView.as_view()
+        response = view(request)
+        
+        # Verifica que retorna error 503
+        assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
+        assert response.data['status'] == 'unhealthy'
+        assert 'Error: Database connection failed' in response.data['message']
+        assert response.data['firebase'] is False
     
     @patch('api.views.refugi_lliure_views.RefugiLliureController')
     def test_get_refugi_detail_success(self, mock_controller_class, sample_refugi):
@@ -1129,8 +1205,8 @@ class TestEdgeCases:
         """Test coordenades amb valors extrems"""
         coord = Coordinates(long=180.0, lat=90.0)
         
-        assert coord.long == 180.0
-        assert coord.lat == 90.0
+        assert floats_are_close(coord.long, 180.0)
+        assert floats_are_close(coord.lat, 90.0)
     
     @pytest.mark.parametrize("places", [0, 1, 100, 999])
     def test_refugi_with_various_places(self, places):

@@ -11,6 +11,8 @@ from zoneinfo import ZoneInfo
 
 logger = logging.getLogger(__name__)
 
+UID_NOT_PROVIDED_ERROR = "UID no proporcionat"
+
 class UserController:
     """Controller per gestionar operacions d'usuaris"""
     
@@ -73,7 +75,7 @@ class UserController:
         """
         try:
             if not uid:
-                return False, None, "UID no proporcionat"
+                return False, None, UID_NOT_PROVIDED_ERROR
             
             user_data = self.user_dao.get_user_by_uid(uid)
             if not user_data:
@@ -124,7 +126,7 @@ class UserController:
         """
         try:
             if not uid:
-                return False, None, "UID no proporcionat"
+                return False, None, UID_NOT_PROVIDED_ERROR
             
             # Comprova que l'usuari existeixi
             if not self.user_dao.user_exists(uid):
@@ -172,7 +174,7 @@ class UserController:
         """
         try:
             if not uid:
-                return False, "UID no proporcionat"
+                return False, UID_NOT_PROVIDED_ERROR
             
             # Comprova que l'usuari existeixi
             if not self.user_dao.user_exists(uid):

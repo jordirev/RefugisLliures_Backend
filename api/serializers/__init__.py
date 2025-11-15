@@ -18,15 +18,11 @@ __all__ = [
     'UserSerializer', 
     'UserCreateSerializer', 
     'UserUpdateSerializer',
-    'UserListSerializer',
-    'PaginationQuerySerializer',
     'RefugiSerializer',
     'RefugiCoordinatesSerializer',
     'RefugiSearchResponseSerializer',
-    'RefugiCoordinatesResponseSerializer',
     'HealthCheckResponseSerializer',
     'RefugiSearchFiltersSerializer',
-    'RefugiCoordinatesFiltersSerializer',
     'CoordinatesSerializer',
     'InfoComplementariaSerializer'
 ]
