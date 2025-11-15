@@ -11,6 +11,10 @@ from api.models.refugi_lliure import Refugi, Coordinates, InfoComplementaria, Re
 
 # ============= CONFIGURACIÓ GLOBAL =============
 
+EMAIL = 'test@example.com'
+DEPARTMENT = 'Ariège'
+
+
 @pytest.fixture(scope='session', autouse=True)
 def setup_test_environment():
     """
@@ -33,7 +37,7 @@ def sample_user_data():
     return {
         'uid': 'test_uid_12345',
         'username': 'testuser',
-        'email': 'test@example.com',
+        'email': EMAIL,
         'avatar': 'https://example.com/avatar.jpg',
         'idioma': 'ca',
         'refugis_favorits': [],
@@ -84,10 +88,10 @@ def multiple_users_data():
 def invalid_user_data():
     """Dades d'usuari invàlides per tests"""
     return [
-        {'uid': '', 'email': 'test@example.com'},  # UID buit
+        {'uid': '', 'email': EMAIL},  # UID buit
         {'uid': 'test_uid', 'email': ''},  # Email buit
         {'uid': 'test_uid', 'email': 'invalid_email'},  # Email sense @
-        {'uid': 'test_uid', 'email': 'test@example.com', 'idioma': 'invalid_lang'}  # Idioma invàlid
+        {'uid': 'test_uid', 'email': EMAIL, 'idioma': 'invalid_lang'}  # Idioma invàlid
     ]
 
 
@@ -131,7 +135,7 @@ def sample_refugi_data(sample_coordinates, sample_info_complementaria):
         'type': 'garde',
         'modified_at': datetime.now(ZoneInfo("Europe/Madrid")).isoformat(),
         'region': 'Pirineus',
-        'departement': 'Ariège'
+        'departement': DEPARTMENT
     }
 
 
@@ -163,7 +167,7 @@ def multiple_refugis_data():
             'type': 'garde',
             'modified_at': '',
             'region': 'Pirineus',
-            'departement': 'Ariège'
+            'departement': DEPARTMENT
         },
         {
             'id': 'refugi_002',
@@ -203,7 +207,7 @@ def multiple_refugis_data():
             'type': 'garde',
             'modified_at': '',
             'region': 'Pirineus',
-            'departement': 'Ariège'
+            'departement': DEPARTMENT
         }
     ]
 
@@ -226,7 +230,7 @@ def sample_search_filters():
     return RefugiSearchFilters(
         name='Refugi Test',
         region='Pirineus',
-        departement='Ariège',
+        departement=DEPARTMENT,
         type='garde',
         places_min=5,
         places_max=15,
@@ -420,7 +424,7 @@ def refugi_mapper():
 def valid_emails():
     """Llista d'emails vàlids per tests"""
     return [
-        'test@example.com',
+        EMAIL,
         'user.name@domain.co.uk',
         'first.last+tag@example.com',
         'test_user@test-domain.com'

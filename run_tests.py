@@ -41,11 +41,11 @@ def main():
     
     opcions = {
         '1': ('Executar TOTS els tests amb coverage', 
-              'pytest --cov=api --cov-report=term-missing --cov-report=html -v'),
+              'pytest --cov=api --cov-report=term-missing --cov-report=html --cov-report=xml -v'),
         '2': ('Tests de USUARIS amb coverage',
-              'pytest api/tests/test_user.py --cov=api.models.user --cov=api.serializers.user_serializer --cov=api.controllers.user_controller --cov=api.daos.user_dao --cov=api.mappers.user_mapper --cov=api.views.user_views --cov-report=term-missing -v'),
+              'pytest api/tests/test_user.py --cov=api.models.user --cov=api.serializers.user_serializer --cov=api.controllers.user_controller --cov=api.daos.user_dao --cov=api.mappers.user_mapper --cov=api.views.user_views --cov-report=term-missing --cov-report=xml -v'),
         '3': ('Tests de REFUGIS amb coverage',
-              'pytest api/tests/test_refugi_lliure.py --cov=api.models.refugi_lliure --cov=api.serializers.refugi_lliure_serializer --cov=api.controllers.refugi_lliure_controller --cov=api.daos.refugi_lliure_dao --cov=api.mappers.refugi_lliure_mapper --cov=api.views.refugi_lliure_views --cov-report=term-missing -v'),
+              'pytest api/tests/test_refugi_lliure.py --cov=api.models.refugi_lliure --cov=api.serializers.refugi_lliure_serializer --cov=api.controllers.refugi_lliure_controller --cov=api.daos.refugi_lliure_dao --cov=api.mappers.refugi_lliure_mapper --cov=api.views.refugi_lliure_views --cov-report=term-missing --cov-report=xml -v'),
         '4': ('Tests de MODELS només',
               'pytest -m models -v'),
         '5': ('Tests de SERIALIZERS només',
