@@ -16,9 +16,12 @@ omit =
     */asgi.py
     */settings.py
     */urls.py
+    */firebase_config.py
     */apps.py
     */admin.py
     */__init__.py
+    */services/*
+    */utils/*
 
 [report]
 # Excloure línies específiques del report
