@@ -91,48 +91,30 @@ class RefugiSearchFiltersSerializer(serializers.Serializer):
     couchage = serializers.IntegerField(required=False, allow_null=True, min_value=0, max_value=1)
     lits = serializers.IntegerField(required=False, allow_null=True, min_value=0, max_value=1)
     
+    def _validate_range(self, min_value, max_value, field_prefix):
+        if min_value is not None and min_value < 0:
+            raise serializers.ValidationError({
+                f'{field_prefix}_min': f'{field_prefix}_min ha de ser un enter positiu'
+            })
+        if max_value is not None and max_value < 0:
+            raise serializers.ValidationError({
+                f'{field_prefix}_max': f'{field_prefix}_max ha de ser un enter positiu'
+            })
+        if min_value is not None and max_value is not None and min_value > max_value:
+            raise serializers.ValidationError({
+                f'{field_prefix}_min': f'{field_prefix}_min ha de ser menor o igual que {field_prefix}_max'
+            })
+    
     def validate(self, data):
         """Validació personalitzada per assegurar que min < max i que siguin enters positius"""
-        # Validar places_min < places_max i que siguin enters positius
         places_min = data.get('places_min')
         places_max = data.get('places_max')
-
-        if places_min is not None:
-            if places_min < 0:
-                raise serializers.ValidationError({
-                    'places_min': 'places_min ha de ser un enter positiu'
-                })
-        if places_max is not None:
-            if places_max < 0:
-                raise serializers.ValidationError({
-                    'places_max': 'places_max ha de ser un enter positiu'
-                })
-        if places_min is not None and places_max is not None:
-            if places_min > places_max:
-                raise serializers.ValidationError({
-                    'places_min': 'places_min ha de ser menor o igual que places_max'
-                })
-
-        # Validar altitude_min < altitude_max i que siguin enters positius
+        self._validate_range(places_min, places_max, 'places')
+        
         altitude_min = data.get('altitude_min')
         altitude_max = data.get('altitude_max')
-
-        if altitude_min is not None:
-            if altitude_min < 0:
-                raise serializers.ValidationError({
-                    'altitude_min': 'altitude_min ha de ser un enter positiu'
-                })
-        if altitude_max is not None:
-            if altitude_max < 0:
-                raise serializers.ValidationError({
-                    'altitude_max': 'altitude_max ha de ser un enter positiu'
-                })
-        if altitude_min is not None and altitude_max is not None:
-            if altitude_min > altitude_max:
-                raise serializers.ValidationError({
-                    'altitude_min': 'altitude_min ha de ser menor o igual que altitude_max'
-                })
-
+        self._validate_range(altitude_min, altitude_max, 'altitude')
+        
         return data
 
 #class RefugiCoordinatesFiltersSerializer(serializers.Serializer):

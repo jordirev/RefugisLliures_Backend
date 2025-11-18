@@ -18,12 +18,7 @@ class UserMapper:
         Returns:
             User: Instància del model User
         """
-        return User(
-            uid=firebase_data.get('uid'),
-            username=firebase_data.get('username', ''),
-            email=firebase_data.get('email', ''),
-            avatar=firebase_data.get('avatar', '')
-        )
+        return User.from_dict(firebase_data)
     
     @staticmethod
     def model_to_firebase(user: User) -> Dict[str, Any]:
@@ -36,48 +31,7 @@ class UserMapper:
         Returns:
             Dict: Diccionari amb dades per Firebase
         """
-        return {
-            'uid': user.uid,
-            'username': user.username,
-            'email': user.email,
-            'avatar': user.avatar
-        }
-    
-    @staticmethod
-    def dict_to_model(user_dict: Dict[str, Any]) -> User:
-        """
-        Converteix diccionari a model Django User
-        
-        Args:
-            user_dict: Diccionari amb dades d'usuari
-            
-        Returns:
-            User: Instància del model User
-        """
-        return User(
-            uid=user_dict.get('uid'),
-            username=user_dict.get('username', ''),
-            email=user_dict.get('email', ''),
-            avatar=user_dict.get('avatar', '')
-        )
-    
-    @staticmethod
-    def model_to_dict(user: User) -> Dict[str, Any]:
-        """
-        Converteix model Django User a diccionari
-        
-        Args:
-            user: Instància del model User
-            
-        Returns:
-            Dict: Diccionari amb dades d'usuari
-        """
-        return {
-            'uid': user.uid,
-            'username': user.username,
-            'email': user.email,
-            'avatar': user.avatar
-        }
+        return User.to_dict(user)
     
     @staticmethod
     def validate_firebase_data(firebase_data: Dict[str, Any]) -> tuple[bool, Optional[str]]:
@@ -101,35 +55,34 @@ class UserMapper:
         if '@' not in email:
             return False, "Format d'email invàlid"
         
+        # Validació d'idioma
+        idioma = firebase_data.get('idioma', 'ca')
+        valid_languages = ['ca', 'es', 'en', 'fr']
+        if idioma not in valid_languages:
+            return False, f"Idioma no vàlid. Opcions vàlides: {', '.join(valid_languages)}"
+        
         return True, None
     
     @staticmethod
     def clean_firebase_data(firebase_data: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Neteja i normalitza les dades de Firebase
+        Neteja i prepara les dades de Firebase per a l'ús intern
         
         Args:
             firebase_data: Diccionari amb dades de Firebase
             
         Returns:
-            Dict: Dades netejades
+            Dict: Diccionari netejat
         """
-        cleaned_data = {}
+        cleaned_data = firebase_data.copy()
         
-        # UID (requerit)
-        if firebase_data.get('uid'):
-            cleaned_data['uid'] = str(firebase_data['uid']).strip()
+        if 'email' in cleaned_data and isinstance(cleaned_data['email'], str):
+            cleaned_data['email'] = cleaned_data['email'].lower().strip()
         
-        # Email (requerit)
-        if firebase_data.get('email'):
-            cleaned_data['email'] = str(firebase_data['email']).strip().lower()
-        
-        # Username (opcional)
-        username = firebase_data.get('username', '')
-        cleaned_data['username'] = str(username).strip() if username else ''
-        
-        # Avatar URL (opcional)
-        avatar = firebase_data.get('avatar', '')
-        cleaned_data['avatar'] = str(avatar).strip() if avatar else ''
+        if 'username' in cleaned_data and isinstance(cleaned_data['username'], str):
+            cleaned_data['username'] = cleaned_data['username'].strip()
+
+        if 'idioma' in cleaned_data and isinstance(cleaned_data['idioma'], str):
+            cleaned_data['idioma'] = cleaned_data['idioma'].strip().lower()
         
         return cleaned_data

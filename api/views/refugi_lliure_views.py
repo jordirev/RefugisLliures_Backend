@@ -1,116 +1,234 @@
 """
-Views per a la gestió de refugis utilitzant arquitectura en capes
+Views per a la gestió de refugis amb endpoints REST estàndard
 """
 import logging
 from rest_framework import status
-from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
+from rest_framework.views import APIView
+from drf_yasg.utils import swagger_auto_schema
+from drf_yasg import openapi
 from ..controllers.refugi_lliure_controller import RefugiLliureController
 from ..serializers.refugi_lliure_serializer import (
     RefugiSerializer, 
     RefugiSearchResponseSerializer,
-    HealthCheckResponseSerializer,
     RefugiSearchFiltersSerializer
 )
+
+
+# Definim constants d'errors
+ERROR_400_INVALID_PARAMS = 'Paràmetres de consulta invàlids'
+ERROR_404_REFUGI_NOT_FOUND = 'Refugi no trobat'
+ERROR_500_INTERNAL_ERROR = 'Error intern del servidor'
+
 
 # Configurar logging
 logger = logging.getLogger(__name__)
 
-@api_view(['GET'])
-@permission_classes([AllowAny])
-def health_check(request):
-    """Endpoint per comprovar l'estat de l'API"""
-    try:
-        controller = RefugiLliureController()
-        health_data, error = controller.health_check()
-        
-        if error and health_data.get('status') == 'unhealthy':
-            # Serialitzar resposta d'error
-            serializer = HealthCheckResponseSerializer(data=health_data)
-            if serializer.is_valid():
-                return Response(serializer.validated_data, status=status.HTTP_503_SERVICE_UNAVAILABLE)
-            else:
-                return Response(health_data, status=status.HTTP_503_SERVICE_UNAVAILABLE)
-        
-        # Serialitzar resposta exitosa
-        serializer = HealthCheckResponseSerializer(data=health_data)
-        if serializer.is_valid():
-            return Response(serializer.validated_data, status=status.HTTP_200_OK)
-        else:
-            return Response(health_data, status=status.HTTP_200_OK)
-        
-    except Exception as e:
-        logger.error(f'Health check failed: {str(e)}')
-        error_data = {
-            'status': 'unhealthy',
-            'message': f'Error: {str(e)}',
-            'firebase': False
-        }
-        return Response(error_data, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+# ========== ITEM ENDPOINT: /refugis/{id}/ ==========
 
-@api_view(['GET'])
-@permission_classes([AllowAny])
-def refugi_detail(request, refugi_id):
-    """Obtenir els detalls d'un refugi específic"""
-    try:
-        controller = RefugiLliureController()
-        refugi, error = controller.get_refugi_by_id(refugi_id)
-        
-        if error:
-            if "not found" in error.lower():
+class RefugiDetailAPIView(APIView):
+    """
+    Gestiona operacions sobre un refugi específic:
+    - GET: Obtenir detalls d'un refugi per ID (no requereix autenticació)
+    """
+    permission_classes = [AllowAny]
+    
+    @swagger_auto_schema(
+        operation_description=(
+            "Obté els detalls complets d'un refugi específic per ID. "
+            "Retorna informació completa del refugi incloent nom, descripció, coordenades, "
+            "dificultats, rutes properes i altres detalls. "
+            "Aquest endpoint no requereix autenticació."
+        ),
+        manual_parameters=[
+            openapi.Parameter(
+                'refugi_id',
+                openapi.IN_PATH,
+                description="Identificador únic del refugi",
+                type=openapi.TYPE_STRING,
+                required=True
+            )
+        ],
+        responses={
+            200: openapi.Response(
+                description='Detalls del refugi',
+                schema=RefugiSerializer,
+                examples={
+                    'application/json': {
+                        'id': 'refugi123',
+                        'nom': 'Refugi de la Renclusa',
+                        'descripcio': 'Refugi guardat als Pirineus',
+                        'latitud': 42.123,
+                        'longitud': 1.456,
+                        'altitud': 2140
+                    }
+                }
+            ),
+            404: ERROR_404_REFUGI_NOT_FOUND,
+            500: ERROR_500_INTERNAL_ERROR
+        }
+    )
+    def get(self, request, refugi_id):
+        """Obtenir detalls d'un refugi per ID"""
+        try:
+            controller = RefugiLliureController()
+            refugi, error = controller.get_refugi_by_id(refugi_id)
+            
+            if error:
+                if "not found" in error.lower():
+                    return Response({
+                        'error': error
+                    }, status=status.HTTP_404_NOT_FOUND)
+                else:
+                    return Response({
+                        'error': error
+                    }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            
+            # Serialitzar el refugi
+            serializer = RefugiSerializer(refugi.to_dict())
+            return Response(serializer.data, status=status.HTTP_200_OK)
+            
+        except Exception as e:
+            logger.error(f'Error getting refugi detail: {str(e)}')
+            return Response({
+                'error': f'Internal server error: {str(e)}'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+# ========== COLLECTION ENDPOINT: /refugis/ ==========
+
+class RefugisCollectionAPIView(APIView):
+    """
+    Gestiona la col·lecció de refugis amb cerca i filtres opcionals:
+    - GET: Obtenir refugis amb filtres opcionals (no requereix autenticació)
+      * Sense filtres: retorna totes les coordenades dels refugis
+      * Amb filtres: cerca i retorna refugis que compleixen els criteris
+    """
+    permission_classes = [AllowAny]
+    
+    @swagger_auto_schema(
+        operation_description=(
+            "Obté una llista de refugis amb suport per filtres opcionals. "
+            "Quan no s'especifiquen filtres, retorna totes les coordenades dels refugis. "
+            "Quan s'utilitzen filtres, retorna els refugis que compleixen els criteris especificats. "
+            "Aquest endpoint no requereix autenticació."
+        ),
+        manual_parameters=[
+            openapi.Parameter(
+                'name',
+                openapi.IN_QUERY,
+                description="Filtre per nom del refugi (cerca parcial, case-insensitive)",
+                type=openapi.TYPE_STRING,
+                required=False
+            ),
+            openapi.Parameter(
+                'region',
+                openapi.IN_QUERY,
+                description="Filtre per regió geogràfica",
+                type=openapi.TYPE_STRING,
+                required=False
+            ),
+            openapi.Parameter(
+                'min_altitude',
+                openapi.IN_QUERY,
+                description="Altitud mínima en metres",
+                type=openapi.TYPE_INTEGER,
+                required=False
+            ),
+            openapi.Parameter(
+                'max_altitude',
+                openapi.IN_QUERY,
+                description="Altitud màxima en metres",
+                type=openapi.TYPE_INTEGER,
+                required=False
+            ),
+            openapi.Parameter(
+                'guarded',
+                openapi.IN_QUERY,
+                description="Filtre per refugis guardats (true/false)",
+                type=openapi.TYPE_BOOLEAN,
+                required=False
+            ),
+            openapi.Parameter(
+                'capacity_min',
+                openapi.IN_QUERY,
+                description="Capacitat mínima de places",
+                type=openapi.TYPE_INTEGER,
+                required=False
+            ),
+            openapi.Parameter(
+                'latitude',
+                openapi.IN_QUERY,
+                description="Latitud del punt de referència (requereix longitude i radius)",
+                type=openapi.TYPE_NUMBER,
+                required=False
+            ),
+            openapi.Parameter(
+                'longitude',
+                openapi.IN_QUERY,
+                description="Longitud del punt de referència (requereix latitude i radius)",
+                type=openapi.TYPE_NUMBER,
+                required=False
+            ),
+            openapi.Parameter(
+                'radius',
+                openapi.IN_QUERY,
+                description="Radi de cerca en kilòmetres (requereix latitude i longitude)",
+                type=openapi.TYPE_NUMBER,
+                required=False
+            )
+        ],
+        responses={
+            200: openapi.Response(
+                description='Llista de refugis o coordenades',
+                schema=RefugiSearchResponseSerializer,
+                examples={
+                    'application/json': {
+                        'refugis': [
+                            {
+                                'id': 'refugi123',
+                                'nom': 'Refugi de la Renclusa',
+                                'latitud': 42.123,
+                                'longitud': 1.456
+                            }
+                        ],
+                        'total': 1,
+                        'filtered': True
+                    }
+                }
+            ),
+            400: ERROR_400_INVALID_PARAMS,
+            500: ERROR_500_INTERNAL_ERROR
+        }
+    )
+    def get(self, request):
+        """Obtenir refugis amb filtres opcionals"""
+        try:
+            # Validar paràmetres d'entrada
+            filters_serializer = RefugiSearchFiltersSerializer(data=request.GET)
+            if not filters_serializer.is_valid():
                 return Response({
-                    'error': error
-                }, status=status.HTTP_404_NOT_FOUND)
-            else:
+                    'error': 'Invalid query parameters',
+                    'details': filters_serializer.errors
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            controller = RefugiLliureController()
+            search_result, error = controller.search_refugis(filters_serializer.validated_data)
+            
+            if error:
                 return Response({
                     'error': error
                 }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        
-        # Serialitzar el refugi
-        serializer = RefugiSerializer(refugi.to_dict())
-        return Response(serializer.data, status=status.HTTP_200_OK)
-        
-    except Exception as e:
-        logger.error(f'Error getting refugi detail: {str(e)}')
-        return Response({
-            'error': f'Internal server error: {str(e)}'
-        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-@api_view(['GET'])
-@permission_classes([AllowAny])
-def refugis_collection(request):
-    """
-    Endpoint unificat per obtenir refugis amb o sense filtres
-    - Sense filtres: retorna totes les coordenades dels refugis
-    - Amb filtres: cerca i retorna refugis que compleixen els criteris
-    """
-    try:
-        # Validar paràmetres d'entrada
-        filters_serializer = RefugiSearchFiltersSerializer(data=request.GET)
-        if not filters_serializer.is_valid():
+            
+            # Serialitzar la resposta
+            response_serializer = RefugiSearchResponseSerializer(data=search_result)
+            if response_serializer.is_valid():
+                return Response(response_serializer.validated_data, status=status.HTTP_200_OK)
+            else:
+                return Response(search_result, status=status.HTTP_200_OK)
+            
+        except Exception as e:
+            logger.error(f'Error processing refugis request: {str(e)}')
             return Response({
-                'error': 'Invalid query parameters',
-                'details': filters_serializer.errors
-            }, status=status.HTTP_400_BAD_REQUEST)
-        
-        controller = RefugiLliureController()
-        search_result, error = controller.search_refugis(filters_serializer.validated_data)
-        
-        if error:
-            return Response({
-                'error': error
+                'error': f'Internal server error: {str(e)}'
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        
-        # Serialitzar la resposta
-        response_serializer = RefugiSearchResponseSerializer(data=search_result)
-        if response_serializer.is_valid():
-            return Response(response_serializer.validated_data, status=status.HTTP_200_OK)
-        else:
-            return Response(search_result, status=status.HTTP_200_OK)
-        
-    except Exception as e:
-        logger.error(f'Error processing refugis request: {str(e)}')
-        return Response({
-            'error': f'Internal server error: {str(e)}'
-        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

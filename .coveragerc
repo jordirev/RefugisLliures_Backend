@@ -1,0 +1,54 @@
+[run]
+# Directoris a incloure en el coverage
+source = api
+
+# Fitxers a excloure
+omit =
+    */migrations/*
+    */tests/*
+    */test_*.py
+    */__pycache__/*
+    */venv/*
+    */env/*
+    */staticfiles/*
+    manage.py
+    */wsgi.py
+    */asgi.py
+    */settings.py
+    */urls.py
+    */firebase_config.py
+    */apps.py
+    */admin.py
+    */__init__.py
+    */services/*
+    */utils/*
+
+[report]
+# Excloure línies específiques del report
+exclude_lines =
+    pragma: no cover
+    def __repr__
+    def __str__
+    raise AssertionError
+    raise NotImplementedError
+    if __name__ == .__main__.:
+    if TYPE_CHECKING:
+    @abstract
+    pass
+    \.\.\.
+
+# Mostrar línies no cobertes
+show_missing = True
+
+# Precisió del percentatge
+precision = 2
+
+# Ignorar errors
+ignore_errors = True
+
+[html]
+# Directori per l'informe HTML
+directory = htmlcov
+
+# Títol de l'informe
+title = RefugisLliures Backend - Coverage Report

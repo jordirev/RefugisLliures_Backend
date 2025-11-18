@@ -1,4 +1,26 @@
-# Importem les vistes de refugis
-from .refugi_lliure_views import health_check, refugi_detail, refugis_collection
+"""Exports de les views de l'API.
 
-__all__ = ['health_check', 'refugi_detail', 'refugis_collection']
+Després de la refactorització a APIView, exposem les classes que s'han
+creat per a cada endpoint perquè altres mòduls (p. ex. `api.urls`) puguin
+importar-les de manera neta.
+"""
+
+# Views d'usuaris
+from .user_views import UsersCollectionAPIView, UserDetailAPIView
+
+# Views de health check
+from .health_check_views import HealthCheckAPIView
+
+# Views de refugis
+from .refugi_lliure_views import (
+	RefugisCollectionAPIView,
+	RefugiDetailAPIView,
+)
+
+__all__ = [
+	'UsersCollectionAPIView',
+	'UserDetailAPIView',
+	'HealthCheckAPIView',
+	'RefugisCollectionAPIView',
+	'RefugiDetailAPIView',
+]
