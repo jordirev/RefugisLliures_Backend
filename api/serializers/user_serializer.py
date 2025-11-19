@@ -34,8 +34,8 @@ class UserValidatorMixin:
         return value.strip() if value else ""
     
     @staticmethod
-    def validate_idioma_field(value, required=False):
-        """Validador reutilitzable per a idioma"""
+    def validate_language_field(value, required=False):
+        """Validador reutilitzable per a language"""
         if value is None:
             return 'ca' if required else None
             
@@ -75,35 +75,35 @@ class UserSerializer(UserValidatorMixin, serializers.Serializer):
         required=False, 
         help_text=URL_AVATAR_HELPER_TEXT
     )
-    idioma = serializers.CharField(
+    language = serializers.CharField(
         max_length=5,
         default='ca',
         help_text=LANGUAGE_HELPER_TEXT
     )
-    refugis_favorits = serializers.ListField(
+    favourite_refuges = serializers.ListField(
         child=serializers.CharField(),
         help_text="Refugis favorits de l'usuari",
         read_only=True
     )
-    refugis_visitats = serializers.ListField(
+    visited_refuges = serializers.ListField(
         child=serializers.CharField(),
         help_text="Refugis visitats de l'usuari",
         read_only=True
     )
-    reformes = serializers.ListField(
+    renovations = serializers.ListField(
         child=serializers.CharField(),
         help_text="Refugis reformats de l'usuari",
         read_only=True
     )
-    num_fotos_pujades = serializers.IntegerField(
+    num_uploaded_photos = serializers.IntegerField(
         help_text="Nombre de fotos pujades per l'usuari",
         read_only=True
     )
-    num_experiencies_compartides = serializers.IntegerField(
+    num_shared_experiences = serializers.IntegerField(
         help_text="Nombre d'experiències compartides per l'usuari",
         read_only=True
     )
-    num_refugis_reformats = serializers.IntegerField(
+    num_renovated_refuges = serializers.IntegerField(
         help_text="Nombre de refugis reformats per l'usuari",
         read_only=True
     )
@@ -121,8 +121,8 @@ class UserSerializer(UserValidatorMixin, serializers.Serializer):
     def validate_username(self, value):
         return self.validate_username_field(value, required=False)
     
-    def validate_idioma(self, value):
-        return self.validate_idioma_field(value, required=False)
+    def validate_language(self, value):
+        return self.validate_language_field(value, required=False)
     
     def to_representation(self, instance):
         """Converteix instància a representació JSON"""
@@ -149,7 +149,7 @@ class UserCreateSerializer(UserValidatorMixin, serializers.Serializer):
     email = serializers.EmailField(help_text=EMAIL_HELPER_TEXT)
     avatar = serializers.URLField(allow_blank=True, required=False, 
                                 help_text=URL_AVATAR_HELPER_TEXT)
-    idioma = serializers.CharField(default='ca', max_length=5, required=False,
+    language = serializers.CharField(default='ca', max_length=5, required=False,
                                 help_text=LANGUAGE_HELPER_TEXT)
     
     def validate_email(self, value):
@@ -158,8 +158,8 @@ class UserCreateSerializer(UserValidatorMixin, serializers.Serializer):
     def validate_username(self, value):
         return self.validate_username_field(value, required=False)
     
-    def validate_idioma(self, value):
-        return self.validate_idioma_field(value, required=False)
+    def validate_language(self, value):
+        return self.validate_language_field(value, required=False)
 
 class UserUpdateSerializer(UserValidatorMixin, serializers.Serializer):
     """Serializer per a actualització d'usuaris"""
@@ -169,7 +169,7 @@ class UserUpdateSerializer(UserValidatorMixin, serializers.Serializer):
     email = serializers.EmailField(required=False, help_text=EMAIL_HELPER_TEXT)
     avatar = serializers.URLField(allow_blank=True, required=False, 
                                 help_text=URL_AVATAR_HELPER_TEXT)
-    idioma = serializers.CharField(default='ca', max_length=5, required=False,
+    language = serializers.CharField(default='ca', max_length=5, required=False,
                                 help_text=LANGUAGE_HELPER_TEXT)
     
     def validate_email(self, value):
@@ -178,8 +178,8 @@ class UserUpdateSerializer(UserValidatorMixin, serializers.Serializer):
     def validate_username(self, value):
         return self.validate_username_field(value, required=False)
     
-    def validate_idioma(self, value):
-        return self.validate_idioma_field(value, required=False)
+    def validate_language(self, value):
+        return self.validate_language_field(value, required=False)
     
     def validate(self, attrs):
         """Validació global"""
@@ -190,7 +190,7 @@ class UserUpdateSerializer(UserValidatorMixin, serializers.Serializer):
 class UserRefugiSerializer(serializers.Serializer):
     """Serializer per a afegir/treure refugis preferits o visitats"""
     
-    refugi_id = serializers.CharField(
+    refuge_id = serializers.CharField(
         max_length=255,
         help_text="Identificador únic del refugi"
     )

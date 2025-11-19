@@ -256,9 +256,9 @@ class UserDetailAPIView(APIView):
                 'error': INTERNAL_SERVER_ERROR
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
-# ========== ITEM ENDPOINT: /users/{uid}/refugis-preferits/ ==========
+# ========== ITEM ENDPOINT: /users/{uid}/favorite-refuges/ ==========
 
-class UserRefugisPreferitsAPIView(APIView):
+class UserFavouriteRefugesAPIView(APIView):
     """
     Gestiona operacions sobre els refugis preferits d'un usuari específic:
     - GET: Obtenir la informació dels refugis preferits de l'usuari (requereix autenticació + ser el mateix usuari)
@@ -344,8 +344,8 @@ class UserRefugisPreferitsAPIView(APIView):
                 }, status=status.HTTP_400_BAD_REQUEST)
             
             controller = UserController()
-            refugi_id = serializer.validated_data['refugi_id']
-            success, refugis_info, error_message = controller.add_refugi_preferit(uid, refugi_id)
+            refuge_id = serializer.validated_data['refuge_id']
+            success, refugis_info, error_message = controller.add_refugi_preferit(uid, refuge_id)
             
             if not success:
                 status_code = status.HTTP_404_NOT_FOUND if 'no trobat' in error_message else status.HTTP_400_BAD_REQUEST
@@ -364,9 +364,9 @@ class UserRefugisPreferitsAPIView(APIView):
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-# ========== ITEM ENDPOINT: /users/{uid}/refugis-preferits/{refugi_id}/ ==========
+# ========== ITEM ENDPOINT: /users/{uid}/favorite-refuges/{refuge_id}/ ==========
 
-class UserRefugisPreferitsDetailAPIView(APIView):
+class UserFavouriteRefugesDetailAPIView(APIView):
     """
     Gestiona operacions sobre un refugi preferit específic d'un usuari:
     - DELETE: Eliminar un refugi dels preferits de l'usuari (requereix autenticació + ser el mateix usuari)
@@ -397,11 +397,11 @@ class UserRefugisPreferitsDetailAPIView(APIView):
             404: ERROR_404_USER_NOT_FOUND,
         }
     )
-    def delete(self, request, uid, refugi_id):
+    def delete(self, request, uid, refuge_id):
         """Elimina un refugi dels preferits de l'usuari"""
         try:
             controller = UserController()
-            success, refugis_info, error_message = controller.remove_refugi_preferit(uid, refugi_id)
+            success, refugis_info, error_message = controller.remove_refugi_preferit(uid, refuge_id)
             
             if not success:
                 status_code = status.HTTP_404_NOT_FOUND if 'no trobat' in error_message else status.HTTP_400_BAD_REQUEST
@@ -420,9 +420,9 @@ class UserRefugisPreferitsDetailAPIView(APIView):
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-# ========== ITEM ENDPOINT: /users/{uid}/refugis-visitats/ ==========
+# ========== ITEM ENDPOINT: /users/{uid}/visited-refuges/ ==========
 
-class UserRefugisVisitatsAPIView(APIView):
+class UserVisitedRefugesAPIView(APIView):
     """
     Gestiona operacions sobre els refugis visitats d'un usuari específic:
     - GET: Obtenir la informació dels refugis visitats de l'usuari (requereix autenticació + ser el mateix usuari)
@@ -508,8 +508,8 @@ class UserRefugisVisitatsAPIView(APIView):
                 }, status=status.HTTP_400_BAD_REQUEST)
             
             controller = UserController()
-            refugi_id = serializer.validated_data['refugi_id']
-            success, refugis_info, error_message = controller.add_refugi_visitat(uid, refugi_id)
+            refuge_id = serializer.validated_data['refuge_id']
+            success, refugis_info, error_message = controller.add_refugi_visitat(uid, refuge_id)
             
             if not success:
                 status_code = status.HTTP_404_NOT_FOUND if 'no trobat' in error_message else status.HTTP_400_BAD_REQUEST
@@ -528,9 +528,9 @@ class UserRefugisVisitatsAPIView(APIView):
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-# ========== ITEM ENDPOINT: /users/{uid}/refugis-visitats/{refugi_id}/ ==========
+# ========== ITEM ENDPOINT: /users/{uid}/visited-refuges/{refuge_id}/ ==========
 
-class UserRefugisVisitatsDetailAPIView(APIView):
+class UserVisitedRefugesDetailAPIView(APIView):
     """
     Gestiona operacions sobre un refugi visitat específic d'un usuari:
     - DELETE: Eliminar un refugi dels visitats de l'usuari (requereix autenticació + ser el mateix usuari)
@@ -561,11 +561,11 @@ class UserRefugisVisitatsDetailAPIView(APIView):
             404: ERROR_404_USER_NOT_FOUND,
         }
     )
-    def delete(self, request, uid, refugi_id):
+    def delete(self, request, uid, refuge_id):
         """Elimina un refugi dels visitats de l'usuari"""
         try:
             controller = UserController()
-            success, refugis_info, error_message = controller.remove_refugi_visitat(uid, refugi_id)
+            success, refugis_info, error_message = controller.remove_refugi_visitat(uid, refuge_id)
             
             if not success:
                 status_code = status.HTTP_404_NOT_FOUND if 'no trobat' in error_message else status.HTTP_400_BAD_REQUEST

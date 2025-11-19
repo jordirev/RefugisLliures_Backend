@@ -146,10 +146,10 @@
 
 #### 🔷 Views (TestRefugiViews)
 - ✅ GET /health/ - Health check (healthy/unhealthy)
-- ✅ GET /refugis/{id}/ - Detall (èxit/no trobat)
-- ✅ GET /refugis/ - Col·lecció sense filtres
-- ✅ GET /refugis/?region=X - Col·lecció amb filtres
-- ✅ GET /refugis/ amb filtres invàlids (400)
+- ✅ GET /refuges/{id}/ - Detall (èxit/no trobat)
+- ✅ GET /refuges/ - Col·lecció sense filtres
+- ✅ GET /refuges/?region=X - Col·lecció amb filtres
+- ✅ GET /refuges/ amb filtres invàlids (400)
 - ✅ Gestió d'errors del servidor (500)
 - ✅ Verificació de status codes
 - ✅ Verificació de format de respostes
@@ -336,3 +336,4 @@ Tots els tests estan optimitzats per:
 - ✅ No accedir a recursos externs
 - ✅ Proporcionar feedback clar
 - ✅ Ser fàcils de mantenir i estendre
+

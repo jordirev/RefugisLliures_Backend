@@ -39,13 +39,13 @@ def sample_user_data():
         'username': 'testuser',
         'email': EMAIL,
         'avatar': 'https://example.com/avatar.jpg',
-        'idioma': 'ca',
-        'refugis_favorits': [],
-        'refugis_visitats': [],
-        'reformes': [],
-        'num_fotos_pujades': 0,
-        'num_experiencies_compartides': 0,
-        'num_refugis_reformats': 0,
+        'language': 'ca',
+        'favourite_refuges': [],
+        'visited_refuges': [],
+        'renovations': [],
+        'num_uploaded_photos': 0,
+        'num_shared_experiences': 0,
+        'num_renovated_refuges': 0,
         'created_at': datetime.now(ZoneInfo("Europe/Madrid")).isoformat()
     }
 
@@ -64,21 +64,21 @@ def multiple_users_data():
             'uid': 'uid_001',
             'username': 'user1',
             'email': 'user1@example.com',
-            'idioma': 'ca',
+            'language': 'ca',
             'created_at': datetime.now(ZoneInfo("Europe/Madrid")).isoformat()
         },
         {
             'uid': 'uid_002',
             'username': 'user2',
             'email': 'user2@example.com',
-            'idioma': 'es',
+            'language': 'es',
             'created_at': datetime.now(ZoneInfo("Europe/Madrid")).isoformat()
         },
         {
             'uid': 'uid_003',
             'username': 'user3',
             'email': 'user3@example.com',
-            'idioma': 'en',
+            'language': 'en',
             'created_at': datetime.now(ZoneInfo("Europe/Madrid")).isoformat()
         }
     ]
@@ -91,7 +91,7 @@ def invalid_user_data():
         {'uid': '', 'email': EMAIL},  # UID buit
         {'uid': 'test_uid', 'email': ''},  # Email buit
         {'uid': 'test_uid', 'email': 'invalid_email'},  # Email sense @
-        {'uid': 'test_uid', 'email': EMAIL, 'idioma': 'invalid_lang'}  # Idioma invàlid
+        {'uid': 'test_uid', 'email': EMAIL, 'language': 'invalid_lang'}  # Idioma invàlid
     ]
 
 
@@ -465,7 +465,7 @@ def assert_user_equals():
         assert user1.uid == user2.uid
         assert user1.email == user2.email
         assert user1.username == user2.username
-        assert user1.idioma == user2.idioma
+        assert user1.language == user2.language
     return _assert_equals
 
 

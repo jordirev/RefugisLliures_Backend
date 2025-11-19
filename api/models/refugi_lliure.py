@@ -161,14 +161,14 @@ class Refugi:
 @dataclass
 class RefugiCoordinates:
     """Model simplificat per representar només les coordenades d'un refugi"""
-    refugi_id: str
+    refuge_id: str
     refugi_name: str
     coordinates: Coordinates
     geohash: str = ""
     
     def to_dict(self) -> dict:
         return {
-            'refugi_id': self.refugi_id,
+            'refuge_id': self.refuge_id,
             'refugi_name': self.refugi_name,
             'coordinates': self.coordinates.to_dict(),
             'geohash': self.geohash
@@ -190,7 +190,7 @@ class RefugiCoordinates:
             coordinates = Coordinates.from_dict(coord_data)
         
         return cls(
-            refugi_id=data.get('refugi_id', ''),
+            refuge_id=data.get('refuge_id', ''),
             refugi_name=data.get('refugi_name', ''),
             coordinates=coordinates,
             geohash=data.get('geohash', '')

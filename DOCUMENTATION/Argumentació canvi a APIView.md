@@ -190,3 +190,4 @@ class UserDetailAPIView(APIView):
 La refactorització a APIView millora significativament la qualitat del codi, segueix les millors pràctiques de Django REST Framework, i proporciona una base més sòlida i mantenible per al futur desenvolupament de l'API.
 
 El canvi és **totalment transparent** per als clients de l'API: els endpoints, permisos i comportament funcional romanen idèntics, però amb una implementació més robusta i professional.
+

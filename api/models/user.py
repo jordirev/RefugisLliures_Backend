@@ -11,13 +11,13 @@ class User:
     username: str
     email: str
     avatar: Optional[str] = None
-    idioma: str = 'ca'
-    refugis_favorits: Optional[list] = None
-    refugis_visitats: Optional[list] = None
-    reformes: Optional[list] = None
-    num_fotos_pujades: int = 0
-    num_experiencies_compartides: int = 0
-    num_refugis_reformats: int = 0
+    language: str = 'ca'
+    favourite_refuges: Optional[list] = None
+    visited_refuges: Optional[list] = None
+    renovations: Optional[list] = None
+    num_uploaded_photos: int = 0
+    num_shared_experiences: int = 0
+    num_renovated_refuges: int = 0
     created_at: str = ''
 
     def __post_init__(self):
@@ -36,13 +36,13 @@ class User:
             'username': self.username,
             'email': self.email,
             'avatar': self.avatar,
-            'idioma': self.idioma,
-            'refugis_favorits': self.refugis_favorits,
-            'refugis_visitats': self.refugis_visitats,
-            'reformes': self.reformes,
-            'num_fotos_pujades': self.num_fotos_pujades,
-            'num_experiencies_compartides': self.num_experiencies_compartides,
-            'num_refugis_reformats': self.num_refugis_reformats,
+            'language': self.language,
+            'favourite_refuges': self.favourite_refuges,
+            'visited_refuges': self.visited_refuges,
+            'renovations': self.renovations,
+            'num_uploaded_photos': self.num_uploaded_photos,
+            'num_shared_experiences': self.num_shared_experiences,
+            'num_renovated_refuges': self.num_renovated_refuges,
             'created_at': self.created_at
         }
     
@@ -54,13 +54,13 @@ class User:
             username=data.get('username', ''),
             email=data.get('email', ''),
             avatar=data.get('avatar', ''),
-            idioma=data.get('idioma', 'ca'),
-            refugis_favorits=data.get('refugis_favorits', []),
-            refugis_visitats=data.get('refugis_visitats', []),
-            reformes=data.get('reformes', []),
-            num_fotos_pujades=data.get('num_fotos_pujades', 0),
-            num_experiencies_compartides=data.get('num_experiencies_compartides', 0),
-            num_refugis_reformats=data.get('num_refugis_reformats', 0),
+            language=data.get('language', 'ca'),
+            favourite_refuges=data.get('favourite_refuges', []),
+            visited_refuges=data.get('visited_refuges', []),
+            renovations=data.get('renovations', []),
+            num_uploaded_photos=data.get('num_uploaded_photos', 0),
+            num_shared_experiences=data.get('num_shared_experiences', 0),
+            num_renovated_refuges=data.get('num_renovated_refuges', 0),
             created_at=data.get('created_at', '')
         )
     

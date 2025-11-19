@@ -16,13 +16,13 @@ class RefugiLliureController:
         self.refugi_dao = RefugiLliureDAO()
         self.refugi_mapper = RefugiLliureMapper()
     
-    def get_refugi_by_id(self, refugi_id: str) -> Tuple[Optional[Refugi], Optional[str]]:
+    def get_refugi_by_id(self, refuge_id: str) -> Tuple[Optional[Refugi], Optional[str]]:
         """
         Obtenir un refugi per ID
         Returns: (Refugi o None, missatge d'error o None)
         """
         try:
-            refugi_data = self.refugi_dao.get_by_id(refugi_id)
+            refugi_data = self.refugi_dao.get_by_id(refuge_id)
             
             if not refugi_data:
                 return None, "Refugi not found"
