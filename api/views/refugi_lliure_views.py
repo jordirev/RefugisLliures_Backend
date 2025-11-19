@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 
 # ========== ITEM ENDPOINT: /refugis/{id}/ ==========
 
-class RefugiDetailAPIView(APIView):
+class RefugiLliureDetailAPIView(APIView):
     """
     Gestiona operacions sobre un refugi específic:
     - GET: Obtenir detalls d'un refugi per ID (no requereix autenticació)
@@ -43,7 +43,7 @@ class RefugiDetailAPIView(APIView):
         ),
         manual_parameters=[
             openapi.Parameter(
-                'refugi_id',
+                'refuge_id',
                 openapi.IN_PATH,
                 description="Identificador únic del refugi",
                 type=openapi.TYPE_STRING,
@@ -69,11 +69,11 @@ class RefugiDetailAPIView(APIView):
             500: ERROR_500_INTERNAL_ERROR
         }
     )
-    def get(self, request, refugi_id):
+    def get(self, request, refuge_id):
         """Obtenir detalls d'un refugi per ID"""
         try:
             controller = RefugiLliureController()
-            refugi, error = controller.get_refugi_by_id(refugi_id)
+            refugi, error = controller.get_refugi_by_id(refuge_id)
             
             if error:
                 if "not found" in error.lower():
@@ -97,7 +97,7 @@ class RefugiDetailAPIView(APIView):
 
 # ========== COLLECTION ENDPOINT: /refugis/ ==========
 
-class RefugisCollectionAPIView(APIView):
+class RefugiLliureCollectionAPIView(APIView):
     """
     Gestiona la col·lecció de refugis amb cerca i filtres opcionals:
     - GET: Obtenir refugis amb filtres opcionals (no requereix autenticació)

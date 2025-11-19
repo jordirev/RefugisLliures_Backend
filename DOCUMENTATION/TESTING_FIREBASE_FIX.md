@@ -77,3 +77,4 @@ El workflow existent (`python manage.py test` o `pytest`) funcionarà sense modi
 - Els tests continuen usant mocks per a Firestore i altres serveis de Firebase.
 - Aquesta solució no afecta el comportament en producció ni en desenvolupament local.
 - Si necessites executar tests amb Firebase real (tests d'integració), pots establir `TESTING=false` manualment.
+

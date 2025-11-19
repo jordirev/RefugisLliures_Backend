@@ -13,14 +13,14 @@ from .health_check_views import HealthCheckAPIView
 
 # Views de refugis
 from .refugi_lliure_views import (
-	RefugisCollectionAPIView,
-	RefugiDetailAPIView,
+	RefugiLliureCollectionAPIView,
+	RefugiLliureDetailAPIView,
 )
 
 __all__ = [
 	'UsersCollectionAPIView',
 	'UserDetailAPIView',
 	'HealthCheckAPIView',
-	'RefugisCollectionAPIView',
-	'RefugiDetailAPIView',
+	'RefugiLliureCollectionAPIView',
+	'RefugiLliureDetailAPIView',
 ]

@@ -56,9 +56,9 @@ class UserMapper:
             return False, "Format d'email invàlid"
         
         # Validació d'idioma
-        idioma = firebase_data.get('idioma', 'ca')
+        language = firebase_data.get('language', 'ca')
         valid_languages = ['ca', 'es', 'en', 'fr']
-        if idioma not in valid_languages:
+        if language not in valid_languages:
             return False, f"Idioma no vàlid. Opcions vàlides: {', '.join(valid_languages)}"
         
         return True, None
@@ -82,7 +82,7 @@ class UserMapper:
         if 'username' in cleaned_data and isinstance(cleaned_data['username'], str):
             cleaned_data['username'] = cleaned_data['username'].strip()
 
-        if 'idioma' in cleaned_data and isinstance(cleaned_data['idioma'], str):
-            cleaned_data['idioma'] = cleaned_data['idioma'].strip().lower()
+        if 'language' in cleaned_data and isinstance(cleaned_data['language'], str):
+            cleaned_data['language'] = cleaned_data['language'].strip().lower()
         
         return cleaned_data

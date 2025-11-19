@@ -182,7 +182,7 @@ def cache_result(key_prefix: str, timeout: Optional[int] = None):
     
     Usage:
         @cache_result('refugi_detail', timeout=600)
-        def get_refugi(refugi_id):
+        def get_refugi(refuge_id):
             return refugi_data
     """
     def decorator(func: Callable) -> Callable:

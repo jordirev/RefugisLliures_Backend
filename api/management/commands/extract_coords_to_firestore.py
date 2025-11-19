@@ -74,21 +74,21 @@ class Command(BaseCommand):
 
             for doc in docs:
                 doc_data = doc.to_dict()
-                refugi_id = doc.id
+                refuge_id = doc.id
 
                 # Extract coordinates
                 coord_info = doc_data.get('coord', {})
                 
                 if not coord_info or 'lat' not in coord_info or 'long' not in coord_info:
                     self.stdout.write(
-                        self.style.WARNING(f'Skipping refugi {refugi_id}: missing coordinates')
+                        self.style.WARNING(f'Skipping refugi {refuge_id}: missing coordinates')
                     )
                     skipped_count += 1
                     continue
 
                 # Prepare coordinate document
                 coord_doc = {
-                    'refugi_id': refugi_id,
+                    'refuge_id': refuge_id,
                     'coordinates': {
                         'latitude': coord_info['lat'],
                         'longitude': coord_info['long']
@@ -102,7 +102,7 @@ class Command(BaseCommand):
                     coord_doc['refugi_name'] = doc_data['name']
 
                 coords_data.append({
-                    'id': refugi_id,
+                    'id': refuge_id,
                     'data': coord_doc
                 })
 
@@ -110,7 +110,7 @@ class Command(BaseCommand):
 
                 if dry_run:
                     self.stdout.write(
-                        f'[DRY RUN] Would create coordinate document for refugi: {refugi_id} '
+                        f'[DRY RUN] Would create coordinate document for refugi: {refuge_id} '
                         f'(lat: {coord_info["lat"]}, long: {coord_info["long"]})'
                     )
 

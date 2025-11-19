@@ -35,7 +35,7 @@ class TestUserModel:
         assert user.uid == sample_user_data['uid']
         assert user.email == sample_user_data['email']
         assert user.username == sample_user_data['username']
-        assert user.idioma == sample_user_data['idioma']
+        assert user.language == sample_user_data['language']
     
     def test_user_creation_missing_uid(self):
         """Test creació d'usuari sense UID (ha de fallar)"""
@@ -66,7 +66,7 @@ class TestUserModel:
         assert user_dict['uid'] == sample_user.uid
         assert user_dict['email'] == sample_user.email
         assert user_dict['username'] == sample_user.username
-        assert 'refugis_favorits' in user_dict
+        assert 'favourite_refuges' in user_dict
     
     def test_user_from_dict(self, sample_user_data):
         """Test creació d'usuari des de diccionari"""
@@ -88,11 +88,11 @@ class TestUserModel:
         """Test valors per defecte de l'usuari"""
         user = User(uid='test', username='test', email='test@example.com')
         
-        assert user.idioma == 'ca'
-        assert user.num_fotos_pujades == 0
-        assert user.num_experiencies_compartides == 0
-        assert user.num_refugis_reformats == 0
-        assert user.refugis_favorits is None
+        assert user.language == 'ca'
+        assert user.num_uploaded_photos == 0
+        assert user.num_shared_experiences == 0
+        assert user.num_renovated_refuges == 0
+        assert user.favourite_refuges is None
     
     @pytest.mark.parametrize("email", [
         'test@example.com',
@@ -104,11 +104,11 @@ class TestUserModel:
         user = User(uid='test', username='test', email=email)
         assert user.email == email
     
-    @pytest.mark.parametrize("idioma", ['ca', 'es', 'en', 'fr'])
-    def test_user_valid_languages(self, idioma):
+    @pytest.mark.parametrize("language", ['ca', 'es', 'en', 'fr'])
+    def test_user_valid_languages(self, language):
         """Test usuari amb diferents idiomes vàlids"""
-        user = User(uid='test', username='test', email='test@example.com', idioma=idioma)
-        assert user.idioma == idioma
+        user = User(uid='test', username='test', email='test@example.com', language=language)
+        assert user.language == language
 
 
 # ==================== TESTS DE SERIALIZERS ====================
@@ -130,7 +130,7 @@ class TestUserSerializers:
             'uid': 'test_uid',
             'username': 'test',
             'email': 'invalid_email',
-            'idioma': 'ca'
+            'language': 'ca'
         }
         serializer = UserSerializer(data=data)
         
@@ -143,7 +143,7 @@ class TestUserSerializers:
             'uid': 'test_uid',
             'username': 'a',  # Només 1 caràcter
             'email': 'test@example.com',
-            'idioma': 'ca'
+            'language': 'ca'
         }
         serializer = UserSerializer(data=data)
         
@@ -151,24 +151,24 @@ class TestUserSerializers:
         assert 'username' in serializer.errors
     
     def test_user_serializer_invalid_language(self):
-        """Test serialització amb idioma invàlid"""
+        """Test serialització amb language invàlid"""
         data = {
             'uid': 'test_uid',
             'username': 'test',
             'email': 'test@example.com',
-            'idioma': 'invalid_lang'
+            'language': 'invalid_lang'
         }
         serializer = UserSerializer(data=data)
         
         assert not serializer.is_valid()
-        assert 'idioma' in serializer.errors
+        assert 'language' in serializer.errors
     
     def test_user_create_serializer_valid(self):
         """Test UserCreateSerializer amb dades vàlides"""
         data = {
             'username': 'newuser',
             'email': 'newuser@example.com',
-            'idioma': 'ca'
+            'language': 'ca'
         }
         serializer = UserCreateSerializer(data=data)
         
@@ -180,7 +180,7 @@ class TestUserSerializers:
         data = {
             'username': 'test',
             'email': '  TEST@EXAMPLE.COM  ',
-            'idioma': 'ca'
+            'language': 'ca'
         }
         serializer = UserCreateSerializer(data=data)
         
@@ -200,17 +200,17 @@ class TestUserSerializers:
         data = {}
         serializer = UserUpdateSerializer(data=data)
         
-        # El serializer és vàlid però el camp 'idioma' té default='ca'
+        # El serializer és vàlid però el camp 'language' té default='ca'
         assert serializer.is_valid()
-        # El validated_data pot tenir el default d'idioma
-        assert 'idioma' in serializer.validated_data or len(serializer.validated_data) == 0
+        # El validated_data pot tenir el default d'language
+        assert 'language' in serializer.validated_data or len(serializer.validated_data) == 0
     
     def test_user_update_serializer_multiple_fields(self):
         """Test actualització de múltiples camps"""
         data = {
             'username': 'updated',
             'email': 'updated@example.com',
-            'idioma': 'es'
+            'language': 'es'
         }
         serializer = UserUpdateSerializer(data=data)
         
@@ -238,14 +238,14 @@ class TestUserSerializers:
             UserValidatorMixin.validate_username_field('a', required=False)
     
     def test_validator_mixin_idioma_field(self):
-        """Test validador d'idioma del mixin"""
-        # Idioma vàlid
-        idioma = UserValidatorMixin.validate_idioma_field('ca', required=False)
-        assert idioma == 'ca'
+        """Test validador d'language del mixin"""
+        # language vàlid
+        language = UserValidatorMixin.validate_language_field('ca', required=False)
+        assert language == 'ca'
         
-        # Idioma invàlid
+        # language invàlid
         with pytest.raises(ValidationError):
-            UserValidatorMixin.validate_idioma_field('invalid', required=False)
+            UserValidatorMixin.validate_language_field('invalid', required=False)
     
     @pytest.mark.parametrize("email,expected", [
         ('TEST@EXAMPLE.COM', 'test@example.com'),
@@ -312,12 +312,12 @@ class TestUserMapper:
         assert 'email' in error.lower()
     
     def test_validate_firebase_data_invalid_language(self, user_mapper):
-        """Test validació amb idioma invàlid"""
-        data = {'uid': 'test_uid', 'email': 'test@example.com', 'idioma': 'invalid'}
+        """Test validació amb language invàlid"""
+        data = {'uid': 'test_uid', 'email': 'test@example.com', 'language': 'invalid'}
         is_valid, error = user_mapper.validate_firebase_data(data)
         
         assert is_valid is False
-        assert 'idioma' in error.lower()
+        assert 'idioma' in error.lower()  # Error message is still in Catalan
     
     def test_clean_firebase_data(self, user_mapper):
         """Test neteja de dades de Firebase"""
@@ -325,20 +325,20 @@ class TestUserMapper:
             'uid': 'test_uid',
             'email': '  TEST@EXAMPLE.COM  ',
             'username': '  testuser  ',
-            'idioma': '  CA  '
+            'language': '  CA  '
         }
         cleaned = user_mapper.clean_firebase_data(data)
         
         assert cleaned['email'] == 'test@example.com'
         assert cleaned['username'] == 'testuser'
-        assert cleaned['idioma'] == 'ca'
+        assert cleaned['language'] == 'ca'
     
     def test_clean_firebase_data_preserves_other_fields(self, sample_user_data, user_mapper):
         """Test que la neteja preserva altres camps"""
         cleaned = user_mapper.clean_firebase_data(sample_user_data)
         
         assert cleaned['uid'] == sample_user_data['uid']
-        assert cleaned['refugis_favorits'] == sample_user_data['refugis_favorits']
+        assert cleaned['favourite_refuges'] == sample_user_data['favourite_refuges']
 
 
 # ==================== TESTS DE DAOs ====================

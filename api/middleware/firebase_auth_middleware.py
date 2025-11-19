@@ -19,7 +19,7 @@ class FirebaseAuthenticationMiddleware(MiddlewareMixin):
     # Endpoints que no requereixen autenticació
     EXCLUDED_PATHS = [
         '/api/health/',
-        '/api/refugis/',
+        '/api/refuges/',
         '/api/cache/',
         '/admin/',
         '/swagger/',

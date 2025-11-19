@@ -22,7 +22,7 @@ Aquesta API gestiona informació sobre refugis lliures utilitzant Google Firesto
   ```
 
 ### Llistar Refugis
-- **URL**: `/api/refugis/`
+- **URL**: `/api/refuges/`
 - **Mètode**: GET
 - **Paràmetres de consulta**:
   - `limit` (opcional): Nombre màxim de resultats (defecte: 10, màxim: 100)
@@ -47,13 +47,13 @@ Aquesta API gestiona informació sobre refugis lliures utilitzant Google Firesto
   ```
 
 ### Detalls d'un Refugi
-- **URL**: `/api/refugis/<refugi_id>/`
+- **URL**: `/api/refuges/<refugi_id>/`
 - **Mètode**: GET
 - **Descripció**: Retorna els detalls complets d'un refugi específic
 - **Resposta**: Objecte JSON amb tota la informació del refugi
 
 ### Cercar Refugis
-- **URL**: `/api/refugis/search/`
+- **URL**: `/api/refuges/search/`
 - **Mètode**: GET
 - **Paràmetres de consulta**:
   - `q` (opcional): Text de cerca (busca en el nom del refugi)
@@ -73,7 +73,7 @@ Aquesta API gestiona informació sobre refugis lliures utilitzant Google Firesto
   ```
 
 ### Coordenades dels Refugis
-- **URL**: `/api/refugis/coordinates/`
+- **URL**: `/api/refuges/coordinates/`
 - **Mètode**: GET
 - **Paràmetres de consulta**:
   - `limit` (opcional): Nombre màxim de resultats (defecte: 1000, màxim: 1000)
