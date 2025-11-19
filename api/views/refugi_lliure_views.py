@@ -35,6 +35,7 @@ class RefugiLliureDetailAPIView(APIView):
     permission_classes = [AllowAny]
     
     @swagger_auto_schema(
+        security=[],
         operation_description=(
             "Obté els detalls complets d'un refugi específic per ID. "
             "Retorna informació completa del refugi incloent nom, descripció, coordenades, "
@@ -107,6 +108,7 @@ class RefugiLliureCollectionAPIView(APIView):
     permission_classes = [AllowAny]
     
     @swagger_auto_schema(
+        security=[],
         operation_description=(
             "Obté una llista de refugis amb suport per filtres opcionals. "
             "Quan no s'especifiquen filtres, retorna totes les coordenades dels refugis. "

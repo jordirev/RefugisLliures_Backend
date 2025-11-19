@@ -4,19 +4,19 @@ Views per gestionar la cache
 import logging
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAdminUser
-from ..permissions import SafeMethodsOnly
 from rest_framework.response import Response
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 from ..services.cache_service import cache_service
+from ..permissions import IsFirebaseAdmin
 
 logger = logging.getLogger(__name__)
 
 
 @swagger_auto_schema(
     method='get',
-    operation_description="Obté estadístiques de la cache Redis",
+    tags=['Cache Admin'],
+    operation_description="Obté estadístiques de la cache Redis. Requereix ser administrador (UID a FIREBASE_ADMIN_UIDS).",
     responses={
         200: openapi.Schema(
             type=openapi.TYPE_OBJECT,
@@ -27,11 +27,14 @@ logger = logging.getLogger(__name__)
                 'hits': openapi.Schema(type=openapi.TYPE_INTEGER),
                 'misses': openapi.Schema(type=openapi.TYPE_INTEGER),
             }
-        )
-    }
+        ),
+        401: 'No autoritzat',
+        403: 'Permís denegat - només administradors'
+    },
+    security=[{'Bearer': []}]
 )
 @api_view(['GET'])
-@permission_classes([IsAdminUser])
+@permission_classes([IsFirebaseAdmin])
 def cache_stats(request):
     """Obté estadístiques de la cache"""
     try:
@@ -47,14 +50,18 @@ def cache_stats(request):
 
 @swagger_auto_schema(
     method='delete',
-    operation_description="Neteja tota la cache",
+    tags=['Cache Admin'],
+    operation_description="Neteja tota la cache. Requereix ser administrador (UID a FIREBASE_ADMIN_UIDS).",
     responses={
         200: 'Cache netejada correctament',
+        401: 'No autoritzat',
+        403: 'Permís denegat - només administradors',
         500: 'Error netejant la cache'
-    }
+    },
+    security=[{'Bearer': []}]
 )
 @api_view(['DELETE'])
-@permission_classes([IsAdminUser])
+@permission_classes([IsFirebaseAdmin])
 def cache_clear(request):
     """Neteja tota la cache"""
     try:
@@ -77,7 +84,8 @@ def cache_clear(request):
 
 @swagger_auto_schema(
     method='delete',
-    operation_description="Elimina claus de cache que coincideixin amb un patró",
+    tags=['Cache Admin'],
+    operation_description="Elimina claus de cache que coincideixin amb un patró. Requereix ser administrador (UID a FIREBASE_ADMIN_UIDS).",
     manual_parameters=[
         openapi.Parameter('pattern', openapi.IN_QUERY, 
                          description="Patró de claus a eliminar (ex: 'refugi_*')", 
@@ -86,11 +94,14 @@ def cache_clear(request):
     responses={
         200: 'Claus eliminades correctament',
         400: 'Patró no proporcionat',
+        401: 'No autoritzat',
+        403: 'Permís denegat - només administradors',
         500: 'Error eliminant claus'
-    }
+    },
+    security=[{'Bearer': []}]
 )
 @api_view(['DELETE'])
-@permission_classes([IsAdminUser])
+@permission_classes([IsFirebaseAdmin])
 def cache_invalidate(request):
     """Elimina claus que coincideixin amb un patró"""
     try:

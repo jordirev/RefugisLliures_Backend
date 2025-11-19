@@ -60,21 +60,13 @@ class UsersCollectionAPIView(APIView):
         tags=['Users'],
         operation_description="Crea un nou usuari. Requereix autenticació amb token JWT de Firebase.",
         request_body=UserCreateSerializer,
-        manual_parameters=[
-            openapi.Parameter(
-                'Authorization',
-                openapi.IN_HEADER,
-                description="Token JWT de Firebase (format: Bearer <token>)",
-                type=openapi.TYPE_STRING,
-                required=True
-            )
-        ],
         responses={
             201: UserSerializer,
             400: ERROR_400_INVALID_DATA,
             401: ERROR_401_UNAUTHORIZED,
             409: ERROR_409_USER_EXISTS
-        }
+        },
+        security=[{'Bearer': []}]
     )
     def post(self, request):
         """Crear nou usuari amb el UID del token de Firebase"""
@@ -136,21 +128,13 @@ class UserDetailAPIView(APIView):
     @swagger_auto_schema(
         tags=['Users'],
         operation_description="Obté un usuari per UID. Requereix autenticació amb token JWT de Firebase.",
-        manual_parameters=[
-            openapi.Parameter(
-                'Authorization',
-                openapi.IN_HEADER,
-                description="Token JWT de Firebase (format: Bearer <token>)",
-                type=openapi.TYPE_STRING,
-                required=True
-            )
-        ],
         responses={
             200: UserSerializer,
             401: ERROR_401_UNAUTHORIZED,
             403: ERROR_403_FORBIDDEN,
             404: ERROR_404_USER_NOT_FOUND
-        }
+        },
+        security=[{'Bearer': []}]
     )
     def get(self, request, uid):
         """Obtenir usuari per UID"""
@@ -176,22 +160,14 @@ class UserDetailAPIView(APIView):
         tags=['Users'],
         operation_description="Actualitza les dades d'un usuari. Requereix autenticació amb token JWT de Firebase i ser el mateix usuari.",
         request_body=UserUpdateSerializer,
-        manual_parameters=[
-            openapi.Parameter(
-                'Authorization',
-                openapi.IN_HEADER,
-                description="Token JWT de Firebase (format: Bearer <token>)",
-                type=openapi.TYPE_STRING,
-                required=True
-            )
-        ],
         responses={
             200: UserSerializer,
             400: ERROR_400_INVALID_DATA,
             401: ERROR_401_UNAUTHORIZED,
             403: ERROR_403_FORBIDDEN,
             404: ERROR_404_USER_NOT_FOUND
-        }
+        },
+        security=[{'Bearer': []}]
     )
     def patch(self, request, uid):
         """Actualitzar usuari"""
@@ -227,21 +203,13 @@ class UserDetailAPIView(APIView):
     @swagger_auto_schema(
         tags=['Users'],
         operation_description="Elimina un usuari. Requereix autenticació amb token JWT de Firebase i ser el mateix usuari.",
-        manual_parameters=[
-            openapi.Parameter(
-                'Authorization',
-                openapi.IN_HEADER,
-                description="Token JWT de Firebase (format: Bearer <token>)",
-                type=openapi.TYPE_STRING,
-                required=True
-            )
-        ],
         responses={
             204: ERROR_204_NO_CONTENT,
             401: ERROR_401_UNAUTHORIZED,
             403: ERROR_403_FORBIDDEN,
             404: ERROR_404_USER_NOT_FOUND
-        }
+        },
+        security=[{'Bearer': []}]
     )
     def delete(self, request, uid):
         """Eliminar usuari"""
@@ -281,21 +249,13 @@ class UserFavouriteRefugesAPIView(APIView):
     @swagger_auto_schema(
         tags=['User Favourite Refuges'],
         operation_description="Obté la informació dels refugis preferits de l'usuari. Requereix autenticació amb token JWT de Firebase i ser el mateix usuari.",
-        manual_parameters=[
-            openapi.Parameter(
-                'Authorization',
-                openapi.IN_HEADER,
-                description="Token JWT de Firebase (format: Bearer <token>)",
-                type=openapi.TYPE_STRING,
-                required=True
-            )
-        ],
         responses={
-            200: UserRefugiInfoResponseSerializer(),
+            200: UserRefugiInfoResponseSerializer,
             401: ERROR_401_UNAUTHORIZED,
             403: ERROR_403_FORBIDDEN,
             404: ERROR_404_USER_NOT_FOUND,
-        }
+        },
+        security=[{'Bearer': []}]
     )
     def get(self, request, uid):
         """Obté la informació dels refugis preferits de l'usuari"""
@@ -324,22 +284,14 @@ class UserFavouriteRefugesAPIView(APIView):
         tags=['User Favourite Refuges'],
         operation_description="Afegeix un refugi als preferits de l'usuari. Requereix autenticació amb token JWT de Firebase i ser el mateix usuari.",
         request_body=UserRefugiSerializer,
-        manual_parameters=[
-            openapi.Parameter(
-                'Authorization',
-                openapi.IN_HEADER,
-                description="Token JWT de Firebase (format: Bearer <token>)",
-                type=openapi.TYPE_STRING,
-                required=True
-            )
-        ],
         responses={
             200: UserRefugiInfoResponseSerializer,
             400: ERROR_400_INVALID_DATA,
             401: ERROR_401_UNAUTHORIZED,
             403: ERROR_403_FORBIDDEN,
             404: "Usuari o refugi no trobat",
-        }
+        },
+        security=[{'Bearer': []}]
     )
     def post(self, request, uid):
         """Afegeix un nou refugi als preferits de l'usuari"""
@@ -392,21 +344,13 @@ class UserFavouriteRefugesDetailAPIView(APIView):
     @swagger_auto_schema(
         tags=['User Favourite Refuges'],
         operation_description="Elimina un refugi dels preferits de l'usuari. Requereix autenticació amb token JWT de Firebase i ser el mateix usuari.",
-        manual_parameters=[
-            openapi.Parameter(
-                'Authorization',
-                openapi.IN_HEADER,
-                description="Token JWT de Firebase (format: Bearer <token>)",
-                type=openapi.TYPE_STRING,
-                required=True
-            )
-        ],
         responses={
             200: UserRefugiInfoResponseSerializer,
             401: ERROR_401_UNAUTHORIZED,
             403: ERROR_403_FORBIDDEN,
             404: ERROR_404_USER_NOT_FOUND,
-        }
+        },
+        security=[{'Bearer': []}]
     )
     def delete(self, request, uid, refuge_id):
         """Elimina un refugi dels preferits de l'usuari"""
@@ -451,21 +395,13 @@ class UserVisitedRefugesAPIView(APIView):
     @swagger_auto_schema(
         tags=['User Visited Refuges'],
         operation_description="Obté la informació dels refugis visitats de l'usuari. Requereix autenticació amb token JWT de Firebase i ser el mateix usuari.",
-        manual_parameters=[
-            openapi.Parameter(
-                'Authorization',
-                openapi.IN_HEADER,
-                description="Token JWT de Firebase (format: Bearer <token>)",
-                type=openapi.TYPE_STRING,
-                required=True
-            )
-        ],
         responses={
             200: UserRefugiInfoResponseSerializer,
             401: ERROR_401_UNAUTHORIZED,
             403: ERROR_403_FORBIDDEN,
             404: ERROR_404_USER_NOT_FOUND,
-        }
+        },
+        security=[{'Bearer': []}]
     )
     def get(self, request, uid):
         """Obté la informació dels refugis visitats de l'usuari"""
@@ -494,22 +430,14 @@ class UserVisitedRefugesAPIView(APIView):
         tags=['User Visited Refuges'],
         operation_description="Afegeix un refugi als visitats de l'usuari. Requereix autenticació amb token JWT de Firebase i ser el mateix usuari.",
         request_body=UserRefugiSerializer,
-        manual_parameters=[
-            openapi.Parameter(
-                'Authorization',
-                openapi.IN_HEADER,
-                description="Token JWT de Firebase (format: Bearer <token>)",
-                type=openapi.TYPE_STRING,
-                required=True
-            )
-        ],
         responses={
             200: UserRefugiInfoResponseSerializer,
             400: ERROR_400_INVALID_DATA,
             401: ERROR_401_UNAUTHORIZED,
             403: ERROR_403_FORBIDDEN,
             404: "Usuari o refugi no trobat",
-        }
+        },
+        security=[{'Bearer': []}]
     )
     def post(self, request, uid):
         """Afegeix un nou refugi als visitats de l'usuari"""
@@ -562,21 +490,13 @@ class UserVisitedRefugesDetailAPIView(APIView):
     @swagger_auto_schema(
         tags=['User Visited Refuges'],
         operation_description="Elimina un refugi dels visitats de l'usuari. Requereix autenticació amb token JWT de Firebase i ser el mateix usuari.",
-        manual_parameters=[
-            openapi.Parameter(
-                'Authorization',
-                openapi.IN_HEADER,
-                description="Token JWT de Firebase (format: Bearer <token>)",
-                type=openapi.TYPE_STRING,
-                required=True
-            )
-        ],
         responses={
             200: UserRefugiInfoResponseSerializer,
             401: ERROR_401_UNAUTHORIZED,
             403: ERROR_403_FORBIDDEN,
             404: ERROR_404_USER_NOT_FOUND,
-        }
+        },
+        security=[{'Bearer': []}]
     )
     def delete(self, request, uid, refuge_id):
         """Elimina un refugi dels visitats de l'usuari"""
