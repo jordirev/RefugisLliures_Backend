@@ -16,7 +16,9 @@ from ..serializers.user_serializer import (
     UserSerializer, 
     UserCreateSerializer, 
     UserUpdateSerializer,
-    UserRefugiInfoSerializer,
+)
+from ..serializers.refugi_lliure_serializer import (
+    UserRefugiInfoResponseSerializer,
 )
 from ..permissions import IsSameUser
 
@@ -55,6 +57,7 @@ class UsersCollectionAPIView(APIView):
     permission_classes = [IsAuthenticated]
     
     @swagger_auto_schema(
+        tags=['Users'],
         operation_description="Crea un nou usuari. Requereix autenticació amb token JWT de Firebase.",
         request_body=UserCreateSerializer,
         manual_parameters=[
@@ -131,6 +134,7 @@ class UserDetailAPIView(APIView):
         return [IsAuthenticated(), IsSameUser()]
     
     @swagger_auto_schema(
+        tags=['Users'],
         operation_description="Obté un usuari per UID. Requereix autenticació amb token JWT de Firebase.",
         manual_parameters=[
             openapi.Parameter(
@@ -169,6 +173,7 @@ class UserDetailAPIView(APIView):
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
     @swagger_auto_schema(
+        tags=['Users'],
         operation_description="Actualitza les dades d'un usuari. Requereix autenticació amb token JWT de Firebase i ser el mateix usuari.",
         request_body=UserUpdateSerializer,
         manual_parameters=[
@@ -220,6 +225,7 @@ class UserDetailAPIView(APIView):
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
     @swagger_auto_schema(
+        tags=['Users'],
         operation_description="Elimina un usuari. Requereix autenticació amb token JWT de Firebase i ser el mateix usuari.",
         manual_parameters=[
             openapi.Parameter(
@@ -273,6 +279,7 @@ class UserFavouriteRefugesAPIView(APIView):
         return [IsAuthenticated(), IsSameUser()]
     
     @swagger_auto_schema(
+        tags=['User Favourite Refuges'],
         operation_description="Obté la informació dels refugis preferits de l'usuari. Requereix autenticació amb token JWT de Firebase i ser el mateix usuari.",
         manual_parameters=[
             openapi.Parameter(
@@ -284,7 +291,7 @@ class UserFavouriteRefugesAPIView(APIView):
             )
         ],
         responses={
-            200: UserRefugiInfoSerializer(many=True),
+            200: UserRefugiInfoResponseSerializer(),
             401: ERROR_401_UNAUTHORIZED,
             403: ERROR_403_FORBIDDEN,
             404: ERROR_404_USER_NOT_FOUND,
@@ -303,7 +310,8 @@ class UserFavouriteRefugesAPIView(APIView):
                 }, status=status_code)
             
             # Retorna la llista de refugis amb la seva informació
-            serializer = UserRefugiInfoSerializer(refugis_info, many=True)
+            data = {'count': len(refugis_info), 'results': refugis_info}
+            serializer = UserRefugiInfoResponseSerializer(data)
             return Response(serializer.data, status=status.HTTP_200_OK)
             
         except Exception as e:
@@ -313,6 +321,7 @@ class UserFavouriteRefugesAPIView(APIView):
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     @swagger_auto_schema(
+        tags=['User Favourite Refuges'],
         operation_description="Afegeix un refugi als preferits de l'usuari. Requereix autenticació amb token JWT de Firebase i ser el mateix usuari.",
         request_body=UserRefugiSerializer,
         manual_parameters=[
@@ -325,11 +334,11 @@ class UserFavouriteRefugesAPIView(APIView):
             )
         ],
         responses={
-            200: UserRefugiInfoSerializer(many=True),
+            200: UserRefugiInfoResponseSerializer,
             400: ERROR_400_INVALID_DATA,
             401: ERROR_401_UNAUTHORIZED,
             403: ERROR_403_FORBIDDEN,
-            404: [ERROR_404_USER_NOT_FOUND, ERROR_404_REFUGI_NOT_FOUND],
+            404: "Usuari o refugi no trobat",
         }
     )
     def post(self, request, uid):
@@ -354,7 +363,8 @@ class UserFavouriteRefugesAPIView(APIView):
                 }, status=status_code)
             
             # Retorna la llista actualitzada amb la informació dels refugis
-            response_serializer = UserRefugiInfoSerializer(refugis_info, many=True)
+            data = {'count': len(refugis_info), 'results': refugis_info}
+            response_serializer = UserRefugiInfoResponseSerializer(data)
             return Response(response_serializer.data, status=status.HTTP_200_OK)
             
         except Exception as e:
@@ -380,6 +390,7 @@ class UserFavouriteRefugesDetailAPIView(APIView):
         return [IsAuthenticated(), IsSameUser()]
     
     @swagger_auto_schema(
+        tags=['User Favourite Refuges'],
         operation_description="Elimina un refugi dels preferits de l'usuari. Requereix autenticació amb token JWT de Firebase i ser el mateix usuari.",
         manual_parameters=[
             openapi.Parameter(
@@ -391,7 +402,7 @@ class UserFavouriteRefugesDetailAPIView(APIView):
             )
         ],
         responses={
-            200: UserRefugiInfoSerializer(many=True),
+            200: UserRefugiInfoResponseSerializer,
             401: ERROR_401_UNAUTHORIZED,
             403: ERROR_403_FORBIDDEN,
             404: ERROR_404_USER_NOT_FOUND,
@@ -410,7 +421,8 @@ class UserFavouriteRefugesDetailAPIView(APIView):
                 }, status=status_code)
             
             # Retorna la llista actualitzada amb la informació dels refugis
-            serializer = UserRefugiInfoSerializer(refugis_info, many=True)
+            data = {'count': len(refugis_info), 'results': refugis_info}
+            serializer = UserRefugiInfoResponseSerializer(data)
             return Response(serializer.data, status=status.HTTP_200_OK)
             
         except Exception as e:
@@ -437,6 +449,7 @@ class UserVisitedRefugesAPIView(APIView):
         return [IsAuthenticated(), IsSameUser()]
     
     @swagger_auto_schema(
+        tags=['User Visited Refuges'],
         operation_description="Obté la informació dels refugis visitats de l'usuari. Requereix autenticació amb token JWT de Firebase i ser el mateix usuari.",
         manual_parameters=[
             openapi.Parameter(
@@ -448,7 +461,7 @@ class UserVisitedRefugesAPIView(APIView):
             )
         ],
         responses={
-            200: UserRefugiInfoSerializer(many=True),
+            200: UserRefugiInfoResponseSerializer,
             401: ERROR_401_UNAUTHORIZED,
             403: ERROR_403_FORBIDDEN,
             404: ERROR_404_USER_NOT_FOUND,
@@ -467,7 +480,8 @@ class UserVisitedRefugesAPIView(APIView):
                 }, status=status_code)
             
             # Retorna la llista de refugis amb la seva informació
-            serializer = UserRefugiInfoSerializer(refugis_info, many=True)
+            data = {'count': len(refugis_info), 'results': refugis_info}
+            serializer = UserRefugiInfoResponseSerializer(data)
             return Response(serializer.data, status=status.HTTP_200_OK)
             
         except Exception as e:
@@ -477,6 +491,7 @@ class UserVisitedRefugesAPIView(APIView):
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     @swagger_auto_schema(
+        tags=['User Visited Refuges'],
         operation_description="Afegeix un refugi als visitats de l'usuari. Requereix autenticació amb token JWT de Firebase i ser el mateix usuari.",
         request_body=UserRefugiSerializer,
         manual_parameters=[
@@ -489,11 +504,11 @@ class UserVisitedRefugesAPIView(APIView):
             )
         ],
         responses={
-            200: UserRefugiInfoSerializer(many=True),
+            200: UserRefugiInfoResponseSerializer,
             400: ERROR_400_INVALID_DATA,
             401: ERROR_401_UNAUTHORIZED,
             403: ERROR_403_FORBIDDEN,
-            404: [ERROR_404_USER_NOT_FOUND, ERROR_404_REFUGI_NOT_FOUND],
+            404: "Usuari o refugi no trobat",
         }
     )
     def post(self, request, uid):
@@ -518,7 +533,8 @@ class UserVisitedRefugesAPIView(APIView):
                 }, status=status_code)
             
             # Retorna la llista actualitzada amb la informació dels refugis
-            response_serializer = UserRefugiInfoSerializer(refugis_info, many=True)
+            data = {'count': len(refugis_info), 'results': refugis_info}
+            response_serializer = UserRefugiInfoResponseSerializer(data)
             return Response(response_serializer.data, status=status.HTTP_200_OK)
             
         except Exception as e:
@@ -544,6 +560,7 @@ class UserVisitedRefugesDetailAPIView(APIView):
         return [IsAuthenticated(), IsSameUser()]
     
     @swagger_auto_schema(
+        tags=['User Visited Refuges'],
         operation_description="Elimina un refugi dels visitats de l'usuari. Requereix autenticació amb token JWT de Firebase i ser el mateix usuari.",
         manual_parameters=[
             openapi.Parameter(
@@ -555,7 +572,7 @@ class UserVisitedRefugesDetailAPIView(APIView):
             )
         ],
         responses={
-            200: UserRefugiInfoSerializer(many=True),
+            200: UserRefugiInfoResponseSerializer,
             401: ERROR_401_UNAUTHORIZED,
             403: ERROR_403_FORBIDDEN,
             404: ERROR_404_USER_NOT_FOUND,
@@ -574,7 +591,8 @@ class UserVisitedRefugesDetailAPIView(APIView):
                 }, status=status_code)
             
             # Retorna la llista actualitzada amb la informació dels refugis
-            serializer = UserRefugiInfoSerializer(refugis_info, many=True)
+            data = {'count': len(refugis_info), 'results': refugis_info}
+            serializer = UserRefugiInfoResponseSerializer(data)
             return Response(serializer.data, status=status.HTTP_200_OK)
             
         except Exception as e:

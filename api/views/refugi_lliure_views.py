@@ -129,6 +129,22 @@ class RefugiLliureCollectionAPIView(APIView):
                 required=False
             ),
             openapi.Parameter(
+                'type',
+                openapi.IN_QUERY,
+                description="Filtre per tipus de refugi",
+                type=openapi.TYPE_STRING,
+                enum=['non gardé', 'fermée', 'cabane ouverte mais ocupee par le berger l ete', 'orri'],
+                required=False
+            ),
+            openapi.Parameter(
+                'condition',
+                openapi.IN_QUERY,
+                description="Filtre per tipus de refugi",
+                type=openapi.TYPE_NUMBER,
+                enum=[0, 1, 2],
+                required=False
+            ),
+            openapi.Parameter(
                 'min_altitude',
                 openapi.IN_QUERY,
                 description="Altitud mínima en metres",
@@ -143,13 +159,6 @@ class RefugiLliureCollectionAPIView(APIView):
                 required=False
             ),
             openapi.Parameter(
-                'guarded',
-                openapi.IN_QUERY,
-                description="Filtre per refugis guardats (true/false)",
-                type=openapi.TYPE_BOOLEAN,
-                required=False
-            ),
-            openapi.Parameter(
                 'capacity_min',
                 openapi.IN_QUERY,
                 description="Capacitat mínima de places",
@@ -157,24 +166,10 @@ class RefugiLliureCollectionAPIView(APIView):
                 required=False
             ),
             openapi.Parameter(
-                'latitude',
+                'capacity_max',
                 openapi.IN_QUERY,
-                description="Latitud del punt de referència (requereix longitude i radius)",
-                type=openapi.TYPE_NUMBER,
-                required=False
-            ),
-            openapi.Parameter(
-                'longitude',
-                openapi.IN_QUERY,
-                description="Longitud del punt de referència (requereix latitude i radius)",
-                type=openapi.TYPE_NUMBER,
-                required=False
-            ),
-            openapi.Parameter(
-                'radius',
-                openapi.IN_QUERY,
-                description="Radi de cerca en kilòmetres (requereix latitude i longitude)",
-                type=openapi.TYPE_NUMBER,
+                description="Capacitat màxima de places",
+                type=openapi.TYPE_INTEGER,
                 required=False
             )
         ],

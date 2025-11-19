@@ -4,7 +4,6 @@ from .user_serializer import (
     UserCreateSerializer, 
     UserUpdateSerializer,
     UserRefugiSerializer,
-    UserRefugiInfoSerializer,
 )
 from .refugi_lliure_serializer import (
     RefugiSerializer,
@@ -14,6 +13,7 @@ from .refugi_lliure_serializer import (
     RefugiSearchFiltersSerializer,
     CoordinatesSerializer,
     InfoComplementariaSerializer,
+    UserRefugiInfoSerializer,
 )
 
 __all__ = [
