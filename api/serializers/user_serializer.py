@@ -186,3 +186,30 @@ class UserUpdateSerializer(UserValidatorMixin, serializers.Serializer):
         if not any(attrs.values()):
             raise serializers.ValidationError("Almenys un camp ha de ser proporcionat per actualitzar")
         return attrs
+    
+class UserRefugiSerializer(serializers.Serializer):
+    """Serializer per a afegir/treure refugis preferits o visitats"""
+    
+    refugi_id = serializers.CharField(
+        max_length=255,
+        help_text="Identificador únic del refugi"
+    )
+
+class UserRefugiInfoSerializer(serializers.Serializer):
+    """Serializer per a llistar refugis preferits o visitats amb informació resumida"""
+    
+    id = serializers.CharField(
+        help_text="Identificador únic del refugi"
+    )
+    name = serializers.CharField(
+        help_text="Nom del refugi"
+    )
+    region = serializers.CharField(
+        help_text="Regió del refugi"
+    )
+    places = serializers.IntegerField(
+        help_text="Nombre de places del refugi"
+    )
+    coordinates = serializers.DictField(
+        help_text="Coordenades del refugi (long, lat)"
+    )

@@ -9,11 +9,14 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
+from urllib3 import request
 from ..controllers.user_controller import UserController
 from ..serializers.user_serializer import (
+    UserRefugiSerializer,
     UserSerializer, 
     UserCreateSerializer, 
     UserUpdateSerializer,
+    UserRefugiInfoSerializer,
 )
 from ..permissions import IsSameUser
 
@@ -25,12 +28,22 @@ ERROR_400_INVALID_DATA = 'Dades invàlides'
 ERROR_401_UNAUTHORIZED = 'No autoritzat'
 ERROR_403_FORBIDDEN = 'Permís denegat'
 ERROR_404_USER_NOT_FOUND = 'Usuari no trobat'
+ERROR_404_REFUGI_NOT_FOUND = 'Refugi no trobat'
 ERROR_409_USER_EXISTS = 'L\'usuari ja existeix'
 ERROR_204_NO_CONTENT = 'Usuari eliminat correctament'
+ERROR_409_REFUGI_ALREADY_FAVORITE = 'El refugi ja és als preferits de l\'usuari'
+
 
 
 # Configurar logging
 logger = logging.getLogger(__name__)
+
+# Funció auxiliar per obtenir el UID del token de Firebase
+def get_uid_from_firebase_token(request):
+    """
+    Funció auxiliar per obtenir el UID del token de Firebase des de la request
+    """
+    return getattr(request, 'user_uid', None)
 
 # ========== COLLECTION ENDPOINT: /users/ ==========
 
@@ -63,8 +76,7 @@ class UsersCollectionAPIView(APIView):
     def post(self, request):
         """Crear nou usuari amb el UID del token de Firebase"""
         try:
-            # Obté el UID del token de Firebase (assignat pel middleware)
-            uid = getattr(request, 'user_uid', None)
+            uid = get_uid_from_firebase_token(request)
             if not uid:
                 return Response({
                     'error': UID_NOT_FOUND_ERROR
@@ -240,6 +252,333 @@ class UserDetailAPIView(APIView):
             
         except Exception as e:
             logger.error(f"Error en delete_user: {str(e)}")
+            return Response({
+                'error': INTERNAL_SERVER_ERROR
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+# ========== ITEM ENDPOINT: /users/{uid}/refugis-preferits/ ==========
+
+class UserRefugisPreferitsAPIView(APIView):
+    """
+    Gestiona operacions sobre els refugis preferits d'un usuari específic:
+    - GET: Obtenir la informació dels refugis preferits de l'usuari (requereix autenticació + ser el mateix usuari)
+    - POST: Afegir un refugi als preferits de l'usuari (requereix autenticació + ser el mateix usuari)
+    """
+
+    def get_permissions(self):
+        """
+        Retorna els permisos segons el mètode HTTP:
+        - GET/POST/DELETE: IsAuthenticated + IsSameUser
+        """
+        return [IsAuthenticated(), IsSameUser()]
+    
+    @swagger_auto_schema(
+        operation_description="Obté la informació dels refugis preferits de l'usuari. Requereix autenticació amb token JWT de Firebase i ser el mateix usuari.",
+        manual_parameters=[
+            openapi.Parameter(
+                'Authorization',
+                openapi.IN_HEADER,
+                description="Token JWT de Firebase (format: Bearer <token>)",
+                type=openapi.TYPE_STRING,
+                required=True
+            )
+        ],
+        responses={
+            200: UserRefugiInfoSerializer(many=True),
+            401: ERROR_401_UNAUTHORIZED,
+            403: ERROR_403_FORBIDDEN,
+            404: ERROR_404_USER_NOT_FOUND,
+        }
+    )
+    def get(self, request, uid):
+        """Obté la informació dels refugis preferits de l'usuari"""
+        try:
+            controller = UserController()
+            success, refugis_info, error_message = controller.get_refugis_preferits_info(uid)
+            
+            if not success:
+                status_code = status.HTTP_404_NOT_FOUND if 'no trobat' in error_message else status.HTTP_400_BAD_REQUEST
+                return Response({
+                    'error': error_message
+                }, status=status_code)
+            
+            # Retorna la llista de refugis amb la seva informació
+            serializer = UserRefugiInfoSerializer(refugis_info, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+            
+        except Exception as e:
+            logger.error(f"Error en get_refugis_preferits: {str(e)}")
+            return Response({
+                'error': INTERNAL_SERVER_ERROR
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    @swagger_auto_schema(
+        operation_description="Afegeix un refugi als preferits de l'usuari. Requereix autenticació amb token JWT de Firebase i ser el mateix usuari.",
+        request_body=UserRefugiSerializer,
+        manual_parameters=[
+            openapi.Parameter(
+                'Authorization',
+                openapi.IN_HEADER,
+                description="Token JWT de Firebase (format: Bearer <token>)",
+                type=openapi.TYPE_STRING,
+                required=True
+            )
+        ],
+        responses={
+            200: UserRefugiInfoSerializer(many=True),
+            400: ERROR_400_INVALID_DATA,
+            401: ERROR_401_UNAUTHORIZED,
+            403: ERROR_403_FORBIDDEN,
+            404: [ERROR_404_USER_NOT_FOUND, ERROR_404_REFUGI_NOT_FOUND],
+        }
+    )
+    def post(self, request, uid):
+        """Afegeix un nou refugi als preferits de l'usuari"""
+        try:
+            # Valida les dades d'entrada
+            serializer = UserRefugiSerializer(data=request.data)
+            if not serializer.is_valid():
+                return Response({
+                    'error': ERROR_400_INVALID_DATA,
+                    'details': serializer.errors
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            controller = UserController()
+            refugi_id = serializer.validated_data['refugi_id']
+            success, refugis_info, error_message = controller.add_refugi_preferit(uid, refugi_id)
+            
+            if not success:
+                status_code = status.HTTP_404_NOT_FOUND if 'no trobat' in error_message else status.HTTP_400_BAD_REQUEST
+                return Response({
+                    'error': error_message
+                }, status=status_code)
+            
+            # Retorna la llista actualitzada amb la informació dels refugis
+            response_serializer = UserRefugiInfoSerializer(refugis_info, many=True)
+            return Response(response_serializer.data, status=status.HTTP_200_OK)
+            
+        except Exception as e:
+            logger.error(f"Error en post_refugis_preferits: {str(e)}")
+            return Response({
+                'error': INTERNAL_SERVER_ERROR
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+# ========== ITEM ENDPOINT: /users/{uid}/refugis-preferits/{refugi_id}/ ==========
+
+class UserRefugisPreferitsDetailAPIView(APIView):
+    """
+    Gestiona operacions sobre un refugi preferit específic d'un usuari:
+    - DELETE: Eliminar un refugi dels preferits de l'usuari (requereix autenticació + ser el mateix usuari)
+    """
+
+    def get_permissions(self):
+        """
+        Retorna els permisos segons el mètode HTTP:
+        - DELETE: IsAuthenticated + IsSameUser
+        """
+        return [IsAuthenticated(), IsSameUser()]
+    
+    @swagger_auto_schema(
+        operation_description="Elimina un refugi dels preferits de l'usuari. Requereix autenticació amb token JWT de Firebase i ser el mateix usuari.",
+        manual_parameters=[
+            openapi.Parameter(
+                'Authorization',
+                openapi.IN_HEADER,
+                description="Token JWT de Firebase (format: Bearer <token>)",
+                type=openapi.TYPE_STRING,
+                required=True
+            )
+        ],
+        responses={
+            200: UserRefugiInfoSerializer(many=True),
+            401: ERROR_401_UNAUTHORIZED,
+            403: ERROR_403_FORBIDDEN,
+            404: ERROR_404_USER_NOT_FOUND,
+        }
+    )
+    def delete(self, request, uid, refugi_id):
+        """Elimina un refugi dels preferits de l'usuari"""
+        try:
+            controller = UserController()
+            success, refugis_info, error_message = controller.remove_refugi_preferit(uid, refugi_id)
+            
+            if not success:
+                status_code = status.HTTP_404_NOT_FOUND if 'no trobat' in error_message else status.HTTP_400_BAD_REQUEST
+                return Response({
+                    'error': error_message
+                }, status=status_code)
+            
+            # Retorna la llista actualitzada amb la informació dels refugis
+            serializer = UserRefugiInfoSerializer(refugis_info, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+            
+        except Exception as e:
+            logger.error(f"Error en delete_refugi_preferit: {str(e)}")
+            return Response({
+                'error': INTERNAL_SERVER_ERROR
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+# ========== ITEM ENDPOINT: /users/{uid}/refugis-visitats/ ==========
+
+class UserRefugisVisitatsAPIView(APIView):
+    """
+    Gestiona operacions sobre els refugis visitats d'un usuari específic:
+    - GET: Obtenir la informació dels refugis visitats de l'usuari (requereix autenticació + ser el mateix usuari)
+    - POST: Afegir un refugi als visitats de l'usuari (requereix autenticació + ser el mateix usuari)
+    """
+
+    def get_permissions(self):
+        """
+        Retorna els permisos segons el mètode HTTP:
+        - GET/POST: IsAuthenticated + IsSameUser
+        """
+        return [IsAuthenticated(), IsSameUser()]
+    
+    @swagger_auto_schema(
+        operation_description="Obté la informació dels refugis visitats de l'usuari. Requereix autenticació amb token JWT de Firebase i ser el mateix usuari.",
+        manual_parameters=[
+            openapi.Parameter(
+                'Authorization',
+                openapi.IN_HEADER,
+                description="Token JWT de Firebase (format: Bearer <token>)",
+                type=openapi.TYPE_STRING,
+                required=True
+            )
+        ],
+        responses={
+            200: UserRefugiInfoSerializer(many=True),
+            401: ERROR_401_UNAUTHORIZED,
+            403: ERROR_403_FORBIDDEN,
+            404: ERROR_404_USER_NOT_FOUND,
+        }
+    )
+    def get(self, request, uid):
+        """Obté la informació dels refugis visitats de l'usuari"""
+        try:
+            controller = UserController()
+            success, refugis_info, error_message = controller.get_refugis_visitats_info(uid)
+            
+            if not success:
+                status_code = status.HTTP_404_NOT_FOUND if 'no trobat' in error_message else status.HTTP_400_BAD_REQUEST
+                return Response({
+                    'error': error_message
+                }, status=status_code)
+            
+            # Retorna la llista de refugis amb la seva informació
+            serializer = UserRefugiInfoSerializer(refugis_info, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+            
+        except Exception as e:
+            logger.error(f"Error en get_refugis_visitats: {str(e)}")
+            return Response({
+                'error': INTERNAL_SERVER_ERROR
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    @swagger_auto_schema(
+        operation_description="Afegeix un refugi als visitats de l'usuari. Requereix autenticació amb token JWT de Firebase i ser el mateix usuari.",
+        request_body=UserRefugiSerializer,
+        manual_parameters=[
+            openapi.Parameter(
+                'Authorization',
+                openapi.IN_HEADER,
+                description="Token JWT de Firebase (format: Bearer <token>)",
+                type=openapi.TYPE_STRING,
+                required=True
+            )
+        ],
+        responses={
+            200: UserRefugiInfoSerializer(many=True),
+            400: ERROR_400_INVALID_DATA,
+            401: ERROR_401_UNAUTHORIZED,
+            403: ERROR_403_FORBIDDEN,
+            404: [ERROR_404_USER_NOT_FOUND, ERROR_404_REFUGI_NOT_FOUND],
+        }
+    )
+    def post(self, request, uid):
+        """Afegeix un nou refugi als visitats de l'usuari"""
+        try:
+            # Valida les dades d'entrada
+            serializer = UserRefugiSerializer(data=request.data)
+            if not serializer.is_valid():
+                return Response({
+                    'error': ERROR_400_INVALID_DATA,
+                    'details': serializer.errors
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            controller = UserController()
+            refugi_id = serializer.validated_data['refugi_id']
+            success, refugis_info, error_message = controller.add_refugi_visitat(uid, refugi_id)
+            
+            if not success:
+                status_code = status.HTTP_404_NOT_FOUND if 'no trobat' in error_message else status.HTTP_400_BAD_REQUEST
+                return Response({
+                    'error': error_message
+                }, status=status_code)
+            
+            # Retorna la llista actualitzada amb la informació dels refugis
+            response_serializer = UserRefugiInfoSerializer(refugis_info, many=True)
+            return Response(response_serializer.data, status=status.HTTP_200_OK)
+            
+        except Exception as e:
+            logger.error(f"Error en post_refugis_visitats: {str(e)}")
+            return Response({
+                'error': INTERNAL_SERVER_ERROR
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+# ========== ITEM ENDPOINT: /users/{uid}/refugis-visitats/{refugi_id}/ ==========
+
+class UserRefugisVisitatsDetailAPIView(APIView):
+    """
+    Gestiona operacions sobre un refugi visitat específic d'un usuari:
+    - DELETE: Eliminar un refugi dels visitats de l'usuari (requereix autenticació + ser el mateix usuari)
+    """
+
+    def get_permissions(self):
+        """
+        Retorna els permisos segons el mètode HTTP:
+        - DELETE: IsAuthenticated + IsSameUser
+        """
+        return [IsAuthenticated(), IsSameUser()]
+    
+    @swagger_auto_schema(
+        operation_description="Elimina un refugi dels visitats de l'usuari. Requereix autenticació amb token JWT de Firebase i ser el mateix usuari.",
+        manual_parameters=[
+            openapi.Parameter(
+                'Authorization',
+                openapi.IN_HEADER,
+                description="Token JWT de Firebase (format: Bearer <token>)",
+                type=openapi.TYPE_STRING,
+                required=True
+            )
+        ],
+        responses={
+            200: UserRefugiInfoSerializer(many=True),
+            401: ERROR_401_UNAUTHORIZED,
+            403: ERROR_403_FORBIDDEN,
+            404: ERROR_404_USER_NOT_FOUND,
+        }
+    )
+    def delete(self, request, uid, refugi_id):
+        """Elimina un refugi dels visitats de l'usuari"""
+        try:
+            controller = UserController()
+            success, refugis_info, error_message = controller.remove_refugi_visitat(uid, refugi_id)
+            
+            if not success:
+                status_code = status.HTTP_404_NOT_FOUND if 'no trobat' in error_message else status.HTTP_400_BAD_REQUEST
+                return Response({
+                    'error': error_message
+                }, status=status_code)
+            
+            # Retorna la llista actualitzada amb la informació dels refugis
+            serializer = UserRefugiInfoSerializer(refugis_info, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+            
+        except Exception as e:
+            logger.error(f"Error en delete_refugi_visitat: {str(e)}")
             return Response({
                 'error': INTERNAL_SERVER_ERROR
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
