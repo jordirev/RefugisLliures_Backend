@@ -13,10 +13,10 @@ from rest_framework import status
 from rest_framework.test import APIRequestFactory
 
 from api.views.user_views import (
-    UserRefugisPreferitsAPIView,
-    UserRefugisPreferitsDetailAPIView,
-    UserRefugisVisitatsAPIView,
-    UserRefugisVisitatsDetailAPIView
+    UserFavouriteRefugesAPIView,
+    UserFavouriteRefugesDetailAPIView,
+    UserVisitedRefugesAPIView,
+    UserVisitedRefugesDetailAPIView
 )
 
 
@@ -94,10 +94,10 @@ class TestAddRefugiPreferit:
         user_controller.user_dao.user_exists.assert_called_once_with(sample_uid)
         user_controller.refugi_dao.refugi_exists.assert_called_once_with(sample_refugi_id)
         user_controller.user_dao.add_refugi_to_list.assert_called_once_with(
-            sample_uid, sample_refugi_id, 'refugis_favorits'
+            sample_uid, sample_refugi_id, 'favourite_refuges'
         )
         user_controller.user_dao.get_refugis_info.assert_called_once_with(
-            sample_uid, 'refugis_favorits', refugis_ids=[sample_refugi_id]
+            sample_uid, 'favourite_refuges', refugis_ids=[sample_refugi_id]
         )
     
     def test_add_refugi_preferit_uid_empty(self, user_controller, sample_refugi_id):
@@ -122,7 +122,7 @@ class TestAddRefugiPreferit:
         assert error == "UID no proporcionat"
     
     def test_add_refugi_preferit_refugi_id_empty(self, user_controller, sample_uid):
-        """Test afegir refugi preferit amb refugi_id buit"""
+        """Test afegir refugi preferit amb refuge_id buit"""
         # Act
         success, refugis_info, error = user_controller.add_refugi_preferit(sample_uid, "")
         
@@ -132,7 +132,7 @@ class TestAddRefugiPreferit:
         assert error == "ID del refugi no proporcionat"
     
     def test_add_refugi_preferit_refugi_id_none(self, user_controller, sample_uid):
-        """Test afegir refugi preferit amb refugi_id None"""
+        """Test afegir refugi preferit amb refuge_id None"""
         # Act
         success, refugis_info, error = user_controller.add_refugi_preferit(sample_uid, None)
         
@@ -220,7 +220,7 @@ class TestRemoveRefugiPreferit:
         assert error is None
         user_controller.user_dao.user_exists.assert_called_once_with(sample_uid)
         user_controller.user_dao.remove_refugi_from_list.assert_called_once_with(
-            sample_uid, sample_refugi_id, 'refugis_favorits'
+            sample_uid, sample_refugi_id, 'favourite_refuges'
         )
     
     def test_remove_refugi_preferit_uid_empty(self, user_controller, sample_refugi_id):
@@ -234,7 +234,7 @@ class TestRemoveRefugiPreferit:
         assert error == "UID no proporcionat"
     
     def test_remove_refugi_preferit_refugi_id_empty(self, user_controller, sample_uid):
-        """Test eliminar refugi preferit amb refugi_id buit"""
+        """Test eliminar refugi preferit amb refuge_id buit"""
         # Act
         success, refugis_info, error = user_controller.remove_refugi_preferit(sample_uid, "")
         
@@ -301,7 +301,7 @@ class TestGetRefugisPreferitsInfo:
         assert success is True
         assert refugis_info == sample_refugis_info
         assert error is None
-        user_controller.user_dao.get_refugis_info.assert_called_once_with(sample_uid, 'refugis_favorits')
+        user_controller.user_dao.get_refugis_info.assert_called_once_with(sample_uid, 'favourite_refuges')
     
     def test_get_refugis_preferits_info_empty_list(self, user_controller, sample_uid):
         """Test obtenir info de refugis preferits amb llista buida"""
@@ -377,7 +377,7 @@ class TestAddRefugiVisitat:
         assert refugis_info == sample_refugis_info
         assert error is None
         user_controller.user_dao.add_refugi_to_list.assert_called_once_with(
-            sample_uid, sample_refugi_id, 'refugis_visitats'
+            sample_uid, sample_refugi_id, 'visited_refuges'
         )
         user_controller.refugi_dao.add_visitor_to_refugi.assert_called_once_with(sample_refugi_id, sample_uid)
     
@@ -409,7 +409,7 @@ class TestAddRefugiVisitat:
         assert error == "UID no proporcionat"
     
     def test_add_refugi_visitat_refugi_id_none(self, user_controller, sample_uid):
-        """Test afegir refugi visitat amb refugi_id None"""
+        """Test afegir refugi visitat amb refuge_id None"""
         # Act
         success, refugis_info, error = user_controller.add_refugi_visitat(sample_uid, None)
         
@@ -494,7 +494,7 @@ class TestRemoveRefugiVisitat:
         assert refugis_info == sample_refugis_info
         assert error is None
         user_controller.user_dao.remove_refugi_from_list.assert_called_once_with(
-            sample_uid, sample_refugi_id, 'refugis_visitats'
+            sample_uid, sample_refugi_id, 'visited_refuges'
         )
         user_controller.refugi_dao.remove_visitor_from_refugi.assert_called_once_with(sample_refugi_id, sample_uid)
     
@@ -525,7 +525,7 @@ class TestRemoveRefugiVisitat:
         assert error == "UID no proporcionat"
     
     def test_remove_refugi_visitat_refugi_id_empty(self, user_controller, sample_uid):
-        """Test eliminar refugi visitat amb refugi_id buit"""
+        """Test eliminar refugi visitat amb refuge_id buit"""
         # Act
         success, refugis_info, error = user_controller.remove_refugi_visitat(sample_uid, "")
         
@@ -592,7 +592,7 @@ class TestGetRefugisVisitatsInfo:
         assert success is True
         assert refugis_info == sample_refugis_info
         assert error is None
-        user_controller.user_dao.get_refugis_info.assert_called_once_with(sample_uid, 'refugis_visitats')
+        user_controller.user_dao.get_refugis_info.assert_called_once_with(sample_uid, 'visited_refuges')
     
     def test_get_refugis_visitats_info_empty_list(self, user_controller, sample_uid):
         """Test obtenir info de refugis visitats amb llista buida"""
@@ -652,7 +652,7 @@ class TestTemplateMethodPattern:
     """Tests per verificar que el patró Template Method funciona correctament"""
     
     def test_template_method_calls_correct_list_type_for_preferits(self, user_controller, sample_uid, sample_refugi_id):
-        """Test que el mètode plantilla usa 'refugis_favorits' per preferits"""
+        """Test que el mètode plantilla usa 'favourite_refuges' per preferits"""
         # Arrange
         user_controller.user_dao.user_exists.return_value = True
         user_controller.refugi_dao.refugi_exists.return_value = True
@@ -664,11 +664,11 @@ class TestTemplateMethodPattern:
         
         # Assert - verifica que s'usa el list_type correcte
         user_controller.user_dao.add_refugi_to_list.assert_called_with(
-            sample_uid, sample_refugi_id, 'refugis_favorits'
+            sample_uid, sample_refugi_id, 'favourite_refuges'
         )
     
     def test_template_method_calls_correct_list_type_for_visitats(self, user_controller, sample_uid, sample_refugi_id):
-        """Test que el mètode plantilla usa 'refugis_visitats' per visitats"""
+        """Test que el mètode plantilla usa 'visited_refuges' per visitats"""
         # Arrange
         user_controller.user_dao.user_exists.return_value = True
         user_controller.refugi_dao.refugi_exists.return_value = True
@@ -681,7 +681,7 @@ class TestTemplateMethodPattern:
         
         # Assert - verifica que s'usa el list_type correcte
         user_controller.user_dao.add_refugi_to_list.assert_called_with(
-            sample_uid, sample_refugi_id, 'refugis_visitats'
+            sample_uid, sample_refugi_id, 'visited_refuges'
         )
     
     def test_hook_method_not_called_for_preferits(self, user_controller, sample_uid, sample_refugi_id):
@@ -742,14 +742,14 @@ class TestRefugisIntegration:
         user_controller.refugi_dao.refugi_exists.return_value = True
         
         # Act - afegeix múltiples refugis
-        for i, refugi_id in enumerate(sample_refugi_ids):
+        for i, refuge_id in enumerate(sample_refugi_ids):
             current_list = sample_refugi_ids[:i+1]
             user_controller.user_dao.add_refugi_to_list.return_value = (True, current_list)
             user_controller.user_dao.get_refugis_info.return_value = [
                 {'id': rid, 'name': f'Refugi {rid}'} for rid in current_list
             ]
             
-            success, refugis_info, error = user_controller.add_refugi_preferit(sample_uid, refugi_id)
+            success, refugis_info, error = user_controller.add_refugi_preferit(sample_uid, refuge_id)
             
             assert success is True
             assert error is None
@@ -811,8 +811,8 @@ class TestRefugisIntegration:
         
         # Verifica que s'han cridat els mètodes amb els list_type correctes
         calls = user_controller.user_dao.add_refugi_to_list.call_args_list
-        assert any('refugis_favorits' in str(call) for call in calls)
-        assert any('refugis_visitats' in str(call) for call in calls)
+        assert any('favourite_refuges' in str(call) for call in calls)
+        assert any('visited_refuges' in str(call) for call in calls)
 
 
 # ==================== TESTS D'INTEGRACIÓ AMB FIRESTORE MOCKEJAT ====================
@@ -858,7 +858,7 @@ class TestRefugisIntegrationWithFirestore:
             'uid': sample_uid,
             'email': 'test@example.com',
             'username': 'testuser',
-            'refugis_favorits': []
+            'favourite_refuges': []
         }
         
         mock_user_doc_ref = MagicMock()
@@ -901,8 +901,8 @@ class TestRefugisIntegrationWithFirestore:
         # Verifica que s'ha actualitzat a Firestore
         mock_user_doc_ref.update.assert_called_once()
         update_call = mock_user_doc_ref.update.call_args[0][0]
-        assert 'refugis_favorits' in update_call
-        assert sample_refugi_id in update_call['refugis_favorits']
+        assert 'favourite_refuges' in update_call
+        assert sample_refugi_id in update_call['favourite_refuges']
     
     @patch('api.daos.user_dao.cache_service')
     @patch('api.daos.user_dao.FirestoreService')
@@ -936,7 +936,7 @@ class TestRefugisIntegrationWithFirestore:
         mock_user_doc.to_dict.return_value = {
             'uid': sample_uid,
             'email': 'test@example.com',
-            'refugis_visitats': []
+            'visited_refuges': []
         }
         mock_user_doc_ref = MagicMock()
         mock_user_doc_ref.get.return_value = mock_user_doc
@@ -971,8 +971,8 @@ class TestRefugisIntegrationWithFirestore:
         user_update_calls = mock_user_doc_ref.update.call_args_list
         assert len(user_update_calls) == 1
         user_update_data = user_update_calls[0][0][0]
-        assert 'refugis_visitats' in user_update_data
-        assert sample_refugi_id in user_update_data['refugis_visitats']
+        assert 'visited_refuges' in user_update_data
+        assert sample_refugi_id in user_update_data['visited_refuges']
         
         # Verifica actualització a col·lecció refugis
         refugi_update_calls = mock_refugi_doc_ref.update.call_args_list
@@ -1013,7 +1013,7 @@ class TestRefugisIntegrationWithFirestore:
         mock_user_doc.to_dict.return_value = {
             'uid': sample_uid,
             'email': 'test@example.com',
-            'refugis_visitats': [sample_refugi_id]  # Refugi ja està a la llista
+            'visited_refuges': [sample_refugi_id]  # Refugi ja està a la llista
         }
         mock_user_doc_ref = MagicMock()
         mock_user_doc_ref.get.return_value = mock_user_doc
@@ -1049,8 +1049,8 @@ class TestRefugisIntegrationWithFirestore:
         user_update_calls = mock_user_doc_ref.update.call_args_list
         assert len(user_update_calls) == 1
         user_update_data = user_update_calls[0][0][0]
-        assert 'refugis_visitats' in user_update_data
-        assert sample_refugi_id not in user_update_data['refugis_visitats']
+        assert 'visited_refuges' in user_update_data
+        assert sample_refugi_id not in user_update_data['visited_refuges']
         
         # Verifica actualització a col·lecció refugis
         refugi_update_calls = mock_refugi_doc_ref.update.call_args_list
@@ -1091,7 +1091,7 @@ class TestRefugisIntegrationWithFirestore:
         mock_user_doc.to_dict.return_value = {
             'uid': sample_uid,
             'email': 'test@example.com',
-            'refugis_favorits': []
+            'favourite_refuges': []
         }
         mock_user_doc_ref = MagicMock()
         mock_user_doc_ref.get.return_value = mock_user_doc
@@ -1159,7 +1159,7 @@ class TestRefugisIntegrationWithFirestore:
         mock_user_doc.to_dict.return_value = {
             'uid': sample_uid,
             'email': 'test@example.com',
-            'refugis_favorits': [sample_refugi_id]  # Ja està a la llista!
+            'favourite_refuges': [sample_refugi_id]  # Ja està a la llista!
         }
         mock_user_doc_ref = MagicMock()
         mock_user_doc_ref.get.return_value = mock_user_doc
@@ -1223,7 +1223,7 @@ class TestRefugisIntegrationWithFirestore:
         mock_user_doc.exists = True
         mock_user_doc.to_dict.return_value = {
             'uid': sample_uid,
-            'refugis_favorits': sample_refugi_ids
+            'favourite_refuges': sample_refugi_ids
         }
         mock_user_doc_ref = MagicMock()
         mock_user_doc_ref.get.return_value = mock_user_doc
@@ -1235,13 +1235,13 @@ class TestRefugisIntegrationWithFirestore:
         mock_refugi_collection = MagicMock()
         mock_refugi_db.collection.return_value = mock_refugi_collection
         
-        def get_refugi_mock(refugi_id):
+        def get_refugi_mock(refuge_id):
             """Mock que retorna diferents refugis segons l'ID"""
             mock_doc = MagicMock()
             mock_doc.exists = True
             mock_doc.to_dict.return_value = {
-                'id': refugi_id,
-                'name': f'Refugi {refugi_id}',
+                'id': refuge_id,
+                'name': f'Refugi {refuge_id}',
                 'region': 'Pirineus',
                 'places': 10,
                 'coord': {'long': 1.5, 'lat': 42.5}
@@ -1320,7 +1320,7 @@ class TestEdgeCases:
     
     @pytest.mark.parametrize("refugi_value", ["", None])
     def test_various_empty_refugi_id_formats(self, user_controller, sample_uid, refugi_value):
-        """Test diferents formats de refugi_id buit/invalid"""
+        """Test diferents formats de refuge_id buit/invalid"""
         # Act
         success, refugis_info, error = user_controller.add_refugi_visitat(sample_uid, refugi_value)
         
@@ -1431,8 +1431,8 @@ def sample_refugis_info_list(sample_refugi_info):
 # ==================== TESTS REFUGIS PREFERITS - COLLECTION ENDPOINT ====================
 
 @pytest.mark.views
-class TestUserRefugisPreferitsAPIViewGet:
-    """Tests per GET /users/{uid}/refugis-preferits/"""
+class TestUserFavouriteRefugesAPIViewGet:
+    """Tests per GET /users/{uid}/favorite-refuges/"""
     
     @patch('rest_framework.permissions.IsAuthenticated.has_permission', return_value=True)
     @patch('api.permissions.IsSameUser.has_permission', return_value=True)
@@ -1443,8 +1443,8 @@ class TestUserRefugisPreferitsAPIViewGet:
         mock_controller = mock_controller_class.return_value
         mock_controller.get_refugis_preferits_info.return_value = (True, sample_refugis_info_list, None)
         
-        request = mock_authenticated_request('get', '/api/users/test_uid_123/refugis-preferits/')
-        view = UserRefugisPreferitsAPIView.as_view()
+        request = mock_authenticated_request('get', '/api/users/test_uid_123/favorite-refuges/')
+        view = UserFavouriteRefugesAPIView.as_view()
         
         # Act
         response = view(request, uid='test_uid_123')
@@ -1464,8 +1464,8 @@ class TestUserRefugisPreferitsAPIViewGet:
         mock_controller = mock_controller_class.return_value
         mock_controller.get_refugis_preferits_info.return_value = (True, [], None)
         
-        request = mock_authenticated_request('get', '/api/users/test_uid_123/refugis-preferits/')
-        view = UserRefugisPreferitsAPIView.as_view()
+        request = mock_authenticated_request('get', '/api/users/test_uid_123/favorite-refuges/')
+        view = UserFavouriteRefugesAPIView.as_view()
         
         # Act
         response = view(request, uid='test_uid_123')
@@ -1483,8 +1483,8 @@ class TestUserRefugisPreferitsAPIViewGet:
         mock_controller = mock_controller_class.return_value
         mock_controller.get_refugis_preferits_info.return_value = (False, None, "Usuari amb UID test_uid_123 no trobat")
         
-        request = mock_authenticated_request('get', '/api/users/test_uid_123/refugis-preferits/')
-        view = UserRefugisPreferitsAPIView.as_view()
+        request = mock_authenticated_request('get', '/api/users/test_uid_123/favorite-refuges/')
+        view = UserFavouriteRefugesAPIView.as_view()
         
         # Act
         response = view(request, uid='test_uid_123')
@@ -1503,8 +1503,8 @@ class TestUserRefugisPreferitsAPIViewGet:
         mock_controller = mock_controller_class.return_value
         mock_controller.get_refugis_preferits_info.return_value = (False, None, "Error genèric")
         
-        request = mock_authenticated_request('get', '/api/users/test_uid_123/refugis-preferits/')
-        view = UserRefugisPreferitsAPIView.as_view()
+        request = mock_authenticated_request('get', '/api/users/test_uid_123/favorite-refuges/')
+        view = UserFavouriteRefugesAPIView.as_view()
         
         # Act
         response = view(request, uid='test_uid_123')
@@ -1522,8 +1522,8 @@ class TestUserRefugisPreferitsAPIViewGet:
         mock_controller = mock_controller_class.return_value
         mock_controller.get_refugis_preferits_info.side_effect = Exception("Database error")
         
-        request = mock_authenticated_request('get', '/api/users/test_uid_123/refugis-preferits/')
-        view = UserRefugisPreferitsAPIView.as_view()
+        request = mock_authenticated_request('get', '/api/users/test_uid_123/favorite-refuges/')
+        view = UserFavouriteRefugesAPIView.as_view()
         
         # Act
         response = view(request, uid='test_uid_123')
@@ -1534,8 +1534,8 @@ class TestUserRefugisPreferitsAPIViewGet:
 
 
 @pytest.mark.views
-class TestUserRefugisPreferitsAPIViewPost:
-    """Tests per POST /users/{uid}/refugis-preferits/"""
+class TestUserFavouriteRefugesAPIViewPost:
+    """Tests per POST /users/{uid}/favorite-refuges/"""
     
     @patch('rest_framework.permissions.IsAuthenticated.has_permission', return_value=True)
     @patch('api.permissions.IsSameUser.has_permission', return_value=True)
@@ -1546,9 +1546,9 @@ class TestUserRefugisPreferitsAPIViewPost:
         mock_controller = mock_controller_class.return_value
         mock_controller.add_refugi_preferit.return_value = (True, sample_refugis_info_list, None)
         
-        data = {'refugi_id': 'refugi_001'}
-        request = mock_authenticated_request('post', '/api/users/test_uid_123/refugis-preferits/', data)
-        view = UserRefugisPreferitsAPIView.as_view()
+        data = {'refuge_id': 'refugi_001'}
+        request = mock_authenticated_request('post', '/api/users/test_uid_123/favorite-refuges/', data)
+        view = UserFavouriteRefugesAPIView.as_view()
         
         # Act
         response = view(request, uid='test_uid_123')
@@ -1562,11 +1562,11 @@ class TestUserRefugisPreferitsAPIViewPost:
     @patch('api.permissions.IsSameUser.has_permission', return_value=True)
     @patch('api.views.user_views.UserController')
     def test_post_refugi_preferit_invalid_data_missing_refugi_id(self, mock_controller_class, mock_same_user, mock_auth, mock_authenticated_request):
-        """Test afegir refugi preferit sense refugi_id"""
+        """Test afegir refugi preferit sense refuge_id"""
         # Arrange
-        data = {}  # Falta refugi_id
-        request = mock_authenticated_request('post', '/api/users/test_uid_123/refugis-preferits/', data)
-        view = UserRefugisPreferitsAPIView.as_view()
+        data = {}  # Falta refuge_id
+        request = mock_authenticated_request('post', '/api/users/test_uid_123/favorite-refuges/', data)
+        view = UserFavouriteRefugesAPIView.as_view()
         
         # Act
         response = view(request, uid='test_uid_123')
@@ -1580,11 +1580,11 @@ class TestUserRefugisPreferitsAPIViewPost:
     @patch('api.permissions.IsSameUser.has_permission', return_value=True)
     @patch('api.views.user_views.UserController')
     def test_post_refugi_preferit_invalid_data_empty_refugi_id(self, mock_controller_class, mock_same_user, mock_auth, mock_authenticated_request):
-        """Test afegir refugi preferit amb refugi_id buit"""
+        """Test afegir refugi preferit amb refuge_id buit"""
         # Arrange
-        data = {'refugi_id': ''}
-        request = mock_authenticated_request('post', '/api/users/test_uid_123/refugis-preferits/', data)
-        view = UserRefugisPreferitsAPIView.as_view()
+        data = {'refuge_id': ''}
+        request = mock_authenticated_request('post', '/api/users/test_uid_123/favorite-refuges/', data)
+        view = UserFavouriteRefugesAPIView.as_view()
         
         # Act
         response = view(request, uid='test_uid_123')
@@ -1602,9 +1602,9 @@ class TestUserRefugisPreferitsAPIViewPost:
         mock_controller = mock_controller_class.return_value
         mock_controller.add_refugi_preferit.return_value = (False, None, "Usuari amb UID test_uid_123 no trobat")
         
-        data = {'refugi_id': 'refugi_001'}
-        request = mock_authenticated_request('post', '/api/users/test_uid_123/refugis-preferits/', data)
-        view = UserRefugisPreferitsAPIView.as_view()
+        data = {'refuge_id': 'refugi_001'}
+        request = mock_authenticated_request('post', '/api/users/test_uid_123/favorite-refuges/', data)
+        view = UserFavouriteRefugesAPIView.as_view()
         
         # Act
         response = view(request, uid='test_uid_123')
@@ -1622,9 +1622,9 @@ class TestUserRefugisPreferitsAPIViewPost:
         mock_controller = mock_controller_class.return_value
         mock_controller.add_refugi_preferit.return_value = (False, None, "Refugi amb ID refugi_001 no trobat")
         
-        data = {'refugi_id': 'refugi_001'}
-        request = mock_authenticated_request('post', '/api/users/test_uid_123/refugis-preferits/', data)
-        view = UserRefugisPreferitsAPIView.as_view()
+        data = {'refuge_id': 'refugi_001'}
+        request = mock_authenticated_request('post', '/api/users/test_uid_123/favorite-refuges/', data)
+        view = UserFavouriteRefugesAPIView.as_view()
         
         # Act
         response = view(request, uid='test_uid_123')
@@ -1642,9 +1642,9 @@ class TestUserRefugisPreferitsAPIViewPost:
         mock_controller = mock_controller_class.return_value
         mock_controller.add_refugi_preferit.side_effect = Exception("Network error")
         
-        data = {'refugi_id': 'refugi_001'}
-        request = mock_authenticated_request('post', '/api/users/test_uid_123/refugis-preferits/', data)
-        view = UserRefugisPreferitsAPIView.as_view()
+        data = {'refuge_id': 'refugi_001'}
+        request = mock_authenticated_request('post', '/api/users/test_uid_123/favorite-refuges/', data)
+        view = UserFavouriteRefugesAPIView.as_view()
         
         # Act
         response = view(request, uid='test_uid_123')
@@ -1657,8 +1657,8 @@ class TestUserRefugisPreferitsAPIViewPost:
 # ==================== TESTS REFUGIS PREFERITS - DETAIL ENDPOINT ====================
 
 @pytest.mark.views
-class TestUserRefugisPreferitsDetailAPIViewDelete:
-    """Tests per DELETE /users/{uid}/refugis-preferits/{refugi_id}/"""
+class TestUserFavouriteRefugesDetailAPIViewDelete:
+    """Tests per DELETE /users/{uid}/favorite-refuges/{refuge_id}/"""
     
     @patch('rest_framework.permissions.IsAuthenticated.has_permission', return_value=True)
     @patch('api.permissions.IsSameUser.has_permission', return_value=True)
@@ -1669,11 +1669,11 @@ class TestUserRefugisPreferitsDetailAPIViewDelete:
         mock_controller = mock_controller_class.return_value
         mock_controller.remove_refugi_preferit.return_value = (True, sample_refugis_info_list, None)
         
-        request = mock_authenticated_request('delete', '/api/users/test_uid_123/refugis-preferits/refugi_001/')
-        view = UserRefugisPreferitsDetailAPIView.as_view()
+        request = mock_authenticated_request('delete', '/api/users/test_uid_123/favorite-refuges/refugi_001/')
+        view = UserFavouriteRefugesDetailAPIView.as_view()
         
         # Act
-        response = view(request, uid='test_uid_123', refugi_id='refugi_001')
+        response = view(request, uid='test_uid_123', refuge_id='refugi_001')
         
         # Assert
         assert response.status_code == status.HTTP_200_OK
@@ -1689,11 +1689,11 @@ class TestUserRefugisPreferitsDetailAPIViewDelete:
         mock_controller = mock_controller_class.return_value
         mock_controller.remove_refugi_preferit.return_value = (True, [], None)
         
-        request = mock_authenticated_request('delete', '/api/users/test_uid_123/refugis-preferits/refugi_001/')
-        view = UserRefugisPreferitsDetailAPIView.as_view()
+        request = mock_authenticated_request('delete', '/api/users/test_uid_123/favorite-refuges/refugi_001/')
+        view = UserFavouriteRefugesDetailAPIView.as_view()
         
         # Act
-        response = view(request, uid='test_uid_123', refugi_id='refugi_001')
+        response = view(request, uid='test_uid_123', refuge_id='refugi_001')
         
         # Assert
         assert response.status_code == status.HTTP_200_OK
@@ -1708,11 +1708,11 @@ class TestUserRefugisPreferitsDetailAPIViewDelete:
         mock_controller = mock_controller_class.return_value
         mock_controller.remove_refugi_preferit.return_value = (False, None, "Usuari amb UID test_uid_123 no trobat")
         
-        request = mock_authenticated_request('delete', '/api/users/test_uid_123/refugis-preferits/refugi_001/')
-        view = UserRefugisPreferitsDetailAPIView.as_view()
+        request = mock_authenticated_request('delete', '/api/users/test_uid_123/favorite-refuges/refugi_001/')
+        view = UserFavouriteRefugesDetailAPIView.as_view()
         
         # Act
-        response = view(request, uid='test_uid_123', refugi_id='refugi_001')
+        response = view(request, uid='test_uid_123', refuge_id='refugi_001')
         
         # Assert
         assert response.status_code == status.HTTP_404_NOT_FOUND
@@ -1727,11 +1727,11 @@ class TestUserRefugisPreferitsDetailAPIViewDelete:
         mock_controller = mock_controller_class.return_value
         mock_controller.remove_refugi_preferit.return_value = (False, None, "Error eliminant refugi")
         
-        request = mock_authenticated_request('delete', '/api/users/test_uid_123/refugis-preferits/refugi_001/')
-        view = UserRefugisPreferitsDetailAPIView.as_view()
+        request = mock_authenticated_request('delete', '/api/users/test_uid_123/favorite-refuges/refugi_001/')
+        view = UserFavouriteRefugesDetailAPIView.as_view()
         
         # Act
-        response = view(request, uid='test_uid_123', refugi_id='refugi_001')
+        response = view(request, uid='test_uid_123', refuge_id='refugi_001')
         
         # Assert
         assert response.status_code == status.HTTP_400_BAD_REQUEST
@@ -1746,11 +1746,11 @@ class TestUserRefugisPreferitsDetailAPIViewDelete:
         mock_controller = mock_controller_class.return_value
         mock_controller.remove_refugi_preferit.side_effect = Exception("Connection timeout")
         
-        request = mock_authenticated_request('delete', '/api/users/test_uid_123/refugis-preferits/refugi_001/')
-        view = UserRefugisPreferitsDetailAPIView.as_view()
+        request = mock_authenticated_request('delete', '/api/users/test_uid_123/favorite-refuges/refugi_001/')
+        view = UserFavouriteRefugesDetailAPIView.as_view()
         
         # Act
-        response = view(request, uid='test_uid_123', refugi_id='refugi_001')
+        response = view(request, uid='test_uid_123', refuge_id='refugi_001')
         
         # Assert
         assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
@@ -1760,8 +1760,8 @@ class TestUserRefugisPreferitsDetailAPIViewDelete:
 # ==================== TESTS REFUGIS VISITATS - COLLECTION ENDPOINT ====================
 
 @pytest.mark.views
-class TestUserRefugisVisitatsAPIViewGet:
-    """Tests per GET /users/{uid}/refugis-visitats/"""
+class TestUserVisitedRefugesAPIViewGet:
+    """Tests per GET /users/{uid}/visited-refuges/"""
     
     @patch('rest_framework.permissions.IsAuthenticated.has_permission', return_value=True)
     @patch('api.permissions.IsSameUser.has_permission', return_value=True)
@@ -1772,8 +1772,8 @@ class TestUserRefugisVisitatsAPIViewGet:
         mock_controller = mock_controller_class.return_value
         mock_controller.get_refugis_visitats_info.return_value = (True, sample_refugis_info_list, None)
         
-        request = mock_authenticated_request('get', '/api/users/test_uid_123/refugis-visitats/')
-        view = UserRefugisVisitatsAPIView.as_view()
+        request = mock_authenticated_request('get', '/api/users/test_uid_123/visited-refuges/')
+        view = UserVisitedRefugesAPIView.as_view()
         
         # Act
         response = view(request, uid='test_uid_123')
@@ -1793,8 +1793,8 @@ class TestUserRefugisVisitatsAPIViewGet:
         mock_controller = mock_controller_class.return_value
         mock_controller.get_refugis_visitats_info.return_value = (True, [], None)
         
-        request = mock_authenticated_request('get', '/api/users/test_uid_123/refugis-visitats/')
-        view = UserRefugisVisitatsAPIView.as_view()
+        request = mock_authenticated_request('get', '/api/users/test_uid_123/visited-refuges/')
+        view = UserVisitedRefugesAPIView.as_view()
         
         # Act
         response = view(request, uid='test_uid_123')
@@ -1812,8 +1812,8 @@ class TestUserRefugisVisitatsAPIViewGet:
         mock_controller = mock_controller_class.return_value
         mock_controller.get_refugis_visitats_info.return_value = (False, None, "Usuari amb UID test_uid_123 no trobat")
         
-        request = mock_authenticated_request('get', '/api/users/test_uid_123/refugis-visitats/')
-        view = UserRefugisVisitatsAPIView.as_view()
+        request = mock_authenticated_request('get', '/api/users/test_uid_123/visited-refuges/')
+        view = UserVisitedRefugesAPIView.as_view()
         
         # Act
         response = view(request, uid='test_uid_123')
@@ -1831,8 +1831,8 @@ class TestUserRefugisVisitatsAPIViewGet:
         mock_controller = mock_controller_class.return_value
         mock_controller.get_refugis_visitats_info.return_value = (False, None, "Error genèric")
         
-        request = mock_authenticated_request('get', '/api/users/test_uid_123/refugis-visitats/')
-        view = UserRefugisVisitatsAPIView.as_view()
+        request = mock_authenticated_request('get', '/api/users/test_uid_123/visited-refuges/')
+        view = UserVisitedRefugesAPIView.as_view()
         
         # Act
         response = view(request, uid='test_uid_123')
@@ -1850,8 +1850,8 @@ class TestUserRefugisVisitatsAPIViewGet:
         mock_controller = mock_controller_class.return_value
         mock_controller.get_refugis_visitats_info.side_effect = Exception("Database error")
         
-        request = mock_authenticated_request('get', '/api/users/test_uid_123/refugis-visitats/')
-        view = UserRefugisVisitatsAPIView.as_view()
+        request = mock_authenticated_request('get', '/api/users/test_uid_123/visited-refuges/')
+        view = UserVisitedRefugesAPIView.as_view()
         
         # Act
         response = view(request, uid='test_uid_123')
@@ -1862,8 +1862,8 @@ class TestUserRefugisVisitatsAPIViewGet:
 
 
 @pytest.mark.views
-class TestUserRefugisVisitatsAPIViewPost:
-    """Tests per POST /users/{uid}/refugis-visitats/"""
+class TestUserVisitedRefugesAPIViewPost:
+    """Tests per POST /users/{uid}/visited-refuges/"""
     
     @patch('rest_framework.permissions.IsAuthenticated.has_permission', return_value=True)
     @patch('api.permissions.IsSameUser.has_permission', return_value=True)
@@ -1874,9 +1874,9 @@ class TestUserRefugisVisitatsAPIViewPost:
         mock_controller = mock_controller_class.return_value
         mock_controller.add_refugi_visitat.return_value = (True, sample_refugis_info_list, None)
         
-        data = {'refugi_id': 'refugi_001'}
-        request = mock_authenticated_request('post', '/api/users/test_uid_123/refugis-visitats/', data)
-        view = UserRefugisVisitatsAPIView.as_view()
+        data = {'refuge_id': 'refugi_001'}
+        request = mock_authenticated_request('post', '/api/users/test_uid_123/visited-refuges/', data)
+        view = UserVisitedRefugesAPIView.as_view()
         
         # Act
         response = view(request, uid='test_uid_123')
@@ -1890,11 +1890,11 @@ class TestUserRefugisVisitatsAPIViewPost:
     @patch('api.permissions.IsSameUser.has_permission', return_value=True)
     @patch('api.views.user_views.UserController')
     def test_post_refugi_visitat_invalid_data_missing_refugi_id(self, mock_controller_class, mock_same_user, mock_auth, mock_authenticated_request):
-        """Test afegir refugi visitat sense refugi_id"""
+        """Test afegir refugi visitat sense refuge_id"""
         # Arrange
-        data = {}  # Falta refugi_id
-        request = mock_authenticated_request('post', '/api/users/test_uid_123/refugis-visitats/', data)
-        view = UserRefugisVisitatsAPIView.as_view()
+        data = {}  # Falta refuge_id
+        request = mock_authenticated_request('post', '/api/users/test_uid_123/visited-refuges/', data)
+        view = UserVisitedRefugesAPIView.as_view()
         
         # Act
         response = view(request, uid='test_uid_123')
@@ -1908,11 +1908,11 @@ class TestUserRefugisVisitatsAPIViewPost:
     @patch('api.permissions.IsSameUser.has_permission', return_value=True)
     @patch('api.views.user_views.UserController')
     def test_post_refugi_visitat_invalid_data_empty_refugi_id(self, mock_controller_class, mock_same_user, mock_auth, mock_authenticated_request):
-        """Test afegir refugi visitat amb refugi_id buit"""
+        """Test afegir refugi visitat amb refuge_id buit"""
         # Arrange
-        data = {'refugi_id': ''}
-        request = mock_authenticated_request('post', '/api/users/test_uid_123/refugis-visitats/', data)
-        view = UserRefugisVisitatsAPIView.as_view()
+        data = {'refuge_id': ''}
+        request = mock_authenticated_request('post', '/api/users/test_uid_123/visited-refuges/', data)
+        view = UserVisitedRefugesAPIView.as_view()
         
         # Act
         response = view(request, uid='test_uid_123')
@@ -1930,9 +1930,9 @@ class TestUserRefugisVisitatsAPIViewPost:
         mock_controller = mock_controller_class.return_value
         mock_controller.add_refugi_visitat.return_value = (False, None, "Usuari amb UID test_uid_123 no trobat")
         
-        data = {'refugi_id': 'refugi_001'}
-        request = mock_authenticated_request('post', '/api/users/test_uid_123/refugis-visitats/', data)
-        view = UserRefugisVisitatsAPIView.as_view()
+        data = {'refuge_id': 'refugi_001'}
+        request = mock_authenticated_request('post', '/api/users/test_uid_123/visited-refuges/', data)
+        view = UserVisitedRefugesAPIView.as_view()
         
         # Act
         response = view(request, uid='test_uid_123')
@@ -1950,9 +1950,9 @@ class TestUserRefugisVisitatsAPIViewPost:
         mock_controller = mock_controller_class.return_value
         mock_controller.add_refugi_visitat.return_value = (False, None, "Refugi amb ID refugi_001 no trobat")
         
-        data = {'refugi_id': 'refugi_001'}
-        request = mock_authenticated_request('post', '/api/users/test_uid_123/refugis-visitats/', data)
-        view = UserRefugisVisitatsAPIView.as_view()
+        data = {'refuge_id': 'refugi_001'}
+        request = mock_authenticated_request('post', '/api/users/test_uid_123/visited-refuges/', data)
+        view = UserVisitedRefugesAPIView.as_view()
         
         # Act
         response = view(request, uid='test_uid_123')
@@ -1970,9 +1970,9 @@ class TestUserRefugisVisitatsAPIViewPost:
         mock_controller = mock_controller_class.return_value
         mock_controller.add_refugi_visitat.side_effect = Exception("Network error")
         
-        data = {'refugi_id': 'refugi_001'}
-        request = mock_authenticated_request('post', '/api/users/test_uid_123/refugis-visitats/', data)
-        view = UserRefugisVisitatsAPIView.as_view()
+        data = {'refuge_id': 'refugi_001'}
+        request = mock_authenticated_request('post', '/api/users/test_uid_123/visited-refuges/', data)
+        view = UserVisitedRefugesAPIView.as_view()
         
         # Act
         response = view(request, uid='test_uid_123')
@@ -1985,8 +1985,8 @@ class TestUserRefugisVisitatsAPIViewPost:
 # ==================== TESTS REFUGIS VISITATS - DETAIL ENDPOINT ====================
 
 @pytest.mark.views
-class TestUserRefugisVisitatsDetailAPIViewDelete:
-    """Tests per DELETE /users/{uid}/refugis-visitats/{refugi_id}/"""
+class TestUserVisitedRefugesDetailAPIViewDelete:
+    """Tests per DELETE /users/{uid}/visited-refuges/{refuge_id}/"""
     
     @patch('rest_framework.permissions.IsAuthenticated.has_permission', return_value=True)
     @patch('api.permissions.IsSameUser.has_permission', return_value=True)
@@ -1997,11 +1997,11 @@ class TestUserRefugisVisitatsDetailAPIViewDelete:
         mock_controller = mock_controller_class.return_value
         mock_controller.remove_refugi_visitat.return_value = (True, sample_refugis_info_list, None)
         
-        request = mock_authenticated_request('delete', '/api/users/test_uid_123/refugis-visitats/refugi_001/')
-        view = UserRefugisVisitatsDetailAPIView.as_view()
+        request = mock_authenticated_request('delete', '/api/users/test_uid_123/visited-refuges/refugi_001/')
+        view = UserVisitedRefugesDetailAPIView.as_view()
         
         # Act
-        response = view(request, uid='test_uid_123', refugi_id='refugi_001')
+        response = view(request, uid='test_uid_123', refuge_id='refugi_001')
         
         # Assert
         assert response.status_code == status.HTTP_200_OK
@@ -2017,11 +2017,11 @@ class TestUserRefugisVisitatsDetailAPIViewDelete:
         mock_controller = mock_controller_class.return_value
         mock_controller.remove_refugi_visitat.return_value = (True, [], None)
         
-        request = mock_authenticated_request('delete', '/api/users/test_uid_123/refugis-visitats/refugi_001/')
-        view = UserRefugisVisitatsDetailAPIView.as_view()
+        request = mock_authenticated_request('delete', '/api/users/test_uid_123/visited-refuges/refugi_001/')
+        view = UserVisitedRefugesDetailAPIView.as_view()
         
         # Act
-        response = view(request, uid='test_uid_123', refugi_id='refugi_001')
+        response = view(request, uid='test_uid_123', refuge_id='refugi_001')
         
         # Assert
         assert response.status_code == status.HTTP_200_OK
@@ -2036,11 +2036,11 @@ class TestUserRefugisVisitatsDetailAPIViewDelete:
         mock_controller = mock_controller_class.return_value
         mock_controller.remove_refugi_visitat.return_value = (False, None, "Usuari amb UID test_uid_123 no trobat")
         
-        request = mock_authenticated_request('delete', '/api/users/test_uid_123/refugis-visitats/refugi_001/')
-        view = UserRefugisVisitatsDetailAPIView.as_view()
+        request = mock_authenticated_request('delete', '/api/users/test_uid_123/visited-refuges/refugi_001/')
+        view = UserVisitedRefugesDetailAPIView.as_view()
         
         # Act
-        response = view(request, uid='test_uid_123', refugi_id='refugi_001')
+        response = view(request, uid='test_uid_123', refuge_id='refugi_001')
         
         # Assert
         assert response.status_code == status.HTTP_404_NOT_FOUND
@@ -2055,11 +2055,11 @@ class TestUserRefugisVisitatsDetailAPIViewDelete:
         mock_controller = mock_controller_class.return_value
         mock_controller.remove_refugi_visitat.return_value = (False, None, "Error eliminant refugi")
         
-        request = mock_authenticated_request('delete', '/api/users/test_uid_123/refugis-visitats/refugi_001/')
-        view = UserRefugisVisitatsDetailAPIView.as_view()
+        request = mock_authenticated_request('delete', '/api/users/test_uid_123/visited-refuges/refugi_001/')
+        view = UserVisitedRefugesDetailAPIView.as_view()
         
         # Act
-        response = view(request, uid='test_uid_123', refugi_id='refugi_001')
+        response = view(request, uid='test_uid_123', refuge_id='refugi_001')
         
         # Assert
         assert response.status_code == status.HTTP_400_BAD_REQUEST
@@ -2074,12 +2074,13 @@ class TestUserRefugisVisitatsDetailAPIViewDelete:
         mock_controller = mock_controller_class.return_value
         mock_controller.remove_refugi_visitat.side_effect = Exception("Connection timeout")
         
-        request = mock_authenticated_request('delete', '/api/users/test_uid_123/refugis-visitats/refugi_001/')
-        view = UserRefugisVisitatsDetailAPIView.as_view()
+        request = mock_authenticated_request('delete', '/api/users/test_uid_123/visited-refuges/refugi_001/')
+        view = UserVisitedRefugesDetailAPIView.as_view()
         
         # Act
-        response = view(request, uid='test_uid_123', refugi_id='refugi_001')
+        response = view(request, uid='test_uid_123', refuge_id='refugi_001')
         
         # Assert
         assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
         assert 'error' in response.data
+

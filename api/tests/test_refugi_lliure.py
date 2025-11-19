@@ -27,8 +27,8 @@ from api.controllers.refugi_lliure_controller import RefugiLliureController
 from api.daos.refugi_lliure_dao import RefugiLliureDAO
 from api.mappers.refugi_lliure_mapper import RefugiLliureMapper
 from api.views.refugi_lliure_views import (
-    RefugiDetailAPIView,
-    RefugisCollectionAPIView
+    RefugiLliureDetailAPIView,
+    RefugiLliureCollectionAPIView
 )
 from api.views.health_check_views import HealthCheckAPIView
 import math
@@ -174,13 +174,13 @@ class TestRefugiModels:
     def test_refugi_coordinates_creation(self):
         """Test creació de RefugiCoordinates"""
         coord = RefugiCoordinates(
-            refugi_id='test_001',
+            refuge_id='test_001',
             refugi_name='Test Refugi',
             coordinates=Coordinates(1.5, 42.5),
             geohash='abc123'
         )
         
-        assert coord.refugi_id == 'test_001'
+        assert coord.refuge_id == 'test_001'
         assert coord.refugi_name == 'Test Refugi'
         assert floats_are_close(coord.coordinates.long, 1.5)
         assert floats_are_close(coord.coordinates.lat, 42.5)
@@ -564,7 +564,7 @@ class TestRefugiDAO:
         coords_data = {
             'refugis_coordinates': [
                 {
-                    'refugi_id': 'ref_001',
+                    'refuge_id': 'ref_001',
                     'refugi_name': 'Refugi A',
                     'coordinates': {'longitude': 1.5, 'latitude': 42.5},
                     'geohash': 'abc'
@@ -980,10 +980,10 @@ class TestRefugiViews:
         mock_controller.get_refugi_by_id.return_value = (sample_refugi, None)
         
         factory = APIRequestFactory()
-        request = factory.get('/refugis/refugi_001/')
+        request = factory.get('/refuges/refugi_001/')
         
-        view = RefugiDetailAPIView.as_view()
-        response = view(request, refugi_id='refugi_001')
+        view = RefugiLliureDetailAPIView.as_view()
+        response = view(request, refuge_id='refugi_001')
         
         assert response.status_code == status.HTTP_200_OK
         assert 'id' in response.data
@@ -995,10 +995,10 @@ class TestRefugiViews:
         mock_controller.get_refugi_by_id.return_value = (None, 'Refugi not found')
         
         factory = APIRequestFactory()
-        request = factory.get('/refugis/nonexistent/')
+        request = factory.get('/refuges/nonexistent/')
         
-        view = RefugiDetailAPIView.as_view()
-        response = view(request, refugi_id='nonexistent')
+        view = RefugiLliureDetailAPIView.as_view()
+        response = view(request, refuge_id='nonexistent')
         
         assert response.status_code == status.HTTP_404_NOT_FOUND
         assert 'error' in response.data
@@ -1019,9 +1019,9 @@ class TestRefugiViews:
         )
         
         factory = APIRequestFactory()
-        request = factory.get('/refugis/')
+        request = factory.get('/refuges/')
         
-        view = RefugisCollectionAPIView.as_view()
+        view = RefugiLliureCollectionAPIView.as_view()
         response = view(request)
         
         assert response.status_code == status.HTTP_200_OK
@@ -1042,9 +1042,9 @@ class TestRefugiViews:
         )
         
         factory = APIRequestFactory()
-        request = factory.get('/refugis/', {'region': 'Pirineus'})
+        request = factory.get('/refuges/', {'region': 'Pirineus'})
         
-        view = RefugisCollectionAPIView.as_view()
+        view = RefugiLliureCollectionAPIView.as_view()
         response = view(request)
         
         assert response.status_code == status.HTTP_200_OK
@@ -1054,12 +1054,12 @@ class TestRefugiViews:
     def test_get_refugis_collection_invalid_filters(self, mock_controller_class):
         """Test cerca amb filtres invàlids"""
         factory = APIRequestFactory()
-        request = factory.get('/refugis/', {
+        request = factory.get('/refuges/', {
             'places_min': 15,
             'places_max': 5  # Min > Max
         })
         
-        view = RefugisCollectionAPIView.as_view()
+        view = RefugiLliureCollectionAPIView.as_view()
         response = view(request)
         
         assert response.status_code == status.HTTP_400_BAD_REQUEST
@@ -1072,9 +1072,9 @@ class TestRefugiViews:
         mock_controller.search_refugis.return_value = (None, 'Internal server error')
         
         factory = APIRequestFactory()
-        request = factory.get('/refugis/')
+        request = factory.get('/refuges/')
         
-        view = RefugisCollectionAPIView.as_view()
+        view = RefugiLliureCollectionAPIView.as_view()
         response = view(request)
         
         assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
@@ -1231,3 +1231,6 @@ class TestEdgeCases:
         )
         
         assert refugi.altitude == altitude
+
+
+

@@ -100,9 +100,9 @@ class TestFirebaseAuthenticationMiddleware:
         assert result is None
     
     def test_excluded_path_refugis(self, request_factory):
-        """Test que el path /api/refugis/ està exclòs"""
+        """Test que el path /api/refuges/ està exclòs"""
         middleware = FirebaseAuthenticationMiddleware(get_response=lambda r: None)
-        request = request_factory.get('/api/refugis/')
+        request = request_factory.get('/api/refuges/')
         
         result = middleware.process_request(request)
         assert result is None
@@ -677,3 +677,4 @@ class TestAuthenticationIntegration:
         
         assert isinstance(result, JsonResponse)
         assert result.status_code == status.HTTP_401_UNAUTHORIZED
+

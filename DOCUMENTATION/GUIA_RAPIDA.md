@@ -61,8 +61,8 @@ DELETE /api/users/{uid}/     → Eliminar usuari (només el propi)
 
 ```
 GET  /api/health/            → Health check
-GET  /api/refugis/           → Llistar refugis
-GET  /api/refugis/{id}/      → Obtenir refugi
+GET  /api/refuges/           → Llistar refugis
+GET  /api/refuges/{id}/      → Obtenir refugi
 POST /api/users/             → Crear usuari
 GET  /swagger/               → Documentació API
 GET  /redoc/                 → Documentació alternativa
@@ -348,3 +348,4 @@ curl -H "Authorization: Bearer TOKEN" http://localhost:8000/api/users/UID/
 **Última actualització:** Octubre 2025  
 **Versió:** 1.0.0  
 **Estat:** ✅ Producció Ready
+

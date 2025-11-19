@@ -218,12 +218,12 @@ class UserDAO:
     
     def add_refugi_to_list(self, uid: str, refugi_id: str, list_name: str) -> tuple[bool, Optional[List[str]]]:
         """
-        Afegeix un refugi a una llista de l'usuari (refugis_favorits o refugis_visitats)
+        Afegeix un refugi a una llista de l'usuari (favourite_refuges o visited_refuges)
         
         Args:
             uid: UID de l'usuari
             refugi_id: ID del refugi a afegir
-            list_name: Nom de la llista ('refugis_favorits' o 'refugis_visitats')
+            list_name: Nom de la llista ('favourite_refuges' o 'visited_refuges')
             
         Returns:
             bool: True si s'ha afegit correctament
@@ -269,12 +269,12 @@ class UserDAO:
     
     def remove_refugi_from_list(self, uid: str, refugi_id: str, list_name: str) -> tuple[bool, Optional[List[str]]]:
         """
-        Elimina un refugi d'una llista de l'usuari (refugis_favorits o refugis_visitats)
+        Elimina un refugi d'una llista de l'usuari (favourite_refuges o visited_refuges)
         
         Args:
             uid: UID de l'usuari
             refugi_id: ID del refugi a eliminar
-            list_name: Nom de la llista ('refugis_favorits' o 'refugis_visitats')
+            list_name: Nom de la llista ('favourite_refuges' o 'visited_refuges')
             
         Returns:
             bool: True si s'ha eliminat correctament
@@ -324,7 +324,7 @@ class UserDAO:
         
         Args:
             uid: UID de l'usuari
-            list_name: Nom de la llista ('refugis_favorits' o 'refugis_visitats')
+            list_name: Nom de la llista ('favourite_refuges' o 'visited_refuges')
             refugis_ids: Llista d'IDs de refugis (opcional). Si no es proporciona, s'obté de l'usuari.
             
         Returns:

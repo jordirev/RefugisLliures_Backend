@@ -69,8 +69,8 @@ Els següents endpoints **requereixen autenticació**:
 Els següents endpoints **NO requereixen autenticació**:
 
 - ✅ `GET /api/health/` - Health check
-- ✅ `GET /api/refugis/` - Llistar refugis
-- ✅ `GET /api/refugis/{id}/` - Obtenir refugi
+- ✅ `GET /api/refuges/` - Llistar refugis
+- ✅ `GET /api/refuges/{id}/` - Obtenir refugi
 - ✅ `POST /api/users/` - Crear nou usuari
 - ✅ `/api/cache/*` - Gestió de cache
 - ✅ `/swagger/` - Documentació Swagger
@@ -490,3 +490,4 @@ Per començar a utilitzar-la, simplement:
 3. Prova els endpoints amb un token JWT de Firebase
 
 **Implementació completada amb èxit! 🚀**
+

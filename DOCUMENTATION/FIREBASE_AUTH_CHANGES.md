@@ -97,8 +97,8 @@ Els següents endpoints **REQUEREIXEN autenticació**:
 Els següents endpoints **NO requereixen autenticació**:
 
 - `GET /api/health/` - Health check
-- `GET /api/refugis/` - Llistar refugis
-- `GET /api/refugis/{id}/` - Obtenir refugi
+- `GET /api/refuges/` - Llistar refugis
+- `GET /api/refuges/{id}/` - Obtenir refugi
 - `POST /api/users/` - Crear usuari
 - `/api/cache/*` - Endpoints de cache
 - `/admin/*` - Django admin
@@ -237,3 +237,4 @@ Per qualsevol dubte o problema, consultar:
 - `FIREBASE_AUTH.md` - Documentació detallada
 - `test_firebase_auth.py` - Exemples pràctics
 - Swagger UI - Documentació interactiva de l'API
+

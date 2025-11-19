@@ -135,3 +135,4 @@ Don't forget to add the new app to `INSTALLED_APPS` in `settings.py`.
 ## License
 
 This project is licensed under the MIT License.
+

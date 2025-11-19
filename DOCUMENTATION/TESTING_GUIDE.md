@@ -264,3 +264,4 @@ pytest -n auto
 - [pytest-cov](https://pytest-cov.readthedocs.io/)
 - [pytest-django](https://pytest-django.readthedocs.io/)
 - [Best practices for testing](https://docs.pytest.org/en/latest/goodpractices.html)
+
