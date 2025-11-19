@@ -24,7 +24,7 @@ from api.serializers.refugi_lliure_serializer import (
     HealthCheckResponseSerializer
 )
 from api.controllers.refugi_lliure_controller import RefugiLliureController
-from api.daos.refugi_lliure_dao import RefugiLliureDao
+from api.daos.refugi_lliure_dao import RefugiLliureDAO
 from api.mappers.refugi_lliure_mapper import RefugiLliureMapper
 from api.views.refugi_lliure_views import (
     RefugiDetailAPIView,
@@ -481,7 +481,7 @@ class TestRefugiMapper:
 
 @pytest.mark.daos
 class TestRefugiDAO:
-    """Tests per al RefugiLliureDao"""
+    """Tests per al RefugiLliureDAO"""
     
     @patch('api.daos.refugi_lliure_dao.firestore_service')
     @patch('api.daos.refugi_lliure_dao.cache_service')
@@ -506,7 +506,7 @@ class TestRefugiDAO:
         mock_db.collection.return_value = mock_collection
         
         # Executar
-        dao = RefugiLliureDao()
+        dao = RefugiLliureDAO()
         result = dao.get_by_id('refugi_001')
         
         # Verificacions
@@ -533,7 +533,7 @@ class TestRefugiDAO:
         mock_collection.document.return_value = mock_doc_ref
         mock_db.collection.return_value = mock_collection
         
-        dao = RefugiLliureDao()
+        dao = RefugiLliureDAO()
         result = dao.get_by_id('nonexistent')
         
         assert result is None
@@ -545,7 +545,7 @@ class TestRefugiDAO:
         # Cache hit
         mock_cache.get.return_value = sample_refugi_data
         
-        dao = RefugiLliureDao()
+        dao = RefugiLliureDAO()
         result = dao.get_by_id('refugi_001')
         
         assert result == sample_refugi_data
@@ -583,7 +583,7 @@ class TestRefugiDAO:
         mock_collection.document.return_value = mock_doc_ref
         mock_db.collection.return_value = mock_collection
         
-        dao = RefugiLliureDao()
+        dao = RefugiLliureDAO()
         filters = RefugiSearchFilters()
         results = dao.search_refugis(filters)
         
@@ -610,7 +610,7 @@ class TestRefugiDAO:
         mock_collection.where.return_value = mock_query
         mock_db.collection.return_value = mock_collection
         
-        dao = RefugiLliureDao()
+        dao = RefugiLliureDAO()
         filters = RefugiSearchFilters(name='Refugi Test')
         results = dao.search_refugis(filters)
         
@@ -634,7 +634,7 @@ class TestRefugiDAO:
         mock_collection.where.return_value = mock_query
         mock_db.collection.return_value = mock_collection
         
-        dao = RefugiLliureDao()
+        dao = RefugiLliureDAO()
         filters = RefugiSearchFilters(region='Pirineus', departement='Ariège')
         results = dao.search_refugis(filters)
         
@@ -650,7 +650,7 @@ class TestRefugiDAO:
         mock_collection = MagicMock()
         mock_db.collections.return_value = [mock_collection, mock_collection]
         
-        dao = RefugiLliureDao()
+        dao = RefugiLliureDAO()
         result = dao.health_check()
         
         assert result['firebase'] is True
@@ -662,14 +662,14 @@ class TestRefugiDAO:
         """Test health check amb error"""
         mock_firestore.get_db.side_effect = Exception('Connection error')
         
-        dao = RefugiLliureDao()
+        dao = RefugiLliureDAO()
         
         with pytest.raises(Exception):
             dao.health_check()
     
     def test_has_active_filters_true(self):
         """Test comprovació de filtres actius (true)"""
-        dao = RefugiLliureDao()
+        dao = RefugiLliureDAO()
         filters = RefugiSearchFilters(name='Test', region='Pirineus')
         
         result = dao._has_active_filters(filters)
@@ -678,7 +678,7 @@ class TestRefugiDAO:
     
     def test_has_active_filters_false(self):
         """Test comprovació de filtres actius (false)"""
-        dao = RefugiLliureDao()
+        dao = RefugiLliureDAO()
         filters = RefugiSearchFilters()
         
         result = dao._has_active_filters(filters)
@@ -687,7 +687,7 @@ class TestRefugiDAO:
     
     def test_matches_memory_filters_places_range(self):
         """Test filtres en memòria per rang de places"""
-        dao = RefugiLliureDao()
+        dao = RefugiLliureDAO()
         refugi_data = {'places': 10}
         filters = RefugiSearchFilters(places_min=5, places_max=15)
         
@@ -697,7 +697,7 @@ class TestRefugiDAO:
     
     def test_matches_memory_filters_places_out_of_range(self):
         """Test filtres en memòria amb places fora de rang"""
-        dao = RefugiLliureDao()
+        dao = RefugiLliureDAO()
         refugi_data = {'places': 20}
         filters = RefugiSearchFilters(places_min=5, places_max=15)
         
@@ -707,7 +707,7 @@ class TestRefugiDAO:
     
     def test_matches_memory_filters_amenities(self):
         """Test filtres en memòria per amenitats"""
-        dao = RefugiLliureDao()
+        dao = RefugiLliureDAO()
         refugi_data = {
             'info_comp': {
                 'cheminee': 1,
@@ -722,7 +722,7 @@ class TestRefugiDAO:
     
     def test_matches_memory_filters_missing_amenities(self):
         """Test filtres amb amenitats no disponibles"""
-        dao = RefugiLliureDao()
+        dao = RefugiLliureDAO()
         refugi_data = {
             'info_comp': {
                 'cheminee': 0,
@@ -742,7 +742,7 @@ class TestRefugiDAO:
 class TestRefugiController:
     """Tests per al RefugiLliureController"""
     
-    @patch('api.controllers.refugi_lliure_controller.RefugiLliureDao')
+    @patch('api.controllers.refugi_lliure_controller.RefugiLliureDAO')
     @patch('api.controllers.refugi_lliure_controller.RefugiLliureMapper')
     def test_get_refugi_by_id_success(self, mock_mapper_class, mock_dao_class, sample_refugi_data, sample_refugi):
         """Test obtenció de refugi per ID exitosa"""
@@ -759,7 +759,7 @@ class TestRefugiController:
         assert error is None
         assert isinstance(refugi, Refugi)
     
-    @patch('api.controllers.refugi_lliure_controller.RefugiLliureDao')
+    @patch('api.controllers.refugi_lliure_controller.RefugiLliureDAO')
     def test_get_refugi_by_id_not_found(self, mock_dao_class):
         """Test obtenció de refugi no existent"""
         mock_dao = mock_dao_class.return_value
@@ -772,7 +772,7 @@ class TestRefugiController:
         assert error is not None
         assert 'not found' in error.lower()
     
-    @patch('api.controllers.refugi_lliure_controller.RefugiLliureDao')
+    @patch('api.controllers.refugi_lliure_controller.RefugiLliureDAO')
     @patch('api.controllers.refugi_lliure_controller.RefugiLliureMapper')
     def test_search_refugis_no_filters(self, mock_mapper_class, mock_dao_class):
         """Test cerca sense filtres"""
@@ -795,7 +795,7 @@ class TestRefugiController:
         assert error is None
         assert 'count' in result
     
-    @patch('api.controllers.refugi_lliure_controller.RefugiLliureDao')
+    @patch('api.controllers.refugi_lliure_controller.RefugiLliureDAO')
     @patch('api.controllers.refugi_lliure_controller.RefugiLliureMapper')
     def test_search_refugis_with_filters(self, mock_mapper_class, mock_dao_class, multiple_refugis_data):
         """Test cerca amb filtres"""
@@ -819,7 +819,7 @@ class TestRefugiController:
         assert error is None
         assert result['count'] == len(multiple_refugis_data)
     
-    @patch('api.controllers.refugi_lliure_controller.RefugiLliureDao')
+    @patch('api.controllers.refugi_lliure_controller.RefugiLliureDAO')
     def test_health_check_success(self, mock_dao_class):
         """Test health check exitós"""
         mock_dao = mock_dao_class.return_value
@@ -837,7 +837,7 @@ class TestRefugiController:
         assert result['status'] == 'healthy'
         assert result['firebase'] is True
     
-    @patch('api.controllers.refugi_lliure_controller.RefugiLliureDao')
+    @patch('api.controllers.refugi_lliure_controller.RefugiLliureDAO')
     def test_health_check_failure(self, mock_dao_class):
         """Test health check amb error"""
         mock_dao = mock_dao_class.return_value

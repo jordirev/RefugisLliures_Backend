@@ -97,6 +97,7 @@ class Refugi:
     modified_at: str = ""
     region: Optional[str] = None
     departement: Optional[str] = None
+    visitors: List[str] = field(default_factory=list)
     
     def __post_init__(self):
         """Validacions després de la inicialització"""
@@ -122,7 +123,8 @@ class Refugi:
             'type': self.type,
             'modified_at': self.modified_at,
             'region': self.region,
-            'departement': self.departement
+            'departement': self.departement,
+            'visitors': self.visitors
         }
     
     @classmethod
@@ -144,7 +146,8 @@ class Refugi:
             type=data.get('type', ''),
             modified_at=data.get('modified_at', ''),
             region=data.get('region'),
-            departement=data.get('departement')
+            departement=data.get('departement'),
+            visitors=data.get('visitors', [])
         )
     
     def __str__(self) -> str:

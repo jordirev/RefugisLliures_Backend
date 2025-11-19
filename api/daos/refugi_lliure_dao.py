@@ -8,7 +8,7 @@ from ..models.refugi_lliure import Refugi, RefugiCoordinates, RefugiSearchFilter
 
 logger = logging.getLogger(__name__)
 
-class RefugiLliureDao:
+class RefugiLliureDAO:
     """DAO per a la gestió de refugis"""
     
     def __init__(self):
@@ -339,3 +339,123 @@ class RefugiLliureDao:
         except Exception as e:
             logger.error(f'Health check failed: {str(e)}')
             raise
+
+    def refugi_exists(self, refugi_id: str) -> bool:
+        """Comprovar si un refugi existeix per ID"""
+        try:
+            # Mirem primer a la cache
+            cache_key = cache_service.generate_key('refugi_detail', refugi_id=refugi_id)
+            cached_data = cache_service.get(cache_key)
+            if cached_data is not None:
+                return True  # Si està a cache, existeix
+            
+            # Si no està a la cache, consulta a Firestore
+            db = firestore_service.get_db()
+            doc_ref = db.collection(self.collection_name).document(str(refugi_id))
+            logger.log(23, f"Firestore READ (exists check): collection={self.collection_name} document={refugi_id}")
+            doc = doc_ref.get()
+
+            if not doc.exists:
+                return False
+            
+            refugi_data = doc.to_dict()
+            
+            # Guarda a cache les dades del refugi existent
+            timeout = cache_service.get_timeout('refugi_detail')
+            cache_service.set(cache_key, refugi_data, timeout)
+            return True
+        except Exception as e:
+            logger.error(f'Error checking if refugi exists by ID {refugi_id}: {str(e)}')
+            raise
+    
+    def add_visitor_to_refugi(self, refugi_id: str, uid: str) -> bool:
+        """
+        Afegeix un visitant a la llista de visitants d'un refugi
+        
+        Args:
+            refugi_id: ID del refugi
+            uid: UID de l'usuari visitant
+            
+        Returns:
+            bool: True si s'ha afegit correctament
+        """
+        try:
+            # Obté el refugi actual
+            refugi_data = self.get_by_id(refugi_id)
+            if not refugi_data:
+                logger.warning(f"No es pot afegir visitant, refugi no trobat amb ID: {refugi_id}")
+                return False
+            
+            # Obté la llista actual de visitants
+            current_visitors = refugi_data.get('visitors', [])
+            if current_visitors is None:
+                current_visitors = []
+            
+            # Comprova si ja està a la llista
+            if uid in current_visitors:
+                logger.info(f"Usuari {uid} ja està a la llista de visitants del refugi {refugi_id}")
+                return True
+            
+            # Afegeix l'usuari a la llista
+            current_visitors.append(uid)
+            
+            # Actualitza a Firestore
+            db = firestore_service.get_db()
+            doc_ref = db.collection(self.collection_name).document(str(refugi_id))
+            doc_ref.update({'visitors': current_visitors})
+            
+            # Invalida cache del refugi
+            cache_service.delete(cache_service.generate_key('refugi_detail', refugi_id=refugi_id))
+            
+            logger.log(23, f"Usuari {uid} afegit a la llista de visitants del refugi {refugi_id}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error afegint visitant {uid} al refugi {refugi_id}: {str(e)}")
+            return False
+    
+    def remove_visitor_from_refugi(self, refugi_id: str, uid: str) -> bool:
+        """
+        Elimina un visitant de la llista de visitants d'un refugi
+        
+        Args:
+            refugi_id: ID del refugi
+            uid: UID de l'usuari visitant
+            
+        Returns:
+            bool: True si s'ha eliminat correctament
+        """
+        try:
+            # Obté el refugi actual
+            refugi_data = self.get_by_id(refugi_id)
+            if not refugi_data:
+                logger.warning(f"No es pot eliminar visitant, refugi no trobat amb ID: {refugi_id}")
+                return False
+            
+            # Obté la llista actual de visitants
+            current_visitors = refugi_data.get('visitors', [])
+            if current_visitors is None:
+                current_visitors = []
+            
+            # Comprova si l'usuari està a la llista
+            if uid not in current_visitors:
+                logger.info(f"Usuari {uid} no està a la llista de visitants del refugi {refugi_id}")
+                return True
+            
+            # Elimina l'usuari de la llista
+            current_visitors.remove(uid)
+            
+            # Actualitza a Firestore
+            db = firestore_service.get_db()
+            doc_ref = db.collection(self.collection_name).document(str(refugi_id))
+            doc_ref.update({'visitors': current_visitors})
+            
+            # Invalida cache del refugi
+            cache_service.delete(cache_service.generate_key('refugi_detail', refugi_id=refugi_id))
+            
+            logger.log(23, f"Usuari {uid} eliminat de la llista de visitants del refugi {refugi_id}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error eliminant visitant {uid} del refugi {refugi_id}: {str(e)}")
+            return False

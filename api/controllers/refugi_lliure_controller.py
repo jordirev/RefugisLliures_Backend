@@ -3,7 +3,7 @@ Controller per a la gestió de refugis
 """
 import logging
 from typing import Dict, Any, List, Optional, Tuple
-from ..daos.refugi_lliure_dao import RefugiLliureDao
+from ..daos.refugi_lliure_dao import RefugiLliureDAO
 from ..mappers.refugi_lliure_mapper import RefugiLliureMapper
 from ..models.refugi_lliure import Refugi, RefugiCoordinates, RefugiSearchFilters
 
@@ -13,7 +13,7 @@ class RefugiLliureController:
     """Controller per a la gestió de refugis"""
     
     def __init__(self):
-        self.refugi_dao = RefugiLliureDao()
+        self.refugi_dao = RefugiLliureDAO()
         self.refugi_mapper = RefugiLliureMapper()
     
     def get_refugi_by_id(self, refugi_id: str) -> Tuple[Optional[Refugi], Optional[str]]:
