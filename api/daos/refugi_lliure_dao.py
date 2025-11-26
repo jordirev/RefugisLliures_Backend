@@ -301,14 +301,16 @@ class RefugiLliureDAO:
             for coord_data in all_coordinates:
                 # Convert coordinate data to refugi format
                 refugi_data = {
-                    'id': coord_data.get('refugi_id', ''),
-                    'name': coord_data.get('refugi_name', ''),
-                    'coord': {
-                        'long': coord_data.get('coordinates', {}).get('longitude', 0.0),
-                        'lat': coord_data.get('coordinates', {}).get('latitude', 0.0)
-                    },
+                    'id': coord_data.get('id', ''),
+                    'name': coord_data.get('name', ''),
+                    'coord': coord_data.get('coord', {}),
                     'geohash': coord_data.get('geohash', None)
                 }
+                
+                # Add surname if available
+                if 'surname' in coord_data and coord_data['surname']:
+                    refugi_data['surname'] = coord_data['surname']
+                    
                 refugis.append(refugi_data)
             
             # Guarda a cache (timeout llarg per coordenades)

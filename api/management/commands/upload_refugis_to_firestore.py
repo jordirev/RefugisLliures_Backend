@@ -95,16 +95,18 @@ class Command(BaseCommand):
 
         for i, refugi_data in enumerate(refugis_data):
             try:
-                # Add ID to the document
-                refugi_data['id'] = i
+                # Create document with auto-generated ID
+                doc_ref = collection_ref.document()
                 
-                # Create document with auto-generated ID or use a custom ID
-                doc_ref = collection_ref.document(str(i))
+                # Add the Firebase auto-generated ID to the document data
+                refugi_data['id'] = doc_ref.id
+                
+                # Upload the document
                 doc_ref.set(refugi_data)
                 
                 uploaded_count += 1
                 self.stdout.write(
-                    self.style.SUCCESS(f'✓ Uploaded refugi {i}: {refugi_data.get("name", "Unknown")}')
+                    self.style.SUCCESS(f'✓ Uploaded refugi {i}: {refugi_data.get("name", "Unknown")} with ID: {doc_ref.id}')
                 )
                 
             except Exception as e:
