@@ -85,3 +85,29 @@ class SafeMethodsOnly(permissions.BasePermission):
         Només permet mètodes HTTP segurs
         """
         return request.method in permissions.SAFE_METHODS
+
+
+class IsFirebaseAdmin(permissions.BasePermission):
+    """
+    Permís que només permet accés als usuaris administradors de Firebase.
+    Els UIDs d'administradors es defineixen a settings.FIREBASE_ADMIN_UIDS.
+    """
+    
+    def has_permission(self, request, view):
+        """
+        Comprova si l'usuari autenticat és un administrador
+        """
+        from django.conf import settings
+        
+        # Comprova que l'usuari està autenticat
+        if not request.user or not hasattr(request.user, 'is_authenticated') or not request.user.is_authenticated:
+            return False
+        
+        # Obté el UID de l'usuari autenticat
+        user_uid = getattr(request, 'user_uid', None)
+        if not user_uid:
+            return False
+        
+        # Comprova si el UID està a la llista d'administradors
+        admin_uids = getattr(settings, 'FIREBASE_ADMIN_UIDS', [])
+        return user_uid in admin_uids

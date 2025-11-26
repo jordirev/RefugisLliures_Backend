@@ -1451,8 +1451,9 @@ class TestUserFavouriteRefugesAPIViewGet:
         
         # Assert
         assert response.status_code == status.HTTP_200_OK
-        assert len(response.data) == 2
-        assert response.data[0]['id'] == 'refugi_001'
+        assert response.data['count'] == 2
+        assert len(response.data['results']) == 2
+        assert response.data['results'][0]['id'] == 'refugi_001'
         mock_controller.get_refugis_preferits_info.assert_called_once_with('test_uid_123')
     
     @patch('rest_framework.permissions.IsAuthenticated.has_permission', return_value=True)
@@ -1472,7 +1473,8 @@ class TestUserFavouriteRefugesAPIViewGet:
         
         # Assert
         assert response.status_code == status.HTTP_200_OK
-        assert len(response.data) == 0
+        assert response.data['count'] == 0
+        assert response.data['results'] == []
     
     @patch('rest_framework.permissions.IsAuthenticated.has_permission', return_value=True)
     @patch('api.permissions.IsSameUser.has_permission', return_value=True)
@@ -1555,7 +1557,8 @@ class TestUserFavouriteRefugesAPIViewPost:
         
         # Assert
         assert response.status_code == status.HTTP_200_OK
-        assert len(response.data) == 2
+        assert response.data['count'] == 2
+        assert len(response.data['results']) == 2
         mock_controller.add_refugi_preferit.assert_called_once_with('test_uid_123', 'refugi_001')
     
     @patch('rest_framework.permissions.IsAuthenticated.has_permission', return_value=True)
@@ -1677,7 +1680,8 @@ class TestUserFavouriteRefugesDetailAPIViewDelete:
         
         # Assert
         assert response.status_code == status.HTTP_200_OK
-        assert len(response.data) == 2
+        assert response.data['count'] == 2
+        assert len(response.data['results']) == 2
         mock_controller.remove_refugi_preferit.assert_called_once_with('test_uid_123', 'refugi_001')
     
     @patch('rest_framework.permissions.IsAuthenticated.has_permission', return_value=True)
@@ -1697,7 +1701,8 @@ class TestUserFavouriteRefugesDetailAPIViewDelete:
         
         # Assert
         assert response.status_code == status.HTTP_200_OK
-        assert len(response.data) == 0
+        assert response.data['count'] == 0
+        assert response.data['results'] == []
     
     @patch('rest_framework.permissions.IsAuthenticated.has_permission', return_value=True)
     @patch('api.permissions.IsSameUser.has_permission', return_value=True)
@@ -1780,8 +1785,9 @@ class TestUserVisitedRefugesAPIViewGet:
         
         # Assert
         assert response.status_code == status.HTTP_200_OK
-        assert len(response.data) == 2
-        assert response.data[0]['id'] == 'refugi_001'
+        assert response.data['count'] == 2
+        assert len(response.data['results']) == 2
+        assert response.data['results'][0]['id'] == 'refugi_001'
         mock_controller.get_refugis_visitats_info.assert_called_once_with('test_uid_123')
     
     @patch('rest_framework.permissions.IsAuthenticated.has_permission', return_value=True)
@@ -1801,7 +1807,8 @@ class TestUserVisitedRefugesAPIViewGet:
         
         # Assert
         assert response.status_code == status.HTTP_200_OK
-        assert len(response.data) == 0
+        assert response.data['count'] == 0
+        assert response.data['results'] == []
     
     @patch('rest_framework.permissions.IsAuthenticated.has_permission', return_value=True)
     @patch('api.permissions.IsSameUser.has_permission', return_value=True)
@@ -1883,7 +1890,8 @@ class TestUserVisitedRefugesAPIViewPost:
         
         # Assert
         assert response.status_code == status.HTTP_200_OK
-        assert len(response.data) == 2
+        assert response.data['count'] == 2
+        assert len(response.data['results']) == 2
         mock_controller.add_refugi_visitat.assert_called_once_with('test_uid_123', 'refugi_001')
     
     @patch('rest_framework.permissions.IsAuthenticated.has_permission', return_value=True)
@@ -2005,7 +2013,8 @@ class TestUserVisitedRefugesDetailAPIViewDelete:
         
         # Assert
         assert response.status_code == status.HTTP_200_OK
-        assert len(response.data) == 2
+        assert response.data['count'] == 2
+        assert len(response.data['results']) == 2
         mock_controller.remove_refugi_visitat.assert_called_once_with('test_uid_123', 'refugi_001')
     
     @patch('rest_framework.permissions.IsAuthenticated.has_permission', return_value=True)
@@ -2025,7 +2034,8 @@ class TestUserVisitedRefugesDetailAPIViewDelete:
         
         # Assert
         assert response.status_code == status.HTTP_200_OK
-        assert len(response.data) == 0
+        assert response.data['count'] == 0
+        assert response.data['results'] == []
     
     @patch('rest_framework.permissions.IsAuthenticated.has_permission', return_value=True)
     @patch('api.permissions.IsSameUser.has_permission', return_value=True)

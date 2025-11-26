@@ -29,6 +29,7 @@ class HealthCheckAPIView(APIView):
     permission_classes = [AllowAny]
     
     @swagger_auto_schema(
+        security=[],
         operation_description=(
             "Comprova l'estat de salut de l'API i la connexió amb Firebase. "
             "Retorna informació sobre l'estat del servei, Firebase i les col·leccions de Firestore. "

@@ -172,6 +172,10 @@ CORS_ALLOWED_ORIGINS = config('CORS_ALLOWED_ORIGINS', default='').split(',') if 
 GOOGLE_APPLICATION_CREDENTIALS = config('GOOGLE_APPLICATION_CREDENTIALS', default='env/firebase-service-account.json')
 FIREBASE_SERVICE_ACCOUNT_KEY = config('FIREBASE_SERVICE_ACCOUNT_KEY', default=None)
 
+# Firebase Admin UIDs - UIDs d'usuaris amb permisos d'administrador
+# Configurar a través de variable d'entorn: FIREBASE_ADMIN_UIDS=uid1,uid2,uid3
+FIREBASE_ADMIN_UIDS = config('FIREBASE_ADMIN_UIDS', default='').split(',') if config('FIREBASE_ADMIN_UIDS', default='') else []
+
 # Security settings for production
 SECURE_SSL_REDIRECT = config('SECURE_SSL_REDIRECT', default=False, cast=bool)
 SESSION_COOKIE_SECURE = config('SESSION_COOKIE_SECURE', default=False, cast=bool)
@@ -263,3 +267,17 @@ LOGGING = {
     }
 }
 
+# Swagger/OpenAPI settings
+SWAGGER_SETTINGS = {
+    'SECURITY_DEFINITIONS': {
+        'Bearer': {
+            'type': 'apiKey',
+            'name': 'Authorization',
+            'in': 'header',
+            'description': 'Token JWT de Firebase. Format: Bearer <token>'
+        }
+    },
+    'USE_SESSION_AUTH': False,
+    'JSON_EDITOR': True,
+    'SUPPORTED_SUBMIT_METHODS': ['get', 'post', 'put', 'delete', 'patch'],
+}
