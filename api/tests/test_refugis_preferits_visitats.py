@@ -1219,10 +1219,22 @@ class TestRefugisIntegrationWithFirestore:
         mock_user_collection = MagicMock()
         mock_user_db.collection.return_value = mock_user_collection
         
+        # Mock per get_user_by_uid que retorna un User model
+        from ..models.user import User
+        mock_user = User(
+            uid=sample_uid,
+            email='test@example.com',
+            username='testuser',
+            favourite_refuges=sample_refugi_ids
+        )
+        
         mock_user_doc = MagicMock()
         mock_user_doc.exists = True
+        mock_user_doc.id = sample_uid
         mock_user_doc.to_dict.return_value = {
             'uid': sample_uid,
+            'email': 'test@example.com',
+            'username': 'testuser',
             'favourite_refuges': sample_refugi_ids
         }
         mock_user_doc_ref = MagicMock()

@@ -11,6 +11,7 @@ from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 from urllib3 import request
 from ..controllers.user_controller import UserController
+from ..controllers.renovation_controller import RenovationController
 from ..serializers.user_serializer import (
     UserRefugiSerializer,
     UserSerializer, 
@@ -20,6 +21,7 @@ from ..serializers.user_serializer import (
 from ..serializers.refugi_lliure_serializer import (
     UserRefugiInfoResponseSerializer,
 )
+from ..serializers.renovation_serializer import RenovationSerializer
 from ..permissions import IsSameUser
 
 
@@ -65,8 +67,7 @@ class UsersCollectionAPIView(APIView):
             400: ERROR_400_INVALID_DATA,
             401: ERROR_401_UNAUTHORIZED,
             409: ERROR_409_USER_EXISTS
-        },
-        security=[{'Bearer': []}]
+        }
     )
     def post(self, request):
         """Crear nou usuari amb el UID del token de Firebase"""
@@ -133,8 +134,7 @@ class UserDetailAPIView(APIView):
             401: ERROR_401_UNAUTHORIZED,
             403: ERROR_403_FORBIDDEN,
             404: ERROR_404_USER_NOT_FOUND
-        },
-        security=[{'Bearer': []}]
+        }
     )
     def get(self, request, uid):
         """Obtenir usuari per UID"""
@@ -166,8 +166,7 @@ class UserDetailAPIView(APIView):
             401: ERROR_401_UNAUTHORIZED,
             403: ERROR_403_FORBIDDEN,
             404: ERROR_404_USER_NOT_FOUND
-        },
-        security=[{'Bearer': []}]
+        }
     )
     def patch(self, request, uid):
         """Actualitzar usuari"""
@@ -208,8 +207,7 @@ class UserDetailAPIView(APIView):
             401: ERROR_401_UNAUTHORIZED,
             403: ERROR_403_FORBIDDEN,
             404: ERROR_404_USER_NOT_FOUND
-        },
-        security=[{'Bearer': []}]
+        }
     )
     def delete(self, request, uid):
         """Eliminar usuari"""
@@ -253,9 +251,8 @@ class UserFavouriteRefugesAPIView(APIView):
             200: UserRefugiInfoResponseSerializer,
             401: ERROR_401_UNAUTHORIZED,
             403: ERROR_403_FORBIDDEN,
-            404: ERROR_404_USER_NOT_FOUND,
-        },
-        security=[{'Bearer': []}]
+            404: ERROR_404_USER_NOT_FOUND
+        }
     )
     def get(self, request, uid):
         """Obté la informació dels refugis preferits de l'usuari"""
@@ -289,9 +286,8 @@ class UserFavouriteRefugesAPIView(APIView):
             400: ERROR_400_INVALID_DATA,
             401: ERROR_401_UNAUTHORIZED,
             403: ERROR_403_FORBIDDEN,
-            404: "Usuari o refugi no trobat",
-        },
-        security=[{'Bearer': []}]
+            404: "Usuari o refugi no trobat"
+        }
     )
     def post(self, request, uid):
         """Afegeix un nou refugi als preferits de l'usuari"""
@@ -348,9 +344,8 @@ class UserFavouriteRefugesDetailAPIView(APIView):
             200: UserRefugiInfoResponseSerializer,
             401: ERROR_401_UNAUTHORIZED,
             403: ERROR_403_FORBIDDEN,
-            404: ERROR_404_USER_NOT_FOUND,
-        },
-        security=[{'Bearer': []}]
+            404: ERROR_404_USER_NOT_FOUND
+        }
     )
     def delete(self, request, uid, refuge_id):
         """Elimina un refugi dels preferits de l'usuari"""
@@ -399,9 +394,8 @@ class UserVisitedRefugesAPIView(APIView):
             200: UserRefugiInfoResponseSerializer,
             401: ERROR_401_UNAUTHORIZED,
             403: ERROR_403_FORBIDDEN,
-            404: ERROR_404_USER_NOT_FOUND,
-        },
-        security=[{'Bearer': []}]
+            404: ERROR_404_USER_NOT_FOUND
+        }
     )
     def get(self, request, uid):
         """Obté la informació dels refugis visitats de l'usuari"""
@@ -435,9 +429,8 @@ class UserVisitedRefugesAPIView(APIView):
             400: ERROR_400_INVALID_DATA,
             401: ERROR_401_UNAUTHORIZED,
             403: ERROR_403_FORBIDDEN,
-            404: "Usuari o refugi no trobat",
-        },
-        security=[{'Bearer': []}]
+            404: "Usuari o refugi no trobat"
+        }
     )
     def post(self, request, uid):
         """Afegeix un nou refugi als visitats de l'usuari"""
@@ -494,9 +487,8 @@ class UserVisitedRefugesDetailAPIView(APIView):
             200: UserRefugiInfoResponseSerializer,
             401: ERROR_401_UNAUTHORIZED,
             403: ERROR_403_FORBIDDEN,
-            404: ERROR_404_USER_NOT_FOUND,
-        },
-        security=[{'Bearer': []}]
+            404: ERROR_404_USER_NOT_FOUND
+        }
     )
     def delete(self, request, uid, refuge_id):
         """Elimina un refugi dels visitats de l'usuari"""
@@ -517,6 +509,81 @@ class UserVisitedRefugesDetailAPIView(APIView):
             
         except Exception as e:
             logger.error(f"Error en delete_refugi_visitat: {str(e)}")
+            return Response({
+                'error': INTERNAL_SERVER_ERROR
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+# ========== USER RENOVATIONS ENDPOINT: /users/{uid}/renovations/ ==========
+
+class UserRenovationsAPIView(APIView):
+    """
+    Gestiona operacions sobre les renovations d'un usuari:
+    - GET: Obtenir totes les renovations de l'usuari (creades i unides)
+    """
+    
+    def get_permissions(self):
+        """
+        Retorna els permisos segons el mètode HTTP:
+        - GET: IsAuthenticated + IsSameUser
+        """
+        return [IsAuthenticated(), IsSameUser()]
+    
+    @swagger_auto_schema(
+        tags=['Users'],
+        operation_description=(
+            "Obté totes les renovations d'un usuari (creades i unides). "
+            "Requereix autenticació amb token JWT de Firebase i ser el mateix usuari."
+        ),
+        responses={
+            200: openapi.Response(
+                description='Renovations de l\'usuari',
+                schema=openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={
+                        'created': openapi.Schema(
+                            type=openapi.TYPE_ARRAY,
+                            items=openapi.Schema(type=openapi.TYPE_OBJECT),
+                            description='Renovations creades per l\'usuari'
+                        ),
+                        'joined': openapi.Schema(
+                            type=openapi.TYPE_ARRAY,
+                            items=openapi.Schema(type=openapi.TYPE_OBJECT),
+                            description='Renovations a les que s\'ha unit l\'usuari'
+                        )
+                    }
+                )
+            ),
+            401: ERROR_401_UNAUTHORIZED,
+            403: ERROR_403_FORBIDDEN,
+            404: ERROR_404_USER_NOT_FOUND
+        }
+    )
+    def get(self, request, uid):
+        """Obtenir totes les renovations de l'usuari"""
+        try:
+            controller = RenovationController()
+            success, renovations_dict, error_message = controller.get_user_renovations(uid)
+            
+            if not success:
+                status_code = status.HTTP_404_NOT_FOUND if 'no trobat' in error_message else status.HTTP_500_INTERNAL_SERVER_ERROR
+                return Response({
+                    'error': error_message
+                }, status=status_code)
+            
+            # Serialitzar les renovations
+            created_serializer = RenovationSerializer([r.to_dict() for r in renovations_dict['created']], many=True)
+            joined_serializer = RenovationSerializer([r.to_dict() for r in renovations_dict['joined']], many=True)
+            
+            response_data = {
+                'created': created_serializer.data,
+                'joined': joined_serializer.data
+            }
+            
+            return Response(response_data, status=status.HTTP_200_OK)
+            
+        except Exception as e:
+            logger.error(f"Error en get_user_renovations: {str(e)}")
             return Response({
                 'error': INTERNAL_SERVER_ERROR
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

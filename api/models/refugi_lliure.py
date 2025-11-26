@@ -18,19 +18,10 @@ class Coordinates:
     
     @classmethod
     def from_dict(cls, data: dict) -> 'Coordinates':
-        # Handle both formats for coordinates
-        if 'longitude' in data and 'latitude' in data:
-            # Format from extract_coords_to_firestore command
-            return cls(
-                long=data.get('longitude', 0.0),
-                lat=data.get('latitude', 0.0)
-            )
-        else:
-            # Original format
-            return cls(
-                long=data.get('long', 0.0),
-                lat=data.get('lat', 0.0)
-            )
+        return cls(
+            long=data.get('long'),
+            lat=data.get('lat')
+        )
 
 @dataclass
 class InfoComplementaria:

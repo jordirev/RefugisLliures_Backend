@@ -30,8 +30,7 @@ logger = logging.getLogger(__name__)
         ),
         401: 'No autoritzat',
         403: 'Permís denegat - només administradors'
-    },
-    security=[{'Bearer': []}]
+    }
 )
 @api_view(['GET'])
 @permission_classes([IsFirebaseAdmin])
@@ -57,8 +56,7 @@ def cache_stats(request):
         401: 'No autoritzat',
         403: 'Permís denegat - només administradors',
         500: 'Error netejant la cache'
-    },
-    security=[{'Bearer': []}]
+    }
 )
 @api_view(['DELETE'])
 @permission_classes([IsFirebaseAdmin])
@@ -97,8 +95,7 @@ def cache_clear(request):
         401: 'No autoritzat',
         403: 'Permís denegat - només administradors',
         500: 'Error eliminant claus'
-    },
-    security=[{'Bearer': []}]
+    }
 )
 @api_view(['DELETE'])
 @permission_classes([IsFirebaseAdmin])

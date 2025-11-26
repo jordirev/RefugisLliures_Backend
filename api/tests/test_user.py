@@ -364,10 +364,12 @@ class TestUserDAO:
         
         # Crear DAO i executar
         dao = UserDAO()
-        uid = dao.create_user(sample_user_data, 'test_uid')
+        user = dao.create_user(sample_user_data, 'test_uid')
         
         # Verificacions
-        assert uid == 'test_uid'
+        assert user is not None
+        assert user.uid == sample_user_data['uid']
+        assert user.email == sample_user_data['email']
         mock_db.collection.assert_called_once_with('users')
         mock_collection.document.assert_called_once_with('test_uid')
         mock_doc_ref.set.assert_called_once_with(sample_user_data)
@@ -404,7 +406,8 @@ class TestUserDAO:
         
         # Verificacions
         assert result is not None
-        assert result['uid'] == 'test_uid'
+        assert result.uid == 'test_uid'
+        assert result.email == sample_user_data['email']
         mock_cache.set.assert_called_once()
     
     @patch('api.daos.user_dao.FirestoreService')
@@ -443,7 +446,9 @@ class TestUserDAO:
         dao = UserDAO()
         result = dao.get_user_by_uid('test_uid')
         
-        assert result == sample_user_data
+        assert result is not None
+        assert result.uid == sample_user_data['uid']
+        assert result.email == sample_user_data['email']
         # No hauria de cridar Firestore
         mock_firestore_service.return_value.get_db.assert_not_called()
     
@@ -472,7 +477,8 @@ class TestUserDAO:
         result = dao.get_user_by_email('test@example.com')
         
         assert result is not None
-        assert result['uid'] == 'test_uid'
+        assert result.uid == 'test_uid'
+        assert result.email == sample_user_data['email']
     
     @patch('api.daos.user_dao.cache_service')
     @patch('api.daos.user_dao.FirestoreService')
@@ -607,17 +613,13 @@ class TestUserController:
     """Tests per al UserController"""
     
     @patch('api.controllers.user_controller.UserDAO')
-    @patch('api.controllers.user_controller.UserMapper')
-    def test_create_user_success(self, mock_mapper_class, mock_dao_class, sample_user_data, sample_user):
+    def test_create_user_success(self, mock_dao_class, sample_user_data, sample_user):
         """Test creació d'usuari exitosa"""
         # Configurar mocks
         mock_dao = mock_dao_class.return_value
         mock_dao.get_user_by_uid.return_value = None  # No existeix
         mock_dao.get_user_by_email.return_value = None  # Email no en ús
-        mock_dao.create_user.return_value = 'test_uid'
-        
-        mock_mapper = mock_mapper_class.return_value
-        mock_mapper.firebase_to_model.return_value = sample_user
+        mock_dao.create_user.return_value = sample_user
         
         # Executar
         controller = UserController()
@@ -657,14 +659,10 @@ class TestUserController:
         assert 'ja està en ús' in error
     
     @patch('api.controllers.user_controller.UserDAO')
-    @patch('api.controllers.user_controller.UserMapper')
-    def test_get_user_by_uid_success(self, mock_mapper_class, mock_dao_class, sample_user_data, sample_user):
+    def test_get_user_by_uid_success(self, mock_dao_class, sample_user):
         """Test obtenció d'usuari per UID exitosa"""
         mock_dao = mock_dao_class.return_value
-        mock_dao.get_user_by_uid.return_value = sample_user_data
-        
-        mock_mapper = mock_mapper_class.return_value
-        mock_mapper.firebase_to_model.return_value = sample_user
+        mock_dao.get_user_by_uid.return_value = sample_user
         
         controller = UserController()
         success, user, error = controller.get_user_by_uid('test_uid')
@@ -697,17 +695,13 @@ class TestUserController:
         assert 'no proporcionat' in error
     
     @patch('api.controllers.user_controller.UserDAO')
-    @patch('api.controllers.user_controller.UserMapper')
-    def test_update_user_success(self, mock_mapper_class, mock_dao_class, sample_user_data, sample_user):
+    def test_update_user_success(self, mock_dao_class, sample_user):
         """Test actualització d'usuari exitosa"""
         mock_dao = mock_dao_class.return_value
         mock_dao.user_exists.return_value = True
         mock_dao.get_user_by_email.return_value = None
         mock_dao.update_user.return_value = True
-        mock_dao.get_user_by_uid.return_value = sample_user_data
-        
-        mock_mapper = mock_mapper_class.return_value
-        mock_mapper.firebase_to_model.return_value = sample_user
+        mock_dao.get_user_by_uid.return_value = sample_user
         
         controller = UserController()
         update_data = {'username': 'updated'}
@@ -731,14 +725,19 @@ class TestUserController:
         assert 'no trobat' in error
     
     @patch('api.controllers.user_controller.UserDAO')
-    def test_update_user_duplicate_email(self, mock_dao_class, sample_user_data):
+    def test_update_user_duplicate_email(self, mock_dao_class, sample_user):
         """Test actualització amb email ja en ús per altre usuari"""
         mock_dao = mock_dao_class.return_value
         mock_dao.user_exists.return_value = True
         
         # Email ja en ús per altre usuari
-        other_user = sample_user_data.copy()
-        other_user['uid'] = 'other_uid'
+        from ..models.user import User
+        other_user = User(
+            uid='other_uid',
+            username=sample_user.username,
+            email=sample_user.email,
+            language=sample_user.language
+        )
         mock_dao.get_user_by_email.return_value = other_user
         
         controller = UserController()

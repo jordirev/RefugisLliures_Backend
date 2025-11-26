@@ -69,14 +69,6 @@ class TestRefugiModels:
         assert floats_are_close(coord.long, 1.5)
         assert floats_are_close(coord.lat, 42.5)
     
-    def test_coordinates_from_dict_alternative_format(self):
-        """Test coordenades amb format alternatiu (longitude, latitude)"""
-        data = {'longitude': 1.5, 'latitude': 42.5}
-        coord = Coordinates.from_dict(data)
-        
-        assert floats_are_close(coord.long, 1.5)
-        assert floats_are_close(coord.lat, 42.5)
-    
     def test_info_complementaria_creation(self):
         """Test creació d'InfoComplementaria"""
         info = InfoComplementaria(
@@ -511,7 +503,8 @@ class TestRefugiDAO:
         
         # Verificacions
         assert result is not None
-        assert result['id'] == sample_refugi_data['id']
+        assert result.id == sample_refugi_data['id']
+        assert result.name == sample_refugi_data['name']
         mock_cache.set.assert_called_once()
     
     @patch('api.daos.refugi_lliure_dao.firestore_service')
@@ -548,7 +541,9 @@ class TestRefugiDAO:
         dao = RefugiLliureDAO()
         result = dao.get_by_id('refugi_001')
         
-        assert result == sample_refugi_data
+        assert result is not None
+        assert result.id == sample_refugi_data['id']
+        assert result.name == sample_refugi_data['name']
         # No hauria de cridar Firestore
         mock_firestore.get_db.assert_not_called()
     
@@ -566,7 +561,7 @@ class TestRefugiDAO:
                 {
                     'refuge_id': 'ref_001',
                     'refugi_name': 'Refugi A',
-                    'coordinates': {'longitude': 1.5, 'latitude': 42.5},
+                    'coordinates': {'long': 1.5, 'lat': 42.5},
                     'geohash': 'abc'
                 }
             ]
@@ -587,8 +582,12 @@ class TestRefugiDAO:
         filters = RefugiSearchFilters()
         results = dao.search_refugis(filters)
         
-        assert isinstance(results, list)
-        assert len(results) > 0
+        assert isinstance(results, dict)
+        assert 'results' in results
+        assert 'has_filters' in results
+        assert results['has_filters'] == False
+        assert isinstance(results['results'], list)
+        assert len(results['results']) > 0
     
     @patch('api.daos.refugi_lliure_dao.firestore_service')
     @patch('api.daos.refugi_lliure_dao.cache_service')
@@ -614,8 +613,12 @@ class TestRefugiDAO:
         filters = RefugiSearchFilters(name='Refugi Test')
         results = dao.search_refugis(filters)
         
-        assert isinstance(results, list)
-        assert len(results) > 0
+        assert isinstance(results, dict)
+        assert 'results' in results
+        assert 'has_filters' in results
+        assert results['has_filters'] == True
+        assert isinstance(results['results'], list)
+        assert len(results['results']) > 0
     
     @patch('api.daos.refugi_lliure_dao.firestore_service')
     @patch('api.daos.refugi_lliure_dao.cache_service')
@@ -638,7 +641,10 @@ class TestRefugiDAO:
         filters = RefugiSearchFilters(region='Pirineus', departement='Ariège')
         results = dao.search_refugis(filters)
         
-        assert isinstance(results, list)
+        assert isinstance(results, dict)
+        assert 'results' in results
+        assert 'has_filters' in results
+        assert isinstance(results['results'], list)
     
     @patch('api.daos.refugi_lliure_dao.firestore_service')
     @patch('api.daos.refugi_lliure_dao.cache_service')
@@ -743,14 +749,12 @@ class TestRefugiController:
     """Tests per al RefugiLliureController"""
     
     @patch('api.controllers.refugi_lliure_controller.RefugiLliureDAO')
-    @patch('api.controllers.refugi_lliure_controller.RefugiLliureMapper')
-    def test_get_refugi_by_id_success(self, mock_mapper_class, mock_dao_class, sample_refugi_data, sample_refugi):
+    def test_get_refugi_by_id_success(self, mock_dao_class, sample_refugi):
         """Test obtenció de refugi per ID exitosa"""
-        mock_dao = mock_dao_class.return_value
-        mock_dao.get_by_id.return_value = sample_refugi_data
-        
-        mock_mapper = mock_mapper_class.return_value
-        mock_mapper.firestore_to_model.return_value = sample_refugi
+        # Configurar el mock correctament
+        mock_dao_instance = MagicMock()
+        mock_dao_instance.get_by_id.return_value = sample_refugi
+        mock_dao_class.return_value = mock_dao_instance
         
         controller = RefugiLliureController()
         refugi, error = controller.get_refugi_by_id('refugi_001')
@@ -758,6 +762,10 @@ class TestRefugiController:
         assert refugi is not None
         assert error is None
         assert isinstance(refugi, Refugi)
+        # Verificar propietats del refugi
+        assert refugi.id == sample_refugi.id
+        assert refugi.name == sample_refugi.name
+        mock_dao_instance.get_by_id.assert_called_once_with('refugi_001')
     
     @patch('api.controllers.refugi_lliure_controller.RefugiLliureDAO')
     def test_get_refugi_by_id_not_found(self, mock_dao_class):
@@ -773,19 +781,15 @@ class TestRefugiController:
         assert 'not found' in error.lower()
     
     @patch('api.controllers.refugi_lliure_controller.RefugiLliureDAO')
-    @patch('api.controllers.refugi_lliure_controller.RefugiLliureMapper')
-    def test_search_refugis_no_filters(self, mock_mapper_class, mock_dao_class):
+    def test_search_refugis_no_filters(self, mock_dao_class):
         """Test cerca sense filtres"""
         mock_dao = mock_dao_class.return_value
-        mock_dao.search_refugis.return_value = [
-            {'id': 'ref_001', 'name': 'Test 1'},
-            {'id': 'ref_002', 'name': 'Test 2'}
-        ]
-        
-        mock_mapper = mock_mapper_class.return_value
-        mock_mapper.format_search_response_from_raw_data.return_value = {
-            'count': 2,
-            'results': []
+        mock_dao.search_refugis.return_value = {
+            'results': [
+                {'id': 'ref_001', 'name': 'Test 1'},
+                {'id': 'ref_002', 'name': 'Test 2'}
+            ],
+            'has_filters': False
         }
         
         controller = RefugiLliureController()
@@ -796,19 +800,13 @@ class TestRefugiController:
         assert 'count' in result
     
     @patch('api.controllers.refugi_lliure_controller.RefugiLliureDAO')
-    @patch('api.controllers.refugi_lliure_controller.RefugiLliureMapper')
-    def test_search_refugis_with_filters(self, mock_mapper_class, mock_dao_class, multiple_refugis_data):
+    def test_search_refugis_with_filters(self, mock_dao_class, multiple_refugis_data):
         """Test cerca amb filtres"""
         mock_dao = mock_dao_class.return_value
-        mock_dao.search_refugis.return_value = multiple_refugis_data
-        
-        mock_mapper = mock_mapper_class.return_value
         mock_refugis = [Refugi.from_dict(d) for d in multiple_refugis_data]
-        mock_mapper.firestore_list_to_models.return_value = mock_refugis
-        mock_mapper.format_search_response.return_value = {
-            'count': len(mock_refugis),
-            'results': multiple_refugis_data,
-            'filters': {'region': 'Pirineus'}
+        mock_dao.search_refugis.return_value = {
+            'results': mock_refugis,
+            'has_filters': True
         }
         
         controller = RefugiLliureController()

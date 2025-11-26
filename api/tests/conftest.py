@@ -3,10 +3,9 @@ Fixtures i configuració compartida per als tests amb pytest
 """
 import pytest
 from unittest.mock import Mock, MagicMock, patch
-from datetime import datetime
-from zoneinfo import ZoneInfo
 from api.models.user import User
 from api.models.refugi_lliure import Refugi, Coordinates, InfoComplementaria, RefugiSearchFilters
+from api.utils.timezone_utils import get_madrid_now
 
 
 # ============= CONFIGURACIÓ GLOBAL =============
@@ -46,7 +45,7 @@ def sample_user_data():
         'num_uploaded_photos': 0,
         'num_shared_experiences': 0,
         'num_renovated_refuges': 0,
-        'created_at': datetime.now(ZoneInfo("Europe/Madrid")).isoformat()
+        'created_at': get_madrid_now().isoformat()
     }
 
 
@@ -65,21 +64,21 @@ def multiple_users_data():
             'username': 'user1',
             'email': 'user1@example.com',
             'language': 'ca',
-            'created_at': datetime.now(ZoneInfo("Europe/Madrid")).isoformat()
+            'created_at': get_madrid_now().isoformat()
         },
         {
             'uid': 'uid_002',
             'username': 'user2',
             'email': 'user2@example.com',
             'language': 'es',
-            'created_at': datetime.now(ZoneInfo("Europe/Madrid")).isoformat()
+            'created_at': get_madrid_now().isoformat()
         },
         {
             'uid': 'uid_003',
             'username': 'user3',
             'email': 'user3@example.com',
             'language': 'en',
-            'created_at': datetime.now(ZoneInfo("Europe/Madrid")).isoformat()
+            'created_at': get_madrid_now().isoformat()
         }
     ]
 
@@ -133,7 +132,7 @@ def sample_refugi_data(sample_coordinates, sample_info_complementaria):
         'description': 'Descripció del refugi de prova',
         'links': ['https://example.com'],
         'type': 'garde',
-        'modified_at': datetime.now(ZoneInfo("Europe/Madrid")).isoformat(),
+        'modified_at': get_madrid_now().isoformat(),
         'region': 'Pirineus',
         'departement': DEPARTMENT
     }

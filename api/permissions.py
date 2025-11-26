@@ -29,27 +29,6 @@ class IsOwnerOrReadOnly(permissions.BasePermission):
         return obj.uid == request.user.uid
 
 
-class IsOwner(permissions.BasePermission):
-    """
-    Permís personalitzat que només permet accedir al propietari del recurs
-    """
-    
-    def has_permission(self, request, view):
-        """
-        Comprova si l'usuari està autenticat
-        """
-        return request.user and hasattr(request.user, 'is_authenticated') and request.user.is_authenticated
-    
-    def has_object_permission(self, request, view, obj):
-        """
-        Comprova si l'usuari és el propietari de l'objecte
-        """
-        # Comprova si l'objecte té un camp 'uid' i coincideix amb l'usuari autenticat
-        if hasattr(obj, 'uid'):
-            return obj.uid == request.user.uid
-        return False
-
-
 class IsSameUser(permissions.BasePermission):
     """
     Permís que comprova si l'usuari autenticat està accedint a les seves pròpies dades
@@ -111,3 +90,30 @@ class IsFirebaseAdmin(permissions.BasePermission):
         # Comprova si el UID està a la llista d'administradors
         admin_uids = getattr(settings, 'FIREBASE_ADMIN_UIDS', [])
         return user_uid in admin_uids
+
+
+class IsCreator(permissions.BasePermission):
+    """
+    Permís personalitzat que només permet accedir al creador d'una renovation.
+    Comprova que el creator_uid de l'objecte coincideix amb l'UID de l'usuari autenticat.
+    """
+    
+    def has_permission(self, request, view):
+        """
+        Comprova si l'usuari està autenticat
+        """
+        return request.user and hasattr(request.user, 'is_authenticated') and request.user.is_authenticated
+    
+    def has_object_permission(self, request, view, obj):
+        """
+        Comprova si l'usuari és el creador de l'objecte
+        """
+        # Obté el UID de l'usuari autenticat
+        user_uid = getattr(request, 'user_uid', None)
+        if not user_uid:
+            return False
+        
+        # Comprova si l'objecte té un camp 'creator_uid' i coincideix amb l'usuari autenticat
+        if hasattr(obj, 'creator_uid'):
+            return obj.creator_uid == user_uid
+        return False
