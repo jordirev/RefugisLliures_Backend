@@ -22,7 +22,7 @@ def test_imports():
         return False
     
     try:
-        from api.permissions import IsSameUser, IsOwner, IsOwnerOrReadOnly
+        from api.permissions import IsSameUser, IsCreator, IsOwnerOrReadOnly
         print("✅ Permissions importades correctament")
     except ImportError as e:
         print(f"❌ Error important Permissions: {e}")
