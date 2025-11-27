@@ -480,6 +480,73 @@ class TestUserDAO:
         assert result.uid == 'test_uid'
         assert result.email == sample_user_data['email']
     
+    @patch('api.daos.user_dao.FirestoreService')
+    @patch('api.daos.user_dao.cache_service')
+    def test_user_exists_by_email_found_cached(self, mock_cache, mock_firestore_service):
+        """Test comprovació d'existència per email (amb cache)"""
+        mock_cache.generate_key.return_value = 'test_cache_key'
+        mock_cache.get.return_value = True  # Existeix a cache
+        
+        dao = UserDAO()
+        result = dao.user_exists_by_email('test@example.com')
+        
+        assert result is True
+        # No hauria de cridar Firestore
+        mock_firestore_service.return_value.get_db.assert_not_called()
+    
+    @patch('api.daos.user_dao.FirestoreService')
+    @patch('api.daos.user_dao.cache_service')
+    def test_user_exists_by_email_found(self, mock_cache, mock_firestore_service):
+        """Test comprovació d'existència per email (trobat)"""
+        mock_cache.get.return_value = None
+        mock_cache.generate_key.return_value = 'test_cache_key'
+        mock_cache.get_timeout.return_value = 300
+        
+        mock_db = MagicMock()
+        mock_firestore_instance = mock_firestore_service.return_value
+        mock_firestore_instance.get_db.return_value = mock_db
+        
+        mock_doc = MagicMock()
+        mock_query = MagicMock()
+        mock_query.get.return_value = [mock_doc]  # Existeix
+        
+        mock_collection = MagicMock()
+        mock_collection.where.return_value.limit.return_value = mock_query
+        mock_db.collection.return_value = mock_collection
+        
+        dao = UserDAO()
+        result = dao.user_exists_by_email('test@example.com')
+        
+        assert result is True
+        # Hauria de guardar a cache
+        mock_cache.set.assert_called_once_with('test_cache_key', True, 300)
+    
+    @patch('api.daos.user_dao.FirestoreService')
+    @patch('api.daos.user_dao.cache_service')
+    def test_user_exists_by_email_not_found(self, mock_cache, mock_firestore_service):
+        """Test comprovació d'existència per email (no trobat)"""
+        mock_cache.get.return_value = None
+        mock_cache.generate_key.return_value = 'test_cache_key'
+        mock_cache.get_timeout.return_value = 300
+        
+        mock_db = MagicMock()
+        mock_firestore_instance = mock_firestore_service.return_value
+        mock_firestore_instance.get_db.return_value = mock_db
+        
+        mock_query = MagicMock()
+        mock_query.get.return_value = []  # No existeix
+        
+        mock_collection = MagicMock()
+        mock_collection.where.return_value.limit.return_value = mock_query
+        mock_db.collection.return_value = mock_collection
+        
+        dao = UserDAO()
+        result = dao.user_exists_by_email('test@example.com')
+        
+        assert result is False
+        # Hauria de guardar a cache
+        mock_cache.set.assert_called_once_with('test_cache_key', False, 300)
+    
     @patch('api.daos.user_dao.cache_service')
     @patch('api.daos.user_dao.FirestoreService')
     def test_update_user_success(self, mock_firestore_service, mock_cache):
@@ -618,7 +685,7 @@ class TestUserController:
         # Configurar mocks
         mock_dao = mock_dao_class.return_value
         mock_dao.get_user_by_uid.return_value = None  # No existeix
-        mock_dao.get_user_by_email.return_value = None  # Email no en ús
+        mock_dao.user_exists_by_email.return_value = False  # Email no en ús
         mock_dao.create_user.return_value = sample_user
         
         # Executar
@@ -649,7 +716,7 @@ class TestUserController:
         """Test creació d'usuari amb email duplicat"""
         mock_dao = mock_dao_class.return_value
         mock_dao.get_user_by_uid.return_value = None
-        mock_dao.get_user_by_email.return_value = sample_user_data  # Email en ús
+        mock_dao.user_exists_by_email.return_value = True  # Email en ús
         
         controller = UserController()
         success, user, error = controller.create_user(sample_user_data, 'test_uid')
@@ -699,7 +766,7 @@ class TestUserController:
         """Test actualització d'usuari exitosa"""
         mock_dao = mock_dao_class.return_value
         mock_dao.user_exists.return_value = True
-        mock_dao.get_user_by_email.return_value = None
+        mock_dao.user_exists_by_email.return_value = False
         mock_dao.update_user.return_value = True
         mock_dao.get_user_by_uid.return_value = sample_user
         
@@ -729,6 +796,7 @@ class TestUserController:
         """Test actualització amb email ja en ús per altre usuari"""
         mock_dao = mock_dao_class.return_value
         mock_dao.user_exists.return_value = True
+        mock_dao.user_exists_by_email.return_value = True
         
         # Email ja en ús per altre usuari
         from ..models.user import User

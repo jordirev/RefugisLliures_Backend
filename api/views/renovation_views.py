@@ -39,7 +39,7 @@ class RenovationListAPIView(APIView):
     permission_classes = [IsAuthenticated]
     
     @swagger_auto_schema(
-        operation_description="Obté la llista de totes les renovations",
+        operation_description="Obté la llista de totes les renovations actives (i.e., no finalitzades).",
         responses={
             200: openapi.Response(
                 description='Llista de renovations',
@@ -73,8 +73,7 @@ class RenovationListAPIView(APIView):
     @swagger_auto_schema(
         operation_description=(
             "Crea una nova renovation. No es poden solapar temporalment amb "
-            "altres renovations del mateix refugi. S'afegeix automàticament "
-            "l'ID de la renovation al camp created_renovations de l'usuari."
+            "altres renovations del mateix refugi."
         ),
         request_body=RenovationCreateSerializer,
         responses={
@@ -307,9 +306,7 @@ class RenovationAPIView(APIView):
     
     @swagger_auto_schema(
         operation_description=(
-            "Elimina una renovation. Només el creador pot eliminar-la. "
-            "S'elimina l'ID de la llista created_renovations del creador "
-            "i de joined_renovations de tots els participants."
+            "Elimina una renovation. Només el creador pot eliminar-la."
         ),
         manual_parameters=[
             openapi.Parameter(
@@ -385,7 +382,6 @@ class RenovationParticipantsAPIView(APIView):
     @swagger_auto_schema(
         operation_description=(
             "Afegeix l'usuari autenticat com a participant a una renovation. "
-            "S'afegeix l'ID de la renovation al camp joined_renovations de l'usuari. "
             "El creador no pot unir-se a la seva pròpia renovation."
         ),
         manual_parameters=[
@@ -461,8 +457,7 @@ class RenovationParticipantDetailAPIView(APIView):
         operation_description=(
             "Elimina un participant d'una renovation. "
             "Un participant pot eliminar-se a si mateix. "
-            "El creador pot eliminar qualsevol participant. "
-            "S'elimina l'ID de la llista joined_renovations de l'usuari."
+            "El creador pot eliminar qualsevol participant."
         ),
         manual_parameters=[
             openapi.Parameter(

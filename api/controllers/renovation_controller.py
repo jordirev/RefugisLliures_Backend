@@ -49,13 +49,6 @@ class RenovationController:
             if not renovation:
                 return False, None, "Error creant renovation a la base de dades"
             
-            # Afegir l'ID de la renovation a l'usuari creador
-            user_data = self.user_dao.get_user_by_uid(creator_uid)
-            if user_data:
-                created_renovations = user_data.get('created_renovations', [])
-                created_renovations.append(renovation.id)
-                self.user_dao.update_user(creator_uid, {'created_renovations': created_renovations})
-            
             logger.info(f"Renovation creada correctament amb ID: {renovation.id}")
             return True, renovation, None
             
@@ -177,23 +170,6 @@ class RenovationController:
             if renovation.creator_uid != user_uid:
                 return False, "Només el creador pot eliminar la renovation"
             
-            # Eliminar l'ID de la llista created_renovations del creador
-            user_data = self.user_dao.get_user_by_uid(user_uid)
-            if user_data:
-                created_renovations = user_data.get('created_renovations', [])
-                if renovation_id in created_renovations:
-                    created_renovations.remove(renovation_id)
-                    self.user_dao.update_user(user_uid, {'created_renovations': created_renovations})
-            
-            # Eliminar l'ID de la llista joined_renovations de tots els participants
-            for participant_uid in renovation.participants_uids:
-                participant_data = self.user_dao.get_user_by_uid(participant_uid)
-                if participant_data:
-                    joined_renovations = participant_data.get('joined_renovations', [])
-                    if renovation_id in joined_renovations:
-                        joined_renovations.remove(renovation_id)
-                        self.user_dao.update_user(participant_uid, {'joined_renovations': joined_renovations})
-            
             # Eliminar la renovation
             success = self.renovation_dao.delete_renovation(renovation_id)
             if not success:
@@ -232,14 +208,6 @@ class RenovationController:
             if not success:
                 return False, None, "Error afegint participant o ja és participant"
             
-            # Afegir l'ID de la renovation a joined_renovations de l'usuari
-            user_data = self.user_dao.get_user_by_uid(participant_uid)
-            if user_data:
-                joined_renovations = user_data.get('joined_renovations', [])
-                if renovation_id not in joined_renovations:
-                    joined_renovations.append(renovation_id)
-                    self.user_dao.update_user(participant_uid, {'joined_renovations': joined_renovations})
-            
             # Obtenir la renovation actualitzada
             renovation = self.renovation_dao.get_renovation_by_id(renovation_id)
             
@@ -277,14 +245,6 @@ class RenovationController:
             if not success:
                 return False, None, "Error eliminant participant o no és participant"
             
-            # Eliminar l'ID de la renovation de joined_renovations de l'usuari
-            user_data = self.user_dao.get_user_by_uid(participant_uid)
-            if user_data:
-                joined_renovations = user_data.get('joined_renovations', [])
-                if renovation_id in joined_renovations:
-                    joined_renovations.remove(renovation_id)
-                    self.user_dao.update_user(participant_uid, {'joined_renovations': joined_renovations})
-            
             # Obtenir la renovation actualitzada
             renovation = self.renovation_dao.get_renovation_by_id(renovation_id)
             
@@ -295,56 +255,20 @@ class RenovationController:
             logger.error(f"Error en remove_participant: {str(e)}")
             return False, None, f"Error intern: {str(e)}"
     
-    def get_renovations_by_refuge(self, refuge_id: str, active_only: bool = False) -> Tuple[bool, List[Renovation], Optional[str]]:
+    def get_renovations_by_refuge(self, refuge_id: str) -> Tuple[bool, List[Renovation], Optional[str]]:
         """
         Obté les renovations d'un refugi
         
         Args:
             refuge_id: ID del refugi
-            active_only: Si True, només retorna renovations actives
             
         Returns:
             tuple: (success, list_of_renovations, error_message)
         """
         try:
-            renovations = self.renovation_dao.get_renovations_by_refuge(refuge_id, active_only)
+            renovations = self.renovation_dao.get_renovations_by_refuge(refuge_id)
             return True, renovations, None
             
         except Exception as e:
             logger.error(f"Error en get_renovations_by_refuge: {str(e)}")
             return False, [], f"Error intern: {str(e)}"
-    
-    def get_user_renovations(self, user_uid: str) -> Tuple[bool, Dict[str, List[Renovation]], Optional[str]]:
-        """
-        Obté totes les renovations d'un usuari (creades i unides)
-        
-        Args:
-            user_uid: UID de l'usuari
-            
-        Returns:
-            tuple: (success, dict_with_created_and_joined, error_message)
-        """
-        try:
-            # Obtenir l'usuari
-            user_data = self.user_dao.get_user_by_uid(user_uid)
-            if not user_data:
-                return False, {}, f"Usuari amb UID {user_uid} no trobat"
-            
-            # Obtenir renovations creades
-            created_ids = user_data.get('created_renovations', [])
-            created_renovations = self.renovation_dao.get_renovations_by_ids(created_ids)
-            
-            # Obtenir renovations unides
-            joined_ids = user_data.get('joined_renovations', [])
-            joined_renovations = self.renovation_dao.get_renovations_by_ids(joined_ids)
-            
-            result = {
-                'created': created_renovations,
-                'joined': joined_renovations
-            }
-            
-            return True, result, None
-            
-        except Exception as e:
-            logger.error(f"Error en get_user_renovations: {str(e)}")
-            return False, {}, f"Error intern: {str(e)}"

@@ -41,7 +41,6 @@ def sample_user_data():
         'language': 'ca',
         'favourite_refuges': [],
         'visited_refuges': [],
-        'renovations': [],
         'num_uploaded_photos': 0,
         'num_shared_experiences': 0,
         'num_renovated_refuges': 0,

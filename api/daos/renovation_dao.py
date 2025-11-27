@@ -369,6 +369,7 @@ class RenovationDAO:
             
             renovation_data = doc.to_dict()
             participants = renovation_data.get('participants_uids', [])
+            refuge_id = renovation_data.get('refuge_id')
             
             # Comprovar si ja és participant
             if participant_uid in participants:
@@ -379,9 +380,16 @@ class RenovationDAO:
             participants.append(participant_uid)
             doc_ref.update({'participants_uids': participants})
             
-            # Invalida cache
+            # Incrementar el comptador de refugis renovats de l'usuari
+            from ..daos.user_dao import UserDAO
+            user_dao = UserDAO()
+            user_dao.increment_renovated_refuges(participant_uid)
+            
+            # Invalida cache de la renovation
             cache_service.delete(cache_service.generate_key('renovation_detail', renovation_id=renovation_id))
             cache_service.delete_pattern('renovation_list:*')
+            if refuge_id:
+                cache_service.delete_pattern(f'renovation_refuge:{refuge_id}:*')
             
             logger.info(f"Participant {participant_uid} afegit a renovation {renovation_id}")
             return True
@@ -413,6 +421,7 @@ class RenovationDAO:
             
             renovation_data = doc.to_dict()
             participants = renovation_data.get('participants_uids', [])
+            refuge_id = renovation_data.get('refuge_id')
             
             # Comprovar si és participant
             if participant_uid not in participants:
@@ -423,9 +432,16 @@ class RenovationDAO:
             participants.remove(participant_uid)
             doc_ref.update({'participants_uids': participants})
             
-            # Invalida cache
+            # Decrementar el comptador de refugis renovats de l'usuari
+            from ..daos.user_dao import UserDAO
+            user_dao = UserDAO()
+            user_dao.decrement_renovated_refuges(participant_uid)
+            
+            # Invalida cache de la renovation
             cache_service.delete(cache_service.generate_key('renovation_detail', renovation_id=renovation_id))
             cache_service.delete_pattern('renovation_list:*')
+            if refuge_id:
+                cache_service.delete_pattern(f'renovation_refuge:{refuge_id}:*')
             
             logger.info(f"Participant {participant_uid} eliminat de renovation {renovation_id}")
             return True

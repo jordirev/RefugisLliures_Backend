@@ -38,6 +38,10 @@ class UserDAO:
             doc_ref = db.collection(self.COLLECTION_NAME).document(uid)
             doc_ref.set(user_data)
             
+            # Invalida cache d'existència per email
+            if 'email' in user_data:
+                cache_service.delete(cache_service.generate_key('user_email_exists', email=user_data['email'].lower()))
+            
             logger.info(f"Usuari creat amb UID: {uid}")
             return self.mapper.firebase_to_model(user_data)
             
@@ -89,7 +93,7 @@ class UserDAO:
     
     def get_user_by_email(self, email: str) -> Optional[User]:
         """
-        Obté un usuari per email amb cache
+        Obté un usuari per email (sense cache, ja que només s'usa internament)
         
         Args:
             email: Email de l'usuari
@@ -97,14 +101,6 @@ class UserDAO:
         Returns:
             User: Instància del model User o None si no existeix
         """
-        # Genera clau de cache
-        cache_key = cache_service.generate_key('user_email', email=email.lower())
-        
-        # Intenta obtenir de cache
-        cached_data = cache_service.get(cache_key)
-        if cached_data is not None:
-            return self.mapper.firebase_to_model(cached_data)
-        
         try:
             db = self.firestore_service.get_db()
             logger.log(23, f"Firestore QUERY: collection={self.COLLECTION_NAME} filter=email=={email}")
@@ -116,10 +112,6 @@ class UserDAO:
                 user_data = doc.to_dict()
                 user_data['uid'] = doc.id
                 
-                # Guarda a cache
-                timeout = cache_service.get_timeout('user_detail')
-                cache_service.set(cache_key, user_data, timeout)
-                
                 logger.log(23, f"Usuari trobat amb email: {email}")
                 return self.mapper.firebase_to_model(user_data)
             
@@ -129,6 +121,44 @@ class UserDAO:
         except Exception as e:
             logger.error(f"Error obtenint usuari amb email {email}: {str(e)}")
             return None
+    
+    def user_exists_by_email(self, email: str) -> bool:
+        """
+        Comprova si existeix un usuari amb l'email especificat (amb cache optimitzat)
+        Aquest mètode només guarda un booleà a cache, evitant duplicació de dades
+        
+        Args:
+            email: Email de l'usuari
+            
+        Returns:
+            bool: True si l'usuari existeix, False altrament
+        """
+        # Genera clau de cache específica per existència
+        cache_key = cache_service.generate_key('user_email_exists', email=email.lower())
+        
+        # Intenta obtenir de cache
+        cached_result = cache_service.get(cache_key)
+        if cached_result is not None:
+            return cached_result
+        
+        try:
+            db = self.firestore_service.get_db()
+            logger.log(23, f"Firestore QUERY: collection={self.COLLECTION_NAME} filter=email=={email} (exists check)")
+            query = db.collection(self.COLLECTION_NAME).where('email', '==', email).limit(1)
+            docs = query.get()
+            
+            exists = len(docs) > 0
+            
+            # Guarda només el booleà a cache
+            timeout = cache_service.get_timeout('user_detail')
+            cache_service.set(cache_key, exists, timeout)
+            
+            logger.log(23, f"Email {email} {'existeix' if exists else 'no existeix'}")
+            return exists
+            
+        except Exception as e:
+            logger.error(f"Error comprovant existència d'usuari amb email {email}: {str(e)}")
+            return False
     
     def update_user(self, uid: str, user_data: Dict[str, Any]) -> bool:
         """
@@ -156,8 +186,9 @@ class UserDAO:
             
             # Invalida cache relacionada
             cache_service.delete(cache_service.generate_key('user_detail', uid=uid))
+            # Només invalida cache d'email si s'està canviant l'email
             if 'email' in user_data:
-                cache_service.delete(cache_service.generate_key('user_email', email=user_data['email']))
+                cache_service.delete(cache_service.generate_key('user_email_exists', email=user_data['email'].lower()))
             
             logger.log(23, f"Usuari actualitzat amb UID: {uid}")
             return True
@@ -180,17 +211,24 @@ class UserDAO:
             db = self.firestore_service.get_db()
             doc_ref = db.collection(self.COLLECTION_NAME).document(uid)
             
-            # Comprova que l'usuari existeixi
+            # Comprova que l'usuari existeixi i obté l'email abans d'eliminar
             logger.info(f"Firestore READ (exists check): collection={self.COLLECTION_NAME} document={uid}")
-            if not doc_ref.get().exists:
+            doc = doc_ref.get()
+            if not doc.exists:
                 logger.warning(f"No es pot eliminar, usuari no trobat amb UID: {uid}")
                 return False
+            
+            # Obté l'email abans d'eliminar
+            user_data = doc.to_dict()
+            email = user_data.get('email')
             
             # Elimina l'usuari
             doc_ref.delete()
             
             # Invalida cache relacionada
             cache_service.delete(cache_service.generate_key('user_detail', uid=uid))
+            if email:
+                cache_service.delete(cache_service.generate_key('user_email_exists', email=email.lower()))
             
             logger.log(23, f"Usuari eliminat amb UID: {uid}")
             return True
@@ -259,8 +297,6 @@ class UserDAO:
             
             # Invalida cache de l'usuari i de la info dels refugis
             cache_service.delete(cache_service.generate_key('user_detail', uid=uid))
-            if user.email:
-                cache_service.delete(cache_service.generate_key('user_email', email=user.email))
             cache_service.delete(cache_service.generate_key('user_refugis_info', uid=uid, list_name=list_name))
             
             logger.log(23, f"Refugi {refugi_id} afegit a {list_name} de l'usuari {uid}")
@@ -309,8 +345,6 @@ class UserDAO:
             
             # Invalida cache de l'usuari i de la info dels refugis
             cache_service.delete(cache_service.generate_key('user_detail', uid=uid))
-            if user.email:
-                cache_service.delete(cache_service.generate_key('user_email', email=user.email))
             cache_service.delete(cache_service.generate_key('user_refugis_info', uid=uid, list_name=list_name))
             
             logger.log(23, f"Refugi {refugi_id} eliminat de {list_name} de l'usuari {uid}")
@@ -395,3 +429,71 @@ class UserDAO:
         except Exception as e:
             logger.error(f"Error obtenint informació de refugis de {list_name} per l'usuari {uid}: {str(e)}")
             return []
+    
+    def increment_renovated_refuges(self, uid: str) -> bool:
+        """
+        Incrementa el comptador de refugis renovats per un usuari
+        
+        Args:
+            uid: UID de l'usuari
+            
+        Returns:
+            bool: True si s'ha incrementat correctament
+        """
+        try:
+            db = self.firestore_service.get_db()
+            from google.cloud.firestore_v1.transforms import Increment
+            doc_ref = db.collection(self.COLLECTION_NAME).document(uid)
+            
+            # Comprova que l'usuari existeixi i obté les dades per tenir l'email
+            doc = doc_ref.get()
+            if not doc.exists:
+                logger.warning(f"No es pot incrementar comptador, usuari no trobat amb UID: {uid}")
+                return False
+            
+            # Incrementa el comptador
+            doc_ref.update({'num_renovated_refuges': Increment(1)})
+            
+            # Invalida cache de l'usuari
+            cache_service.delete(cache_service.generate_key('user_detail', uid=uid))
+            
+            logger.info(f"Comptador de refugis renovats incrementat per l'usuari {uid}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error incrementant comptador de refugis renovats per l'usuari {uid}: {str(e)}")
+            return False
+    
+    def decrement_renovated_refuges(self, uid: str) -> bool:
+        """
+        Decrementa el comptador de refugis renovats per un usuari
+        
+        Args:
+            uid: UID de l'usuari
+            
+        Returns:
+            bool: True si s'ha decrementat correctament
+        """
+        try:
+            db = self.firestore_service.get_db()
+            from google.cloud.firestore_v1.transforms import Increment
+            doc_ref = db.collection(self.COLLECTION_NAME).document(uid)
+            
+            # Comprova que l'usuari existeixi i obté les dades per tenir l'email
+            doc = doc_ref.get()
+            if not doc.exists:
+                logger.warning(f"No es pot decrementar comptador, usuari no trobat amb UID: {uid}")
+                return False
+            
+            # Decrementa el comptador (increment amb valor negatiu)
+            doc_ref.update({'num_renovated_refuges': Increment(-1)})
+            
+            # Invalida cache de l'usuari
+            cache_service.delete(cache_service.generate_key('user_detail', uid=uid))
+            
+            logger.info(f"Comptador de refugis renovats decrementat per l'usuari {uid}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error decrementant comptador de refugis renovats per l'usuari {uid}: {str(e)}")
+            return False

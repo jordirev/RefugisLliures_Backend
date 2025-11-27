@@ -14,9 +14,6 @@ class User:
     language: str = 'ca'
     favourite_refuges: Optional[list] = None
     visited_refuges: Optional[list] = None
-    renovations: Optional[list] = None
-    created_renovations: Optional[list] = None
-    joined_renovations: Optional[list] = None
     num_uploaded_photos: int = 0
     num_shared_experiences: int = 0
     num_renovated_refuges: int = 0
@@ -41,9 +38,6 @@ class User:
             'language': self.language,
             'favourite_refuges': self.favourite_refuges,
             'visited_refuges': self.visited_refuges,
-            'renovations': self.renovations,
-            'created_renovations': self.created_renovations,
-            'joined_renovations': self.joined_renovations,
             'num_uploaded_photos': self.num_uploaded_photos,
             'num_shared_experiences': self.num_shared_experiences,
             'num_renovated_refuges': self.num_renovated_refuges,
@@ -61,9 +55,6 @@ class User:
             language=data.get('language', 'ca'),
             favourite_refuges=data.get('favourite_refuges', []),
             visited_refuges=data.get('visited_refuges', []),
-            renovations=data.get('renovations', []),
-            created_renovations=data.get('created_renovations', []),
-            joined_renovations=data.get('joined_renovations', []),
             num_uploaded_photos=data.get('num_uploaded_photos', 0),
             num_shared_experiences=data.get('num_shared_experiences', 0),
             num_renovated_refuges=data.get('num_renovated_refuges', 0),

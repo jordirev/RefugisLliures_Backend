@@ -27,134 +27,6 @@ ERROR_500_INTERNAL_ERROR = 'Error intern del servidor'
 # Configurar logging
 logger = logging.getLogger(__name__)
 
-# ========== ITEM ENDPOINT: /refugis/{id}/ ==========
-
-class RefugiLliureDetailAPIView(APIView):
-    """
-    Gestiona operacions sobre un refugi específic:
-    - GET: Obtenir detalls d'un refugi per ID (no requereix autenticació)
-    """
-    permission_classes = [AllowAny]
-    
-    @swagger_auto_schema(
-        security=[],
-        operation_description=(
-            "Obté els detalls complets d'un refugi específic per ID. "
-            "Retorna informació completa del refugi incloent nom, descripció, coordenades, "
-            "dificultats, rutes properes i altres detalls. "
-            "Aquest endpoint no requereix autenticació."
-        ),
-        manual_parameters=[
-            openapi.Parameter(
-                'refuge_id',
-                openapi.IN_PATH,
-                description="Identificador únic del refugi",
-                type=openapi.TYPE_STRING,
-                required=True
-            )
-        ],
-        responses={
-            200: openapi.Response(
-                description='Detalls del refugi',
-                schema=RefugiSerializer,
-                examples={
-                    'application/json': {
-                        'id': 'refugi123',
-                        'nom': 'Refugi de la Renclusa',
-                        'descripcio': 'Refugi guardat als Pirineus',
-                        'latitud': 42.123,
-                        'longitud': 1.456,
-                        'altitud': 2140
-                    }
-                }
-            ),
-            404: ERROR_404_REFUGI_NOT_FOUND,
-            500: ERROR_500_INTERNAL_ERROR
-        }
-    )
-    def get(self, request, refuge_id):
-        """Obtenir detalls d'un refugi per ID"""
-        try:
-            controller = RefugiLliureController()
-            refugi, error = controller.get_refugi_by_id(refuge_id)
-            
-            if error:
-                if "not found" in error.lower():
-                    return Response({
-                        'error': error
-                    }, status=status.HTTP_404_NOT_FOUND)
-                else:
-                    return Response({
-                        'error': error
-                    }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-            
-            # Serialitzar el refugi
-            serializer = RefugiSerializer(refugi.to_dict())
-            return Response(serializer.data, status=status.HTTP_200_OK)
-            
-        except Exception as e:
-            logger.error(f'Error processing refugis request: {str(e)}')
-            return Response({
-                'error': f'Internal server error: {str(e)}'
-            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
-# ========== REFUGE RENOVATIONS ENDPOINT: /refuges/{id}/renovations/ ==========
-
-class RefugeRenovationsAPIView(APIView):
-    """
-    Gestiona operacions sobre les renovations d'un refugi:
-    - GET: Obtenir totes les renovations actives d'un refugi (requereix autenticació)
-    """
-    permission_classes = [IsAuthenticated]
-    
-    @swagger_auto_schema(
-        operation_description=(
-            "Obté totes les renovations actives d'un refugi (ini_date >= avui). "
-            "Requereix autenticació amb token JWT de Firebase."
-        ),
-        manual_parameters=[
-            openapi.Parameter(
-                'refuge_id',
-                openapi.IN_PATH,
-                description="Identificador únic del refugi",
-                type=openapi.TYPE_STRING,
-                required=True
-            )
-        ],
-        responses={
-            200: openapi.Response(
-                description='Renovations actives del refugi',
-                schema=RenovationSerializer(many=True)
-            ),
-            401: 'No autoritzat',
-            500: ERROR_500_INTERNAL_ERROR
-        }
-    )
-    def get(self, request, refuge_id):
-        """Obtenir renovations actives d'un refugi"""
-        try:
-            controller = RenovationController()
-            success, renovations, error_message = controller.get_renovations_by_refuge(
-                refuge_id,
-                active_only=True
-            )
-            
-            if not success:
-                return Response({
-                    'error': error_message
-                }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-            
-            # Serialitzar les renovations
-            serializer = RenovationSerializer([r.to_dict() for r in renovations], many=True)
-            return Response(serializer.data, status=status.HTTP_200_OK)
-            
-        except Exception as e:
-            logger.error(f'Error getting refuge renovations: {str(e)}')
-            return Response({
-                'error': ERROR_500_INTERNAL_ERROR
-            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
 # ========== COLLECTION ENDPOINT: /refugis/ ==========
 
 class RefugiLliureCollectionAPIView(APIView):
@@ -287,4 +159,129 @@ class RefugiLliureCollectionAPIView(APIView):
             logger.error(f'Error processing refugis request: {str(e)}')
             return Response({
                 'error': f'Internal server error: {str(e)}'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+# ========== ITEM ENDPOINT: /refugis/{id}/ ==========
+
+class RefugiLliureDetailAPIView(APIView):
+    """
+    Gestiona operacions sobre un refugi específic:
+    - GET: Obtenir detalls d'un refugi per ID (no requereix autenticació)
+    """
+    permission_classes = [AllowAny]
+    
+    @swagger_auto_schema(
+        security=[],
+        operation_description=(
+            "Obté els detalls complets d'un refugi específic per ID. "
+            "Retorna informació completa del refugi incloent nom, descripció, coordenades, "
+            "dificultats, rutes properes i altres detalls. "
+            "Aquest endpoint no requereix autenticació."
+        ),
+        manual_parameters=[
+            openapi.Parameter(
+                'refuge_id',
+                openapi.IN_PATH,
+                description="Identificador únic del refugi",
+                type=openapi.TYPE_STRING,
+                required=True
+            )
+        ],
+        responses={
+            200: openapi.Response(
+                description='Detalls del refugi',
+                schema=RefugiSerializer,
+                examples={
+                    'application/json': {
+                        'id': 'refugi123',
+                        'nom': 'Refugi de la Renclusa',
+                        'descripcio': 'Refugi guardat als Pirineus',
+                        'latitud': 42.123,
+                        'longitud': 1.456,
+                        'altitud': 2140
+                    }
+                }
+            ),
+            404: ERROR_404_REFUGI_NOT_FOUND,
+            500: ERROR_500_INTERNAL_ERROR
+        }
+    )
+    def get(self, request, refuge_id):
+        """Obtenir detalls d'un refugi per ID"""
+        try:
+            controller = RefugiLliureController()
+            refugi, error = controller.get_refugi_by_id(refuge_id)
+            
+            if error:
+                if "not found" in error.lower():
+                    return Response({
+                        'error': error
+                    }, status=status.HTTP_404_NOT_FOUND)
+                else:
+                    return Response({
+                        'error': error
+                    }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            
+            # Serialitzar el refugi
+            serializer = RefugiSerializer(refugi.to_dict())
+            return Response(serializer.data, status=status.HTTP_200_OK)
+            
+        except Exception as e:
+            logger.error(f'Error processing refugis request: {str(e)}')
+            return Response({
+                'error': f'Internal server error: {str(e)}'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+# ========== REFUGE RENOVATIONS ENDPOINT: /refuges/{id}/renovations/ ==========
+
+class RefugeRenovationsAPIView(APIView):
+    """
+    Gestiona operacions sobre les renovations d'un refugi:
+    - GET: Obtenir totes les renovations actives d'un refugi (requereix autenticació)
+    """
+    permission_classes = [IsAuthenticated]
+    
+    @swagger_auto_schema(
+        operation_description=(
+            "Obté totes les renovations d'un refugi específic. "
+            "Requereix autenticació amb token JWT de Firebase."
+        ),
+        manual_parameters=[
+            openapi.Parameter(
+                'refuge_id',
+                openapi.IN_PATH,
+                description="Identificador únic del refugi",
+                type=openapi.TYPE_STRING,
+                required=True
+            )
+        ],
+        responses={
+            200: openapi.Response(
+                description='Renovations actives del refugi',
+                schema=RenovationSerializer(many=True)
+            ),
+            401: 'No autoritzat',
+            500: ERROR_500_INTERNAL_ERROR
+        }
+    )
+    def get(self, request, refuge_id):
+        """Obtenir renovations d'un refugi"""
+        try:
+            controller = RenovationController()
+            success, renovations, error_message = controller.get_renovations_by_refuge(refuge_id)
+            
+            if not success:
+                return Response({
+                    'error': error_message
+                }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            
+            # Serialitzar les renovations
+            serializer = RenovationSerializer([r.to_dict() for r in renovations], many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+            
+        except Exception as e:
+            logger.error(f'Error getting refuge renovations: {str(e)}')
+            return Response({
+                'error': ERROR_500_INTERNAL_ERROR
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

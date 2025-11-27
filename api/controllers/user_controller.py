@@ -38,8 +38,8 @@ class UserController:
                 return False, None, f"Usuari amb UID {uid} ja existeix"
             
             # Comprova si l'email ja està en ús
-            existing_user_by_email = self.user_dao.get_user_by_email(user_data['email'])
-            if existing_user_by_email:
+            email_exists = self.user_dao.user_exists_by_email(user_data['email'])
+            if email_exists:
                 return False, None, f"Email {user_data['email']} ja està en ús"
             
             # Afegeix el UID a les dades de l'usuari
@@ -134,10 +134,13 @@ class UserController:
             if 'email' in user_data and user_data.get('email'):
                 # Normalitza l'email abans de la cerca
                 email_normalized = user_data['email'].lower().strip()
-                existing_user = self.user_dao.get_user_by_email(email_normalized)
-                # Si existeix un usuari amb aquest email i no és l'usuari actual, error
-                if existing_user and existing_user.uid != uid:
-                    return False, None, f"Email {user_data['email']} ja està en ús"
+                # Comprova si l'email existeix
+                email_exists = self.user_dao.user_exists_by_email(email_normalized)
+                if email_exists:
+                    # Si existeix, obté l'usuari per veure si és el mateix
+                    existing_user = self.user_dao.get_user_by_email(email_normalized)
+                    if existing_user and existing_user.uid != uid:
+                        return False, None, f"Email {user_data['email']} ja està en ús"
                 # Re-escriu l'email normalitzat al payload per consistència
                 user_data['email'] = email_normalized
             
