@@ -601,6 +601,71 @@ class TestUserDAO:
     
     @patch('api.daos.user_dao.cache_service')
     @patch('api.daos.user_dao.FirestoreService')
+    def test_update_user_with_email(self, mock_firestore_service, mock_cache):
+        """Test actualització d'usuari amb canvi d'email"""
+        mock_cache.generate_key.return_value = 'test_cache_key'
+        
+        mock_db = MagicMock()
+        mock_firestore_instance = mock_firestore_service.return_value
+        mock_firestore_instance.get_db.return_value = mock_db
+        
+        mock_doc_snapshot = MagicMock()
+        mock_doc_snapshot.exists = True
+        
+        mock_doc_ref = MagicMock()
+        mock_doc_ref.get.return_value = mock_doc_snapshot
+        
+        mock_collection = MagicMock()
+        mock_collection.document.return_value = mock_doc_ref
+        mock_db.collection.return_value = mock_collection
+        
+        dao = UserDAO()
+        update_data = {'email': 'newemail@test.com'}
+        success = dao.update_user('test_uid', update_data)
+        
+        assert success is True
+        # Hauria d'invalidar cache d'email
+        assert mock_cache.delete.call_count == 2  # user_detail + user_email_exists
+    
+    @patch('api.daos.user_dao.UserDAO.get_user_by_uid')
+    @patch('api.daos.user_dao.FirestoreService')
+    @patch('api.daos.user_dao.cache_service')
+    def test_add_refugi_to_list_none_list(self, mock_cache, mock_firestore_service, mock_get_user, sample_user):
+        """Test afegir refugi quan la llista és None"""
+        sample_user.favourite_refuges = None
+        mock_get_user.return_value = sample_user
+        
+        mock_db = MagicMock()
+        mock_firestore_instance = mock_firestore_service.return_value
+        mock_firestore_instance.get_db.return_value = mock_db
+        
+        mock_doc_ref = MagicMock()
+        mock_collection = MagicMock()
+        mock_collection.document.return_value = mock_doc_ref
+        mock_db.collection.return_value = mock_collection
+        
+        dao = UserDAO()
+        success, updated_list = dao.add_refugi_to_list('test_uid', 'refugi_123', 'favourite_refuges')
+        
+        assert success is True
+        assert 'refugi_123' in updated_list
+    
+    @patch('api.daos.user_dao.UserDAO.get_user_by_uid')
+    @patch('api.daos.user_dao.FirestoreService')
+    @patch('api.daos.user_dao.cache_service')
+    def test_remove_refugi_from_list_none_list(self, mock_cache, mock_firestore_service, mock_get_user, sample_user):
+        """Test eliminar refugi quan la llista és None"""
+        sample_user.favourite_refuges = None
+        mock_get_user.return_value = sample_user
+        
+        dao = UserDAO()
+        success, updated_list = dao.remove_refugi_from_list('test_uid', 'refugi_123', 'favourite_refuges')
+        
+        assert success is True
+        assert updated_list is not None
+    
+    @patch('api.daos.user_dao.cache_service')
+    @patch('api.daos.user_dao.FirestoreService')
     def test_delete_user_success(self, mock_firestore_service, mock_cache):
         """Test eliminació d'usuari exitosa"""
         mock_cache.generate_key.return_value = 'test_cache_key'
@@ -671,6 +736,453 @@ class TestUserDAO:
         exists = dao.user_exists('nonexistent_uid')
         
         assert exists is False
+    
+    # ===== NOUS TESTS PER COBRIR EXCEPCIONS I CASOS NO COBERTS =====
+    
+    @patch('api.daos.user_dao.FirestoreService')
+    @patch('api.daos.user_dao.cache_service')
+    def test_create_user_exception(self, mock_cache, mock_firestore_service):
+        """Test creació d'usuari amb excepció"""
+        mock_firestore_instance = mock_firestore_service.return_value
+        mock_firestore_instance.get_db.side_effect = Exception('Database error')
+        
+        dao = UserDAO()
+        result = dao.create_user({'email': 'test@test.com'}, 'test_uid')
+        
+        assert result is None
+    
+    @patch('api.daos.user_dao.FirestoreService')
+    @patch('api.daos.user_dao.cache_service')
+    def test_get_user_by_uid_exception(self, mock_cache, mock_firestore_service):
+        """Test obtenció d'usuari per UID amb excepció"""
+        mock_cache.get.return_value = None
+        mock_firestore_instance = mock_firestore_service.return_value
+        mock_firestore_instance.get_db.side_effect = Exception('Database error')
+        
+        dao = UserDAO()
+        result = dao.get_user_by_uid('test_uid')
+        
+        assert result is None
+    
+    @patch('api.daos.user_dao.FirestoreService')
+    @patch('api.daos.user_dao.cache_service')
+    def test_get_user_by_email_not_found(self, mock_cache, mock_firestore_service):
+        """Test obtenció d'usuari per email (no trobat)"""
+        mock_db = MagicMock()
+        mock_firestore_instance = mock_firestore_service.return_value
+        mock_firestore_instance.get_db.return_value = mock_db
+        
+        mock_query = MagicMock()
+        mock_query.get.return_value = []  # No trobat
+        
+        mock_collection = MagicMock()
+        mock_collection.where.return_value.limit.return_value = mock_query
+        mock_db.collection.return_value = mock_collection
+        
+        dao = UserDAO()
+        result = dao.get_user_by_email('notfound@test.com')
+        
+        assert result is None
+    
+    @patch('api.daos.user_dao.FirestoreService')
+    @patch('api.daos.user_dao.cache_service')
+    def test_get_user_by_email_exception(self, mock_cache, mock_firestore_service):
+        """Test obtenció d'usuari per email amb excepció"""
+        mock_firestore_instance = mock_firestore_service.return_value
+        mock_firestore_instance.get_db.side_effect = Exception('Database error')
+        
+        dao = UserDAO()
+        result = dao.get_user_by_email('test@test.com')
+        
+        assert result is None
+    
+    @patch('api.daos.user_dao.FirestoreService')
+    @patch('api.daos.user_dao.cache_service')
+    def test_user_exists_by_email_exception(self, mock_cache, mock_firestore_service):
+        """Test comprovació d'existència per email amb excepció"""
+        mock_cache.get.return_value = None
+        mock_firestore_instance = mock_firestore_service.return_value
+        mock_firestore_instance.get_db.side_effect = Exception('Database error')
+        
+        dao = UserDAO()
+        result = dao.user_exists_by_email('test@test.com')
+        
+        assert result is False
+    
+    @patch('api.daos.user_dao.FirestoreService')
+    @patch('api.daos.user_dao.cache_service')
+    def test_update_user_exception(self, mock_cache, mock_firestore_service):
+        """Test actualització d'usuari amb excepció"""
+        mock_firestore_instance = mock_firestore_service.return_value
+        mock_firestore_instance.get_db.side_effect = Exception('Database error')
+        
+        dao = UserDAO()
+        result = dao.update_user('test_uid', {'name': 'New Name'})
+        
+        assert result is False
+    
+    @patch('api.daos.user_dao.FirestoreService')
+    @patch('api.daos.user_dao.cache_service')
+    def test_delete_user_not_found(self, mock_cache, mock_firestore_service):
+        """Test eliminació d'usuari no existent"""
+        mock_db = MagicMock()
+        mock_firestore_instance = mock_firestore_service.return_value
+        mock_firestore_instance.get_db.return_value = mock_db
+        
+        mock_doc_snapshot = MagicMock()
+        mock_doc_snapshot.exists = False
+        
+        mock_doc_ref = MagicMock()
+        mock_doc_ref.get.return_value = mock_doc_snapshot
+        
+        mock_collection = MagicMock()
+        mock_collection.document.return_value = mock_doc_ref
+        mock_db.collection.return_value = mock_collection
+        
+        dao = UserDAO()
+        result = dao.delete_user('nonexistent_uid')
+        
+        assert result is False
+    
+    @patch('api.daos.user_dao.FirestoreService')
+    @patch('api.daos.user_dao.cache_service')
+    def test_delete_user_exception(self, mock_cache, mock_firestore_service):
+        """Test eliminació d'usuari amb excepció"""
+        mock_firestore_instance = mock_firestore_service.return_value
+        mock_firestore_instance.get_db.side_effect = Exception('Database error')
+        
+        dao = UserDAO()
+        result = dao.delete_user('test_uid')
+        
+        assert result is False
+    
+    @patch('api.daos.user_dao.FirestoreService')
+    @patch('api.daos.user_dao.cache_service')
+    def test_user_exists_exception(self, mock_cache, mock_firestore_service):
+        """Test comprovació d'existència amb excepció"""
+        mock_firestore_instance = mock_firestore_service.return_value
+        mock_firestore_instance.get_db.side_effect = Exception('Database error')
+        
+        dao = UserDAO()
+        result = dao.user_exists('test_uid')
+        
+        assert result is False
+    
+    @patch('api.daos.user_dao.UserDAO.get_user_by_uid')
+    @patch('api.daos.user_dao.FirestoreService')
+    @patch('api.daos.user_dao.cache_service')
+    def test_add_refugi_to_list_success(self, mock_cache, mock_firestore_service, mock_get_user, sample_user):
+        """Test afegir refugi a llista exitós"""
+        mock_get_user.return_value = sample_user
+        
+        mock_db = MagicMock()
+        mock_firestore_instance = mock_firestore_service.return_value
+        mock_firestore_instance.get_db.return_value = mock_db
+        
+        mock_doc_ref = MagicMock()
+        mock_collection = MagicMock()
+        mock_collection.document.return_value = mock_doc_ref
+        mock_db.collection.return_value = mock_collection
+        
+        dao = UserDAO()
+        success, updated_list = dao.add_refugi_to_list('test_uid', 'refugi_123', 'favourite_refuges')
+        
+        assert success is True
+        assert updated_list is not None
+        assert 'refugi_123' in updated_list
+        mock_doc_ref.update.assert_called_once()
+    
+    @patch('api.daos.user_dao.UserDAO.get_user_by_uid')
+    def test_add_refugi_to_list_user_not_found(self, mock_get_user):
+        """Test afegir refugi quan l'usuari no existeix"""
+        mock_get_user.return_value = None
+        
+        dao = UserDAO()
+        success, updated_list = dao.add_refugi_to_list('nonexistent_uid', 'refugi_123', 'favourite_refuges')
+        
+        assert success is False
+        assert updated_list is None
+    
+    @patch('api.daos.user_dao.UserDAO.get_user_by_uid')
+    def test_add_refugi_to_list_already_exists(self, mock_get_user, sample_user):
+        """Test afegir refugi que ja està a la llista"""
+        sample_user.favourite_refuges = ['refugi_123']
+        mock_get_user.return_value = sample_user
+        
+        dao = UserDAO()
+        success, updated_list = dao.add_refugi_to_list('test_uid', 'refugi_123', 'favourite_refuges')
+        
+        assert success is True
+        assert 'refugi_123' in updated_list
+    
+    @patch('api.daos.user_dao.UserDAO.get_user_by_uid')
+    def test_add_refugi_to_list_exception(self, mock_get_user, sample_user):
+        """Test afegir refugi amb excepció"""
+        mock_get_user.side_effect = Exception('Database error')
+        
+        dao = UserDAO()
+        success, updated_list = dao.add_refugi_to_list('test_uid', 'refugi_123', 'favourite_refuges')
+        
+        assert success is False
+        assert updated_list is None
+    
+    @patch('api.daos.user_dao.UserDAO.get_user_by_uid')
+    @patch('api.daos.user_dao.FirestoreService')
+    @patch('api.daos.user_dao.cache_service')
+    def test_remove_refugi_from_list_success(self, mock_cache, mock_firestore_service, mock_get_user, sample_user):
+        """Test eliminar refugi de llista exitós"""
+        sample_user.favourite_refuges = ['refugi_123', 'refugi_456']
+        mock_get_user.return_value = sample_user
+        
+        mock_db = MagicMock()
+        mock_firestore_instance = mock_firestore_service.return_value
+        mock_firestore_instance.get_db.return_value = mock_db
+        
+        mock_doc_ref = MagicMock()
+        mock_collection = MagicMock()
+        mock_collection.document.return_value = mock_doc_ref
+        mock_db.collection.return_value = mock_collection
+        
+        dao = UserDAO()
+        success, updated_list = dao.remove_refugi_from_list('test_uid', 'refugi_123', 'favourite_refuges')
+        
+        assert success is True
+        assert updated_list is not None
+        assert 'refugi_123' not in updated_list
+        mock_doc_ref.update.assert_called_once()
+    
+    @patch('api.daos.user_dao.UserDAO.get_user_by_uid')
+    def test_remove_refugi_from_list_user_not_found(self, mock_get_user):
+        """Test eliminar refugi quan l'usuari no existeix"""
+        mock_get_user.return_value = None
+        
+        dao = UserDAO()
+        success, updated_list = dao.remove_refugi_from_list('nonexistent_uid', 'refugi_123', 'favourite_refuges')
+        
+        assert success is False
+        assert updated_list is None
+    
+    @patch('api.daos.user_dao.UserDAO.get_user_by_uid')
+    def test_remove_refugi_from_list_not_in_list(self, mock_get_user, sample_user):
+        """Test eliminar refugi que no està a la llista"""
+        sample_user.favourite_refuges = ['refugi_456']
+        mock_get_user.return_value = sample_user
+        
+        dao = UserDAO()
+        success, updated_list = dao.remove_refugi_from_list('test_uid', 'refugi_123', 'favourite_refuges')
+        
+        assert success is True
+        assert 'refugi_123' not in updated_list
+    
+    @patch('api.daos.user_dao.UserDAO.get_user_by_uid')
+    def test_remove_refugi_from_list_exception(self, mock_get_user, sample_user):
+        """Test eliminar refugi amb excepció"""
+        mock_get_user.side_effect = Exception('Database error')
+        
+        dao = UserDAO()
+        success, updated_list = dao.remove_refugi_from_list('test_uid', 'refugi_123', 'favourite_refuges')
+        
+        assert success is False
+        assert updated_list is None
+    
+    @patch('api.daos.user_dao.cache_service')
+    def test_get_refugis_info_from_cache(self, mock_cache):
+        """Test obtenció d'info de refugis des de cache"""
+        cached_data = [{'id': 'refugi_123', 'name': 'Test Refugi'}]
+        mock_cache.get.return_value = cached_data
+        
+        dao = UserDAO()
+        result = dao.get_refugis_info('test_uid', 'favourite_refuges')
+        
+        assert result == cached_data
+    
+    @patch('api.daos.user_dao.UserDAO.get_user_by_uid')
+    @patch('api.daos.user_dao.cache_service')
+    def test_get_refugis_info_user_not_found(self, mock_cache, mock_get_user):
+        """Test obtenció d'info de refugis quan l'usuari no existeix"""
+        mock_cache.get.return_value = None
+        mock_get_user.return_value = None
+        
+        dao = UserDAO()
+        result = dao.get_refugis_info('nonexistent_uid', 'favourite_refuges')
+        
+        assert result == []
+    
+    @patch('api.daos.user_dao.UserDAO.get_user_by_uid')
+    @patch('api.daos.user_dao.cache_service')
+    def test_get_refugis_info_empty_list(self, mock_cache, mock_get_user, sample_user):
+        """Test obtenció d'info de refugis amb llista buida"""
+        mock_cache.get.return_value = None
+        sample_user.favourite_refuges = []
+        mock_get_user.return_value = sample_user
+        
+        dao = UserDAO()
+        result = dao.get_refugis_info('test_uid', 'favourite_refuges')
+        
+        assert result == []
+    
+    @patch('api.daos.user_dao.FirestoreService')
+    @patch('api.daos.user_dao.cache_service')
+    def test_get_refugis_info_with_ids_provided(self, mock_cache, mock_firestore_service):
+        """Test obtenció d'info de refugis amb IDs proporcionats"""
+        mock_cache.get.side_effect = [None, None]  # Cache miss per result i refugi
+        mock_cache.get_timeout.return_value = 300
+        
+        mock_db = MagicMock()
+        mock_firestore_instance = mock_firestore_service.return_value
+        mock_firestore_instance.get_db.return_value = mock_db
+        
+        mock_doc_snapshot = MagicMock()
+        mock_doc_snapshot.exists = True
+        mock_doc_snapshot.to_dict.return_value = {
+            'name': 'Test Refugi',
+            'region': 'Pirineus',
+            'places': 20,
+            'coord': {'lat': 42.0, 'long': 1.0}
+        }
+        
+        mock_doc_ref = MagicMock()
+        mock_doc_ref.get.return_value = mock_doc_snapshot
+        
+        mock_collection = MagicMock()
+        mock_collection.document.return_value = mock_doc_ref
+        mock_db.collection.return_value = mock_collection
+        
+        dao = UserDAO()
+        result = dao.get_refugis_info('test_uid', 'favourite_refuges', ['refugi_123'])
+        
+        assert len(result) == 1
+        assert result[0]['id'] == 'refugi_123'
+    
+    @patch('api.daos.user_dao.UserDAO.get_user_by_uid')
+    @patch('api.daos.user_dao.cache_service')
+    def test_get_refugis_info_exception(self, mock_cache, mock_get_user):
+        """Test obtenció d'info de refugis amb excepció"""
+        mock_cache.get.return_value = None
+        mock_get_user.side_effect = Exception('Database error')
+        
+        dao = UserDAO()
+        result = dao.get_refugis_info('test_uid', 'favourite_refuges')
+        
+        assert result == []
+    
+    @patch('api.daos.user_dao.FirestoreService')
+    @patch('api.daos.user_dao.cache_service')
+    def test_increment_renovated_refuges_success(self, mock_cache, mock_firestore_service):
+        """Test increment comptador exitós"""
+        mock_db = MagicMock()
+        mock_firestore_instance = mock_firestore_service.return_value
+        mock_firestore_instance.get_db.return_value = mock_db
+        
+        mock_doc_snapshot = MagicMock()
+        mock_doc_snapshot.exists = True
+        
+        mock_doc_ref = MagicMock()
+        mock_doc_ref.get.return_value = mock_doc_snapshot
+        
+        mock_collection = MagicMock()
+        mock_collection.document.return_value = mock_doc_ref
+        mock_db.collection.return_value = mock_collection
+        
+        dao = UserDAO()
+        result = dao.increment_renovated_refuges('test_uid')
+        
+        assert result is True
+        mock_doc_ref.update.assert_called_once()
+    
+    @patch('api.daos.user_dao.FirestoreService')
+    @patch('api.daos.user_dao.cache_service')
+    def test_increment_renovated_refuges_user_not_found(self, mock_cache, mock_firestore_service):
+        """Test increment comptador usuari no trobat"""
+        mock_db = MagicMock()
+        mock_firestore_instance = mock_firestore_service.return_value
+        mock_firestore_instance.get_db.return_value = mock_db
+        
+        mock_doc_snapshot = MagicMock()
+        mock_doc_snapshot.exists = False
+        
+        mock_doc_ref = MagicMock()
+        mock_doc_ref.get.return_value = mock_doc_snapshot
+        
+        mock_collection = MagicMock()
+        mock_collection.document.return_value = mock_doc_ref
+        mock_db.collection.return_value = mock_collection
+        
+        dao = UserDAO()
+        result = dao.increment_renovated_refuges('nonexistent_uid')
+        
+        assert result is False
+    
+    @patch('api.daos.user_dao.FirestoreService')
+    @patch('api.daos.user_dao.cache_service')
+    def test_increment_renovated_refuges_exception(self, mock_cache, mock_firestore_service):
+        """Test increment comptador amb excepció"""
+        mock_firestore_instance = mock_firestore_service.return_value
+        mock_firestore_instance.get_db.side_effect = Exception('Database error')
+        
+        dao = UserDAO()
+        result = dao.increment_renovated_refuges('test_uid')
+        
+        assert result is False
+    
+    @patch('api.daos.user_dao.FirestoreService')
+    @patch('api.daos.user_dao.cache_service')
+    def test_decrement_renovated_refuges_success(self, mock_cache, mock_firestore_service):
+        """Test decrement comptador exitós"""
+        mock_db = MagicMock()
+        mock_firestore_instance = mock_firestore_service.return_value
+        mock_firestore_instance.get_db.return_value = mock_db
+        
+        mock_doc_snapshot = MagicMock()
+        mock_doc_snapshot.exists = True
+        
+        mock_doc_ref = MagicMock()
+        mock_doc_ref.get.return_value = mock_doc_snapshot
+        
+        mock_collection = MagicMock()
+        mock_collection.document.return_value = mock_doc_ref
+        mock_db.collection.return_value = mock_collection
+        
+        dao = UserDAO()
+        result = dao.decrement_renovated_refuges('test_uid')
+        
+        assert result is True
+        mock_doc_ref.update.assert_called_once()
+    
+    @patch('api.daos.user_dao.FirestoreService')
+    @patch('api.daos.user_dao.cache_service')
+    def test_decrement_renovated_refuges_user_not_found(self, mock_cache, mock_firestore_service):
+        """Test decrement comptador usuari no trobat"""
+        mock_db = MagicMock()
+        mock_firestore_instance = mock_firestore_service.return_value
+        mock_firestore_instance.get_db.return_value = mock_db
+        
+        mock_doc_snapshot = MagicMock()
+        mock_doc_snapshot.exists = False
+        
+        mock_doc_ref = MagicMock()
+        mock_doc_ref.get.return_value = mock_doc_snapshot
+        
+        mock_collection = MagicMock()
+        mock_collection.document.return_value = mock_doc_ref
+        mock_db.collection.return_value = mock_collection
+        
+        dao = UserDAO()
+        result = dao.decrement_renovated_refuges('nonexistent_uid')
+        
+        assert result is False
+    
+    @patch('api.daos.user_dao.FirestoreService')
+    @patch('api.daos.user_dao.cache_service')
+    def test_decrement_renovated_refuges_exception(self, mock_cache, mock_firestore_service):
+        """Test decrement comptador amb excepció"""
+        mock_firestore_instance = mock_firestore_service.return_value
+        mock_firestore_instance.get_db.side_effect = Exception('Database error')
+        
+        dao = UserDAO()
+        result = dao.decrement_renovated_refuges('test_uid')
+        
+        assert result is False
 
 
 # ==================== TESTS DE CONTROLLERS ====================
@@ -839,6 +1351,466 @@ class TestUserController:
         
         assert success is False
         assert 'no trobat' in error
+    
+    # ===== NOUS TESTS PER COBRIR EXCEPCIONS I CASOS NO COBERTS =====
+    
+    @patch('api.controllers.user_controller.UserDAO')
+    def test_create_user_dao_returns_none(self, mock_dao_class, sample_user_data):
+        """Test quan el DAO retorna None en la creació"""
+        mock_dao = mock_dao_class.return_value
+        mock_dao.get_user_by_uid.return_value = None
+        mock_dao.user_exists_by_email.return_value = False
+        mock_dao.create_user.return_value = None
+        
+        controller = UserController()
+        success, user, error = controller.create_user(sample_user_data, 'test_uid')
+        
+        assert success is False
+        assert user is None
+        assert 'Error creant usuari' in error
+    
+    @patch('api.controllers.user_controller.UserDAO')
+    def test_create_user_exception(self, mock_dao_class, sample_user_data):
+        """Test excepció durant la creació"""
+        mock_dao = mock_dao_class.return_value
+        mock_dao.get_user_by_uid.side_effect = Exception("Database error")
+        
+        controller = UserController()
+        success, user, error = controller.create_user(sample_user_data, 'test_uid')
+        
+        assert success is False
+        assert user is None
+        assert 'Error intern' in error
+    
+    @patch('api.controllers.user_controller.UserDAO')
+    def test_get_user_by_uid_exception(self, mock_dao_class):
+        """Test excepció durant l'obtenció per UID"""
+        mock_dao = mock_dao_class.return_value
+        mock_dao.get_user_by_uid.side_effect = Exception("Connection error")
+        
+        controller = UserController()
+        success, user, error = controller.get_user_by_uid('test_uid')
+        
+        assert success is False
+        assert user is None
+        assert 'Error intern' in error
+    
+    @patch('api.controllers.user_controller.UserDAO')
+    def test_get_user_by_email_success(self, mock_dao_class, sample_user):
+        """Test obtenció d'usuari per email exitosa"""
+        mock_dao = mock_dao_class.return_value
+        mock_dao.get_user_by_email.return_value = sample_user
+        
+        controller = UserController()
+        success, user, error = controller.get_user_by_email('test@example.com')
+        
+        assert success is True
+        assert user is not None
+        assert error is None
+    
+    @patch('api.controllers.user_controller.UserDAO')
+    def test_get_user_by_email_not_found(self, mock_dao_class):
+        """Test obtenció d'usuari per email no trobat"""
+        mock_dao = mock_dao_class.return_value
+        mock_dao.get_user_by_email.return_value = None
+        
+        controller = UserController()
+        success, user, error = controller.get_user_by_email('test@example.com')
+        
+        assert success is False
+        assert user is None
+        assert 'no trobat' in error
+    
+    @patch('api.controllers.user_controller.UserDAO')
+    def test_get_user_by_email_empty_email(self, mock_dao_class):
+        """Test obtenció d'usuari amb email buit"""
+        controller = UserController()
+        success, user, error = controller.get_user_by_email('')
+        
+        assert success is False
+        assert user is None
+        assert 'no proporcionat' in error
+    
+    @patch('api.controllers.user_controller.UserDAO')
+    def test_get_user_by_email_exception(self, mock_dao_class):
+        """Test excepció durant l'obtenció per email"""
+        mock_dao = mock_dao_class.return_value
+        mock_dao.get_user_by_email.side_effect = Exception("Query error")
+        
+        controller = UserController()
+        success, user, error = controller.get_user_by_email('test@example.com')
+        
+        assert success is False
+        assert user is None
+        assert 'Error intern' in error
+    
+    @patch('api.controllers.user_controller.UserDAO')
+    def test_update_user_empty_uid(self, mock_dao_class):
+        """Test actualització amb UID buit"""
+        controller = UserController()
+        success, user, error = controller.update_user('', {'username': 'test'})
+        
+        assert success is False
+        assert user is None
+        assert 'no proporcionat' in error
+    
+    @patch('api.controllers.user_controller.UserDAO')
+    def test_update_user_empty_data(self, mock_dao_class):
+        """Test actualització sense dades"""
+        mock_dao = mock_dao_class.return_value
+        mock_dao.user_exists.return_value = True
+        
+        controller = UserController()
+        success, user, error = controller.update_user('test_uid', {})
+        
+        assert success is False
+        assert user is None
+        assert 'No s\'han proporcionat dades' in error
+    
+    @patch('api.controllers.user_controller.UserDAO')
+    def test_update_user_email_same_user(self, mock_dao_class, sample_user):
+        """Test actualització amb el mateix email de l'usuari"""
+        mock_dao = mock_dao_class.return_value
+        mock_dao.user_exists.return_value = True
+        mock_dao.user_exists_by_email.return_value = True
+        mock_dao.get_user_by_email.return_value = sample_user  # Mateix usuari
+        mock_dao.update_user.return_value = True
+        mock_dao.get_user_by_uid.return_value = sample_user
+        
+        controller = UserController()
+        success, user, error = controller.update_user(sample_user.uid, {'email': sample_user.email})
+        
+        assert success is True
+        assert user is not None
+        assert error is None
+    
+    @patch('api.controllers.user_controller.UserDAO')
+    def test_update_user_dao_returns_false(self, mock_dao_class):
+        """Test quan el DAO retorna False en l'actualització"""
+        mock_dao = mock_dao_class.return_value
+        mock_dao.user_exists.return_value = True
+        mock_dao.update_user.return_value = False
+        
+        controller = UserController()
+        success, user, error = controller.update_user('test_uid', {'username': 'test'})
+        
+        assert success is False
+        assert user is None
+        assert 'Error actualitzant usuari' in error
+    
+    @patch('api.controllers.user_controller.UserDAO')
+    def test_update_user_exception(self, mock_dao_class):
+        """Test excepció durant l'actualització"""
+        mock_dao = mock_dao_class.return_value
+        mock_dao.user_exists.side_effect = Exception("Update error")
+        
+        controller = UserController()
+        success, user, error = controller.update_user('test_uid', {'username': 'test'})
+        
+        assert success is False
+        assert user is None
+        assert 'Error intern' in error
+    
+    @patch('api.controllers.user_controller.UserDAO')
+    def test_delete_user_empty_uid(self, mock_dao_class):
+        """Test eliminació amb UID buit"""
+        controller = UserController()
+        success, error = controller.delete_user('')
+        
+        assert success is False
+        assert 'no proporcionat' in error
+    
+    @patch('api.controllers.user_controller.UserDAO')
+    def test_delete_user_dao_returns_false(self, mock_dao_class):
+        """Test quan el DAO retorna False en l'eliminació"""
+        mock_dao = mock_dao_class.return_value
+        mock_dao.user_exists.return_value = True
+        mock_dao.delete_user.return_value = False
+        
+        controller = UserController()
+        success, error = controller.delete_user('test_uid')
+        
+        assert success is False
+        assert 'Error eliminant usuari' in error
+    
+    @patch('api.controllers.user_controller.UserDAO')
+    def test_delete_user_exception(self, mock_dao_class):
+        """Test excepció durant l'eliminació"""
+        mock_dao = mock_dao_class.return_value
+        mock_dao.user_exists.side_effect = Exception("Delete error")
+        
+        controller = UserController()
+        success, error = controller.delete_user('test_uid')
+        
+        assert success is False
+        assert 'Error intern' in error
+    
+    # Tests per gestió de refugis (preferits/visitats)
+    @patch('api.controllers.user_controller.RefugiLliureDAO')
+    @patch('api.controllers.user_controller.UserDAO')
+    def test_add_refugi_preferit_success(self, mock_user_dao_class, mock_refugi_dao_class):
+        """Test afegir refugi preferit amb èxit"""
+        mock_user_dao = mock_user_dao_class.return_value
+        mock_refugi_dao = mock_refugi_dao_class.return_value
+        
+        mock_user_dao.user_exists.return_value = True
+        mock_refugi_dao.refugi_exists.return_value = True
+        mock_user_dao.add_refugi_to_list.return_value = (True, ['refuge1'])
+        mock_user_dao.get_refugis_info.return_value = [{'id': 'refuge1'}]
+        
+        controller = UserController()
+        success, refugis, error = controller.add_refugi_preferit('test_uid', 'refuge1')
+        
+        assert success is True
+        assert refugis is not None
+        assert error is None
+    
+    @patch('api.controllers.user_controller.UserDAO')
+    def test_add_refugi_preferit_empty_uid(self, mock_user_dao_class):
+        """Test afegir refugi preferit amb UID buit"""
+        controller = UserController()
+        success, refugis, error = controller.add_refugi_preferit('', 'refuge1')
+        
+        assert success is False
+        assert refugis is None
+        assert 'no proporcionat' in error
+    
+    @patch('api.controllers.user_controller.UserDAO')
+    def test_add_refugi_preferit_empty_refuge_id(self, mock_user_dao_class):
+        """Test afegir refugi preferit amb refuge_id buit"""
+        controller = UserController()
+        success, refugis, error = controller.add_refugi_preferit('test_uid', '')
+        
+        assert success is False
+        assert refugis is None
+        assert 'refugi no proporcionat' in error
+    
+    @patch('api.controllers.user_controller.UserDAO')
+    def test_add_refugi_preferit_user_not_found(self, mock_user_dao_class):
+        """Test afegir refugi preferit amb usuari no existent"""
+        mock_user_dao = mock_user_dao_class.return_value
+        mock_user_dao.user_exists.return_value = False
+        
+        controller = UserController()
+        success, refugis, error = controller.add_refugi_preferit('test_uid', 'refuge1')
+        
+        assert success is False
+        assert refugis is None
+        assert 'no trobat' in error
+    
+    @patch('api.controllers.user_controller.RefugiLliureDAO')
+    @patch('api.controllers.user_controller.UserDAO')
+    def test_add_refugi_preferit_refuge_not_found(self, mock_user_dao_class, mock_refugi_dao_class):
+        """Test afegir refugi preferit amb refugi no existent"""
+        mock_user_dao = mock_user_dao_class.return_value
+        mock_refugi_dao = mock_refugi_dao_class.return_value
+        
+        mock_user_dao.user_exists.return_value = True
+        mock_refugi_dao.refugi_exists.return_value = False
+        
+        controller = UserController()
+        success, refugis, error = controller.add_refugi_preferit('test_uid', 'refuge1')
+        
+        assert success is False
+        assert refugis is None
+        assert 'Refugi' in error
+        assert 'no trobat' in error
+    
+    @patch('api.controllers.user_controller.RefugiLliureDAO')
+    @patch('api.controllers.user_controller.UserDAO')
+    def test_add_refugi_preferit_dao_returns_false(self, mock_user_dao_class, mock_refugi_dao_class):
+        """Test afegir refugi preferit quan DAO retorna False"""
+        mock_user_dao = mock_user_dao_class.return_value
+        mock_refugi_dao = mock_refugi_dao_class.return_value
+        
+        mock_user_dao.user_exists.return_value = True
+        mock_refugi_dao.refugi_exists.return_value = True
+        mock_user_dao.add_refugi_to_list.return_value = (False, [])
+        
+        controller = UserController()
+        success, refugis, error = controller.add_refugi_preferit('test_uid', 'refuge1')
+        
+        assert success is False
+        assert refugis is None
+        assert 'Error afegint refugi' in error
+    
+    @patch('api.controllers.user_controller.RefugiLliureDAO')
+    @patch('api.controllers.user_controller.UserDAO')
+    def test_add_refugi_preferit_exception(self, mock_user_dao_class, mock_refugi_dao_class):
+        """Test excepció durant l'afegició de refugi preferit"""
+        mock_user_dao = mock_user_dao_class.return_value
+        mock_user_dao.user_exists.side_effect = Exception("Add error")
+        
+        controller = UserController()
+        success, refugis, error = controller.add_refugi_preferit('test_uid', 'refuge1')
+        
+        assert success is False
+        assert refugis is None
+        assert 'Error intern' in error
+    
+    @patch('api.controllers.user_controller.RefugiLliureDAO')
+    @patch('api.controllers.user_controller.UserDAO')
+    def test_remove_refugi_preferit_success(self, mock_user_dao_class, mock_refugi_dao_class):
+        """Test eliminar refugi preferit amb èxit"""
+        mock_user_dao = mock_user_dao_class.return_value
+        mock_refugi_dao = mock_refugi_dao_class.return_value
+        
+        mock_user_dao.user_exists.return_value = True
+        mock_refugi_dao.refugi_exists.return_value = True
+        mock_user_dao.remove_refugi_from_list.return_value = (True, [])
+        mock_user_dao.get_refugis_info.return_value = []
+        
+        controller = UserController()
+        success, refugis, error = controller.remove_refugi_preferit('test_uid', 'refuge1')
+        
+        assert success is True
+        assert refugis is not None
+        assert error is None
+    
+    @patch('api.controllers.user_controller.RefugiLliureDAO')
+    @patch('api.controllers.user_controller.UserDAO')
+    def test_add_refugi_visitat_success(self, mock_user_dao_class, mock_refugi_dao_class):
+        """Test afegir refugi visitat amb èxit (actualitza visitants)"""
+        mock_user_dao = mock_user_dao_class.return_value
+        mock_refugi_dao = mock_refugi_dao_class.return_value
+        
+        mock_user_dao.user_exists.return_value = True
+        mock_refugi_dao.refugi_exists.return_value = True
+        mock_user_dao.add_refugi_to_list.return_value = (True, ['refuge1'])
+        mock_user_dao.get_refugis_info.return_value = [{'id': 'refuge1'}]
+        mock_refugi_dao.add_visitor_to_refugi.return_value = True
+        
+        controller = UserController()
+        success, refugis, error = controller.add_refugi_visitat('test_uid', 'refuge1')
+        
+        assert success is True
+        assert refugis is not None
+        assert error is None
+        mock_refugi_dao.add_visitor_to_refugi.assert_called_once()
+    
+    @patch('api.controllers.user_controller.RefugiLliureDAO')
+    @patch('api.controllers.user_controller.UserDAO')
+    def test_add_refugi_visitat_visitor_update_fails(self, mock_user_dao_class, mock_refugi_dao_class):
+        """Test afegir refugi visitat quan falla l'actualització de visitants"""
+        mock_user_dao = mock_user_dao_class.return_value
+        mock_refugi_dao = mock_refugi_dao_class.return_value
+        
+        mock_user_dao.user_exists.return_value = True
+        mock_refugi_dao.refugi_exists.return_value = True
+        mock_user_dao.add_refugi_to_list.return_value = (True, ['refuge1'])
+        mock_user_dao.get_refugis_info.return_value = [{'id': 'refuge1'}]
+        mock_refugi_dao.add_visitor_to_refugi.return_value = False  # Falla
+        
+        controller = UserController()
+        success, refugis, error = controller.add_refugi_visitat('test_uid', 'refuge1')
+        
+        # Encara retorna success perquè és un warning, no un error
+        assert success is True
+        assert refugis is not None
+    
+    @patch('api.controllers.user_controller.RefugiLliureDAO')
+    @patch('api.controllers.user_controller.UserDAO')
+    def test_remove_refugi_visitat_success(self, mock_user_dao_class, mock_refugi_dao_class):
+        """Test eliminar refugi visitat amb èxit"""
+        mock_user_dao = mock_user_dao_class.return_value
+        mock_refugi_dao = mock_refugi_dao_class.return_value
+        
+        mock_user_dao.user_exists.return_value = True
+        mock_refugi_dao.refugi_exists.return_value = True
+        mock_user_dao.remove_refugi_from_list.return_value = (True, [])
+        mock_user_dao.get_refugis_info.return_value = []
+        mock_refugi_dao.remove_visitor_from_refugi.return_value = True
+        
+        controller = UserController()
+        success, refugis, error = controller.remove_refugi_visitat('test_uid', 'refuge1')
+        
+        assert success is True
+        assert refugis is not None
+        assert error is None
+        mock_refugi_dao.remove_visitor_from_refugi.assert_called_once()
+    
+    @patch('api.controllers.user_controller.RefugiLliureDAO')
+    @patch('api.controllers.user_controller.UserDAO')
+    def test_remove_refugi_visitat_visitor_update_fails(self, mock_user_dao_class, mock_refugi_dao_class):
+        """Test eliminar refugi visitat quan falla l'eliminació de visitants"""
+        mock_user_dao = mock_user_dao_class.return_value
+        mock_refugi_dao = mock_refugi_dao_class.return_value
+        
+        mock_user_dao.user_exists.return_value = True
+        mock_refugi_dao.refugi_exists.return_value = True
+        mock_user_dao.remove_refugi_from_list.return_value = (True, [])
+        mock_user_dao.get_refugis_info.return_value = []
+        mock_refugi_dao.remove_visitor_from_refugi.return_value = False
+        
+        controller = UserController()
+        success, refugis, error = controller.remove_refugi_visitat('test_uid', 'refuge1')
+        
+        assert success is True
+        assert refugis is not None
+    
+    @patch('api.controllers.user_controller.UserDAO')
+    def test_get_refugis_preferits_info_success(self, mock_user_dao_class):
+        """Test obtenció d'informació de refugis preferits"""
+        mock_user_dao = mock_user_dao_class.return_value
+        mock_user_dao.user_exists.return_value = True
+        mock_user_dao.get_refugis_info.return_value = [{'id': 'refuge1'}]
+        
+        controller = UserController()
+        success, refugis, error = controller.get_refugis_preferits_info('test_uid')
+        
+        assert success is True
+        assert refugis is not None
+        assert error is None
+    
+    @patch('api.controllers.user_controller.UserDAO')
+    def test_get_refugis_preferits_info_empty_uid(self, mock_user_dao_class):
+        """Test obtenció de refugis preferits amb UID buit"""
+        controller = UserController()
+        success, refugis, error = controller.get_refugis_preferits_info('')
+        
+        assert success is False
+        assert refugis is None
+        assert 'no proporcionat' in error
+    
+    @patch('api.controllers.user_controller.UserDAO')
+    def test_get_refugis_preferits_info_user_not_found(self, mock_user_dao_class):
+        """Test obtenció de refugis preferits amb usuari no existent"""
+        mock_user_dao = mock_user_dao_class.return_value
+        mock_user_dao.user_exists.return_value = False
+        
+        controller = UserController()
+        success, refugis, error = controller.get_refugis_preferits_info('test_uid')
+        
+        assert success is False
+        assert refugis is None
+        assert 'no trobat' in error
+    
+    @patch('api.controllers.user_controller.UserDAO')
+    def test_get_refugis_preferits_info_exception(self, mock_user_dao_class):
+        """Test excepció durant l'obtenció de refugis preferits"""
+        mock_user_dao = mock_user_dao_class.return_value
+        mock_user_dao.user_exists.side_effect = Exception("Query error")
+        
+        controller = UserController()
+        success, refugis, error = controller.get_refugis_preferits_info('test_uid')
+        
+        assert success is False
+        assert refugis is None
+        assert 'Error intern' in error
+    
+    @patch('api.controllers.user_controller.UserDAO')
+    def test_get_refugis_visitats_info_success(self, mock_user_dao_class):
+        """Test obtenció d'informació de refugis visitats"""
+        mock_user_dao = mock_user_dao_class.return_value
+        mock_user_dao.user_exists.return_value = True
+        mock_user_dao.get_refugis_info.return_value = [{'id': 'refuge1'}]
+        
+        controller = UserController()
+        success, refugis, error = controller.get_refugis_visitats_info('test_uid')
+        
+        assert success is True
+        assert refugis is not None
+        assert error is None
 
 
 # ==================== TESTS DE VIEWS ====================

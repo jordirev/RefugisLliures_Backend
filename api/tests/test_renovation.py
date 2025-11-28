@@ -802,6 +802,362 @@ class TestRenovationDAO:
         result = dao.remove_participant('test_id', 'nonexistent_participant')
         
         assert result is False
+    
+    # ===== NOUS TESTS PER COBRIR EXCEPCIONS I CASOS NO COBERTS DEL DAO =====
+    
+    @patch('api.daos.renovation_dao.FirestoreService')
+    @patch('api.daos.renovation_dao.cache_service')
+    def test_create_renovation_exception(self, mock_cache, mock_firestore_service, sample_renovation_data):
+        """Test excepció durant la creació de renovation"""
+        mock_firestore_instance = mock_firestore_service.return_value
+        mock_firestore_instance.get_db.side_effect = Exception("Firestore connection error")
+        
+        dao = RenovationDAO()
+        renovation_data = sample_renovation_data.copy()
+        renovation_data.pop('id')
+        
+        result = dao.create_renovation(renovation_data)
+        
+        assert result is None
+    
+    @patch('api.daos.renovation_dao.FirestoreService')
+    @patch('api.daos.renovation_dao.cache_service')
+    def test_get_renovation_by_id_exception(self, mock_cache, mock_firestore_service):
+        """Test excepció durant l'obtenció per ID"""
+        mock_cache.get.return_value = None
+        mock_cache.generate_key.return_value = 'test_cache_key'
+        
+        mock_firestore_instance = mock_firestore_service.return_value
+        mock_firestore_instance.get_db.side_effect = Exception("Database error")
+        
+        dao = RenovationDAO()
+        result = dao.get_renovation_by_id('test_id')
+        
+        assert result is None
+    
+    @patch('api.daos.renovation_dao.FirestoreService')
+    @patch('api.daos.renovation_dao.cache_service')
+    @patch('api.daos.renovation_dao.get_madrid_today')
+    def test_get_all_renovations_from_cache(self, mock_get_today, mock_cache, mock_firestore_service, sample_renovation_data):
+        """Test obtenció de renovations des de cache"""
+        mock_today = date.today()
+        mock_get_today.return_value = mock_today
+        mock_cache.get.return_value = [sample_renovation_data]
+        mock_cache.generate_key.return_value = 'test_cache_key'
+        
+        dao = RenovationDAO()
+        result = dao.get_all_renovations()
+        
+        assert isinstance(result, list)
+        assert len(result) == 1
+        # No hauria de cridar Firestore
+        mock_firestore_service.return_value.get_db.assert_not_called()
+    
+    @patch('api.daos.renovation_dao.FirestoreService')
+    @patch('api.daos.renovation_dao.cache_service')
+    @patch('api.daos.renovation_dao.get_madrid_today')
+    def test_get_all_renovations_exception(self, mock_get_today, mock_cache, mock_firestore_service):
+        """Test excepció durant l'obtenció de totes les renovations"""
+        mock_today = date.today()
+        mock_get_today.return_value = mock_today
+        mock_cache.get.return_value = None
+        mock_cache.generate_key.return_value = 'test_cache_key'
+        
+        mock_firestore_instance = mock_firestore_service.return_value
+        mock_firestore_instance.get_db.side_effect = Exception("Query error")
+        
+        dao = RenovationDAO()
+        result = dao.get_all_renovations()
+        
+        assert result == []
+    
+    @patch('api.daos.renovation_dao.FirestoreService')
+    @patch('api.daos.renovation_dao.cache_service')
+    def test_update_renovation_exception(self, mock_cache, mock_firestore_service):
+        """Test excepció durant l'actualització"""
+        mock_firestore_instance = mock_firestore_service.return_value
+        mock_firestore_instance.get_db.side_effect = Exception("Update error")
+        
+        dao = RenovationDAO()
+        result = dao.update_renovation('test_id', {'description': 'Updated'})
+        
+        assert result is False
+    
+    @patch('api.daos.renovation_dao.FirestoreService')
+    @patch('api.daos.renovation_dao.cache_service')
+    def test_delete_renovation_not_found(self, mock_cache, mock_firestore_service):
+        """Test eliminació de renovation no existent"""
+        mock_db = MagicMock()
+        mock_firestore_instance = mock_firestore_service.return_value
+        mock_firestore_instance.get_db.return_value = mock_db
+        
+        mock_doc = MagicMock()
+        mock_doc.exists = False
+        
+        mock_doc_ref = MagicMock()
+        mock_doc_ref.get.return_value = mock_doc
+        
+        mock_collection = MagicMock()
+        mock_collection.document.return_value = mock_doc_ref
+        mock_db.collection.return_value = mock_collection
+        
+        dao = RenovationDAO()
+        result = dao.delete_renovation('nonexistent_id')
+        
+        assert result is False
+    
+    @patch('api.daos.renovation_dao.FirestoreService')
+    @patch('api.daos.renovation_dao.cache_service')
+    def test_delete_renovation_exception(self, mock_cache, mock_firestore_service):
+        """Test excepció durant l'eliminació"""
+        mock_firestore_instance = mock_firestore_service.return_value
+        mock_firestore_instance.get_db.side_effect = Exception("Delete error")
+        
+        dao = RenovationDAO()
+        result = dao.delete_renovation('test_id')
+        
+        assert result is False
+    
+    @patch('api.daos.renovation_dao.FirestoreService')
+    @patch('api.daos.renovation_dao.cache_service')
+    def test_get_renovations_by_refuge_all(self, mock_cache, mock_firestore_service, sample_renovation_data):
+        """Test obtenció de totes les renovations d'un refugi"""
+        mock_cache.get.return_value = None
+        mock_cache.generate_key.return_value = 'test_cache_key'
+        mock_cache.get_timeout.return_value = 300
+        
+        mock_db = MagicMock()
+        mock_firestore_instance = mock_firestore_service.return_value
+        mock_firestore_instance.get_db.return_value = mock_db
+        
+        mock_doc = MagicMock()
+        mock_doc.id = sample_renovation_data['id']
+        mock_doc.to_dict.return_value = sample_renovation_data
+        
+        mock_query = MagicMock()
+        mock_query.stream.return_value = [mock_doc]
+        
+        mock_collection = MagicMock()
+        mock_collection.where.return_value = mock_query
+        mock_db.collection.return_value = mock_collection
+        
+        dao = RenovationDAO()
+        result = dao.get_renovations_by_refuge('test_refuge_id', active_only=False)
+        
+        assert isinstance(result, list)
+        assert len(result) == 1
+        assert result[0].refuge_id == sample_renovation_data['refuge_id']
+    
+    @patch('api.daos.renovation_dao.FirestoreService')
+    @patch('api.daos.renovation_dao.cache_service')
+    @patch('api.daos.renovation_dao.get_madrid_today')
+    def test_get_renovations_by_refuge_active_only(self, mock_get_today, mock_cache, mock_firestore_service, sample_renovation_data):
+        """Test obtenció només de renovations actives d'un refugi"""
+        mock_today = date.today()
+        mock_get_today.return_value = mock_today
+        mock_cache.get.return_value = None
+        mock_cache.generate_key.return_value = 'test_cache_key'
+        mock_cache.get_timeout.return_value = 300
+        
+        mock_db = MagicMock()
+        mock_firestore_instance = mock_firestore_service.return_value
+        mock_firestore_instance.get_db.return_value = mock_db
+        
+        mock_doc = MagicMock()
+        mock_doc.id = sample_renovation_data['id']
+        mock_doc.to_dict.return_value = sample_renovation_data
+        
+        mock_query = MagicMock()
+        mock_query.stream.return_value = [mock_doc]
+        
+        mock_collection = MagicMock()
+        mock_collection.where.return_value.where.return_value.order_by.return_value = mock_query
+        mock_db.collection.return_value = mock_collection
+        
+        dao = RenovationDAO()
+        result = dao.get_renovations_by_refuge('test_refuge_id', active_only=True)
+        
+        assert isinstance(result, list)
+        assert len(result) == 1
+    
+    @patch('api.daos.renovation_dao.FirestoreService')
+    @patch('api.daos.renovation_dao.cache_service')
+    def test_get_renovations_by_refuge_from_cache(self, mock_cache, mock_firestore_service, sample_renovation_data):
+        """Test obtenció de renovations per refugi des de cache"""
+        mock_cache.get.return_value = [sample_renovation_data]
+        mock_cache.generate_key.return_value = 'test_cache_key'
+        
+        dao = RenovationDAO()
+        result = dao.get_renovations_by_refuge('test_refuge_id')
+        
+        assert isinstance(result, list)
+        assert len(result) == 1
+        # No hauria de cridar Firestore
+        mock_firestore_service.return_value.get_db.assert_not_called()
+    
+    @patch('api.daos.renovation_dao.FirestoreService')
+    @patch('api.daos.renovation_dao.cache_service')
+    def test_get_renovations_by_refuge_empty(self, mock_cache, mock_firestore_service):
+        """Test obtenció de renovations per refugi sense resultats"""
+        mock_cache.get.return_value = None
+        mock_cache.generate_key.return_value = 'test_cache_key'
+        mock_cache.get_timeout.return_value = 300
+        
+        mock_db = MagicMock()
+        mock_firestore_instance = mock_firestore_service.return_value
+        mock_firestore_instance.get_db.return_value = mock_db
+        
+        mock_query = MagicMock()
+        mock_query.stream.return_value = []
+        
+        mock_collection = MagicMock()
+        mock_collection.where.return_value = mock_query
+        mock_db.collection.return_value = mock_collection
+        
+        dao = RenovationDAO()
+        result = dao.get_renovations_by_refuge('test_refuge_id')
+        
+        assert isinstance(result, list)
+        assert len(result) == 0
+    
+    @patch('api.daos.renovation_dao.FirestoreService')
+    @patch('api.daos.renovation_dao.cache_service')
+    def test_get_renovations_by_refuge_exception(self, mock_cache, mock_firestore_service):
+        """Test excepció durant l'obtenció de renovations per refugi"""
+        mock_cache.get.return_value = None
+        mock_cache.generate_key.return_value = 'test_cache_key'
+        
+        mock_firestore_instance = mock_firestore_service.return_value
+        mock_firestore_instance.get_db.side_effect = Exception("Query error")
+        
+        dao = RenovationDAO()
+        result = dao.get_renovations_by_refuge('test_refuge_id')
+        
+        assert result == []
+    
+    @patch('api.daos.renovation_dao.FirestoreService')
+    @patch('api.daos.renovation_dao.cache_service')
+    @patch('api.daos.renovation_dao.get_madrid_today')
+    def test_check_overlapping_renovations_with_exclude(self, mock_get_today, mock_cache, mock_firestore_service, sample_renovation_data):
+        """Test detecció de solapament excloent una renovation"""
+        mock_today = date.today()
+        mock_get_today.return_value = mock_today
+        
+        mock_db = MagicMock()
+        mock_firestore_instance = mock_firestore_service.return_value
+        mock_firestore_instance.get_db.return_value = mock_db
+        
+        mock_doc = MagicMock()
+        mock_doc.id = sample_renovation_data['id']
+        mock_doc.to_dict.return_value = sample_renovation_data
+        
+        mock_query = MagicMock()
+        mock_query.stream.return_value = [mock_doc]
+        
+        mock_collection = MagicMock()
+        mock_collection.where.return_value.where.return_value.order_by.return_value = mock_query
+        mock_db.collection.return_value = mock_collection
+        
+        dao = RenovationDAO()
+        # Excloure la renovation que coincideix
+        result = dao.check_overlapping_renovations(
+            sample_renovation_data['refuge_id'],
+            sample_renovation_data['ini_date'],
+            sample_renovation_data['fin_date'],
+            exclude_id=sample_renovation_data['id']
+        )
+        
+        assert result is None
+    
+    @patch('api.daos.renovation_dao.FirestoreService')
+    @patch('api.daos.renovation_dao.cache_service')
+    @patch('api.daos.renovation_dao.get_madrid_today')
+    def test_check_overlapping_renovations_exception(self, mock_get_today, mock_cache, mock_firestore_service):
+        """Test excepció durant la comprovació de solapaments"""
+        mock_today = date.today()
+        mock_get_today.return_value = mock_today
+        
+        mock_firestore_instance = mock_firestore_service.return_value
+        mock_firestore_instance.get_db.side_effect = Exception("Query error")
+        
+        dao = RenovationDAO()
+        result = dao.check_overlapping_renovations(
+            'test_refuge',
+            (date.today() + timedelta(days=1)).isoformat(),
+            (date.today() + timedelta(days=5)).isoformat()
+        )
+        
+        assert result is None
+    
+    @patch('api.daos.renovation_dao.FirestoreService')
+    @patch('api.daos.renovation_dao.cache_service')
+    def test_add_participant_renovation_not_found(self, mock_cache, mock_firestore_service):
+        """Test afegir participant a renovation no existent"""
+        mock_db = MagicMock()
+        mock_firestore_instance = mock_firestore_service.return_value
+        mock_firestore_instance.get_db.return_value = mock_db
+        
+        mock_doc = MagicMock()
+        mock_doc.exists = False
+        
+        mock_doc_ref = MagicMock()
+        mock_doc_ref.get.return_value = mock_doc
+        
+        mock_collection = MagicMock()
+        mock_collection.document.return_value = mock_doc_ref
+        mock_db.collection.return_value = mock_collection
+        
+        dao = RenovationDAO()
+        result = dao.add_participant('nonexistent_id', 'participant_uid')
+        
+        assert result is False
+    
+    @patch('api.daos.renovation_dao.FirestoreService')
+    @patch('api.daos.renovation_dao.cache_service')
+    def test_add_participant_exception(self, mock_cache, mock_firestore_service):
+        """Test excepció durant l'afegició de participant"""
+        mock_firestore_instance = mock_firestore_service.return_value
+        mock_firestore_instance.get_db.side_effect = Exception("Add error")
+        
+        dao = RenovationDAO()
+        result = dao.add_participant('test_id', 'participant_uid')
+        
+        assert result is False
+    
+    @patch('api.daos.renovation_dao.FirestoreService')
+    @patch('api.daos.renovation_dao.cache_service')
+    def test_remove_participant_renovation_not_found(self, mock_cache, mock_firestore_service):
+        """Test eliminar participant de renovation no existent"""
+        mock_db = MagicMock()
+        mock_firestore_instance = mock_firestore_service.return_value
+        mock_firestore_instance.get_db.return_value = mock_db
+        
+        mock_doc = MagicMock()
+        mock_doc.exists = False
+        
+        mock_doc_ref = MagicMock()
+        mock_doc_ref.get.return_value = mock_doc
+        
+        mock_collection = MagicMock()
+        mock_collection.document.return_value = mock_doc_ref
+        mock_db.collection.return_value = mock_collection
+        
+        dao = RenovationDAO()
+        result = dao.remove_participant('nonexistent_id', 'participant_uid')
+        
+        assert result is False
+    
+    @patch('api.daos.renovation_dao.FirestoreService')
+    @patch('api.daos.renovation_dao.cache_service')
+    def test_remove_participant_exception(self, mock_cache, mock_firestore_service):
+        """Test excepció durant l'eliminació de participant"""
+        mock_firestore_instance = mock_firestore_service.return_value
+        mock_firestore_instance.get_db.side_effect = Exception("Remove error")
+        
+        dao = RenovationDAO()
+        result = dao.remove_participant('test_id', 'participant_uid')
+        
+        assert result is False
 
 
 # ===== TEST CONTROLLER =====
@@ -1017,6 +1373,321 @@ class TestRenovationController:
         
         assert success is False
         assert 'permís' in error.lower()
+    
+    # ===== NOUS TESTS PER COBRIR EXCEPCIONS I CASOS NO COBERTS =====
+    
+    @patch('api.controllers.renovation_controller.RenovationDAO')
+    def test_create_renovation_dao_returns_none(self, mock_dao_class, sample_renovation_data):
+        """Test quan el DAO retorna None en la creació"""
+        mock_dao = mock_dao_class.return_value
+        mock_dao.check_overlapping_renovations.return_value = None
+        mock_dao.create_renovation.return_value = None  # DAO retorna None
+        
+        controller = RenovationController()
+        renovation_data = sample_renovation_data.copy()
+        renovation_data.pop('id')
+        renovation_data.pop('creator_uid')
+        renovation_data.pop('participants_uids')
+        
+        success, renovation, error = controller.create_renovation(renovation_data, 'test_creator')
+        
+        assert success is False
+        assert renovation is None
+        assert 'Error creant renovation a la base de dades' in error
+    
+    @patch('api.controllers.renovation_controller.RenovationDAO')
+    def test_create_renovation_exception(self, mock_dao_class, sample_renovation_data):
+        """Test excepció durant la creació"""
+        mock_dao = mock_dao_class.return_value
+        mock_dao.check_overlapping_renovations.side_effect = Exception("Database error")
+        
+        controller = RenovationController()
+        renovation_data = sample_renovation_data.copy()
+        renovation_data.pop('id')
+        renovation_data.pop('creator_uid')
+        renovation_data.pop('participants_uids')
+        
+        success, renovation, error = controller.create_renovation(renovation_data, 'test_creator')
+        
+        assert success is False
+        assert renovation is None
+        assert 'Error intern' in error
+        assert 'Database error' in error
+    
+    @patch('api.controllers.renovation_controller.RenovationDAO')
+    def test_get_renovation_by_id_exception(self, mock_dao_class):
+        """Test excepció durant l'obtenció per ID"""
+        mock_dao = mock_dao_class.return_value
+        mock_dao.get_renovation_by_id.side_effect = Exception("Connection error")
+        
+        controller = RenovationController()
+        success, renovation, error = controller.get_renovation_by_id('test_id')
+        
+        assert success is False
+        assert renovation is None
+        assert 'Error intern' in error
+        assert 'Connection error' in error
+    
+    @patch('api.controllers.renovation_controller.RenovationDAO')
+    def test_get_all_renovations_exception(self, mock_dao_class):
+        """Test excepció durant l'obtenció de totes les renovations"""
+        mock_dao = mock_dao_class.return_value
+        mock_dao.get_all_renovations.side_effect = Exception("Firestore error")
+        
+        controller = RenovationController()
+        success, renovations, error = controller.get_all_renovations()
+        
+        assert success is False
+        assert renovations == []
+        assert 'Error intern' in error
+        assert 'Firestore error' in error
+    
+    @patch('api.controllers.renovation_controller.RenovationDAO')
+    def test_update_renovation_not_found(self, mock_dao_class):
+        """Test actualització de renovation no existent"""
+        mock_dao = mock_dao_class.return_value
+        mock_dao.get_renovation_by_id.return_value = None
+        
+        controller = RenovationController()
+        success, renovation, error = controller.update_renovation(
+            'nonexistent_id',
+            {'description': 'Updated'},
+            'test_user'
+        )
+        
+        assert success is False
+        assert renovation is None
+        assert 'no trobada' in error.lower()
+    
+    @patch('api.controllers.renovation_controller.RenovationDAO')
+    def test_update_renovation_with_dates_overlap(self, mock_dao_class, sample_renovation):
+        """Test actualització amb dates que es solapen amb altra renovation"""
+        mock_dao = mock_dao_class.return_value
+        mock_dao.get_renovation_by_id.return_value = sample_renovation
+        
+        # Crear una altra renovation que es solapa
+        overlapping_renovation = Renovation(
+            id='other_renovation_id',
+            creator_uid='other_user',
+            refuge_id=sample_renovation.refuge_id,
+            ini_date=sample_renovation.ini_date,
+            fin_date=sample_renovation.fin_date,
+            description='Overlapping renovation',
+            group_link='https://t.me/other'
+        )
+        mock_dao.check_overlapping_renovations.return_value = overlapping_renovation
+        
+        controller = RenovationController()
+        today = date.today()
+        success, renovation, error = controller.update_renovation(
+            'test_id',
+            {
+                'ini_date': (today + timedelta(days=2)).isoformat(),
+                'fin_date': (today + timedelta(days=6)).isoformat()
+            },
+            sample_renovation.creator_uid
+        )
+        
+        assert success is False
+        assert renovation == overlapping_renovation
+        assert 'solapa' in error.lower()
+    
+    @patch('api.controllers.renovation_controller.RenovationDAO')
+    def test_update_renovation_dao_returns_false(self, mock_dao_class, sample_renovation):
+        """Test quan el DAO retorna False en l'actualització"""
+        mock_dao = mock_dao_class.return_value
+        mock_dao.get_renovation_by_id.return_value = sample_renovation
+        mock_dao.update_renovation.return_value = False  # DAO retorna False
+        
+        controller = RenovationController()
+        success, renovation, error = controller.update_renovation(
+            'test_id',
+            {'description': 'Updated'},
+            sample_renovation.creator_uid
+        )
+        
+        assert success is False
+        assert renovation is None
+        assert 'Error actualitzant renovation a la base de dades' in error
+    
+    @patch('api.controllers.renovation_controller.RenovationDAO')
+    def test_update_renovation_exception(self, mock_dao_class, sample_renovation):
+        """Test excepció durant l'actualització"""
+        mock_dao = mock_dao_class.return_value
+        mock_dao.get_renovation_by_id.side_effect = Exception("Update error")
+        
+        controller = RenovationController()
+        success, renovation, error = controller.update_renovation(
+            'test_id',
+            {'description': 'Updated'},
+            'test_user'
+        )
+        
+        assert success is False
+        assert renovation is None
+        assert 'Error intern' in error
+        assert 'Update error' in error
+    
+    @patch('api.controllers.renovation_controller.RenovationDAO')
+    def test_delete_renovation_not_found(self, mock_dao_class):
+        """Test eliminació de renovation no existent"""
+        mock_dao = mock_dao_class.return_value
+        mock_dao.get_renovation_by_id.return_value = None
+        
+        controller = RenovationController()
+        success, error = controller.delete_renovation('nonexistent_id', 'test_user')
+        
+        assert success is False
+        assert 'no trobada' in error.lower()
+    
+    @patch('api.controllers.renovation_controller.RenovationDAO')
+    def test_delete_renovation_dao_returns_false(self, mock_dao_class, sample_renovation):
+        """Test quan el DAO retorna False en l'eliminació"""
+        mock_dao = mock_dao_class.return_value
+        mock_dao.get_renovation_by_id.return_value = sample_renovation
+        mock_dao.delete_renovation.return_value = False  # DAO retorna False
+        
+        controller = RenovationController()
+        success, error = controller.delete_renovation('test_id', sample_renovation.creator_uid)
+        
+        assert success is False
+        assert 'Error eliminant renovation de la base de dades' in error
+    
+    @patch('api.controllers.renovation_controller.RenovationDAO')
+    def test_delete_renovation_exception(self, mock_dao_class, sample_renovation):
+        """Test excepció durant l'eliminació"""
+        mock_dao = mock_dao_class.return_value
+        mock_dao.get_renovation_by_id.side_effect = Exception("Delete error")
+        
+        controller = RenovationController()
+        success, error = controller.delete_renovation('test_id', 'test_user')
+        
+        assert success is False
+        assert 'Error intern' in error
+        assert 'Delete error' in error
+    
+    @patch('api.controllers.renovation_controller.RenovationDAO')
+    def test_add_participant_renovation_not_found(self, mock_dao_class):
+        """Test afegir participant a renovation no existent"""
+        mock_dao = mock_dao_class.return_value
+        mock_dao.get_renovation_by_id.return_value = None
+        
+        controller = RenovationController()
+        success, renovation, error = controller.add_participant('nonexistent_id', 'participant_uid')
+        
+        assert success is False
+        assert renovation is None
+        assert 'no trobada' in error.lower()
+    
+    @patch('api.controllers.renovation_controller.RenovationDAO')
+    def test_add_participant_dao_returns_false(self, mock_dao_class, sample_renovation):
+        """Test quan el DAO retorna False (participant ja existeix o error)"""
+        mock_dao = mock_dao_class.return_value
+        mock_dao.get_renovation_by_id.return_value = sample_renovation
+        mock_dao.add_participant.return_value = False  # DAO retorna False
+        
+        controller = RenovationController()
+        success, renovation, error = controller.add_participant('test_id', 'new_participant')
+        
+        assert success is False
+        assert renovation is None
+        assert 'Error afegint participant o ja és participant' in error
+    
+    @patch('api.controllers.renovation_controller.RenovationDAO')
+    def test_add_participant_exception(self, mock_dao_class, sample_renovation):
+        """Test excepció durant l'afegició de participant"""
+        mock_dao = mock_dao_class.return_value
+        mock_dao.get_renovation_by_id.side_effect = Exception("Add participant error")
+        
+        controller = RenovationController()
+        success, renovation, error = controller.add_participant('test_id', 'participant_uid')
+        
+        assert success is False
+        assert renovation is None
+        assert 'Error intern' in error
+        assert 'Add participant error' in error
+    
+    @patch('api.controllers.renovation_controller.RenovationDAO')
+    def test_remove_participant_renovation_not_found(self, mock_dao_class):
+        """Test eliminar participant de renovation no existent"""
+        mock_dao = mock_dao_class.return_value
+        mock_dao.get_renovation_by_id.return_value = None
+        
+        controller = RenovationController()
+        success, renovation, error = controller.remove_participant('nonexistent_id', 'participant_uid', 'requester_uid')
+        
+        assert success is False
+        assert renovation is None
+        assert 'no trobada' in error.lower()
+    
+    @patch('api.controllers.renovation_controller.RenovationDAO')
+    def test_remove_participant_dao_returns_false(self, mock_dao_class, sample_renovation):
+        """Test quan el DAO retorna False (participant no existeix o error)"""
+        mock_dao = mock_dao_class.return_value
+        mock_dao.get_renovation_by_id.return_value = sample_renovation
+        mock_dao.remove_participant.return_value = False  # DAO retorna False
+        
+        controller = RenovationController()
+        success, renovation, error = controller.remove_participant('test_id', 'participant1', 'participant1')
+        
+        assert success is False
+        assert renovation is None
+        assert 'Error eliminant participant o no és participant' in error
+    
+    @patch('api.controllers.renovation_controller.RenovationDAO')
+    def test_remove_participant_exception(self, mock_dao_class, sample_renovation):
+        """Test excepció durant l'eliminació de participant"""
+        mock_dao = mock_dao_class.return_value
+        mock_dao.get_renovation_by_id.side_effect = Exception("Remove participant error")
+        
+        controller = RenovationController()
+        success, renovation, error = controller.remove_participant('test_id', 'participant1', 'participant1')
+        
+        assert success is False
+        assert renovation is None
+        assert 'Error intern' in error
+        assert 'Remove participant error' in error
+    
+    @patch('api.controllers.renovation_controller.RenovationDAO')
+    def test_get_renovations_by_refuge_success(self, mock_dao_class, sample_renovation):
+        """Test obtenció de renovations per refugi amb èxit"""
+        mock_dao = mock_dao_class.return_value
+        mock_dao.get_renovations_by_refuge.return_value = [sample_renovation]
+        
+        controller = RenovationController()
+        success, renovations, error = controller.get_renovations_by_refuge('test_refuge_id')
+        
+        assert success is True
+        assert len(renovations) == 1
+        assert renovations[0] == sample_renovation
+        assert error is None
+    
+    @patch('api.controllers.renovation_controller.RenovationDAO')
+    def test_get_renovations_by_refuge_empty(self, mock_dao_class):
+        """Test obtenció de renovations per refugi sense resultats"""
+        mock_dao = mock_dao_class.return_value
+        mock_dao.get_renovations_by_refuge.return_value = []
+        
+        controller = RenovationController()
+        success, renovations, error = controller.get_renovations_by_refuge('test_refuge_id')
+        
+        assert success is True
+        assert len(renovations) == 0
+        assert error is None
+    
+    @patch('api.controllers.renovation_controller.RenovationDAO')
+    def test_get_renovations_by_refuge_exception(self, mock_dao_class):
+        """Test excepció durant l'obtenció de renovations per refugi"""
+        mock_dao = mock_dao_class.return_value
+        mock_dao.get_renovations_by_refuge.side_effect = Exception("Query error")
+        
+        controller = RenovationController()
+        success, renovations, error = controller.get_renovations_by_refuge('test_refuge_id')
+        
+        assert success is False
+        assert renovations == []
+        assert 'Error intern' in error
+        assert 'Query error' in error
 
 
 # ===== TEST VIEWS =====
@@ -1094,6 +1765,18 @@ class TestRenovationViews:
         response = view(request)
         
         assert response.status_code == http_status.HTTP_400_BAD_REQUEST
+    
+    @patch('api.views.renovation_views.RenovationController')
+    def test_create_renovation_no_user_uid(self, mock_controller_class, minimal_renovation_data):
+        """Test POST /renovations/ sense user_uid"""
+        request = self._get_authenticated_request('POST', '/api/renovations/', minimal_renovation_data, user_uid=None)
+        
+        view = RenovationListAPIView.as_view()
+        view.cls.authentication_classes = []
+        view.cls.permission_classes = []
+        response = view(request)
+        
+        assert response.status_code == http_status.HTTP_401_UNAUTHORIZED
     
     @patch('api.views.renovation_views.RenovationController')
     def test_create_renovation_overlap(self, mock_controller_class, sample_renovation, minimal_renovation_data):
@@ -1193,6 +1876,44 @@ class TestRenovationViews:
         assert response.status_code == http_status.HTTP_403_FORBIDDEN
     
     @patch('api.views.renovation_views.RenovationController')
+    def test_update_renovation_no_user_uid(self, mock_controller_class):
+        """Test PATCH /renovations/ sense user_uid"""
+        request = self._get_authenticated_request(
+            'PATCH',
+            '/api/renovations/',
+            {'description': 'Updated'},
+            query_params={'id': 'test_id'},
+            user_uid=None
+        )
+        
+        view = RenovationAPIView.as_view()
+        view.cls.authentication_classes = []
+        view.cls.get_permissions = lambda self: []
+        response = view(request)
+        
+        assert response.status_code == http_status.HTTP_401_UNAUTHORIZED
+    
+    @patch('api.views.renovation_views.RenovationController')
+    def test_update_renovation_controller_error(self, mock_controller_class):
+        """Test PATCH amb error del controller"""
+        mock_controller = mock_controller_class.return_value
+        mock_controller.update_renovation.return_value = (False, None, 'Controller error')
+        
+        request = self._get_authenticated_request(
+            'PATCH',
+            '/api/renovations/',
+            {'description': 'Updated'},
+            query_params={'id': 'test_id'}
+        )
+        
+        view = RenovationAPIView.as_view()
+        view.cls.authentication_classes = []
+        view.cls.get_permissions = lambda self: []
+        response = view(request)
+        
+        assert response.status_code == http_status.HTTP_500_INTERNAL_SERVER_ERROR
+    
+    @patch('api.views.renovation_views.RenovationController')
     def test_delete_renovation_success(self, mock_controller_class, sample_renovation):
         """Test DELETE /renovations/?id=xxx"""
         mock_controller = mock_controller_class.return_value
@@ -1234,6 +1955,433 @@ class TestRenovationViews:
         response = view(request)
         
         assert response.status_code == http_status.HTTP_403_FORBIDDEN
+    
+    @patch('api.views.renovation_views.RenovationController')
+    def test_delete_renovation_no_user_uid(self, mock_controller_class):
+        """Test DELETE /renovations/ sense user_uid"""
+        request = self._get_authenticated_request(
+            'DELETE',
+            '/api/renovations/',
+            query_params={'id': 'test_id'},
+            user_uid=None
+        )
+        
+        view = RenovationAPIView.as_view()
+        view.cls.authentication_classes = []
+        view.cls.get_permissions = lambda self: []
+        response = view(request)
+        
+        assert response.status_code == http_status.HTTP_401_UNAUTHORIZED
+    
+    @patch('api.views.renovation_views.RenovationController')
+    def test_delete_renovation_controller_error(self, mock_controller_class):
+        """Test DELETE amb error del controller"""
+        mock_controller = mock_controller_class.return_value
+        mock_controller.delete_renovation.return_value = (False, 'Controller error')
+        
+        request = self._get_authenticated_request(
+            'DELETE',
+            '/api/renovations/',
+            query_params={'id': 'test_id'}
+        )
+        
+        view = RenovationAPIView.as_view()
+        view.cls.authentication_classes = []
+        view.cls.get_permissions = lambda self: []
+        response = view(request)
+        
+        assert response.status_code == http_status.HTTP_500_INTERNAL_SERVER_ERROR
+    
+    # ===== NOUS TESTS PER COBRIR EXCEPCIONS I CASOS NO COBERTS =====
+    
+    @patch('api.views.renovation_views.RenovationController')
+    @patch('api.permissions.IsCreator.has_permission')
+    def test_get_renovation_real_permissions(self, mock_has_perm, mock_controller_class, sample_renovation):
+        """Test GET /renovations/ amb permisos reals per cobrir get_permissions"""
+        mock_has_perm.return_value = True
+        mock_controller = mock_controller_class.return_value
+        mock_controller.get_renovation_by_id.return_value = (True, sample_renovation, None)
+        
+        request = self._get_authenticated_request('GET', '/api/renovations/', query_params={'id': 'test_id'})
+        
+        view = RenovationAPIView.as_view()
+        view.cls.authentication_classes = []
+        # No forcem get_permissions, deixem que s'executi
+        response = view(request)
+        
+        assert response.status_code == http_status.HTTP_200_OK
+    
+    @patch('api.views.renovation_views.RenovationController')
+    def test_get_all_renovations_controller_error(self, mock_controller_class):
+        """Test GET /renovations/ amb error del controller"""
+        mock_controller = mock_controller_class.return_value
+        mock_controller.get_all_renovations.return_value = (False, [], 'Database error')
+        
+        request = self._get_authenticated_request('GET', '/api/renovations/')
+        
+        view = RenovationListAPIView.as_view()
+        view.cls.authentication_classes = []
+        view.cls.permission_classes = []
+        response = view(request)
+        
+        assert response.status_code == http_status.HTTP_500_INTERNAL_SERVER_ERROR
+    
+    @patch('api.views.renovation_views.RenovationController')
+    def test_get_all_renovations_exception(self, mock_controller_class):
+        """Test GET /renovations/ amb excepció"""
+        mock_controller = mock_controller_class.return_value
+        mock_controller.get_all_renovations.side_effect = Exception('Unexpected error')
+        
+        request = self._get_authenticated_request('GET', '/api/renovations/')
+        
+        view = RenovationListAPIView.as_view()
+        view.cls.authentication_classes = []
+        view.cls.permission_classes = []
+        response = view(request)
+        
+        assert response.status_code == http_status.HTTP_500_INTERNAL_SERVER_ERROR
+    
+    @patch('api.views.renovation_views.RenovationController')
+    def test_create_renovation_controller_error(self, mock_controller_class, minimal_renovation_data):
+        """Test POST /renovations/ amb error del controller"""
+        mock_controller = mock_controller_class.return_value
+        mock_controller.create_renovation.return_value = (False, None, 'Error creating renovation')
+        
+        request = self._get_authenticated_request('POST', '/api/renovations/', minimal_renovation_data)
+        
+        view = RenovationListAPIView.as_view()
+        view.cls.authentication_classes = []
+        view.cls.permission_classes = []
+        response = view(request)
+        
+        assert response.status_code == http_status.HTTP_500_INTERNAL_SERVER_ERROR
+    
+    @patch('api.views.renovation_views.RenovationController')
+    def test_create_renovation_exception(self, mock_controller_class, minimal_renovation_data):
+        """Test POST /renovations/ amb excepció"""
+        mock_controller = mock_controller_class.return_value
+        mock_controller.create_renovation.side_effect = Exception('Unexpected error')
+        
+        request = self._get_authenticated_request('POST', '/api/renovations/', minimal_renovation_data)
+        
+        view = RenovationListAPIView.as_view()
+        view.cls.authentication_classes = []
+        view.cls.permission_classes = []
+        response = view(request)
+        
+        assert response.status_code == http_status.HTTP_500_INTERNAL_SERVER_ERROR
+    
+    @patch('api.views.renovation_views.RenovationController')
+    def test_get_renovation_missing_id(self, mock_controller_class):
+        """Test GET /renovations/ sense ID"""
+        request = self._get_authenticated_request('GET', '/api/renovations/', query_params={})
+        
+        view = RenovationAPIView.as_view()
+        view.cls.authentication_classes = []
+        view.cls.get_permissions = lambda self: []
+        response = view(request)
+        
+        assert response.status_code == http_status.HTTP_400_BAD_REQUEST
+    
+    @patch('api.views.renovation_views.RenovationController')
+    def test_get_renovation_exception(self, mock_controller_class):
+        """Test GET /renovations/ amb excepció"""
+        mock_controller = mock_controller_class.return_value
+        mock_controller.get_renovation_by_id.side_effect = Exception('Unexpected error')
+        
+        request = self._get_authenticated_request('GET', '/api/renovations/', query_params={'id': 'test_id'})
+        
+        view = RenovationAPIView.as_view()
+        view.cls.authentication_classes = []
+        view.cls.get_permissions = lambda self: []
+        response = view(request)
+        
+        assert response.status_code == http_status.HTTP_500_INTERNAL_SERVER_ERROR
+    
+    @patch('api.views.renovation_views.RenovationController')
+    def test_update_renovation_missing_id(self, mock_controller_class):
+        """Test PATCH /renovations/ sense ID"""
+        request = self._get_authenticated_request('PATCH', '/api/renovations/', {'description': 'Updated'}, query_params={})
+        
+        view = RenovationAPIView.as_view()
+        view.cls.authentication_classes = []
+        view.cls.get_permissions = lambda self: []
+        response = view(request)
+        
+        assert response.status_code == http_status.HTTP_400_BAD_REQUEST
+    
+    @patch('api.views.renovation_views.RenovationController')
+    def test_update_renovation_invalid_data(self, mock_controller_class):
+        """Test PATCH /renovations/ amb dades invàlides"""
+        request = self._get_authenticated_request('PATCH', '/api/renovations/', {'ini_date': 'invalid'}, query_params={'id': 'test_id'})
+        
+        view = RenovationAPIView.as_view()
+        view.cls.authentication_classes = []
+        view.cls.get_permissions = lambda self: []
+        response = view(request)
+        
+        assert response.status_code == http_status.HTTP_400_BAD_REQUEST
+    
+    @patch('api.views.renovation_views.RenovationController')
+    def test_update_renovation_not_found(self, mock_controller_class):
+        """Test PATCH /renovations/ no trobada"""
+        mock_controller = mock_controller_class.return_value
+        mock_controller.update_renovation.return_value = (False, None, 'Renovation no trobada')
+        
+        request = self._get_authenticated_request('PATCH', '/api/renovations/', {'description': 'Updated'}, query_params={'id': 'test_id'})
+        
+        view = RenovationAPIView.as_view()
+        view.cls.authentication_classes = []
+        view.cls.get_permissions = lambda self: []
+        response = view(request)
+        
+        assert response.status_code == http_status.HTTP_404_NOT_FOUND
+    
+    @patch('api.views.renovation_views.RenovationController')
+    def test_update_renovation_overlap(self, mock_controller_class, sample_renovation):
+        """Test PATCH /renovations/ amb solapament"""
+        mock_controller = mock_controller_class.return_value
+        mock_controller.update_renovation.return_value = (False, sample_renovation, 'Solapament temporal')
+        
+        request = self._get_authenticated_request('PATCH', '/api/renovations/', {'description': 'Updated'}, query_params={'id': 'test_id'})
+        
+        view = RenovationAPIView.as_view()
+        view.cls.authentication_classes = []
+        view.cls.get_permissions = lambda self: []
+        response = view(request)
+        
+        assert response.status_code == http_status.HTTP_409_CONFLICT
+    
+    @patch('api.views.renovation_views.RenovationController')
+    def test_update_renovation_exception(self, mock_controller_class):
+        """Test PATCH /renovations/ amb excepció"""
+        mock_controller = mock_controller_class.return_value
+        mock_controller.update_renovation.side_effect = Exception('Unexpected error')
+        
+        request = self._get_authenticated_request('PATCH', '/api/renovations/', {'description': 'Updated'}, query_params={'id': 'test_id'})
+        
+        view = RenovationAPIView.as_view()
+        view.cls.authentication_classes = []
+        view.cls.get_permissions = lambda self: []
+        response = view(request)
+        
+        assert response.status_code == http_status.HTTP_500_INTERNAL_SERVER_ERROR
+    
+    @patch('api.views.renovation_views.RenovationController')
+    def test_delete_renovation_missing_id(self, mock_controller_class):
+        """Test DELETE /renovations/ sense ID"""
+        request = self._get_authenticated_request('DELETE', '/api/renovations/', query_params={})
+        
+        view = RenovationAPIView.as_view()
+        view.cls.authentication_classes = []
+        view.cls.get_permissions = lambda self: []
+        response = view(request)
+        
+        assert response.status_code == http_status.HTTP_400_BAD_REQUEST
+    
+    @patch('api.views.renovation_views.RenovationController')
+    def test_delete_renovation_not_found(self, mock_controller_class):
+        """Test DELETE /renovations/ no trobada"""
+        mock_controller = mock_controller_class.return_value
+        mock_controller.delete_renovation.return_value = (False, 'Renovation no trobada')
+        
+        request = self._get_authenticated_request('DELETE', '/api/renovations/', query_params={'id': 'test_id'})
+        
+        view = RenovationAPIView.as_view()
+        view.cls.authentication_classes = []
+        view.cls.get_permissions = lambda self: []
+        response = view(request)
+        
+        assert response.status_code == http_status.HTTP_404_NOT_FOUND
+    
+    @patch('api.views.renovation_views.RenovationController')
+    def test_delete_renovation_exception(self, mock_controller_class):
+        """Test DELETE /renovations/ amb excepció"""
+        mock_controller = mock_controller_class.return_value
+        mock_controller.delete_renovation.side_effect = Exception('Unexpected error')
+        
+        request = self._get_authenticated_request('DELETE', '/api/renovations/', query_params={'id': 'test_id'})
+        
+        view = RenovationAPIView.as_view()
+        view.cls.authentication_classes = []
+        view.cls.get_permissions = lambda self: []
+        response = view(request)
+        
+        assert response.status_code == http_status.HTTP_500_INTERNAL_SERVER_ERROR
+    
+    @patch('api.views.renovation_views.RenovationController')
+    def test_add_participant_success(self, mock_controller_class, sample_renovation):
+        """Test POST /renovations/{id}/participants/"""
+        mock_controller = mock_controller_class.return_value
+        mock_controller.add_participant.return_value = (True, sample_renovation, None)
+        
+        request = self._get_authenticated_request('POST', '/api/renovations/test_id/participants/')
+        
+        view = RenovationParticipantsAPIView.as_view()
+        view.cls.authentication_classes = []
+        view.cls.permission_classes = []
+        response = view(request, id='test_id')
+        
+        assert response.status_code == http_status.HTTP_200_OK
+    
+    @patch('api.views.renovation_views.RenovationController')
+    def test_add_participant_not_found(self, mock_controller_class):
+        """Test POST /renovations/{id}/participants/ no trobada"""
+        mock_controller = mock_controller_class.return_value
+        mock_controller.add_participant.return_value = (False, None, 'Renovation no trobada')
+        
+        request = self._get_authenticated_request('POST', '/api/renovations/test_id/participants/')
+        
+        view = RenovationParticipantsAPIView.as_view()
+        view.cls.authentication_classes = []
+        view.cls.permission_classes = []
+        response = view(request, id='test_id')
+        
+        assert response.status_code == http_status.HTTP_404_NOT_FOUND
+    
+    @patch('api.views.renovation_views.RenovationController')
+    def test_add_participant_is_creator(self, mock_controller_class):
+        """Test POST /renovations/{id}/participants/ quan l'usuari és el creador"""
+        mock_controller = mock_controller_class.return_value
+        mock_controller.add_participant.return_value = (False, None, 'El creador no pot unir-se')
+        
+        request = self._get_authenticated_request('POST', '/api/renovations/test_id/participants/')
+        
+        view = RenovationParticipantsAPIView.as_view()
+        view.cls.authentication_classes = []
+        view.cls.permission_classes = []
+        response = view(request, id='test_id')
+        
+        assert response.status_code == http_status.HTTP_400_BAD_REQUEST
+    
+    @patch('api.views.renovation_views.RenovationController')
+    def test_add_participant_no_user_uid(self, mock_controller_class):
+        """Test POST /renovations/{id}/participants/ sense user_uid"""
+        request = self._get_authenticated_request('POST', '/api/renovations/test_id/participants/', user_uid=None)
+        
+        view = RenovationParticipantsAPIView.as_view()
+        view.cls.authentication_classes = []
+        view.cls.permission_classes = []
+        response = view(request, id='test_id')
+        
+        assert response.status_code == http_status.HTTP_401_UNAUTHORIZED
+    
+    @patch('api.views.renovation_views.RenovationController')
+    def test_add_participant_controller_error(self, mock_controller_class):
+        """Test POST /renovations/{id}/participants/ amb error del controller"""
+        mock_controller = mock_controller_class.return_value
+        mock_controller.add_participant.return_value = (False, None, 'Controller error')
+        
+        request = self._get_authenticated_request('POST', '/api/renovations/test_id/participants/')
+        
+        view = RenovationParticipantsAPIView.as_view()
+        view.cls.authentication_classes = []
+        view.cls.permission_classes = []
+        response = view(request, id='test_id')
+        
+        assert response.status_code == http_status.HTTP_500_INTERNAL_SERVER_ERROR
+    
+    @patch('api.views.renovation_views.RenovationController')
+    def test_add_participant_exception(self, mock_controller_class):
+        """Test POST /renovations/{id}/participants/ amb excepció"""
+        mock_controller = mock_controller_class.return_value
+        mock_controller.add_participant.side_effect = Exception('Unexpected error')
+        
+        request = self._get_authenticated_request('POST', '/api/renovations/test_id/participants/')
+        
+        view = RenovationParticipantsAPIView.as_view()
+        view.cls.authentication_classes = []
+        view.cls.permission_classes = []
+        response = view(request, id='test_id')
+        
+        assert response.status_code == http_status.HTTP_500_INTERNAL_SERVER_ERROR
+    
+    @patch('api.views.renovation_views.RenovationController')
+    def test_remove_participant_success(self, mock_controller_class, sample_renovation):
+        """Test DELETE /renovations/{id}/participants/{uid}/"""
+        mock_controller = mock_controller_class.return_value
+        mock_controller.remove_participant.return_value = (True, sample_renovation, None)
+        
+        request = self._get_authenticated_request('DELETE', '/api/renovations/test_id/participants/participant1/')
+        
+        view = RenovationParticipantDetailAPIView.as_view()
+        view.cls.authentication_classes = []
+        view.cls.permission_classes = []
+        response = view(request, id='test_id', uid='participant1')
+        
+        assert response.status_code == http_status.HTTP_200_OK
+    
+    @patch('api.views.renovation_views.RenovationController')
+    def test_remove_participant_not_found(self, mock_controller_class):
+        """Test DELETE /renovations/{id}/participants/{uid}/ no trobada"""
+        mock_controller = mock_controller_class.return_value
+        mock_controller.remove_participant.return_value = (False, None, 'Renovation no trobada')
+        
+        request = self._get_authenticated_request('DELETE', '/api/renovations/test_id/participants/participant1/')
+        
+        view = RenovationParticipantDetailAPIView.as_view()
+        view.cls.authentication_classes = []
+        view.cls.permission_classes = []
+        response = view(request, id='test_id', uid='participant1')
+        
+        assert response.status_code == http_status.HTTP_404_NOT_FOUND
+    
+    @patch('api.views.renovation_views.RenovationController')
+    def test_remove_participant_forbidden(self, mock_controller_class):
+        """Test DELETE /renovations/{id}/participants/{uid}/ sense permís"""
+        mock_controller = mock_controller_class.return_value
+        mock_controller.remove_participant.return_value = (False, None, 'No tens permís')
+        
+        request = self._get_authenticated_request('DELETE', '/api/renovations/test_id/participants/participant1/')
+        
+        view = RenovationParticipantDetailAPIView.as_view()
+        view.cls.authentication_classes = []
+        view.cls.permission_classes = []
+        response = view(request, id='test_id', uid='participant1')
+        
+        assert response.status_code == http_status.HTTP_403_FORBIDDEN
+    
+    @patch('api.views.renovation_views.RenovationController')
+    def test_remove_participant_no_user_uid(self, mock_controller_class):
+        """Test DELETE /renovations/{id}/participants/{uid}/ sense user_uid"""
+        request = self._get_authenticated_request('DELETE', '/api/renovations/test_id/participants/participant1/', user_uid=None)
+        
+        view = RenovationParticipantDetailAPIView.as_view()
+        view.cls.authentication_classes = []
+        view.cls.permission_classes = []
+        response = view(request, id='test_id', uid='participant1')
+        
+        assert response.status_code == http_status.HTTP_401_UNAUTHORIZED
+    
+    @patch('api.views.renovation_views.RenovationController')
+    def test_remove_participant_controller_error(self, mock_controller_class):
+        """Test DELETE /renovations/{id}/participants/{uid}/ amb error del controller"""
+        mock_controller = mock_controller_class.return_value
+        mock_controller.remove_participant.return_value = (False, None, 'Controller error')
+        
+        request = self._get_authenticated_request('DELETE', '/api/renovations/test_id/participants/participant1/')
+        
+        view = RenovationParticipantDetailAPIView.as_view()
+        view.cls.authentication_classes = []
+        view.cls.permission_classes = []
+        response = view(request, id='test_id', uid='participant1')
+        
+        assert response.status_code == http_status.HTTP_500_INTERNAL_SERVER_ERROR
+    
+    @patch('api.views.renovation_views.RenovationController')
+    def test_remove_participant_exception(self, mock_controller_class):
+        """Test DELETE /renovations/{id}/participants/{uid}/ amb excepció"""
+        mock_controller = mock_controller_class.return_value
+        mock_controller.remove_participant.side_effect = Exception('Unexpected error')
+        
+        request = self._get_authenticated_request('DELETE', '/api/renovations/test_id/participants/participant1/')
+        
+        view = RenovationParticipantDetailAPIView.as_view()
+        view.cls.authentication_classes = []
+        view.cls.permission_classes = []
+        response = view(request, id='test_id', uid='participant1')
+        
+        assert response.status_code == http_status.HTTP_500_INTERNAL_SERVER_ERROR
 
 
 # ===== TEST INTEGRACIÓ =====

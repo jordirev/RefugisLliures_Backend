@@ -7,6 +7,7 @@ from unittest.mock import Mock, MagicMock, patch, call
 from datetime import datetime
 from zoneinfo import ZoneInfo
 from rest_framework import status
+from rest_framework import status as http_status
 from rest_framework.test import APIRequestFactory
 from api.models.refugi_lliure import (
     Refugi, 
@@ -28,15 +29,35 @@ from api.daos.refugi_lliure_dao import RefugiLliureDAO
 from api.mappers.refugi_lliure_mapper import RefugiLliureMapper
 from api.views.refugi_lliure_views import (
     RefugiLliureDetailAPIView,
-    RefugiLliureCollectionAPIView
+    RefugiLliureCollectionAPIView,
+    RefugeRenovationsAPIView
 )
 from api.views.health_check_views import HealthCheckAPIView
+from api.models.renovation import Renovation
+from datetime import date, timedelta
 import math
 
 
 def floats_are_close(a, b):
     """Comprova si dos floats són gairebé iguals"""
     return math.isclose(a, b, rel_tol=1e-9)
+
+
+@pytest.fixture
+def sample_renovation():
+    """Fixture per crear una renovation de mostra"""
+    today = date.today()
+    return Renovation(
+        id='test_renovation',
+        creator_uid='test_user',
+        refuge_id='refugi_001',
+        ini_date=datetime(today.year, today.month, today.day, tzinfo=ZoneInfo('UTC')),
+        fin_date=datetime(today.year, today.month, today.day, tzinfo=ZoneInfo('UTC')) + timedelta(days=14),
+        description='Test renovation',
+        materials_needed='Test materials',
+        group_link='https://test.com',
+        participants_uids=[]
+    )
 
 
 # ==================== TESTS DE MODELS ====================
@@ -847,6 +868,34 @@ class TestRefugiController:
         assert result is not None
         assert error is not None
         assert result['status'] == 'unhealthy'
+    
+    # ===== NOUS TESTS PER COBRIR EXCEPCIONS =====
+    
+    @patch('api.controllers.refugi_lliure_controller.RefugiLliureDAO')
+    def test_get_refugi_by_id_exception(self, mock_dao_class):
+        """Test excepció durant l'obtenció de refugi"""
+        mock_dao = mock_dao_class.return_value
+        mock_dao.get_by_id.side_effect = Exception('Database error')
+        
+        controller = RefugiLliureController()
+        refugi, error = controller.get_refugi_by_id('refugi_001')
+        
+        assert refugi is None
+        assert error is not None
+        assert 'Internal server error' in error
+    
+    @patch('api.controllers.refugi_lliure_controller.RefugiLliureDAO')
+    def test_search_refugis_exception(self, mock_dao_class):
+        """Test excepció durant la cerca de refugis"""
+        mock_dao = mock_dao_class.return_value
+        mock_dao.search_refugis.side_effect = Exception('Search error')
+        
+        controller = RefugiLliureController()
+        result, error = controller.search_refugis({})
+        
+        assert result is None
+        assert error is not None
+        assert 'Internal server error' in error
 
 
 # ==================== TESTS DE VIEWS ====================
@@ -1075,7 +1124,123 @@ class TestRefugiViews:
         view = RefugiLliureCollectionAPIView.as_view()
         response = view(request)
         
-        assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
+        assert response.status_code == http_status.HTTP_500_INTERNAL_SERVER_ERROR
+        assert 'error' in response.data
+    
+    @patch('api.views.refugi_lliure_views.RefugiLliureController')
+    def test_get_refugis_collection_exception(self, mock_controller_class):
+        """Test cerca amb excepció"""
+        mock_controller = mock_controller_class.return_value
+        mock_controller.search_refugis.side_effect = Exception('Unexpected error')
+        
+        factory = APIRequestFactory()
+        request = factory.get('/refuges/')
+        
+        view = RefugiLliureCollectionAPIView.as_view()
+        response = view(request)
+        
+        assert response.status_code == http_status.HTTP_500_INTERNAL_SERVER_ERROR
+        assert 'error' in response.data
+    
+    @patch('api.views.refugi_lliure_views.RefugiLliureController')
+    def test_get_refugis_collection_invalid_serializer(self, mock_controller_class):
+        """Test cerca amb resposta que no es pot serialitzar"""
+        mock_controller = mock_controller_class.return_value
+        # Retornem un dict sense alguns camps obligatoris
+        mock_controller.search_refugis.return_value = (
+            {'invalid': 'data'},
+            None
+        )
+        
+        factory = APIRequestFactory()
+        request = factory.get('/refuges/')
+        
+        view = RefugiLliureCollectionAPIView.as_view()
+        response = view(request)
+        
+        assert response.status_code == http_status.HTTP_200_OK
+        # Ha de retornar les dades sense validar
+        assert 'invalid' in response.data
+    
+    @patch('api.views.refugi_lliure_views.RefugiLliureController')
+    def test_get_refugi_detail_controller_error(self, mock_controller_class):
+        """Test obtenció de refugi amb error del controller (no 'not found')"""
+        mock_controller = mock_controller_class.return_value
+        mock_controller.get_refugi_by_id.return_value = (None, 'Database error')
+        
+        factory = APIRequestFactory()
+        request = factory.get('/refuges/refugi_001/')
+        
+        view = RefugiLliureDetailAPIView.as_view()
+        response = view(request, refuge_id='refugi_001')
+        
+        assert response.status_code == http_status.HTTP_500_INTERNAL_SERVER_ERROR
+        assert 'error' in response.data
+    
+    @patch('api.views.refugi_lliure_views.RefugiLliureController')
+    def test_get_refugi_detail_exception(self, mock_controller_class):
+        """Test obtenció de refugi amb excepció"""
+        mock_controller = mock_controller_class.return_value
+        mock_controller.get_refugi_by_id.side_effect = Exception('Unexpected error')
+        
+        factory = APIRequestFactory()
+        request = factory.get('/refuges/refugi_001/')
+        
+        view = RefugiLliureDetailAPIView.as_view()
+        response = view(request, refuge_id='refugi_001')
+        
+        assert response.status_code == http_status.HTTP_500_INTERNAL_SERVER_ERROR
+        assert 'error' in response.data
+    
+    @patch('api.views.refugi_lliure_views.RenovationController')
+    def test_get_refuge_renovations_success(self, mock_controller_class, sample_renovation):
+        """Test obtenció de renovations d'un refugi exitosa"""
+        mock_controller = mock_controller_class.return_value
+        mock_controller.get_renovations_by_refuge.return_value = (True, [sample_renovation], None)
+        
+        factory = APIRequestFactory()
+        request = factory.get('/refuges/refugi_001/renovations/')
+        
+        view = RefugeRenovationsAPIView.as_view()
+        view.cls.authentication_classes = []
+        view.cls.permission_classes = []
+        response = view(request, refuge_id='refugi_001')
+        
+        assert response.status_code == http_status.HTTP_200_OK
+        assert isinstance(response.data, list)
+    
+    @patch('api.views.refugi_lliure_views.RenovationController')
+    def test_get_refuge_renovations_error(self, mock_controller_class):
+        """Test obtenció de renovations amb error"""
+        mock_controller = mock_controller_class.return_value
+        mock_controller.get_renovations_by_refuge.return_value = (False, [], 'Database error')
+        
+        factory = APIRequestFactory()
+        request = factory.get('/refuges/refugi_001/renovations/')
+        
+        view = RefugeRenovationsAPIView.as_view()
+        view.cls.authentication_classes = []
+        view.cls.permission_classes = []
+        response = view(request, refuge_id='refugi_001')
+        
+        assert response.status_code == http_status.HTTP_500_INTERNAL_SERVER_ERROR
+        assert 'error' in response.data
+    
+    @patch('api.views.refugi_lliure_views.RenovationController')
+    def test_get_refuge_renovations_exception(self, mock_controller_class):
+        """Test obtenció de renovations amb excepció"""
+        mock_controller = mock_controller_class.return_value
+        mock_controller.get_renovations_by_refuge.side_effect = Exception('Unexpected error')
+        
+        factory = APIRequestFactory()
+        request = factory.get('/refuges/refugi_001/renovations/')
+        
+        view = RefugeRenovationsAPIView.as_view()
+        view.cls.authentication_classes = []
+        view.cls.permission_classes = []
+        response = view(request, refuge_id='refugi_001')
+        
+        assert response.status_code == http_status.HTTP_500_INTERNAL_SERVER_ERROR
         assert 'error' in response.data
 
 

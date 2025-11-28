@@ -265,35 +265,6 @@ class RenovationDAO:
             logger.error(f"Error obtenint renovations per refugi {refuge_id}: {str(e)}")
             return []
     
-    def get_renovations_by_ids(self, renovation_ids: List[str]) -> List[Renovation]:
-        """
-        Obté múltiples renovations per IDs
-        
-        Args:
-            renovation_ids: Llista d'IDs de renovations
-            
-        Returns:
-            List d'instàncies del model Renovation
-        """
-        if not renovation_ids:
-            return []
-        
-        try:
-            renovations = []
-            
-            # Obtenir cada renovation individualment
-            for renovation_id in renovation_ids:
-                renovation = self.get_renovation_by_id(renovation_id)
-                if renovation:
-                    renovations.append(renovation)
-            
-            logger.log(23, f"Trobades {len(renovations)} renovations de {len(renovation_ids)} sol·licitades")
-            return renovations
-            
-        except Exception as e:
-            logger.error(f"Error obtenint renovations per IDs: {str(e)}")
-            return []
-    
     def check_overlapping_renovations(self, refuge_id: str, ini_date: str, fin_date: str, exclude_id: Optional[str] = None) -> Optional[Renovation]:
         """
         Comprova si hi ha renovations actives que es solapen temporalment per un refugi
