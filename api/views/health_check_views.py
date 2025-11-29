@@ -14,10 +14,9 @@ from ..utils.swagger_examples import (
     EXAMPLE_HEALTH_CHECK_RESPONSE,
     EXAMPLE_HEALTH_CHECK_UNHEALTHY,
 )
-
-
-# Definim constants d'errors
-ERROR_503_SERVICE_UNAVAILABLE = 'Servei no disponible'
+from ..utils.swagger_error_responses import (
+    ERROR_503_SERVICE_UNAVAILABLE,
+)
 
 
 # Configurar logging
@@ -47,13 +46,7 @@ class HealthCheckAPIView(APIView):
                     'application/json': EXAMPLE_HEALTH_CHECK_RESPONSE
                 }
             ),
-            503: openapi.Response(
-                description=ERROR_503_SERVICE_UNAVAILABLE,
-                schema=HealthCheckResponseSerializer,
-                examples={
-                    'application/json': EXAMPLE_HEALTH_CHECK_UNHEALTHY
-                }
-            )
+            503: ERROR_503_SERVICE_UNAVAILABLE
         }
     )
     def get(self, request):

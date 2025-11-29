@@ -85,6 +85,6 @@ class FirebaseAuthenticationMiddleware(MiddlewareMixin):
     def _unauthorized_response(self, message):
         """Retorna una resposta 401 Unauthorized"""
         return JsonResponse({
-            'error': 'No autoritzat',
+            'error': 'No autenticat',
             'message': message
         }, status=status.HTTP_401_UNAUTHORIZED)

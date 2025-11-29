@@ -14,6 +14,11 @@ from ..utils.swagger_examples import (
     EXAMPLE_CACHE_CLEAR_RESPONSE,
     EXAMPLE_CACHE_INVALIDATE_RESPONSE,
 )
+from ..utils.swagger_error_responses import (
+    ERROR_401_UNAUTHORIZED,
+    ERROR_403_FORBIDDEN,
+    ERROR_500_INTERNAL_ERROR,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -39,8 +44,8 @@ logger = logging.getLogger(__name__)
                 'application/json': EXAMPLE_CACHE_STATS
             }
         ),
-        401: 'No autoritzat',
-        403: 'Permís denegat - només administradors'
+        401: ERROR_401_UNAUTHORIZED,
+        403: ERROR_403_FORBIDDEN
     }
 )
 @api_view(['GET'])
@@ -69,9 +74,9 @@ def cache_stats(request):
                 'application/json': EXAMPLE_CACHE_CLEAR_RESPONSE
             }
         ),
-        401: 'No autoritzat',
-        403: 'Permís denegat - només administradors',
-        500: 'Error netejant la cache'
+        401: ERROR_401_UNAUTHORIZED,
+        403: ERROR_403_FORBIDDEN,
+        500: ERROR_500_INTERNAL_ERROR
     }
 )
 @api_view(['DELETE'])
@@ -113,9 +118,9 @@ def cache_clear(request):
             }
         ),
         400: 'Patró no proporcionat',
-        401: 'No autoritzat',
-        403: 'Permís denegat - només administradors',
-        500: 'Error eliminant claus'
+        401: ERROR_401_UNAUTHORIZED,
+        403: ERROR_403_FORBIDDEN,
+        500: ERROR_500_INTERNAL_ERROR
     }
 )
 @api_view(['DELETE'])

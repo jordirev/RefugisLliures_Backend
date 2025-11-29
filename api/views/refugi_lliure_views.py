@@ -21,12 +21,13 @@ from ..utils.swagger_examples import (
     EXAMPLE_REFUGI_COLOMERS_DETAILED,
     EXAMPLE_RENOVATIONS_LIST,
 )
+from ..utils.swagger_error_responses import (
+    ERROR_400_INVALID_PARAMS,
+    ERROR_401_UNAUTHORIZED,
+    ERROR_404_REFUGI_NOT_FOUND,
+    ERROR_500_INTERNAL_ERROR,
+)
 
-
-# Definim constants d'errors
-ERROR_400_INVALID_PARAMS = 'Paràmetres de consulta invàlids'
-ERROR_404_REFUGI_NOT_FOUND = 'Refugi no trobat'
-ERROR_500_INTERNAL_ERROR = 'Error intern del servidor'
 
 
 # Configurar logging
@@ -244,7 +245,7 @@ class RefugeRenovationsAPIView(APIView):
                     'application/json': EXAMPLE_RENOVATIONS_LIST
                 }
             ),
-            401: 'No autoritzat',
+            401: ERROR_401_UNAUTHORIZED,
             500: ERROR_500_INTERNAL_ERROR
         }
     )

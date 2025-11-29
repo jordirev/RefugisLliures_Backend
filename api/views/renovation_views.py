@@ -25,17 +25,21 @@ from ..utils.swagger_examples import (
     EXAMPLE_RENOVATION_WITH_PARTICIPANTS,
     EXAMPLE_RENOVATION_PARTICIPANT_REMOVED,
 )
+from ..utils.swagger_error_responses import (
+    ERROR_400_INVALID_DATA,
+    ERROR_400_MISSING_ID,
+    ERROR_400_CREATOR_CANNOT_JOIN,
+    ERROR_401_UNAUTHORIZED,
+    ERROR_403_FORBIDDEN,
+    ERROR_403_NOT_CREATOR,
+    ERROR_404_RENOVATION_NOT_FOUND,
+    ERROR_409_OVERLAP,
+    ERROR_500_INTERNAL_ERROR,
+    SUCCESS_204_NO_CONTENT,
+)
 
 # Configurar logging
 logger = logging.getLogger(__name__)
-
-# Definim constants d'errors
-ERROR_400_INVALID_DATA = 'Dades invàlides'
-ERROR_401_UNAUTHORIZED = 'No autoritzat'
-ERROR_403_FORBIDDEN = 'No tens permís per realitzar aquesta acció'
-ERROR_404_RENOVATION_NOT_FOUND = 'Renovation no trobada'
-ERROR_409_OVERLAP = 'Hi ha un solapament temporal amb una altra renovation'
-ERROR_500_INTERNAL_ERROR = 'Error intern del servidor'
 
 
 # ========== COLLECTION ENDPOINT: /renovations/ ==========
@@ -202,7 +206,7 @@ class RenovationAPIView(APIView):
                     'application/json': EXAMPLE_RENOVATION_1
                 }
             ),
-            400: ERROR_400_INVALID_DATA,
+            400: ERROR_400_MISSING_ID,
             401: ERROR_401_UNAUTHORIZED,
             404: ERROR_404_RENOVATION_NOT_FOUND,
             500: ERROR_500_INTERNAL_ERROR
@@ -278,7 +282,7 @@ class RenovationAPIView(APIView):
             ),
             400: ERROR_400_INVALID_DATA,
             401: ERROR_401_UNAUTHORIZED,
-            403: ERROR_403_FORBIDDEN,
+            403: ERROR_403_NOT_CREATOR,
             404: ERROR_404_RENOVATION_NOT_FOUND,
             409: ERROR_409_OVERLAP,
             500: ERROR_500_INTERNAL_ERROR
@@ -362,10 +366,10 @@ class RenovationAPIView(APIView):
             )
         ],
         responses={
-            204: 'Renovation eliminada correctament',
-            400: ERROR_400_INVALID_DATA,
+            204: SUCCESS_204_NO_CONTENT,
+            400: ERROR_400_MISSING_ID,
             401: ERROR_401_UNAUTHORIZED,
-            403: ERROR_403_FORBIDDEN,
+            403: ERROR_403_NOT_CREATOR,
             404: ERROR_404_RENOVATION_NOT_FOUND,
             500: ERROR_500_INTERNAL_ERROR
         }
@@ -445,7 +449,7 @@ class RenovationParticipantsAPIView(APIView):
                     'application/json': EXAMPLE_RENOVATION_WITH_PARTICIPANTS
                 }
             ),
-            400: ERROR_400_INVALID_DATA,
+            400: ERROR_400_CREATOR_CANNOT_JOIN,
             401: ERROR_401_UNAUTHORIZED,
             403: ERROR_403_FORBIDDEN,
             404: ERROR_404_RENOVATION_NOT_FOUND,

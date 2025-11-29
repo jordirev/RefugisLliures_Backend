@@ -37,20 +37,21 @@ from ..utils.swagger_examples import (
     EXAMPLE_USER_VISITED_REFUGI_INFO_RESPONSE_2,
     EXAMPLE_USER_VISITED_REFUGI_INFO_RESPONSE_3,
 )
+from ..utils.swagger_error_responses import (
+    ERROR_400_INVALID_DATA,
+    ERROR_401_UNAUTHORIZED,
+    ERROR_403_FORBIDDEN,
+    ERROR_404_USER_NOT_FOUND,
+    ERROR_404_USER_OR_REFUGI,
+    ERROR_409_USER_EXISTS,
+    ERROR_500_INTERNAL_ERROR,
+    SUCCESS_204_NO_CONTENT,
+)
 
-
-# Definim constants d'errors
-INTERNAL_SERVER_ERROR = 'Error intern del servidor'
-UID_NOT_FOUND_ERROR = 'UID no trobat al token d\'autenticació'
-ERROR_400_INVALID_DATA = 'Dades invàlides'
-ERROR_401_UNAUTHORIZED = 'No autoritzat'
-ERROR_403_FORBIDDEN = 'Permís denegat'
-ERROR_404_USER_NOT_FOUND = 'Usuari no trobat'
-ERROR_404_REFUGI_NOT_FOUND = 'Refugi no trobat'
-ERROR_409_USER_EXISTS = 'L\'usuari ja existeix'
-ERROR_204_NO_CONTENT = 'Usuari eliminat correctament'
-ERROR_409_REFUGI_ALREADY_FAVORITE = 'El refugi ja és als preferits de l\'usuari'
-
+# Constants d'error per usar dins del codi (no Swagger)
+UID_NOT_FOUND_ERROR = "No autenticat"
+UID_NOT_FOUND_MESSAGE = "UID no trobat al token d'autenticació"
+INTERNAL_SERVER_ERROR = "Error intern del servidor"
 
 
 # Configurar logging
@@ -105,7 +106,8 @@ class UsersCollectionAPIView(APIView):
             uid = get_uid_from_firebase_token(request)
             if not uid:
                 return Response({
-                    'error': UID_NOT_FOUND_ERROR
+                    'error': UID_NOT_FOUND_ERROR,
+                    'message': UID_NOT_FOUND_MESSAGE
                 }, status=status.HTTP_401_UNAUTHORIZED)
             
             # Valida les dades d'entrada
@@ -254,7 +256,7 @@ class UserDetailAPIView(APIView):
         tags=['Users'],
         operation_description="Elimina un usuari. \nRequereix autenticació amb token JWT de Firebase i ser el mateix usuari.",
         responses={
-            204: ERROR_204_NO_CONTENT,
+            204: SUCCESS_204_NO_CONTENT,
             401: ERROR_401_UNAUTHORIZED,
             403: ERROR_403_FORBIDDEN,
             404: ERROR_404_USER_NOT_FOUND
@@ -524,7 +526,7 @@ class UserVisitedRefugesAPIView(APIView):
             400: ERROR_400_INVALID_DATA,
             401: ERROR_401_UNAUTHORIZED,
             403: ERROR_403_FORBIDDEN,
-            404: "Usuari o refugi no trobat"
+            404: ERROR_404_USER_OR_REFUGI
         }
     )
     def post(self, request, uid):
