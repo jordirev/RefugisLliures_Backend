@@ -154,26 +154,26 @@ class RefugiCoordinates:
     """Model simplificat per representar només les coordenades d'un refugi"""
     refuge_id: str
     refugi_name: str
-    coordinates: Coordinates
+    coord: Coordinates
     geohash: str = ""
     
     def to_dict(self) -> dict:
         return {
             'refuge_id': self.refuge_id,
             'refugi_name': self.refugi_name,
-            'coordinates': self.coordinates.to_dict(),
+            'coord': self.coord.to_dict(),
             'geohash': self.geohash
         }
     
     @classmethod
     def from_dict(cls, data: dict) -> 'RefugiCoordinates':
-        coord_data = data.get('coordinates', {})
-        coordinates = Coordinates.from_dict(coord_data)
-        
+        coord_data = data.get('coord', {})
+        coord = Coordinates.from_dict(coord_data)
+
         return cls(
             refuge_id=data.get('refuge_id', ''),
             refugi_name=data.get('refugi_name', ''),
-            coordinates=coordinates,
+            coord=coord,
             geohash=data.get('geohash', '')
         )
 
