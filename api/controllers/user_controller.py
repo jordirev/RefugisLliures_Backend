@@ -5,10 +5,8 @@ import logging
 from typing import List, Optional, Dict, Any
 from ..daos.user_dao import UserDAO
 from ..daos.refugi_lliure_dao import RefugiLliureDAO
-from ..mappers.user_mapper import UserMapper
 from ..models.user import User
-from datetime import datetime
-from zoneinfo import ZoneInfo
+from ..utils.timezone_utils import get_madrid_now
 
 logger = logging.getLogger(__name__)
 
@@ -20,8 +18,7 @@ class UserController:
     def __init__(self):
         """Inicialitza el controller"""
         self.user_dao = UserDAO()
-        self.user_mapper = UserMapper()
-        self.refugi_dao = RefugiLliureDAO()  # Inicialitzar quan sigui necessari
+        self.refugi_dao = RefugiLliureDAO()
     
     def create_user(self, user_data: Dict[str, Any], uid: str) -> tuple[bool, Optional[User], Optional[str]]:
         """
@@ -41,24 +38,22 @@ class UserController:
                 return False, None, f"Usuari amb UID {uid} ja existeix"
             
             # Comprova si l'email ja està en ús
-            existing_user = self.user_dao.get_user_by_email(user_data['email'])
-            if existing_user:
+            email_exists = self.user_dao.user_exists_by_email(user_data['email'])
+            if email_exists:
                 return False, None, f"Email {user_data['email']} ja està en ús"
             
             # Afegeix el UID a les dades de l'usuari
             user_data['uid'] = uid
 
             # Estableix la data de creació
-            user_data['created_at'] = datetime.now(ZoneInfo("Europe/Madrid")).isoformat()
+            user_data['created_at'] = get_madrid_now().isoformat()
             
-            # Crea l'usuari a Firestore amb l'UID del token
-            created_uid = self.user_dao.create_user(user_data, uid)
-            if not created_uid:
+            # Crea l'usuari a Firestore amb l'UID del token (retorna model)
+            user = self.user_dao.create_user(user_data, uid)
+            if not user:
                 return False, None, "Error creant usuari a la base de dades"
             
-            # Converteix a model
-            user = self.user_mapper.firebase_to_model(user_data)
-            logger.info(f"Usuari creat correctament amb UID: {created_uid}")
+            logger.info(f"Usuari creat correctament amb UID: {uid}")
             return True, user, None
             
         except Exception as e:
@@ -79,11 +74,10 @@ class UserController:
             if not uid:
                 return False, None, UID_NOT_PROVIDED_ERROR
             
-            user_data = self.user_dao.get_user_by_uid(uid)
-            if not user_data:
+            user = self.user_dao.get_user_by_uid(uid)
+            if not user:
                 return False, None, f"Usuari amb UID {uid} no trobat"
             
-            user = self.user_mapper.firebase_to_model(user_data)
             return True, user, None
             
         except Exception as e:
@@ -104,11 +98,10 @@ class UserController:
             if not email:
                 return False, None, "Email no proporcionat"
             
-            user_data = self.user_dao.get_user_by_email(email.lower().strip())
-            if not user_data:
+            user = self.user_dao.get_user_by_email(email.lower().strip())
+            if not user:
                 return False, None, f"Usuari amb email {email} no trobat"
             
-            user = self.user_mapper.firebase_to_model(user_data)
             return True, user, None
             
         except Exception as e:
@@ -141,10 +134,13 @@ class UserController:
             if 'email' in user_data and user_data.get('email'):
                 # Normalitza l'email abans de la cerca
                 email_normalized = user_data['email'].lower().strip()
-                existing_user = self.user_dao.get_user_by_email(email_normalized)
-                # Si existeix un usuari amb aquest email i no és l'usuari actual, error
-                if existing_user and existing_user.get('uid') != uid:
-                    return False, None, f"Email {user_data['email']} ja està en ús"
+                # Comprova si l'email existeix
+                email_exists = self.user_dao.user_exists_by_email(email_normalized)
+                if email_exists:
+                    # Si existeix, obté l'usuari per veure si és el mateix
+                    existing_user = self.user_dao.get_user_by_email(email_normalized)
+                    if existing_user and existing_user.uid != uid:
+                        return False, None, f"Email {user_data['email']} ja està en ús"
                 # Re-escriu l'email normalitzat al payload per consistència
                 user_data['email'] = email_normalized
             
@@ -153,9 +149,8 @@ class UserController:
             if not success:
                 return False, None, "Error actualitzant usuari a la base de dades"
             
-            # Obté l'usuari actualitzat
-            updated_data = self.user_dao.get_user_by_uid(uid)
-            user = self.user_mapper.firebase_to_model(updated_data)
+            # Obté l'usuari actualitzat (ja és un model)
+            user = self.user_dao.get_user_by_uid(uid)
             
             logger.info(f"Usuari actualitzat correctament amb UID: {uid}")
             return True, user, None

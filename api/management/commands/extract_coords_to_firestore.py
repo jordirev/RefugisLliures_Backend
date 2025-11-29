@@ -88,18 +88,22 @@ class Command(BaseCommand):
 
                 # Prepare coordinate document
                 coord_doc = {
-                    'refuge_id': refuge_id,
-                    'coordinates': {
-                        'latitude': coord_info['lat'],
-                        'longitude': coord_info['long']
+                    'id': refuge_id,
+                    'coord': {
+                        'lat': coord_info['lat'],
+                        'long': coord_info['long']
                     },
-                    # Add geohash for efficient geo queries (optional)
+                    # Add geohash for efficient geo queries
                     'geohash': self._generate_simple_geohash(coord_info['lat'], coord_info['long'])
                 }
 
                 # Add refugi name if available for easier identification
                 if 'name' in doc_data:
-                    coord_doc['refugi_name'] = doc_data['name']
+                    coord_doc['name'] = doc_data['name']
+                
+                # Add surname if available
+                if 'surname' in doc_data and doc_data['surname']:
+                    coord_doc['surname'] = doc_data['surname']
 
                 coords_data.append({
                     'id': refuge_id,

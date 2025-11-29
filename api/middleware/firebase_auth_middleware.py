@@ -55,6 +55,8 @@ class FirebaseAuthenticationMiddleware(MiddlewareMixin):
             # Afegeix la informació de l'usuari a la request
             request.firebase_user = decoded_token
             request.user_uid = decoded_token.get('uid')
+            # Extreu els custom claims del token
+            request.user_claims = decoded_token
             
             logger.info(f"Token verificat correctament per a l'usuari: {request.user_uid}")
             return None
@@ -85,6 +87,6 @@ class FirebaseAuthenticationMiddleware(MiddlewareMixin):
     def _unauthorized_response(self, message):
         """Retorna una resposta 401 Unauthorized"""
         return JsonResponse({
-            'error': 'No autoritzat',
+            'error': 'No autenticat',
             'message': message
         }, status=status.HTTP_401_UNAUTHORIZED)

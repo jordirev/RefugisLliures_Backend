@@ -18,19 +18,10 @@ class Coordinates:
     
     @classmethod
     def from_dict(cls, data: dict) -> 'Coordinates':
-        # Handle both formats for coordinates
-        if 'longitude' in data and 'latitude' in data:
-            # Format from extract_coords_to_firestore command
-            return cls(
-                long=data.get('longitude', 0.0),
-                lat=data.get('latitude', 0.0)
-            )
-        else:
-            # Original format
-            return cls(
-                long=data.get('long', 0.0),
-                lat=data.get('lat', 0.0)
-            )
+        return cls(
+            long=data.get('long'),
+            lat=data.get('lat')
+        )
 
 @dataclass
 class InfoComplementaria:
@@ -177,17 +168,7 @@ class RefugiCoordinates:
     @classmethod
     def from_dict(cls, data: dict) -> 'RefugiCoordinates':
         coord_data = data.get('coordinates', {})
-        
-        # Handle both formats: original (long, lat) and coordinates document (longitude, latitude)
-        if 'longitude' in coord_data and 'latitude' in coord_data:
-            # Format from extract_coords_to_firestore command
-            coordinates = Coordinates(
-                long=coord_data.get('longitude', 0.0),
-                lat=coord_data.get('latitude', 0.0)
-            )
-        else:
-            # Original format or standard format
-            coordinates = Coordinates.from_dict(coord_data)
+        coordinates = Coordinates.from_dict(coord_data)
         
         return cls(
             refuge_id=data.get('refuge_id', ''),

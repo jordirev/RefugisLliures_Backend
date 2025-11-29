@@ -32,6 +32,9 @@ schema_view = get_schema_view(
    ),
    public=True,
    permission_classes=(permissions.AllowAny,),
+   # Configuració de seguretat per a l'autenticació
+   # Només endpoints de users/* requereixen autenticació
+   # Els endpoints health/, refuges/ i refuges/{id}/ són públics
 )
 
 urlpatterns = [

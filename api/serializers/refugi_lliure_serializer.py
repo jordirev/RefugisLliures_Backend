@@ -50,8 +50,6 @@ class RefugiSearchResponseSerializer(serializers.Serializer):
     """Serializer per a resposta de cerca"""
     count = serializers.IntegerField()
     results = RefugiSerializer(many=True)
-    filters = serializers.DictField()
-
 
 
 class HealthCheckResponseSerializer(serializers.Serializer):
@@ -120,3 +118,33 @@ class RefugiSearchFiltersSerializer(serializers.Serializer):
 #class RefugiCoordinatesFiltersSerializer(serializers.Serializer):
     """Serializer per a filtres de coordenades"""
     """Serà util per quan haguem de filtrar per ubicació"""
+
+class UserRefugiInfoSerializer(serializers.Serializer):
+    """Serializer per a llistar refugis preferits o visitats amb informació resumida"""
+    
+    id = serializers.CharField(
+        help_text="Identificador únic del refugi"
+    )
+    name = serializers.CharField(
+        help_text="Nom del refugi"
+    )
+    region = serializers.CharField(
+        help_text="Regió del refugi"
+    )
+    places = serializers.IntegerField(
+        help_text="Nombre de places del refugi"
+    )
+    coordinates = CoordinatesSerializer(
+        help_text="Coordenades del refugi"
+    )
+
+class UserRefugiInfoResponseSerializer(serializers.Serializer):
+    """Serializer per a resposta de llistar refugis preferits o visitats"""
+    
+    count = serializers.IntegerField(
+        help_text="Nombre total de refugis en la llista"
+    )
+    results = UserRefugiInfoSerializer(
+        many=True,
+        help_text="Llista de refugis amb informació resumida"
+    )

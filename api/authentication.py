@@ -25,11 +25,13 @@ class FirebaseAuthentication(authentication.BaseAuthentication):
         # Si ja hem verificat el token al middleware, utilitza aquesta informació
         if hasattr(request, 'firebase_user') and hasattr(request, 'user_uid'):
             # Crea un objecte d'usuari simple amb la informació del token
+            user_claims = getattr(request, 'user_claims', {})
             user = type('FirebaseUser', (), {
                 'uid': request.user_uid,
                 'email': request.firebase_user.get('email'),
                 'is_authenticated': True,
                 'is_anonymous': False,
+                'claims': user_claims,
             })()
             return (user, request.firebase_user)
         
@@ -54,6 +56,7 @@ class FirebaseAuthentication(authentication.BaseAuthentication):
                 'email': decoded_token.get('email'),
                 'is_authenticated': True,
                 'is_anonymous': False,
+                'claims': decoded_token,
             })()
             
             return (user, decoded_token)
