@@ -60,6 +60,41 @@ class TestRefugiController:
         mock_dao_instance.get_by_id.assert_called_once_with('refugi_001')
     
     @patch('api.controllers.refugi_lliure_controller.RefugiLliureDAO')
+    def test_get_refugi_by_id_with_visitors(self, mock_dao_class, sample_refugi):
+        """Test obtenció de refugi per ID amb visitants inclosos"""
+        sample_refugi.visitors = ['uid_001', 'uid_002', 'uid_003']
+        
+        mock_dao_instance = MagicMock()
+        mock_dao_instance.get_by_id.return_value = sample_refugi
+        mock_dao_class.return_value = mock_dao_instance
+        
+        controller = RefugiLliureController()
+        refugi, error = controller.get_refugi_by_id('refugi_001', include_visitors=True)
+        
+        assert refugi is not None
+        assert error is None
+        assert len(refugi.visitors) == 3
+        assert refugi.visitors == ['uid_001', 'uid_002', 'uid_003']
+    
+    @patch('api.controllers.refugi_lliure_controller.RefugiLliureDAO')
+    def test_get_refugi_by_id_without_visitors(self, mock_dao_class, sample_refugi):
+        """Test obtenció de refugi per ID sense visitants"""
+        sample_refugi.visitors = ['uid_001', 'uid_002', 'uid_003']
+        
+        mock_dao_instance = MagicMock()
+        mock_dao_instance.get_by_id.return_value = sample_refugi
+        mock_dao_class.return_value = mock_dao_instance
+        
+        controller = RefugiLliureController()
+        refugi, error = controller.get_refugi_by_id('refugi_001', include_visitors=False)
+        
+        assert refugi is not None
+        assert error is None
+        # Verificar que els visitants estan buits
+        assert len(refugi.visitors) == 0
+        assert refugi.visitors == []
+    
+    @patch('api.controllers.refugi_lliure_controller.RefugiLliureDAO')
     def test_get_refugi_by_id_not_found(self, mock_dao_class):
         """Test obtenció de refugi no existent"""
         mock_dao = mock_dao_class.return_value
@@ -108,6 +143,54 @@ class TestRefugiController:
         assert result is not None
         assert error is None
         assert result['count'] == len(multiple_refugis_data)
+    
+    @patch('api.controllers.refugi_lliure_controller.RefugiLliureDAO')
+    def test_search_refugis_with_visitors_included(self, mock_dao_class, multiple_refugis_data):
+        """Test cerca amb filtres i visitants inclosos"""
+        mock_dao = mock_dao_class.return_value
+        mock_refugis = [Refugi.from_dict(d) for d in multiple_refugis_data]
+        # Afegir visitants als refugis
+        for refugi in mock_refugis:
+            refugi.visitors = ['uid_001', 'uid_002']
+        
+        mock_dao.search_refugis.return_value = {
+            'results': mock_refugis,
+            'has_filters': True
+        }
+        
+        controller = RefugiLliureController()
+        query_params = {'region': 'Pirineus'}
+        result, error = controller.search_refugis(query_params, include_visitors=True)
+        
+        assert result is not None
+        assert error is None
+        # Verificar que els visitants estan presents
+        assert all('visitors' in refugi for refugi in result['results'])
+        assert all(len(refugi['visitors']) == 2 for refugi in result['results'])
+    
+    @patch('api.controllers.refugi_lliure_controller.RefugiLliureDAO')
+    def test_search_refugis_without_visitors(self, mock_dao_class, multiple_refugis_data):
+        """Test cerca amb filtres però sense visitants"""
+        mock_dao = mock_dao_class.return_value
+        mock_refugis = [Refugi.from_dict(d) for d in multiple_refugis_data]
+        # Afegir visitants als refugis
+        for refugi in mock_refugis:
+            refugi.visitors = ['uid_001', 'uid_002']
+        
+        mock_dao.search_refugis.return_value = {
+            'results': mock_refugis,
+            'has_filters': True
+        }
+        
+        controller = RefugiLliureController()
+        query_params = {'region': 'Pirineus'}
+        result, error = controller.search_refugis(query_params, include_visitors=False)
+        
+        assert result is not None
+        assert error is None
+        # Verificar que els visitants NO estan presents o estan buits
+        for refugi in result['results']:
+            assert 'visitors' not in refugi or refugi.get('visitors') == []
     
     @patch('api.controllers.refugi_lliure_controller.RefugiLliureDAO')
     def test_health_check_success(self, mock_dao_class):
