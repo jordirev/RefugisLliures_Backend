@@ -120,6 +120,9 @@ class RefugiLliureCollectionAPIView(APIView):
     def get(self, request):
         """Obtenir refugis amb filtres opcionals"""
         try:
+            # Comprovar si l'usuari està autenticat
+            is_authenticated = request.user and hasattr(request.user, 'is_authenticated') and request.user.is_authenticated
+            
             # Validar paràmetres d'entrada
             filters_serializer = RefugiSearchFiltersSerializer(data=request.GET)
             if not filters_serializer.is_valid():
@@ -129,7 +132,10 @@ class RefugiLliureCollectionAPIView(APIView):
                 }, status=status.HTTP_400_BAD_REQUEST)
             
             controller = RefugiLliureController()
-            search_result, error = controller.search_refugis(filters_serializer.validated_data)
+            search_result, error = controller.search_refugis(
+                filters_serializer.validated_data,
+                include_visitors=is_authenticated
+            )
             
             if error:
                 return Response({
@@ -190,8 +196,11 @@ class RefugiLliureDetailAPIView(APIView):
     def get(self, request, refuge_id):
         """Obtenir detalls d'un refugi per ID"""
         try:
+            # Comprovar si l'usuari està autenticat
+            is_authenticated = request.user and hasattr(request.user, 'is_authenticated') and request.user.is_authenticated
+            
             controller = RefugiLliureController()
-            refugi, error = controller.get_refugi_by_id(refuge_id)
+            refugi, error = controller.get_refugi_by_id(refuge_id, include_visitors=is_authenticated)
             
             if error:
                 if "not found" in error.lower():

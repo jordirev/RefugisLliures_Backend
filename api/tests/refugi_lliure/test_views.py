@@ -197,6 +197,74 @@ class TestRefugiViews:
         assert 'error' in response.data
     
     @patch('api.views.refugi_lliure_views.RefugiLliureController')
+    def test_get_refugi_detail_without_auth_no_visitors(self, mock_controller_class, sample_refugi):
+        """Test obtenció de detall de refugi sense autenticació - no retorna visitants"""
+        # Configurar el mock per retornar refugi sense visitants quan include_visitors=False
+        mock_controller = mock_controller_class.return_value
+        
+        def get_refugi_side_effect(refuge_id, include_visitors=False):
+            refugi_copy = Refugi.from_dict(sample_refugi.to_dict())
+            if not include_visitors:
+                refugi_copy.visitors = []
+            else:
+                refugi_copy.visitors = ['uid_001', 'uid_002', 'uid_003']
+            return (refugi_copy, None)
+        
+        mock_controller.get_refugi_by_id.side_effect = get_refugi_side_effect
+        
+        factory = APIRequestFactory()
+        request = factory.get('/refuges/refugi_001/')
+        # No afegir autenticació - usuari anònim
+        
+        view = RefugiLliureDetailAPIView.as_view()
+        response = view(request, refuge_id='refugi_001')
+        
+        assert response.status_code == status.HTTP_200_OK
+        assert 'id' in response.data
+        # Verificar que els visitants NO estan en la resposta o estan buits
+        assert response.data.get('visitors', []) == []
+        # Verificar que el controller es va cridar amb include_visitors=False
+        mock_controller.get_refugi_by_id.assert_called_once_with('refugi_001', include_visitors=False)
+    
+    @patch('api.views.refugi_lliure_views.RefugiLliureController')
+    def test_get_refugi_detail_with_auth_includes_visitors(self, mock_controller_class, sample_refugi, db):
+        """Test obtenció de detall de refugi amb autenticació - retorna visitants"""
+        from django.contrib.auth.models import User
+        from rest_framework.test import force_authenticate
+        
+        # Configurar el mock per retornar refugi amb visitants quan include_visitors=True
+        mock_controller = mock_controller_class.return_value
+        
+        def get_refugi_side_effect(refuge_id, include_visitors=False):
+            refugi_copy = Refugi.from_dict(sample_refugi.to_dict())
+            if not include_visitors:
+                refugi_copy.visitors = []
+            else:
+                refugi_copy.visitors = ['uid_001', 'uid_002', 'uid_003']
+            return (refugi_copy, None)
+        
+        mock_controller.get_refugi_by_id.side_effect = get_refugi_side_effect
+        
+        # Crear un usuari autenticat real
+        user = User.objects.create_user(username='testuser', password='testpass')
+        
+        factory = APIRequestFactory()
+        request = factory.get('/refuges/refugi_001/')
+        force_authenticate(request, user=user)
+        
+        view = RefugiLliureDetailAPIView.as_view()
+        response = view(request, refuge_id='refugi_001')
+        
+        assert response.status_code == status.HTTP_200_OK
+        assert 'id' in response.data
+        # Verificar que els visitants estan en la resposta
+        assert 'visitors' in response.data
+        assert len(response.data['visitors']) == 3
+        assert response.data['visitors'] == ['uid_001', 'uid_002', 'uid_003']
+        # Verificar que el controller es va cridar amb include_visitors=True
+        mock_controller.get_refugi_by_id.assert_called_once_with('refugi_001', include_visitors=True)
+    
+    @patch('api.views.refugi_lliure_views.RefugiLliureController')
     def test_get_refugis_collection_no_filters(self, mock_controller_class):
         """Test obtenció de col·lecció sense filtres"""
         mock_controller = mock_controller_class.return_value
@@ -242,6 +310,64 @@ class TestRefugiViews:
         
         assert response.status_code == status.HTTP_200_OK
         assert response.data['count'] == 1
+    
+    @patch('api.views.refugi_lliure_views.RefugiLliureController')
+    def test_get_refugis_collection_without_auth_no_visitors(self, mock_controller_class):
+        """Test obtenció de col·lecció sense autenticació - no retorna visitants"""
+        mock_controller = mock_controller_class.return_value
+        mock_controller.search_refugis.return_value = (
+            {
+                'count': 1,
+                'results': [{'id': 'ref_001', 'name': 'Test 1', 'visitors': []}],
+            },
+            None
+        )
+        
+        factory = APIRequestFactory()
+        request = factory.get('/refuges/', {'region': 'Pirineus'})
+        # No autenticar l'usuari
+        
+        view = RefugiLliureCollectionAPIView.as_view()
+        response = view(request)
+        
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['count'] == 1
+        # Verificar que search_refugis es va cridar amb include_visitors=False
+        mock_controller.search_refugis.assert_called_once()
+        call_args = mock_controller.search_refugis.call_args
+        assert call_args[1]['include_visitors'] == False
+    
+    @patch('api.views.refugi_lliure_views.RefugiLliureController')
+    def test_get_refugis_collection_with_auth_includes_visitors(self, mock_controller_class, db):
+        """Test obtenció de col·lecció amb autenticació - retorna visitants"""
+        from django.contrib.auth.models import User
+        from rest_framework.test import force_authenticate
+        
+        mock_controller = mock_controller_class.return_value
+        mock_controller.search_refugis.return_value = (
+            {
+                'count': 1,
+                'results': [{'id': 'ref_001', 'name': 'Test 1', 'visitors': ['uid_001', 'uid_002']}],
+            },
+            None
+        )
+        
+        # Crear un usuari autenticat real
+        user = User.objects.create_user(username='testuser', password='testpass')
+        
+        factory = APIRequestFactory()
+        request = factory.get('/refuges/', {'region': 'Pirineus'})
+        force_authenticate(request, user=user)
+        
+        view = RefugiLliureCollectionAPIView.as_view()
+        response = view(request)
+        
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['count'] == 1
+        # Verificar que search_refugis es va cridar amb include_visitors=True
+        mock_controller.search_refugis.assert_called_once()
+        call_args = mock_controller.search_refugis.call_args
+        assert call_args[1]['include_visitors'] == True
     
     @patch('api.views.refugi_lliure_views.RefugiLliureController')
     def test_get_refugis_collection_invalid_filters(self, mock_controller_class):
