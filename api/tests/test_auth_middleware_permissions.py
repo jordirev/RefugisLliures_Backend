@@ -145,7 +145,7 @@ class TestFirebaseAuthenticationMiddleware:
         import json
         content = json.loads(result.content)
         assert 'error' in content
-        assert content['error'] == 'No autoritzat'
+        assert content['error'] == 'No autenticat'
     
     def test_invalid_authorization_format_no_bearer(self, request_factory):
         """Test que retorna error si el format no és 'Bearer <token>'"""

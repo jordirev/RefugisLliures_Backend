@@ -99,11 +99,10 @@ class TestRefugiMapper:
         ]
         filters = {'region': 'Pirineus'}
         
-        response = refugi_mapper.format_search_response(refugis, filters)
+        response = refugi_mapper.format_search_response(refugis)
         
         assert 'count' in response
         assert 'results' in response
-        assert 'filters' in response
         assert response['count'] == 1
     
     def test_format_search_response_from_raw_data(self, refugi_mapper):
@@ -114,7 +113,7 @@ class TestRefugiMapper:
         ]
         filters = {}
         
-        response = refugi_mapper.format_search_response_from_raw_data(raw_data, filters)
+        response = refugi_mapper.format_search_response_from_raw_data(raw_data)
         
         assert 'count' in response
         assert 'results' in response

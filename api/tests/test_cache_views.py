@@ -568,7 +568,8 @@ class TestCacheViewsIntegration:
         mock_cache_service.clear_all.return_value = True
         request_clear = api_factory.delete('/api/cache/clear/')
         force_authenticate(request_clear, user=admin_user)
-        request_clear.user_uid = mock_admin_claims  # Mock Firebase admin UID
+        request_clear.user_uid = mock_admin_claims['uid']
+        request_clear.user_claims = mock_admin_claims  # Mock Firebase admin claims
         
         # Act - Clear
         response_clear = cache_clear(request_clear)
@@ -586,7 +587,8 @@ class TestCacheViewsIntegration:
         }
         request_stats = api_factory.get('/api/cache/stats/')
         force_authenticate(request_stats, user=admin_user)
-        request_stats.user_uid = mock_admin_claims  # Mock Firebase admin UID
+        request_stats.user_uid = mock_admin_claims['uid']
+        request_stats.user_claims = mock_admin_claims  # Mock Firebase admin claims
         
         # Act - Stats
         response_stats = cache_stats(request_stats)
@@ -601,7 +603,8 @@ class TestCacheViewsIntegration:
         mock_cache_service.delete_pattern.return_value = True
         request_invalidate = api_factory.delete('/api/cache/invalidate/?pattern=test_*')
         force_authenticate(request_invalidate, user=admin_user)
-        request_invalidate.user_uid = mock_admin_claims  # Mock Firebase admin UID
+        request_invalidate.user_uid = mock_admin_claims['uid']
+        request_invalidate.user_claims = mock_admin_claims  # Mock Firebase admin claims
         
         # Act - Invalidate
         response_invalidate = cache_invalidate(request_invalidate)
@@ -619,7 +622,8 @@ class TestCacheViewsIntegration:
         }
         request_stats = api_factory.get('/api/cache/stats/')
         force_authenticate(request_stats, user=admin_user)
-        request_stats.user_uid = mock_admin_claims  # Mock Firebase admin UID
+        request_stats.user_uid = mock_admin_claims['uid']
+        request_stats.user_claims = mock_admin_claims  # Mock Firebase admin claims
         
         # Act - Stats
         response_stats = cache_stats(request_stats)
