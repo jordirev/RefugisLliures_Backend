@@ -15,6 +15,16 @@ from ..serializers.renovation_serializer import (
     RenovationUpdateSerializer
 )
 from ..permissions import IsCreator
+from ..utils.swagger_examples import (
+    EXAMPLE_RENOVATIONS_LIST,
+    EXAMPLE_RENOVATION_1,
+    EXAMPLE_RENOVATION_CREATE,
+    EXAMPLE_RENOVATION_CREATE_REQUEST,
+    EXAMPLE_RENOVATION_UPDATED,
+    EXAMPLE_RENOVATION_UPDATE_REQUEST,
+    EXAMPLE_RENOVATION_WITH_PARTICIPANTS,
+    EXAMPLE_RENOVATION_PARTICIPANT_REMOVED,
+)
 
 # Configurar logging
 logger = logging.getLogger(__name__)
@@ -43,7 +53,10 @@ class RenovationListAPIView(APIView):
         responses={
             200: openapi.Response(
                 description='Llista de renovations',
-                schema=RenovationSerializer(many=True)
+                schema=RenovationSerializer(many=True),
+                examples={
+                    'application/json': EXAMPLE_RENOVATIONS_LIST
+                }
             ),
             401: ERROR_401_UNAUTHORIZED,
             500: ERROR_500_INTERNAL_ERROR
@@ -75,11 +88,26 @@ class RenovationListAPIView(APIView):
             "Crea una nova renovation. No es poden solapar temporalment amb "
             "altres renovations del mateix refugi."
         ),
-        request_body=RenovationCreateSerializer,
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            required=['refuge_id', 'ini_date', 'fin_date', 'description', 'group_link'],
+            properties={
+                'refuge_id': openapi.Schema(type=openapi.TYPE_STRING, description="ID del refugi a reformar"),
+                'ini_date': openapi.Schema(type=openapi.TYPE_STRING, format='date', description="Data d'inici (YYYY-MM-DD)"),
+                'fin_date': openapi.Schema(type=openapi.TYPE_STRING, format='date', description="Data de finalització (YYYY-MM-DD)"),
+                'description': openapi.Schema(type=openapi.TYPE_STRING, description="Descripció de la reforma"),
+                'materials_needed': openapi.Schema(type=openapi.TYPE_STRING, description="Materials necessaris"),
+                'group_link': openapi.Schema(type=openapi.TYPE_STRING, format='uri', description="Enllaç al grup (WhatsApp/Telegram)")
+            },
+            example=EXAMPLE_RENOVATION_CREATE_REQUEST
+        ),
         responses={
             201: openapi.Response(
                 description='Renovation creada',
-                schema=RenovationSerializer
+                schema=RenovationSerializer,
+                examples={
+                    'application/json': EXAMPLE_RENOVATION_CREATE
+                }
             ),
             400: ERROR_400_INVALID_DATA,
             401: ERROR_401_UNAUTHORIZED,
@@ -169,7 +197,10 @@ class RenovationAPIView(APIView):
         responses={
             200: openapi.Response(
                 description='Renovation trobada',
-                schema=RenovationSerializer
+                schema=RenovationSerializer,
+                examples={
+                    'application/json': EXAMPLE_RENOVATION_1
+                }
             ),
             400: ERROR_400_INVALID_DATA,
             401: ERROR_401_UNAUTHORIZED,
@@ -217,7 +248,17 @@ class RenovationAPIView(APIView):
             "Els camps refuge_id i creator_uid no es poden editar. "
             "Si s'editen les dates, es comprova que no hi hagi solapaments temporals."
         ),
-        request_body=RenovationUpdateSerializer,
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            properties={
+                'ini_date': openapi.Schema(type=openapi.TYPE_STRING, format='date', description="Data d'inici (YYYY-MM-DD)"),
+                'fin_date': openapi.Schema(type=openapi.TYPE_STRING, format='date', description="Data de finalització (YYYY-MM-DD)"),
+                'description': openapi.Schema(type=openapi.TYPE_STRING, description="Descripció de la reforma"),
+                'materials_needed': openapi.Schema(type=openapi.TYPE_STRING, description="Materials necessaris"),
+                'group_link': openapi.Schema(type=openapi.TYPE_STRING, format='uri', description="Enllaç al grup (WhatsApp/Telegram)")
+            },
+            example=EXAMPLE_RENOVATION_UPDATE_REQUEST
+        ),
         manual_parameters=[
             openapi.Parameter(
                 'id',
@@ -230,7 +271,10 @@ class RenovationAPIView(APIView):
         responses={
             200: openapi.Response(
                 description='Renovation actualitzada',
-                schema=RenovationSerializer
+                schema=RenovationSerializer,
+                examples={
+                    'application/json': EXAMPLE_RENOVATION_UPDATED
+                }
             ),
             400: ERROR_400_INVALID_DATA,
             401: ERROR_401_UNAUTHORIZED,
@@ -396,7 +440,10 @@ class RenovationParticipantsAPIView(APIView):
         responses={
             200: openapi.Response(
                 description='Participant afegit',
-                schema=RenovationSerializer
+                schema=RenovationSerializer,
+                examples={
+                    'application/json': EXAMPLE_RENOVATION_WITH_PARTICIPANTS
+                }
             ),
             400: ERROR_400_INVALID_DATA,
             401: ERROR_401_UNAUTHORIZED,
@@ -478,7 +525,10 @@ class RenovationParticipantDetailAPIView(APIView):
         responses={
             200: openapi.Response(
                 description='Participant eliminat',
-                schema=RenovationSerializer
+                schema=RenovationSerializer,
+                examples={
+                    'application/json': EXAMPLE_RENOVATION_PARTICIPANT_REMOVED
+                }
             ),
             401: ERROR_401_UNAUTHORIZED,
             403: ERROR_403_FORBIDDEN,

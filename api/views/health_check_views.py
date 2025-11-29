@@ -10,6 +10,10 @@ from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 from ..controllers.refugi_lliure_controller import RefugiLliureController
 from ..serializers.refugi_lliure_serializer import HealthCheckResponseSerializer
+from ..utils.swagger_examples import (
+    EXAMPLE_HEALTH_CHECK_RESPONSE,
+    EXAMPLE_HEALTH_CHECK_UNHEALTHY,
+)
 
 
 # Definim constants d'errors
@@ -40,24 +44,14 @@ class HealthCheckAPIView(APIView):
                 description='API en estat saludable',
                 schema=HealthCheckResponseSerializer,
                 examples={
-                    'application/json': {
-                        'status': 'healthy',
-                        'message': 'OK',
-                        'firebase': True,
-                        'firestore': True,
-                        'collections_count': 5
-                    }
+                    'application/json': EXAMPLE_HEALTH_CHECK_RESPONSE
                 }
             ),
             503: openapi.Response(
                 description=ERROR_503_SERVICE_UNAVAILABLE,
                 schema=HealthCheckResponseSerializer,
                 examples={
-                    'application/json': {
-                        'status': 'unhealthy',
-                        'message': 'Error connecting to Firebase',
-                        'firebase': False
-                    }
+                    'application/json': EXAMPLE_HEALTH_CHECK_UNHEALTHY
                 }
             )
         }

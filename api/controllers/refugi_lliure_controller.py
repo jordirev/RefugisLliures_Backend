@@ -63,15 +63,6 @@ class RefugiLliureController:
             refugis_results = search_result['results']
             has_filters = search_result['has_filters']
             
-            # Prepare applied filters for response
-            applied_filters = {
-                'name': filters.name,
-                'region': filters.region,
-                'departement': filters.departement,
-                'type': filters.type
-            }
-            # Only include non-empty filters in response
-            applied_filters = {k: v for k, v in applied_filters.items() if v}
             
             # El DAO ja retorna models o dades raw segons calgui
             # Necessitem crear resposta segons el format
@@ -80,10 +71,10 @@ class RefugiLliureController:
             
             if has_filters:
                 # Filters applied - refugis_results són models
-                response = mapper.format_search_response(refugis_results, applied_filters)
+                response = mapper.format_search_response(refugis_results)
             else:
                 # No filters - refugis_results són dades raw de coordenades
-                response = mapper.format_search_response_from_raw_data(refugis_results, applied_filters)
+                response = mapper.format_search_response_from_raw_data(refugis_results)
             
             return response, None
             

@@ -16,6 +16,11 @@ from ..serializers.refugi_lliure_serializer import (
     RefugiSearchFiltersSerializer
 )
 from ..serializers.renovation_serializer import RenovationSerializer
+from ..utils.swagger_examples import (
+    EXAMPLE_REFUGI_SEARCH_RESPONSE,
+    EXAMPLE_REFUGI_COLOMERS_DETAILED,
+    EXAMPLE_RENOVATIONS_LIST,
+)
 
 
 # Definim constants d'errors
@@ -42,22 +47,15 @@ class RefugiLliureCollectionAPIView(APIView):
         security=[],
         operation_description=(
             "Obté una llista de refugis amb suport per filtres opcionals. "
-            "Quan no s'especifiquen filtres, retorna totes les coordenades dels refugis. "
-            "Quan s'utilitzen filtres, retorna els refugis que compleixen els criteris especificats. "
-            "Aquest endpoint no requereix autenticació."
+            "\n- Quan no s'especifiquen filtres, retorna totes les coordenades dels refugis. "
+            "\n- Quan s'utilitzen filtres, retorna els refugis que compleixen els criteris especificats. "
+            "\n\nAquest endpoint no requereix autenticació."
         ),
         manual_parameters=[
             openapi.Parameter(
                 'name',
                 openapi.IN_QUERY,
                 description="Filtre per nom del refugi (cerca parcial, case-insensitive)",
-                type=openapi.TYPE_STRING,
-                required=False
-            ),
-            openapi.Parameter(
-                'region',
-                openapi.IN_QUERY,
-                description="Filtre per regió geogràfica",
                 type=openapi.TYPE_STRING,
                 required=False
             ),
@@ -78,28 +76,28 @@ class RefugiLliureCollectionAPIView(APIView):
                 required=False
             ),
             openapi.Parameter(
-                'min_altitude',
+                'altitude_min',
                 openapi.IN_QUERY,
                 description="Altitud mínima en metres",
                 type=openapi.TYPE_INTEGER,
                 required=False
             ),
             openapi.Parameter(
-                'max_altitude',
+                'altitude_max',
                 openapi.IN_QUERY,
                 description="Altitud màxima en metres",
                 type=openapi.TYPE_INTEGER,
                 required=False
             ),
             openapi.Parameter(
-                'capacity_min',
+                'places_min',
                 openapi.IN_QUERY,
                 description="Capacitat mínima de places",
                 type=openapi.TYPE_INTEGER,
                 required=False
             ),
             openapi.Parameter(
-                'capacity_max',
+                'places_max',
                 openapi.IN_QUERY,
                 description="Capacitat màxima de places",
                 type=openapi.TYPE_INTEGER,
@@ -111,18 +109,7 @@ class RefugiLliureCollectionAPIView(APIView):
                 description='Llista de refugis o coordenades',
                 schema=RefugiSearchResponseSerializer,
                 examples={
-                    'application/json': {
-                        'refugis': [
-                            {
-                                'id': 'refugi123',
-                                'nom': 'Refugi de la Renclusa',
-                                'latitud': 42.123,
-                                'longitud': 1.456
-                            }
-                        ],
-                        'total': 1,
-                        'filtered': True
-                    }
+                    'application/json': EXAMPLE_REFUGI_SEARCH_RESPONSE
                 }
             ),
             400: ERROR_400_INVALID_PARAMS,
@@ -174,9 +161,9 @@ class RefugiLliureDetailAPIView(APIView):
         security=[],
         operation_description=(
             "Obté els detalls complets d'un refugi específic per ID. "
-            "Retorna informació completa del refugi incloent nom, descripció, coordenades, "
+            "\nRetorna informació completa del refugi incloent nom, descripció, coordenades, "
             "dificultats, rutes properes i altres detalls. "
-            "Aquest endpoint no requereix autenticació."
+            "\nAquest endpoint no requereix autenticació."
         ),
         manual_parameters=[
             openapi.Parameter(
@@ -192,14 +179,7 @@ class RefugiLliureDetailAPIView(APIView):
                 description='Detalls del refugi',
                 schema=RefugiSerializer,
                 examples={
-                    'application/json': {
-                        'id': 'refugi123',
-                        'nom': 'Refugi de la Renclusa',
-                        'descripcio': 'Refugi guardat als Pirineus',
-                        'latitud': 42.123,
-                        'longitud': 1.456,
-                        'altitud': 2140
-                    }
+                    'application/json': EXAMPLE_REFUGI_COLOMERS_DETAILED
                 }
             ),
             404: ERROR_404_REFUGI_NOT_FOUND,
@@ -259,7 +239,10 @@ class RefugeRenovationsAPIView(APIView):
         responses={
             200: openapi.Response(
                 description='Renovations actives del refugi',
-                schema=RenovationSerializer(many=True)
+                schema=RenovationSerializer(many=True),
+                examples={
+                    'application/json': EXAMPLE_RENOVATIONS_LIST
+                }
             ),
             401: 'No autoritzat',
             500: ERROR_500_INTERNAL_ERROR

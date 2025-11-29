@@ -23,6 +23,20 @@ from ..serializers.refugi_lliure_serializer import (
 )
 from ..serializers.renovation_serializer import RenovationSerializer
 from ..permissions import IsSameUser
+from ..utils.swagger_examples import (
+    EXAMPLE_USER_BASIC,
+    EXAMPLE_USER_WITH_DATA,
+    EXAMPLE_USER_UPDATED,
+    EXAMPLE_USER_CREATE_REQUEST,
+    EXAMPLE_USER_UPDATE_REQUEST,
+    EXAMPLE_USER_REFUGI_REQUEST,
+    EXAMPLE_USER_REFUGI_VISITED_REQUEST,
+    EXAMPLE_USER_REFUGI_INFO_RESPONSE_2,
+    EXAMPLE_USER_REFUGI_INFO_RESPONSE_3,
+    EXAMPLE_USER_REFUGI_INFO_RESPONSE_1,
+    EXAMPLE_USER_VISITED_REFUGI_INFO_RESPONSE_2,
+    EXAMPLE_USER_VISITED_REFUGI_INFO_RESPONSE_3,
+)
 
 
 # Definim constants d'errors
@@ -60,10 +74,26 @@ class UsersCollectionAPIView(APIView):
     
     @swagger_auto_schema(
         tags=['Users'],
-        operation_description="Crea un nou usuari. Requereix autenticació amb token JWT de Firebase.",
-        request_body=UserCreateSerializer,
+        operation_description="Crea un nou usuari. \nRequereix autenticació amb token JWT de Firebase.",
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            required=['email'],
+            properties={
+                'username': openapi.Schema(type=openapi.TYPE_STRING, description="Nom d'usuari"),
+                'email': openapi.Schema(type=openapi.TYPE_STRING, format='email', description="Adreça de correu electrònic"),
+                'avatar': openapi.Schema(type=openapi.TYPE_STRING, format='uri', description="URL de l'avatar de l'usuari"),
+                'language': openapi.Schema(type=openapi.TYPE_STRING, description="Idioma preferit (ca, es, en, fr)", default='ca')
+            },
+            example=EXAMPLE_USER_CREATE_REQUEST
+        ),
         responses={
-            201: UserSerializer,
+            201: openapi.Response(
+                description='Usuari creat correctament',
+                schema=UserSerializer,
+                examples={
+                    'application/json': EXAMPLE_USER_BASIC
+                }
+            ),
             400: ERROR_400_INVALID_DATA,
             401: ERROR_401_UNAUTHORIZED,
             409: ERROR_409_USER_EXISTS
@@ -128,9 +158,15 @@ class UserDetailAPIView(APIView):
     
     @swagger_auto_schema(
         tags=['Users'],
-        operation_description="Obté un usuari per UID. Requereix autenticació amb token JWT de Firebase.",
+        operation_description="Obté un usuari per UID. \nRequereix autenticació amb token JWT de Firebase.",
         responses={
-            200: UserSerializer,
+            200: openapi.Response(
+                description='Usuari trobat',
+                schema=UserSerializer,
+                examples={
+                    'application/json': EXAMPLE_USER_WITH_DATA
+                }
+            ),
             401: ERROR_401_UNAUTHORIZED,
             403: ERROR_403_FORBIDDEN,
             404: ERROR_404_USER_NOT_FOUND
@@ -158,10 +194,25 @@ class UserDetailAPIView(APIView):
     
     @swagger_auto_schema(
         tags=['Users'],
-        operation_description="Actualitza les dades d'un usuari. Requereix autenticació amb token JWT de Firebase i ser el mateix usuari.",
-        request_body=UserUpdateSerializer,
+        operation_description="Actualitza les dades d'un usuari. \nRequereix autenticació amb token JWT de Firebase i ser el mateix usuari.",
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            properties={
+                'username': openapi.Schema(type=openapi.TYPE_STRING, description="Nom d'usuari"),
+                'email': openapi.Schema(type=openapi.TYPE_STRING, format='email', description="Adreça de correu electrònic"),
+                'avatar': openapi.Schema(type=openapi.TYPE_STRING, format='uri', description="URL de l'avatar de l'usuari"),
+                'language': openapi.Schema(type=openapi.TYPE_STRING, description="Idioma preferit (ca, es, en, fr)")
+            },
+            example=EXAMPLE_USER_UPDATE_REQUEST
+        ),
         responses={
-            200: UserSerializer,
+            200: openapi.Response(
+                description='Usuari actualitzat correctament',
+                schema=UserSerializer,
+                examples={
+                    'application/json': EXAMPLE_USER_UPDATED
+                }
+            ),
             400: ERROR_400_INVALID_DATA,
             401: ERROR_401_UNAUTHORIZED,
             403: ERROR_403_FORBIDDEN,
@@ -201,7 +252,7 @@ class UserDetailAPIView(APIView):
     
     @swagger_auto_schema(
         tags=['Users'],
-        operation_description="Elimina un usuari. Requereix autenticació amb token JWT de Firebase i ser el mateix usuari.",
+        operation_description="Elimina un usuari. \nRequereix autenticació amb token JWT de Firebase i ser el mateix usuari.",
         responses={
             204: ERROR_204_NO_CONTENT,
             401: ERROR_401_UNAUTHORIZED,
@@ -248,7 +299,13 @@ class UserFavouriteRefugesAPIView(APIView):
         tags=['User Favourite Refuges'],
         operation_description="Obté la informació dels refugis preferits de l'usuari. Requereix autenticació amb token JWT de Firebase i ser el mateix usuari.",
         responses={
-            200: UserRefugiInfoResponseSerializer,
+            200: openapi.Response(
+                description='Llista de refugis preferits',
+                schema=UserRefugiInfoResponseSerializer,
+                examples={
+                    'application/json': EXAMPLE_USER_REFUGI_INFO_RESPONSE_2
+                }
+            ),
             401: ERROR_401_UNAUTHORIZED,
             403: ERROR_403_FORBIDDEN,
             404: ERROR_404_USER_NOT_FOUND
@@ -280,9 +337,22 @@ class UserFavouriteRefugesAPIView(APIView):
     @swagger_auto_schema(
         tags=['User Favourite Refuges'],
         operation_description="Afegeix un refugi als preferits de l'usuari. Requereix autenticació amb token JWT de Firebase i ser el mateix usuari.",
-        request_body=UserRefugiSerializer,
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            required=['refuge_id'],
+            properties={
+                'refuge_id': openapi.Schema(type=openapi.TYPE_STRING, description="Identificador únic del refugi")
+            },
+            example=EXAMPLE_USER_REFUGI_REQUEST
+        ),
         responses={
-            200: UserRefugiInfoResponseSerializer,
+            200: openapi.Response(
+                description='Refugi afegit als preferits',
+                schema=UserRefugiInfoResponseSerializer,
+                examples={
+                    'application/json': EXAMPLE_USER_REFUGI_INFO_RESPONSE_3
+                }
+            ),
             400: ERROR_400_INVALID_DATA,
             401: ERROR_401_UNAUTHORIZED,
             403: ERROR_403_FORBIDDEN,
@@ -341,7 +411,13 @@ class UserFavouriteRefugesDetailAPIView(APIView):
         tags=['User Favourite Refuges'],
         operation_description="Elimina un refugi dels preferits de l'usuari. Requereix autenticació amb token JWT de Firebase i ser el mateix usuari.",
         responses={
-            200: UserRefugiInfoResponseSerializer,
+            200: openapi.Response(
+                description='Refugi eliminat dels preferits',
+                schema=UserRefugiInfoResponseSerializer,
+                examples={
+                    'application/json': EXAMPLE_USER_REFUGI_INFO_RESPONSE_1
+                }
+            ),
             401: ERROR_401_UNAUTHORIZED,
             403: ERROR_403_FORBIDDEN,
             404: ERROR_404_USER_NOT_FOUND
@@ -391,7 +467,13 @@ class UserVisitedRefugesAPIView(APIView):
         tags=['User Visited Refuges'],
         operation_description="Obté la informació dels refugis visitats de l'usuari. Requereix autenticació amb token JWT de Firebase i ser el mateix usuari.",
         responses={
-            200: UserRefugiInfoResponseSerializer,
+            200: openapi.Response(
+                description='Llista de refugis visitats',
+                schema=UserRefugiInfoResponseSerializer,
+                examples={
+                    'application/json': EXAMPLE_USER_VISITED_REFUGI_INFO_RESPONSE_2
+                }
+            ),
             401: ERROR_401_UNAUTHORIZED,
             403: ERROR_403_FORBIDDEN,
             404: ERROR_404_USER_NOT_FOUND
@@ -423,9 +505,22 @@ class UserVisitedRefugesAPIView(APIView):
     @swagger_auto_schema(
         tags=['User Visited Refuges'],
         operation_description="Afegeix un refugi als visitats de l'usuari. Requereix autenticació amb token JWT de Firebase i ser el mateix usuari.",
-        request_body=UserRefugiSerializer,
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            required=['refuge_id'],
+            properties={
+                'refuge_id': openapi.Schema(type=openapi.TYPE_STRING, description="Identificador únic del refugi")
+            },
+            example=EXAMPLE_USER_REFUGI_VISITED_REQUEST
+        ),
         responses={
-            200: UserRefugiInfoResponseSerializer,
+            200: openapi.Response(
+                description='Refugi afegit als visitats',
+                schema=UserRefugiInfoResponseSerializer,
+                examples={
+                    'application/json': EXAMPLE_USER_VISITED_REFUGI_INFO_RESPONSE_3
+                }
+            ),
             400: ERROR_400_INVALID_DATA,
             401: ERROR_401_UNAUTHORIZED,
             403: ERROR_403_FORBIDDEN,
@@ -484,7 +579,13 @@ class UserVisitedRefugesDetailAPIView(APIView):
         tags=['User Visited Refuges'],
         operation_description="Elimina un refugi dels visitats de l'usuari. Requereix autenticació amb token JWT de Firebase i ser el mateix usuari.",
         responses={
-            200: UserRefugiInfoResponseSerializer,
+            200: openapi.Response(
+                description='Refugi eliminat dels visitats',
+                schema=UserRefugiInfoResponseSerializer,
+                examples={
+                    'application/json': EXAMPLE_USER_REFUGI_INFO_RESPONSE_1
+                }
+            ),
             401: ERROR_401_UNAUTHORIZED,
             403: ERROR_403_FORBIDDEN,
             404: ERROR_404_USER_NOT_FOUND
