@@ -135,7 +135,7 @@ class UserRefugiInfoSerializer(serializers.Serializer):
     places = serializers.IntegerField(
         help_text="Nombre de places del refugi"
     )
-    coordinates = CoordinatesSerializer(
+    coords = CoordinatesSerializer(
         help_text="Coordenades del refugi"
     )
 
