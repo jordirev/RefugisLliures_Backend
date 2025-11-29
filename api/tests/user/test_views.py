@@ -27,14 +27,14 @@ def sample_refugis_info_list():
             'name': 'Refugi A',
             'region': 'Pirineus',
             'places': 10,
-            'coordinates': {'long': 1.5, 'lat': 42.5}
+            'coord': {'long': 1.5, 'lat': 42.5}
         },
         {
             'id': 'refugi_002',
             'name': 'Refugi B',
             'region': 'Pirineus',
             'places': 15,
-            'coordinates': {'long': 1.6, 'lat': 42.6}
+            'coord': {'long': 1.6, 'lat': 42.6}
         }
     ]
 

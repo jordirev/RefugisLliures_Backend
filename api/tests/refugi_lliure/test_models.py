@@ -165,14 +165,14 @@ class TestRefugiModels:
         coord = RefugiCoordinates(
             refuge_id='test_001',
             refugi_name='Test Refugi',
-            coordinates=Coordinates(1.5, 42.5),
+            coord=Coordinates(1.5, 42.5),
             geohash='abc123'
         )
         
         assert coord.refuge_id == 'test_001'
         assert coord.refugi_name == 'Test Refugi'
-        assert floats_are_close(coord.coordinates.long, 1.5)
-        assert floats_are_close(coord.coordinates.lat, 42.5)
+        assert floats_are_close(coord.coord.long, 1.5)
+        assert floats_are_close(coord.coord.lat, 42.5)
         assert coord.geohash == 'abc123'
     
     def test_refugi_search_filters_creation(self):

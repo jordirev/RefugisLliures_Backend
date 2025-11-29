@@ -44,7 +44,7 @@ class RefugiCoordinatesSerializer(serializers.Serializer):
     """Serializer per a coordenades de refugi"""
     refugi_id = serializers.CharField()
     refugi_name = serializers.CharField()
-    coordinates = CoordinatesSerializer()
+    coord = CoordinatesSerializer()
     geohash = serializers.CharField(default=None, allow_null=True)
 
 class RefugiSearchResponseSerializer(serializers.Serializer):
@@ -135,7 +135,7 @@ class UserRefugiInfoSerializer(serializers.Serializer):
     places = serializers.IntegerField(
         help_text="Nombre de places del refugi"
     )
-    coords = CoordinatesSerializer(
+    coord = CoordinatesSerializer(
         help_text="Coordenades del refugi"
     )
 

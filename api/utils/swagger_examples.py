@@ -152,7 +152,7 @@ EXAMPLE_REFUGI_INFO_COLOMERS = {
     'name': 'Refugi de Colomers',
     'region': 'Val d\'Aran',
     'places': 40,
-    'coordinates': {
+    'coord': {
         'long': 0.9833,
         'lat': 42.6667
     }
@@ -163,7 +163,7 @@ EXAMPLE_REFUGI_INFO_VENTOSA = {
     'name': 'Refugi de Ventosa i Calvell',
     'region': 'Pallars Sobirà',
     'places': 30,
-    'coordinates': {
+    'coord': {
         'long': 1.1500,
         'lat': 42.5833
     }
@@ -174,7 +174,7 @@ EXAMPLE_REFUGI_INFO_RESTANCA = {
     'name': 'Refugi de Restanca',
     'region': 'Val d\'Aran',
     'places': 36,
-    'coordinates': {
+    'coord': {
         'long': 0.8167,
         'lat': 42.6500
     }
@@ -185,7 +185,7 @@ EXAMPLE_REFUGI_INFO_SABOREDO = {
     'name': 'Refugi de Saboredo',
     'region': 'Val d\'Aran',
     'places': 80,
-    'coordinates': {
+    'coord': {
         'long': 0.9500,
         'lat': 42.6333
     }
