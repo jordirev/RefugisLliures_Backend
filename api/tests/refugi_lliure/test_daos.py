@@ -126,7 +126,7 @@ class TestRefugiDAO:
                 {
                     'refuge_id': 'ref_001',
                     'refugi_name': 'Refugi A',
-                    'coordinates': {'long': 1.5, 'lat': 42.5},
+                    'coord': {'long': 1.5, 'lat': 42.5},
                     'geohash': 'abc'
                 }
             ]
