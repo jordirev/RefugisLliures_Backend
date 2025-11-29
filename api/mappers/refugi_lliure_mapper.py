@@ -30,11 +30,24 @@ class RefugiLliureMapper:
 
     
     @staticmethod
-    def format_search_response(refugis: List[Refugi]) -> Dict[str, Any]:
-        """Formatea la resposta de cerca"""
+    def format_search_response(refugis: List[Refugi], include_visitors: bool = False) -> Dict[str, Any]:
+        """
+        Formatea la resposta de cerca
+        Args:
+            refugis: Llista de refugis
+            include_visitors: Si True, inclou la llista de visitants. Si False, l'omet.
+        """
+        results = []
+        for refugi in refugis:
+            refugi_dict = refugi.to_dict()
+            # Eliminar visitors si no cal incloure'ls
+            if not include_visitors and 'visitors' in refugi_dict:
+                del refugi_dict['visitors']
+            results.append(refugi_dict)
+        
         return {
             'count': len(refugis),
-            'results': [refugi.to_dict() for refugi in refugis]
+            'results': results
         }
     
     @staticmethod

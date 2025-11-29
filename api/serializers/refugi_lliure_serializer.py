@@ -38,6 +38,7 @@ class RefugiSerializer(serializers.Serializer):
     modified_at = serializers.CharField(default=None, allow_null=True)
     region = serializers.CharField(default=None, allow_null=True, required=False)
     departement = serializers.CharField(default=None, allow_null=True, required=False)
+    visitors = serializers.ListField(child=serializers.CharField(), default=list, required=False)
 
 class RefugiCoordinatesSerializer(serializers.Serializer):
     """Serializer per a coordenades de refugi"""

@@ -93,6 +93,49 @@ class TestRefugiSerializers:
         assert serializer.is_valid()
         assert serializer.validated_data['name'] == sample_refugi_data['name']
     
+    def test_refugi_serializer_with_visitors(self):
+        """Test serialització de refugi amb visitants"""
+        data = {
+            'id': 'test_001',
+            'name': 'Test Refugi',
+            'coord': {'long': 1.5, 'lat': 42.5},
+            'info_comp': {},
+            'visitors': ['uid_001', 'uid_002', 'uid_003']
+        }
+        serializer = RefugiSerializer(data=data)
+        
+        assert serializer.is_valid()
+        assert 'visitors' in serializer.validated_data
+        assert len(serializer.validated_data['visitors']) == 3
+    
+    def test_refugi_serializer_without_visitors(self):
+        """Test serialització de refugi sense visitants (camp opcional)"""
+        data = {
+            'id': 'test_001',
+            'name': 'Test Refugi',
+            'coord': {'long': 1.5, 'lat': 42.5},
+            'info_comp': {}
+        }
+        serializer = RefugiSerializer(data=data)
+        
+        assert serializer.is_valid()
+        # El camp visitors és opcional, pot no estar present o estar buit
+        assert 'visitors' not in serializer.validated_data or serializer.validated_data.get('visitors') == []
+    
+    def test_refugi_serializer_empty_visitors_list(self):
+        """Test serialització de refugi amb llista de visitants buida"""
+        data = {
+            'id': 'test_001',
+            'name': 'Test Refugi',
+            'coord': {'long': 1.5, 'lat': 42.5},
+            'info_comp': {},
+            'visitors': []
+        }
+        serializer = RefugiSerializer(data=data)
+        
+        assert serializer.is_valid()
+        assert serializer.validated_data.get('visitors', []) == []
+    
     def test_refugi_serializer_missing_required_fields(self):
         """Test serialització sense camps requerits"""
         data = {'name': 'Test'}  # Falta id i coord

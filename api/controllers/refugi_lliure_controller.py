@@ -14,9 +14,12 @@ class RefugiLliureController:
     def __init__(self):
         self.refugi_dao = RefugiLliureDAO()
     
-    def get_refugi_by_id(self, refuge_id: str) -> Tuple[Optional[Refugi], Optional[str]]:
+    def get_refugi_by_id(self, refuge_id: str, include_visitors: bool = False) -> Tuple[Optional[Refugi], Optional[str]]:
         """
         Obtenir un refugi per ID
+        Args:
+            refuge_id: ID del refugi
+            include_visitors: Si True, inclou la llista de visitants. Si False, l'omet.
         Returns: (Refugi o None, missatge d'error o None)
         """
         try:
@@ -25,15 +28,22 @@ class RefugiLliureController:
             if not refugi:
                 return None, "Refugi not found"
             
+            # Si no volem incloure visitants, eliminar-los
+            if not include_visitors:
+                refugi.visitors = []
+            
             return refugi, None
             
         except Exception as e:
             logger.error(f'Error in get_refugi_by_id: {str(e)}')
             return None, f"Internal server error: {str(e)}"
     
-    def search_refugis(self, query_params: Dict[str, Any]) -> Tuple[Optional[Dict[str, Any]], Optional[str]]:
+    def search_refugis(self, query_params: Dict[str, Any], include_visitors: bool = False) -> Tuple[Optional[Dict[str, Any]], Optional[str]]:
         """
         Cercar refugis amb filtres
+        Args:
+            query_params: Paràmetres de cerca
+            include_visitors: Si True, inclou la llista de visitants. Si False, l'omet.
         Returns: (Dades de resposta o None, missatge d'error o None)
         """
         try:
@@ -71,7 +81,7 @@ class RefugiLliureController:
             
             if has_filters:
                 # Filters applied - refugis_results són models
-                response = mapper.format_search_response(refugis_results)
+                response = mapper.format_search_response(refugis_results, include_visitors=include_visitors)
             else:
                 # No filters - refugis_results són dades raw de coordenades
                 response = mapper.format_search_response_from_raw_data(refugis_results)
