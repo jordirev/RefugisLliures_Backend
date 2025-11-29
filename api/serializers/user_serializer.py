@@ -90,11 +90,6 @@ class UserSerializer(UserValidatorMixin, serializers.Serializer):
         help_text="Refugis visitats de l'usuari",
         read_only=True
     )
-    renovations = serializers.ListField(
-        child=serializers.CharField(),
-        help_text="Refugis reformats de l'usuari",
-        read_only=True
-    )
     num_uploaded_photos = serializers.IntegerField(
         help_text="Nombre de fotos pujades per l'usuari",
         read_only=True

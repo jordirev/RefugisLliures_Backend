@@ -5,6 +5,7 @@ import logging
 from typing import List, Optional, Dict, Any
 from ..services import firestore_service, cache_service
 from ..models.refugi_lliure import Refugi, RefugiCoordinates, RefugiSearchFilters
+from ..mappers.refugi_lliure_mapper import RefugiLliureMapper
 
 logger = logging.getLogger(__name__)
 
@@ -15,8 +16,9 @@ class RefugiLliureDAO:
         self.collection_name = 'data_refugis_lliures'
         self.coords_collection_name = 'coords_refugis'
         self.coords_document_name = 'all_refugis_coords'
+        self.mapper = RefugiLliureMapper()
     
-    def get_by_id(self, refugi_id: str) -> Optional[Dict[str, Any]]:
+    def get_by_id(self, refugi_id: str) -> Optional[Refugi]:
         """Obtenir un refugi per ID amb cache"""
         # Genera clau de cache
         cache_key = cache_service.generate_key('refugi_detail', refugi_id=refugi_id)
@@ -24,7 +26,7 @@ class RefugiLliureDAO:
         # Intenta obtenir de cache
         cached_data = cache_service.get(cache_key)
         if cached_data is not None:
-            return cached_data
+            return self.mapper.firestore_to_model(cached_data)
         
         try:
             db = firestore_service.get_db()
@@ -41,14 +43,18 @@ class RefugiLliureDAO:
             timeout = cache_service.get_timeout('refugi_detail')
             cache_service.set(cache_key, refugi_data, timeout)
             
-            return refugi_data
+            return self.mapper.firestore_to_model(refugi_data)
             
         except Exception as e:
             logger.error(f'Error getting refugi by ID {refugi_id}: {str(e)}')
             raise
     
-    def search_refugis(self, filters: RefugiSearchFilters) -> List[Dict[str, Any]]:
-        """Cercar refugis amb filtres optimitzats per índexs composats i cache"""
+    def search_refugis(self, filters: RefugiSearchFilters) -> Dict[str, Any]:
+        """Cercar refugis amb filtres optimitzats per índexs composats i cache
+        
+        Returns:
+            Dict amb 'results' (List[Refugi] o List[Dict] segons filtres) i 'has_filters' (bool)
+        """
         # Genera clau de cache basada en filtres
         cache_key = cache_service.generate_key(
             'refugi_search',
@@ -58,6 +64,12 @@ class RefugiLliureDAO:
         # Intenta obtenir de cache
         cached_data = cache_service.get(cache_key)
         if cached_data is not None:
+            # Convertir a models si té filtres
+            if cached_data['has_filters']:
+                return {
+                    'results': self.mapper.firestore_list_to_models(cached_data['results']),
+                    'has_filters': True
+                }
             return cached_data
         
         try:
@@ -69,15 +81,23 @@ class RefugiLliureDAO:
             if not has_filters:
                 # No filters applied - use coordinate collection for efficiency
                 results = self._get_coordinates_as_refugi_list()
+                data = {'results': results, 'has_filters': False}
             else:
                 # Filters applied - build optimized query
-                results = self._build_optimized_query(db, filters)
+                results_data = self._build_optimized_query(db, filters)
+                data = {'results': results_data, 'has_filters': True}
             
-            # Guarda a cache
+            # Guarda a cache (raw data)
             timeout = cache_service.get_timeout('refugi_search')
-            cache_service.set(cache_key, results, timeout)
+            cache_service.set(cache_key, data, timeout)
             
-            return results
+            # Retornar amb models si té filtres
+            if data['has_filters']:
+                return {
+                    'results': self.mapper.firestore_list_to_models(data['results']),
+                    'has_filters': True
+                }
+            return data
             
         except Exception as e:
             logger.error(f'Error searching refugis: {str(e)}')
@@ -383,15 +403,13 @@ class RefugiLliureDAO:
         """
         try:
             # Obté el refugi actual
-            refugi_data = self.get_by_id(refugi_id)
-            if not refugi_data:
+            refugi = self.get_by_id(refugi_id)
+            if not refugi:
                 logger.warning(f"No es pot afegir visitant, refugi no trobat amb ID: {refugi_id}")
                 return False
             
             # Obté la llista actual de visitants
-            current_visitors = refugi_data.get('visitors', [])
-            if current_visitors is None:
-                current_visitors = []
+            current_visitors = refugi.visitors if refugi.visitors else []
             
             # Comprova si ja està a la llista
             if uid in current_visitors:
@@ -429,15 +447,13 @@ class RefugiLliureDAO:
         """
         try:
             # Obté el refugi actual
-            refugi_data = self.get_by_id(refugi_id)
-            if not refugi_data:
+            refugi = self.get_by_id(refugi_id)
+            if not refugi:
                 logger.warning(f"No es pot eliminar visitant, refugi no trobat amb ID: {refugi_id}")
                 return False
             
             # Obté la llista actual de visitants
-            current_visitors = refugi_data.get('visitors', [])
-            if current_visitors is None:
-                current_visitors = []
+            current_visitors = refugi.visitors if refugi.visitors else []
             
             # Comprova si l'usuari està a la llista
             if uid not in current_visitors:

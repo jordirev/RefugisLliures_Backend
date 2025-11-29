@@ -11,22 +11,97 @@ Tots els endpoints de cache requereixen:
 - Token JWT de Firebase vàlid a la capçalera `Authorization: Bearer <token>`
 
 ### 2. **Permís IsFirebaseAdmin**
-A més de l'autenticació, el UID de l'usuari ha d'estar configurat com a administrador.
+A més de l'autenticació, l'usuari ha d'tenir el **custom claim** `role` amb valor `"admin"`.
 
 ### Configuració d'Administradors
 
-Els UIDs dels usuaris administradors es defineixen a la variable d'entorn `FIREBASE_ADMIN_UIDS`:
+Els administradors es defineixen mitjançant **Custom Claims de Firebase Auth** (1a Generació). Un usuari és administrador si té el custom claim `role: "admin"` al seu token JWT.
 
-#### Fitxer `.env.development` o `.env.production`:
-```bash
-# Format: UIDs separats per comes (sense espais)
-FIREBASE_ADMIN_UIDS=abc123def456,xyz789ghi012,otro123uid456
+#### Com afegir administradors
+
+**Opció 1: Firebase Admin SDK (Recomanat)**
+
+```python
+from firebase_admin import auth
+
+# Assignar rol d'admin a un usuari
+uid = "abc123def456"
+auth.set_custom_user_claims(uid, {'role': 'admin'})
+print(f"Usuari {uid} ara és administrador")
 ```
 
-#### Variables d'entorn a Render/producció:
+**Opció 2: Firebase Console (Cloud Functions)**
+
+Pots crear una Cloud Function per gestionar rols:
+
+```javascript
+const admin = require('firebase-admin');
+
+exports.addAdminRole = functions.https.onCall(async (data, context) => {
+  // Verificar que qui crida és super-admin
+  if (context.auth.token.superAdmin !== true) {
+    throw new functions.https.HttpsError('permission-denied', 'No autoritzat');
+  }
+  
+  // Assignar rol admin
+  await admin.auth().setCustomUserClaims(data.uid, {
+    role: 'admin'
+  });
+  
+  return { message: `Usuari ${data.uid} ara és admin` };
+});
 ```
-FIREBASE_ADMIN_UIDS=abc123def456,xyz789ghi012
+
+**Opció 3: Script d'administració**
+
+Pots crear un script Python per gestionar administradors:
+
+```python
+# scripts/manage_admins.py
+import firebase_admin
+from firebase_admin import credentials, auth
+
+cred = credentials.Certificate("env/firebase-service-account.json")
+firebase_admin.initialize_app(cred)
+
+def add_admin(uid):
+    auth.set_custom_user_claims(uid, {'admin': True})
+    print(f"✓ {uid} és ara administrador")
+
+def remove_admin(uid):
+    auth.set_custom_user_claims(uid, {'admin': False})
+    print(f"✓ Permisos d'admin eliminats per {uid}")
+
+def list_admins():
+    # Nota: No hi ha API directa per llistar tots els admins
+    # Cal iterar per tots els usuaris
+    page = auth.list_users()
+    admins = []
+    while page:
+        for user in page.users:
+            claims = user.custom_claims or {}
+            if claims.get('admin'):
+                admins.append(user.uid)
+        page = page.get_next_page()
+    return admins
+
+if __name__ == "__main__":
+    import sys
+    if len(sys.argv) < 2:
+        print("Ús: python manage_admins.py [add|remove|list] [uid]")
+        sys.exit(1)
+    
+    action = sys.argv[1]
+    if action == "add" and len(sys.argv) == 3:
+        add_admin(sys.argv[2])
+    elif action == "remove" and len(sys.argv) == 3:
+        remove_admin(sys.argv[2])
+    elif action == "list":
+        admins = list_admins()
+        print(f"Administradors: {admins}")
 ```
+
+⚠️ **Important:** Després d'afegir/eliminar custom claims, l'usuari ha de **renovar el seu token JWT** per que els canvis tinguin efecte. Els clients han de fer logout/login o forçar un refresh del token.
 
 ## Com obtenir el UID d'un usuari Firebase
 
@@ -108,12 +183,12 @@ A Swagger (`/swagger/`), aquests endpoints:
 ## Errors Comuns
 
 ### Error 403: Permís denegat
-**Causa:** El teu UID no està a `FIREBASE_ADMIN_UIDS`
+**Causa:** L'usuari no té el custom claim `admin: true`
 
 **Solució:**
-1. Comprova el teu UID de Firebase
-2. Afegeix-lo a la variable d'entorn `FIREBASE_ADMIN_UIDS`
-3. Reinicia el servidor Django
+1. Verifica que l'usuari té el custom claim admin assignat
+2. Utilitza el script `manage_admins.py` o Firebase Admin SDK per assignar-lo
+3. L'usuari ha de renovar el seu token JWT (logout/login)
 
 ### Error 401: No autoritzat
 **Causa:** Token JWT invàlid o no proporcionat
@@ -122,6 +197,13 @@ A Swagger (`/swagger/`), aquests endpoints:
 1. Verifica que el token és vàlid
 2. Comprova que la capçalera és: `Authorization: Bearer <token>`
 3. El token no pot haver caducat
+
+### Els canvis de permisos no tenen efecte
+**Causa:** El token JWT ja estava emès abans d'afegir els custom claims
+
+**Solució:**
+1. Força un refresh del token al client
+2. O simplement fes logout i login de nou
 
 ## Exemple d'ús amb curl
 
@@ -142,20 +224,27 @@ curl -X DELETE "http://localhost:8000/api/cache/invalidate/?pattern=refugi_*" \
 ## Seguretat
 
 ⚠️ **Important:**
-- Mai comparteixis els UIDs d'administrador públicament
+- Els custom claims s'inclouen al token JWT i són visibles al client
 - Limita els administradors al mínim necessari
-- Revisa regularment qui té accés d'administrador
-- Els UIDs són sensibles i donen accés a operacions crítiques
+- Revisa regularment qui té permisos d'administrador
+- Considera implementar un sistema d'auditoria per accions d'admin
+- Els custom claims donen accés a operacions crítiques
 
 ## Testing
 
 Per testejar aquests endpoints en desenvolupament:
 
 1. Crea un usuari de test a Firebase
-2. Afegeix el seu UID a `.env.development`:
+2. Assigna-li el rol d'admin amb el script `manage_admins.py`:
+   ```bash
+   python scripts/manage_admins.py add uid_del_usuari_de_test
    ```
-   FIREBASE_ADMIN_UIDS=uid_del_usuari_de_test
-   ```
-3. Reinicia el servidor
-4. Autentica't amb aquest usuari i obtén el token
-5. Utilitza el token per cridar els endpoints
+3. Autentica't amb aquest usuari i obtén el token (hauràs de fer login)
+4. Utilitza el token per cridar els endpoints
+
+**Alternativa per tests unitaris:**
+
+Als tests, pots mockejar els custom claims:
+```python
+request.user_claims = {'role': 'admin', 'uid': 'test-admin-uid'}
+```

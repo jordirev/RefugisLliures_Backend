@@ -13,7 +13,7 @@ from firebase_admin import auth
 
 from api.middleware.firebase_auth_middleware import FirebaseAuthenticationMiddleware
 from api.authentication import FirebaseAuthentication
-from api.permissions import IsOwnerOrReadOnly, IsOwner, IsSameUser
+from api.permissions import IsOwnerOrReadOnly, IsCreator, IsSameUser
 
 
 # ============= FIXTURES =============
@@ -79,6 +79,14 @@ def mock_object_with_uid():
 
 
 @pytest.fixture
+def mock_object_with_creator_uid():
+    """Mock d'objecte amb creator_uid"""
+    obj = Mock()
+    obj.creator_uid = 'test_uid_12345'
+    return obj
+
+
+@pytest.fixture
 def mock_view():
     """Mock de vista DRF"""
     view = Mock()
@@ -137,7 +145,7 @@ class TestFirebaseAuthenticationMiddleware:
         import json
         content = json.loads(result.content)
         assert 'error' in content
-        assert content['error'] == 'No autoritzat'
+        assert content['error'] == 'No autenticat'
     
     def test_invalid_authorization_format_no_bearer(self, request_factory):
         """Test que retorna error si el format no és 'Bearer <token>'"""
@@ -474,13 +482,13 @@ class TestIsOwnerOrReadOnly:
         assert result is False
 
 
-class TestIsOwner:
-    """Tests per al permís IsOwner"""
+class TestIsCreator:
+    """Tests per al permís IsCreator"""
     
     def test_has_permission_authenticated_user(self, api_request_factory, mock_firebase_user):
         """Test que permet accés a usuari autenticat"""
-        permission = IsOwner()
-        request = api_request_factory.get('/api/users/')
+        permission = IsCreator()
+        request = api_request_factory.get('/api/renovations/')
         request.user = mock_firebase_user
         
         result = permission.has_permission(request, None)
@@ -489,8 +497,8 @@ class TestIsOwner:
     
     def test_has_permission_unauthenticated_user(self, api_request_factory):
         """Test que denega accés a usuari no autenticat"""
-        permission = IsOwner()
-        request = api_request_factory.get('/api/users/')
+        permission = IsCreator()
+        request = api_request_factory.get('/api/renovations/')
         request.user = None
         
         result = permission.has_permission(request, None)
@@ -498,39 +506,53 @@ class TestIsOwner:
         # El permís retorna None (que és Falsy) o False per usuari no autenticat
         assert not result
     
-    def test_has_object_permission_owner(self, api_request_factory, mock_firebase_user, mock_object_with_uid):
-        """Test que permet accés al propietari"""
-        permission = IsOwner()
-        request = api_request_factory.get('/api/users/test_uid/')
+    def test_has_object_permission_creator(self, api_request_factory, mock_firebase_user, mock_object_with_creator_uid):
+        """Test que permet accés al creador"""
+        permission = IsCreator()
+        request = api_request_factory.get('/api/renovations/1/')
         request.user = mock_firebase_user
+        request.user_uid = 'test_uid_12345'
         
-        result = permission.has_object_permission(request, None, mock_object_with_uid)
+        result = permission.has_object_permission(request, None, mock_object_with_creator_uid)
         
         assert result is True
     
-    def test_has_object_permission_non_owner(self, api_request_factory, mock_firebase_user, mock_object_with_uid):
-        """Test que denega accés a no propietari"""
-        permission = IsOwner()
-        request = api_request_factory.get('/api/users/another_uid/')
+    def test_has_object_permission_non_creator(self, api_request_factory, mock_firebase_user, mock_object_with_creator_uid):
+        """Test que denega accés a no creador"""
+        permission = IsCreator()
+        request = api_request_factory.get('/api/renovations/1/')
         request.user = mock_firebase_user
+        request.user_uid = 'test_uid_12345'
         
-        # Canvia l'UID de l'objecte
-        mock_object_with_uid.uid = 'another_uid'
+        # Canvia el creator_uid de l'objecte
+        mock_object_with_creator_uid.creator_uid = 'another_uid'
         
-        result = permission.has_object_permission(request, None, mock_object_with_uid)
+        result = permission.has_object_permission(request, None, mock_object_with_creator_uid)
         
         assert result is False
     
-    def test_has_object_permission_object_without_uid(self, api_request_factory, mock_firebase_user):
-        """Test que denega accés si l'objecte no té UID"""
-        permission = IsOwner()
-        request = api_request_factory.get('/api/users/test_uid/')
+    def test_has_object_permission_object_without_creator_uid(self, api_request_factory, mock_firebase_user):
+        """Test que denega accés si l'objecte no té creator_uid"""
+        permission = IsCreator()
+        request = api_request_factory.get('/api/renovations/1/')
         request.user = mock_firebase_user
+        request.user_uid = 'test_uid_12345'
         
-        # Objecte sense atribut uid
+        # Objecte sense atribut creator_uid
         obj = Mock(spec=[])
         
         result = permission.has_object_permission(request, None, obj)
+        
+        assert result is False
+    
+    def test_has_object_permission_no_user_uid_in_request(self, api_request_factory, mock_firebase_user, mock_object_with_creator_uid):
+        """Test que denega accés si el request no té user_uid"""
+        permission = IsCreator()
+        request = api_request_factory.get('/api/renovations/1/')
+        request.user = mock_firebase_user
+        # No assignem request.user_uid
+        
+        result = permission.has_object_permission(request, None, mock_object_with_creator_uid)
         
         assert result is False
 

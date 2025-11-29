@@ -9,6 +9,16 @@ from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 from ..services.cache_service import cache_service
 from ..permissions import IsFirebaseAdmin
+from ..utils.swagger_examples import (
+    EXAMPLE_CACHE_STATS,
+    EXAMPLE_CACHE_CLEAR_RESPONSE,
+    EXAMPLE_CACHE_INVALIDATE_RESPONSE,
+)
+from ..utils.swagger_error_responses import (
+    ERROR_401_UNAUTHORIZED,
+    ERROR_403_FORBIDDEN,
+    ERROR_500_INTERNAL_ERROR,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -16,22 +26,27 @@ logger = logging.getLogger(__name__)
 @swagger_auto_schema(
     method='get',
     tags=['Cache Admin'],
-    operation_description="Obté estadístiques de la cache Redis. Requereix ser administrador (UID a FIREBASE_ADMIN_UIDS).",
+    operation_description="Obté estadístiques de la cache Redis. Requereix ser administrador",
     responses={
-        200: openapi.Schema(
-            type=openapi.TYPE_OBJECT,
-            properties={
-                'connected': openapi.Schema(type=openapi.TYPE_BOOLEAN),
-                'keys': openapi.Schema(type=openapi.TYPE_INTEGER),
-                'memory_used': openapi.Schema(type=openapi.TYPE_STRING),
-                'hits': openapi.Schema(type=openapi.TYPE_INTEGER),
-                'misses': openapi.Schema(type=openapi.TYPE_INTEGER),
+        200: openapi.Response(
+            description='Estadístiques de cache',
+            schema=openapi.Schema(
+                type=openapi.TYPE_OBJECT,
+                properties={
+                    'connected': openapi.Schema(type=openapi.TYPE_BOOLEAN),
+                    'keys': openapi.Schema(type=openapi.TYPE_INTEGER),
+                    'memory_used': openapi.Schema(type=openapi.TYPE_STRING),
+                    'hits': openapi.Schema(type=openapi.TYPE_INTEGER),
+                    'misses': openapi.Schema(type=openapi.TYPE_INTEGER),
+                }
+            ),
+            examples={
+                'application/json': EXAMPLE_CACHE_STATS
             }
         ),
-        401: 'No autoritzat',
-        403: 'Permís denegat - només administradors'
-    },
-    security=[{'Bearer': []}]
+        401: ERROR_401_UNAUTHORIZED,
+        403: ERROR_403_FORBIDDEN
+    }
 )
 @api_view(['GET'])
 @permission_classes([IsFirebaseAdmin])
@@ -51,14 +66,18 @@ def cache_stats(request):
 @swagger_auto_schema(
     method='delete',
     tags=['Cache Admin'],
-    operation_description="Neteja tota la cache. Requereix ser administrador (UID a FIREBASE_ADMIN_UIDS).",
+    operation_description="Neteja tota la cache. Requereix ser administrador",
     responses={
-        200: 'Cache netejada correctament',
-        401: 'No autoritzat',
-        403: 'Permís denegat - només administradors',
-        500: 'Error netejant la cache'
-    },
-    security=[{'Bearer': []}]
+        200: openapi.Response(
+            description='Cache netejada correctament',
+            examples={
+                'application/json': EXAMPLE_CACHE_CLEAR_RESPONSE
+            }
+        ),
+        401: ERROR_401_UNAUTHORIZED,
+        403: ERROR_403_FORBIDDEN,
+        500: ERROR_500_INTERNAL_ERROR
+    }
 )
 @api_view(['DELETE'])
 @permission_classes([IsFirebaseAdmin])
@@ -85,20 +104,24 @@ def cache_clear(request):
 @swagger_auto_schema(
     method='delete',
     tags=['Cache Admin'],
-    operation_description="Elimina claus de cache que coincideixin amb un patró. Requereix ser administrador (UID a FIREBASE_ADMIN_UIDS).",
+    operation_description="Elimina claus de cache que coincideixin amb un patró. Requereix ser administrador",
     manual_parameters=[
         openapi.Parameter('pattern', openapi.IN_QUERY, 
                          description="Patró de claus a eliminar (ex: 'refugi_*')", 
                          type=openapi.TYPE_STRING, required=True)
     ],
     responses={
-        200: 'Claus eliminades correctament',
+        200: openapi.Response(
+            description='Claus eliminades correctament',
+            examples={
+                'application/json': EXAMPLE_CACHE_INVALIDATE_RESPONSE
+            }
+        ),
         400: 'Patró no proporcionat',
-        401: 'No autoritzat',
-        403: 'Permís denegat - només administradors',
-        500: 'Error eliminant claus'
-    },
-    security=[{'Bearer': []}]
+        401: ERROR_401_UNAUTHORIZED,
+        403: ERROR_403_FORBIDDEN,
+        500: ERROR_500_INTERNAL_ERROR
+    }
 )
 @api_view(['DELETE'])
 @permission_classes([IsFirebaseAdmin])

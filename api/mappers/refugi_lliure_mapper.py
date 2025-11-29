@@ -30,16 +30,15 @@ class RefugiLliureMapper:
 
     
     @staticmethod
-    def format_search_response(refugis: List[Refugi], filters: Dict[str, Any]) -> Dict[str, Any]:
+    def format_search_response(refugis: List[Refugi]) -> Dict[str, Any]:
         """Formatea la resposta de cerca"""
         return {
             'count': len(refugis),
-            'filters': filters,
             'results': [refugi.to_dict() for refugi in refugis]
         }
     
     @staticmethod
-    def format_search_response_from_raw_data(refugis_data: List[Dict[str, Any]], filters: Dict[str, Any]) -> Dict[str, Any]:
+    def format_search_response_from_raw_data(refugis_data: List[Dict[str, Any]]) -> Dict[str, Any]:
         """Formatea la resposta de cerca des de dades raw (per coordenades)"""
         return {
             'count': len(refugis_data),

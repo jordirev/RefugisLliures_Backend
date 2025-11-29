@@ -10,10 +10,13 @@ from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 from ..controllers.refugi_lliure_controller import RefugiLliureController
 from ..serializers.refugi_lliure_serializer import HealthCheckResponseSerializer
-
-
-# Definim constants d'errors
-ERROR_503_SERVICE_UNAVAILABLE = 'Servei no disponible'
+from ..utils.swagger_examples import (
+    EXAMPLE_HEALTH_CHECK_RESPONSE,
+    EXAMPLE_HEALTH_CHECK_UNHEALTHY,
+)
+from ..utils.swagger_error_responses import (
+    ERROR_503_SERVICE_UNAVAILABLE,
+)
 
 
 # Configurar logging
@@ -40,26 +43,10 @@ class HealthCheckAPIView(APIView):
                 description='API en estat saludable',
                 schema=HealthCheckResponseSerializer,
                 examples={
-                    'application/json': {
-                        'status': 'healthy',
-                        'message': 'OK',
-                        'firebase': True,
-                        'firestore': True,
-                        'collections_count': 5
-                    }
+                    'application/json': EXAMPLE_HEALTH_CHECK_RESPONSE
                 }
             ),
-            503: openapi.Response(
-                description=ERROR_503_SERVICE_UNAVAILABLE,
-                schema=HealthCheckResponseSerializer,
-                examples={
-                    'application/json': {
-                        'status': 'unhealthy',
-                        'message': 'Error connecting to Firebase',
-                        'firebase': False
-                    }
-                }
-            )
+            503: ERROR_503_SERVICE_UNAVAILABLE
         }
     )
     def get(self, request):

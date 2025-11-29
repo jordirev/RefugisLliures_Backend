@@ -4,7 +4,6 @@ Controller per a la gestió de refugis
 import logging
 from typing import Dict, Any, List, Optional, Tuple
 from ..daos.refugi_lliure_dao import RefugiLliureDAO
-from ..mappers.refugi_lliure_mapper import RefugiLliureMapper
 from ..models.refugi_lliure import Refugi, RefugiCoordinates, RefugiSearchFilters
 
 logger = logging.getLogger(__name__)
@@ -14,7 +13,6 @@ class RefugiLliureController:
     
     def __init__(self):
         self.refugi_dao = RefugiLliureDAO()
-        self.refugi_mapper = RefugiLliureMapper()
     
     def get_refugi_by_id(self, refuge_id: str) -> Tuple[Optional[Refugi], Optional[str]]:
         """
@@ -22,12 +20,11 @@ class RefugiLliureController:
         Returns: (Refugi o None, missatge d'error o None)
         """
         try:
-            refugi_data = self.refugi_dao.get_by_id(refuge_id)
+            refugi = self.refugi_dao.get_by_id(refuge_id)
             
-            if not refugi_data:
+            if not refugi:
                 return None, "Refugi not found"
             
-            refugi = self.refugi_mapper.firestore_to_model(refugi_data)
             return refugi, None
             
         except Exception as e:
@@ -61,33 +58,23 @@ class RefugiLliureController:
                 lits=query_params.get('lits')
             )
             
-            # Obtenir dades del DAO
-            refugis_data = self.refugi_dao.search_refugis(filters)
+            # Obtenir dades del DAO (ja inclou models si cal)
+            search_result = self.refugi_dao.search_refugis(filters)
+            refugis_results = search_result['results']
+            has_filters = search_result['has_filters']
             
-            # Prepare applied filters for response
-            applied_filters = {
-                'name': filters.name,
-                'region': filters.region,
-                'departement': filters.departement,
-                'type': filters.type
-            }
-            # Only include non-empty filters in response
-            applied_filters = {k: v for k, v in applied_filters.items() if v}
             
-            # Check if we have any active filters to determine response format
-            has_filters = bool(applied_filters or 
-                             (filters.places_min is not None or filters.places_max is not None) or
-                             (filters.altitude_min is not None or filters.altitude_max is not None) or
-                             any([filters.cheminee, filters.poele, filters.couvertures, filters.latrines,
-                                  filters.bois, filters.eau, filters.matelas, filters.couchage, filters.lits]))
+            # El DAO ja retorna models o dades raw segons calgui
+            # Necessitem crear resposta segons el format
+            from ..mappers.refugi_lliure_mapper import RefugiLliureMapper
+            mapper = RefugiLliureMapper()
             
             if has_filters:
-                # Filters applied - convert to full models
-                refugis = self.refugi_mapper.firestore_list_to_models(refugis_data)
-                response = self.refugi_mapper.format_search_response(refugis, applied_filters)
+                # Filters applied - refugis_results són models
+                response = mapper.format_search_response(refugis_results)
             else:
-                # No filters - use raw coordinate data
-                response = self.refugi_mapper.format_search_response_from_raw_data(refugis_data, applied_filters)
+                # No filters - refugis_results són dades raw de coordenades
+                response = mapper.format_search_response_from_raw_data(refugis_results)
             
             return response, None
             

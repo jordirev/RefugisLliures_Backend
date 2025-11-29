@@ -50,8 +50,6 @@ class RefugiSearchResponseSerializer(serializers.Serializer):
     """Serializer per a resposta de cerca"""
     count = serializers.IntegerField()
     results = RefugiSerializer(many=True)
-    filters = serializers.DictField()
-
 
 
 class HealthCheckResponseSerializer(serializers.Serializer):
