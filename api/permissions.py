@@ -69,27 +69,26 @@ class SafeMethodsOnly(permissions.BasePermission):
 class IsFirebaseAdmin(permissions.BasePermission):
     """
     Permís que només permet accés als usuaris administradors de Firebase.
-    Els UIDs d'administradors es defineixen a settings.FIREBASE_ADMIN_UIDS.
+    Utilitza els Custom Claims de Firebase Auth per determinar si un usuari és admin.
+    Un usuari és administrador si té el custom claim 'role' amb valor 'admin'.
     """
     
     def has_permission(self, request, view):
         """
-        Comprova si l'usuari autenticat és un administrador
+        Comprova si l'usuari autenticat és un administrador mitjançant custom claims
         """
-        from django.conf import settings
-        
         # Comprova que l'usuari està autenticat
         if not request.user or not hasattr(request.user, 'is_authenticated') or not request.user.is_authenticated:
             return False
         
-        # Obté el UID de l'usuari autenticat
-        user_uid = getattr(request, 'user_uid', None)
-        if not user_uid:
-            return False
+        # Obté els custom claims de l'usuari
+        user_claims = getattr(request, 'user_claims', {})
+        if not user_claims:
+            # Intenta obtenir-los de l'objecte user si no estan a request
+            user_claims = getattr(request.user, 'claims', {})
         
-        # Comprova si el UID està a la llista d'administradors
-        admin_uids = getattr(settings, 'FIREBASE_ADMIN_UIDS', [])
-        return user_uid in admin_uids
+        # Comprova si l'usuari té el custom claim 'role' amb valor 'admin'
+        return user_claims.get('role') == 'admin'
 
 
 class IsCreator(permissions.BasePermission):

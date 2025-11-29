@@ -31,10 +31,9 @@ def admin_user(db):
 
 
 @pytest.fixture
-def mock_admin_uid():
-    """Mock del UID d'administrador per Firebase"""
-    with patch('django.conf.settings.FIREBASE_ADMIN_UIDS', ['test-admin-uid']):
-        yield 'test-admin-uid'
+def mock_admin_claims():
+    """Mock dels custom claims d'administrador per Firebase"""
+    return {'role': 'admin', 'uid': 'test-admin-uid'}
 
 
 @pytest.fixture
@@ -62,7 +61,7 @@ def mock_cache_service():
 class TestCacheStatsView:
     """Tests per a la view cache_stats"""
     
-    def test_cache_stats_success(self, api_factory, admin_user, mock_admin_uid, mock_cache_service):
+    def test_cache_stats_success(self, api_factory, admin_user, mock_admin_claims, mock_cache_service):
         """Test: Obtenció exitosa d'estadístiques de cache"""
         # Arrange
         mock_stats = {
@@ -76,7 +75,8 @@ class TestCacheStatsView:
         
         request = api_factory.get('/api/cache/stats/')
         force_authenticate(request, user=admin_user)
-        request.user_uid = mock_admin_uid  # Mock Firebase admin UID
+        request.user_uid = mock_admin_claims['uid']
+        request.user_claims = mock_admin_claims  # Mock Firebase custom claims
         
         # Act
         response = cache_stats(request)
@@ -113,7 +113,7 @@ class TestCacheStatsView:
         assert response.status_code == status.HTTP_403_FORBIDDEN
         assert not mock_cache_service.get_stats.called
     
-    def test_cache_stats_service_exception(self, api_factory, admin_user, mock_admin_uid,
+    def test_cache_stats_service_exception(self, api_factory, admin_user, mock_admin_claims,
                                           mock_cache_service):
         """Test: Gestió d'excepcions del servei"""
         # Arrange
@@ -121,7 +121,8 @@ class TestCacheStatsView:
         
         request = api_factory.get('/api/cache/stats/')
         force_authenticate(request, user=admin_user)
-        request.user_uid = mock_admin_uid  # Mock Firebase admin UID
+        request.user_uid = mock_admin_claims['uid']
+        request.user_claims = mock_admin_claims  # Mock Firebase custom claims
         
         # Act
         response = cache_stats(request)
@@ -132,7 +133,7 @@ class TestCacheStatsView:
         assert 'Error obtenint estadístiques de cache' in response.data['error']
         assert 'detail' in response.data
     
-    def test_cache_stats_disconnected(self, api_factory, admin_user, mock_admin_uid,
+    def test_cache_stats_disconnected(self, api_factory, admin_user, mock_admin_claims,
                                      mock_cache_service):
         """Test: Estadístiques quan cache està desconnectat"""
         # Arrange
@@ -144,7 +145,8 @@ class TestCacheStatsView:
         
         request = api_factory.get('/api/cache/stats/')
         force_authenticate(request, user=admin_user)
-        request.user_uid = mock_admin_uid  # Mock Firebase admin UID
+        request.user_uid = mock_admin_claims['uid']
+        request.user_claims = mock_admin_claims  # Mock Firebase custom claims
         
         # Act
         response = cache_stats(request)
@@ -154,7 +156,7 @@ class TestCacheStatsView:
         assert response.data['connected'] is False
         assert 'error' in response.data
     
-    def test_cache_stats_zero_keys(self, api_factory, admin_user, mock_admin_uid, mock_cache_service):
+    def test_cache_stats_zero_keys(self, api_factory, admin_user, mock_admin_claims, mock_cache_service):
         """Test: Estadístiques amb cache buida"""
         # Arrange
         mock_stats = {
@@ -168,7 +170,8 @@ class TestCacheStatsView:
         
         request = api_factory.get('/api/cache/stats/')
         force_authenticate(request, user=admin_user)
-        request.user_uid = mock_admin_uid  # Mock Firebase admin UID
+        request.user_uid = mock_admin_claims['uid']
+        request.user_claims = mock_admin_claims  # Mock Firebase custom claims
         
         # Act
         response = cache_stats(request)
@@ -178,7 +181,7 @@ class TestCacheStatsView:
         assert response.data['keys'] == 0
         assert response.data['hits'] == 0
     
-    def test_cache_stats_high_values(self, api_factory, admin_user, mock_admin_uid,
+    def test_cache_stats_high_values(self, api_factory, admin_user, mock_admin_claims,
                                     mock_cache_service):
         """Test: Estadístiques amb valors alts (escenari límit)"""
         # Arrange
@@ -193,7 +196,8 @@ class TestCacheStatsView:
         
         request = api_factory.get('/api/cache/stats/')
         force_authenticate(request, user=admin_user)
-        request.user_uid = mock_admin_uid  # Mock Firebase admin UID
+        request.user_uid = mock_admin_claims['uid']
+        request.user_claims = mock_admin_claims  # Mock Firebase custom claims
         
         # Act
         response = cache_stats(request)
@@ -209,14 +213,15 @@ class TestCacheStatsView:
 class TestCacheClearView:
     """Tests per a la view cache_clear"""
     
-    def test_cache_clear_success(self, api_factory, admin_user, mock_admin_uid, mock_cache_service):
+    def test_cache_clear_success(self, api_factory, admin_user, mock_admin_claims, mock_cache_service):
         """Test: Neteja exitosa de la cache"""
         # Arrange
         mock_cache_service.clear_all.return_value = True
         
         request = api_factory.delete('/api/cache/clear/')
         force_authenticate(request, user=admin_user)
-        request.user_uid = mock_admin_uid  # Mock Firebase admin UID
+        request.user_uid = mock_admin_claims['uid']
+        request.user_claims = mock_admin_claims  # Mock Firebase custom claims
         
         # Act
         response = cache_clear(request)
@@ -227,14 +232,15 @@ class TestCacheClearView:
         assert 'Cache netejada correctament' in response.data['message']
         mock_cache_service.clear_all.assert_called_once()
     
-    def test_cache_clear_failure(self, api_factory, admin_user, mock_admin_uid, mock_cache_service):
+    def test_cache_clear_failure(self, api_factory, admin_user, mock_admin_claims, mock_cache_service):
         """Test: Error en netejar la cache"""
         # Arrange
         mock_cache_service.clear_all.return_value = False
         
         request = api_factory.delete('/api/cache/clear/')
         force_authenticate(request, user=admin_user)
-        request.user_uid = mock_admin_uid  # Mock Firebase admin UID
+        request.user_uid = mock_admin_claims['uid']
+        request.user_claims = mock_admin_claims  # Mock Firebase custom claims
         
         # Act
         response = cache_clear(request)
@@ -269,7 +275,7 @@ class TestCacheClearView:
         assert response.status_code == status.HTTP_403_FORBIDDEN
         assert not mock_cache_service.clear_all.called
     
-    def test_cache_clear_exception(self, api_factory, admin_user, mock_admin_uid,
+    def test_cache_clear_exception(self, api_factory, admin_user, mock_admin_claims,
                                    mock_cache_service):
         """Test: Gestió d'excepcions durant la neteja"""
         # Arrange
@@ -277,7 +283,8 @@ class TestCacheClearView:
         
         request = api_factory.delete('/api/cache/clear/')
         force_authenticate(request, user=admin_user)
-        request.user_uid = mock_admin_uid  # Mock Firebase admin UID
+        request.user_uid = mock_admin_claims['uid']
+        request.user_claims = mock_admin_claims  # Mock Firebase custom claims
         
         # Act
         response = cache_clear(request)
@@ -287,12 +294,13 @@ class TestCacheClearView:
         assert 'error' in response.data
         assert 'detail' in response.data
     
-    def test_cache_clear_wrong_method(self, api_factory, admin_user, mock_admin_uid):
+    def test_cache_clear_wrong_method(self, api_factory, admin_user, mock_admin_claims):
         """Test: Ús de mètode HTTP incorrecte"""
         # Arrange
         request = api_factory.get('/api/cache/clear/')  # GET instead of DELETE
         force_authenticate(request, user=admin_user)
-        request.user_uid = mock_admin_uid  # Mock Firebase admin UID
+        request.user_uid = mock_admin_claims['uid']
+        request.user_claims = mock_admin_claims  # Mock Firebase custom claims
         
         # Act
         response = cache_clear(request)
@@ -300,12 +308,13 @@ class TestCacheClearView:
         # Assert
         assert response.status_code == status.HTTP_405_METHOD_NOT_ALLOWED
     
-    def test_cache_clear_post_method(self, api_factory, admin_user, mock_admin_uid):
+    def test_cache_clear_post_method(self, api_factory, admin_user, mock_admin_claims):
         """Test: Ús de POST (també hauria de fallar)"""
         # Arrange
         request = api_factory.post('/api/cache/clear/')
         force_authenticate(request, user=admin_user)
-        request.user_uid = mock_admin_uid  # Mock Firebase admin UID
+        request.user_uid = mock_admin_claims['uid']
+        request.user_claims = mock_admin_claims  # Mock Firebase custom claims
         
         # Act
         response = cache_clear(request)
@@ -319,7 +328,7 @@ class TestCacheClearView:
 class TestCacheInvalidateView:
     """Tests per a la view cache_invalidate"""
     
-    def test_cache_invalidate_success(self, api_factory, admin_user, mock_admin_uid,
+    def test_cache_invalidate_success(self, api_factory, admin_user, mock_admin_claims,
                                      mock_cache_service):
         """Test: Invalidació exitosa de claus amb patró"""
         # Arrange
@@ -327,7 +336,8 @@ class TestCacheInvalidateView:
         
         request = api_factory.delete('/api/cache/invalidate/?pattern=refugi_*')
         force_authenticate(request, user=admin_user)
-        request.user_uid = mock_admin_uid  # Mock Firebase admin UID
+        request.user_uid = mock_admin_claims['uid']
+        request.user_claims = mock_admin_claims  # Mock Firebase custom claims
         
         # Act
         response = cache_invalidate(request)
@@ -338,13 +348,14 @@ class TestCacheInvalidateView:
         assert 'refugi_*' in response.data['message']
         mock_cache_service.delete_pattern.assert_called_once_with('refugi_*')
     
-    def test_cache_invalidate_no_pattern(self, api_factory, admin_user, mock_admin_uid,
+    def test_cache_invalidate_no_pattern(self, api_factory, admin_user, mock_admin_claims,
                                         mock_cache_service):
         """Test: Error quan no es proporciona el patró"""
         # Arrange
         request = api_factory.delete('/api/cache/invalidate/')  # No pattern param
         force_authenticate(request, user=admin_user)
-        request.user_uid = mock_admin_uid  # Mock Firebase admin UID
+        request.user_uid = mock_admin_claims['uid']
+        request.user_claims = mock_admin_claims  # Mock Firebase custom claims
         
         # Act
         response = cache_invalidate(request)
@@ -355,13 +366,14 @@ class TestCacheInvalidateView:
         assert 'Patró no proporcionat' in response.data['error']
         assert not mock_cache_service.delete_pattern.called
     
-    def test_cache_invalidate_empty_pattern(self, api_factory, admin_user, mock_admin_uid,
+    def test_cache_invalidate_empty_pattern(self, api_factory, admin_user, mock_admin_claims,
                                            mock_cache_service):
         """Test: Patró buit"""
         # Arrange
         request = api_factory.delete('/api/cache/invalidate/?pattern=')
         force_authenticate(request, user=admin_user)
-        request.user_uid = mock_admin_uid  # Mock Firebase admin UID
+        request.user_uid = mock_admin_claims['uid']
+        request.user_claims = mock_admin_claims  # Mock Firebase custom claims
         
         # Act
         response = cache_invalidate(request)
@@ -370,7 +382,7 @@ class TestCacheInvalidateView:
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert 'Patró no proporcionat' in response.data['error']
     
-    def test_cache_invalidate_failure(self, api_factory, admin_user, mock_admin_uid,
+    def test_cache_invalidate_failure(self, api_factory, admin_user, mock_admin_claims,
                                      mock_cache_service):
         """Test: Error en invalidar claus"""
         # Arrange
@@ -378,7 +390,8 @@ class TestCacheInvalidateView:
         
         request = api_factory.delete('/api/cache/invalidate/?pattern=test_*')
         force_authenticate(request, user=admin_user)
-        request.user_uid = mock_admin_uid  # Mock Firebase admin UID
+        request.user_uid = mock_admin_claims['uid']
+        request.user_claims = mock_admin_claims  # Mock Firebase custom claims
         
         # Act
         response = cache_invalidate(request)
@@ -413,7 +426,7 @@ class TestCacheInvalidateView:
         assert response.status_code == status.HTTP_403_FORBIDDEN
         assert not mock_cache_service.delete_pattern.called
     
-    def test_cache_invalidate_exception(self, api_factory, admin_user, mock_admin_uid,
+    def test_cache_invalidate_exception(self, api_factory, admin_user, mock_admin_claims,
                                        mock_cache_service):
         """Test: Gestió d'excepcions durant la invalidació"""
         # Arrange
@@ -421,7 +434,8 @@ class TestCacheInvalidateView:
         
         request = api_factory.delete('/api/cache/invalidate/?pattern=test_*')
         force_authenticate(request, user=admin_user)
-        request.user_uid = mock_admin_uid  # Mock Firebase admin UID
+        request.user_uid = mock_admin_claims['uid']
+        request.user_claims = mock_admin_claims  # Mock Firebase custom claims
         
         # Act
         response = cache_invalidate(request)
@@ -431,7 +445,7 @@ class TestCacheInvalidateView:
         assert 'error' in response.data
         assert 'detail' in response.data
     
-    def test_cache_invalidate_complex_pattern(self, api_factory, admin_user, mock_admin_uid,
+    def test_cache_invalidate_complex_pattern(self, api_factory, admin_user, mock_admin_claims,
                                              mock_cache_service):
         """Test: Patró complex amb wildcards"""
         # Arrange
@@ -440,7 +454,8 @@ class TestCacheInvalidateView:
         
         request = api_factory.delete(f'/api/cache/invalidate/?pattern={complex_pattern}')
         force_authenticate(request, user=admin_user)
-        request.user_uid = mock_admin_uid  # Mock Firebase admin UID
+        request.user_uid = mock_admin_claims['uid']
+        request.user_claims = mock_admin_claims  # Mock Firebase custom claims
         
         # Act
         response = cache_invalidate(request)
@@ -450,7 +465,7 @@ class TestCacheInvalidateView:
         assert complex_pattern in response.data['message']
         mock_cache_service.delete_pattern.assert_called_once_with(complex_pattern)
     
-    def test_cache_invalidate_special_characters(self, api_factory, admin_user, mock_admin_uid,
+    def test_cache_invalidate_special_characters(self, api_factory, admin_user, mock_admin_claims,
                                                  mock_cache_service):
         """Test: Patró amb caràcters especials"""
         # Arrange
@@ -459,7 +474,8 @@ class TestCacheInvalidateView:
         
         request = api_factory.delete(f'/api/cache/invalidate/?pattern={pattern}')
         force_authenticate(request, user=admin_user)
-        request.user_uid = mock_admin_uid  # Mock Firebase admin UID
+        request.user_uid = mock_admin_claims['uid']
+        request.user_claims = mock_admin_claims  # Mock Firebase custom claims
         
         # Act
         response = cache_invalidate(request)
@@ -468,7 +484,7 @@ class TestCacheInvalidateView:
         assert response.status_code == status.HTTP_200_OK
         mock_cache_service.delete_pattern.assert_called_once_with(pattern)
     
-    def test_cache_invalidate_single_key_pattern(self, api_factory, admin_user, mock_admin_uid,
+    def test_cache_invalidate_single_key_pattern(self, api_factory, admin_user, mock_admin_claims,
                                                 mock_cache_service):
         """Test: Patró per a una sola clau específica"""
         # Arrange
@@ -477,7 +493,8 @@ class TestCacheInvalidateView:
         
         request = api_factory.delete(f'/api/cache/invalidate/?pattern={pattern}')
         force_authenticate(request, user=admin_user)
-        request.user_uid = mock_admin_uid  # Mock Firebase admin UID
+        request.user_uid = mock_admin_claims['uid']
+        request.user_claims = mock_admin_claims  # Mock Firebase custom claims
         
         # Act
         response = cache_invalidate(request)
@@ -486,7 +503,7 @@ class TestCacheInvalidateView:
         assert response.status_code == status.HTTP_200_OK
         mock_cache_service.delete_pattern.assert_called_once_with(pattern)
     
-    def test_cache_invalidate_wildcard_only(self, api_factory, admin_user, mock_admin_uid,
+    def test_cache_invalidate_wildcard_only(self, api_factory, admin_user, mock_admin_claims,
                                            mock_cache_service):
         """Test: Patró amb només wildcard (cas límit)"""
         # Arrange
@@ -495,7 +512,8 @@ class TestCacheInvalidateView:
         
         request = api_factory.delete(f'/api/cache/invalidate/?pattern={pattern}')
         force_authenticate(request, user=admin_user)
-        request.user_uid = mock_admin_uid  # Mock Firebase admin UID
+        request.user_uid = mock_admin_claims['uid']
+        request.user_claims = mock_admin_claims  # Mock Firebase custom claims
         
         # Act
         response = cache_invalidate(request)
@@ -504,12 +522,13 @@ class TestCacheInvalidateView:
         assert response.status_code == status.HTTP_200_OK
         mock_cache_service.delete_pattern.assert_called_once_with(pattern)
     
-    def test_cache_invalidate_wrong_method(self, api_factory, admin_user, mock_admin_uid):
+    def test_cache_invalidate_wrong_method(self, api_factory, admin_user, mock_admin_claims):
         """Test: Ús de mètode HTTP incorrecte"""
         # Arrange
         request = api_factory.get('/api/cache/invalidate/?pattern=test_*')
         force_authenticate(request, user=admin_user)
-        request.user_uid = mock_admin_uid  # Mock Firebase admin UID
+        request.user_uid = mock_admin_claims['uid']
+        request.user_claims = mock_admin_claims  # Mock Firebase custom claims
         
         # Act
         response = cache_invalidate(request)
@@ -518,7 +537,7 @@ class TestCacheInvalidateView:
         assert response.status_code == status.HTTP_405_METHOD_NOT_ALLOWED
     
     def test_cache_invalidate_multiple_patterns_in_query(self, api_factory, admin_user,
-                                                        mock_admin_uid, mock_cache_service):
+                                                        mock_admin_claims, mock_cache_service):
         """Test: Múltiples valors de pattern (només s'agafa el primer)"""
         # Arrange
         mock_cache_service.delete_pattern.return_value = True
@@ -526,7 +545,8 @@ class TestCacheInvalidateView:
         # Django takes the first value when multiple params with same name
         request = api_factory.delete('/api/cache/invalidate/?pattern=first_*&pattern=second_*')
         force_authenticate(request, user=admin_user)
-        request.user_uid = mock_admin_uid  # Mock Firebase admin UID
+        request.user_uid = mock_admin_claims['uid']
+        request.user_claims = mock_admin_claims  # Mock Firebase custom claims
         
         # Act
         response = cache_invalidate(request)
@@ -542,13 +562,13 @@ class TestCacheInvalidateView:
 class TestCacheViewsIntegration:
     """Tests d'integració entre diferents views de cache"""
     
-    def test_stats_after_clear(self, api_factory, admin_user, mock_admin_uid, mock_cache_service):
+    def test_stats_after_clear(self, api_factory, admin_user, mock_admin_claims, mock_cache_service):
         """Test: Obtenir estadístiques després de netejar la cache"""
         # Arrange - Clear
         mock_cache_service.clear_all.return_value = True
         request_clear = api_factory.delete('/api/cache/clear/')
         force_authenticate(request_clear, user=admin_user)
-        request_clear.user_uid = mock_admin_uid  # Mock Firebase admin UID
+        request_clear.user_uid = mock_admin_claims  # Mock Firebase admin UID
         
         # Act - Clear
         response_clear = cache_clear(request_clear)
@@ -566,7 +586,7 @@ class TestCacheViewsIntegration:
         }
         request_stats = api_factory.get('/api/cache/stats/')
         force_authenticate(request_stats, user=admin_user)
-        request_stats.user_uid = mock_admin_uid  # Mock Firebase admin UID
+        request_stats.user_uid = mock_admin_claims  # Mock Firebase admin UID
         
         # Act - Stats
         response_stats = cache_stats(request_stats)
@@ -575,13 +595,13 @@ class TestCacheViewsIntegration:
         assert response_stats.status_code == status.HTTP_200_OK
         assert response_stats.data['keys'] == 0
     
-    def test_invalidate_then_stats(self, api_factory, admin_user, mock_admin_uid, mock_cache_service):
+    def test_invalidate_then_stats(self, api_factory, admin_user, mock_admin_claims, mock_cache_service):
         """Test: Invalidar claus i després verificar amb stats"""
         # Arrange - Invalidate
         mock_cache_service.delete_pattern.return_value = True
         request_invalidate = api_factory.delete('/api/cache/invalidate/?pattern=test_*')
         force_authenticate(request_invalidate, user=admin_user)
-        request_invalidate.user_uid = mock_admin_uid  # Mock Firebase admin UID
+        request_invalidate.user_uid = mock_admin_claims  # Mock Firebase admin UID
         
         # Act - Invalidate
         response_invalidate = cache_invalidate(request_invalidate)
@@ -599,7 +619,7 @@ class TestCacheViewsIntegration:
         }
         request_stats = api_factory.get('/api/cache/stats/')
         force_authenticate(request_stats, user=admin_user)
-        request_stats.user_uid = mock_admin_uid  # Mock Firebase admin UID
+        request_stats.user_uid = mock_admin_claims  # Mock Firebase admin UID
         
         # Act - Stats
         response_stats = cache_stats(request_stats)

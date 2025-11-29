@@ -170,8 +170,8 @@ class UserDetailAPIView(APIView):
                 }
             ),
             401: ERROR_401_UNAUTHORIZED,
-            403: ERROR_403_FORBIDDEN,
-            404: ERROR_404_USER_NOT_FOUND
+            404: ERROR_404_USER_NOT_FOUND,
+            500: ERROR_500_INTERNAL_ERROR
         }
     )
     def get(self, request, uid):

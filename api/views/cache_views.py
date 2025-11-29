@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 @swagger_auto_schema(
     method='get',
     tags=['Cache Admin'],
-    operation_description="Obté estadístiques de la cache Redis. Requereix ser administrador (UID a FIREBASE_ADMIN_UIDS).",
+    operation_description="Obté estadístiques de la cache Redis. Requereix ser administrador",
     responses={
         200: openapi.Response(
             description='Estadístiques de cache',
@@ -66,7 +66,7 @@ def cache_stats(request):
 @swagger_auto_schema(
     method='delete',
     tags=['Cache Admin'],
-    operation_description="Neteja tota la cache. Requereix ser administrador (UID a FIREBASE_ADMIN_UIDS).",
+    operation_description="Neteja tota la cache. Requereix ser administrador",
     responses={
         200: openapi.Response(
             description='Cache netejada correctament',
@@ -104,7 +104,7 @@ def cache_clear(request):
 @swagger_auto_schema(
     method='delete',
     tags=['Cache Admin'],
-    operation_description="Elimina claus de cache que coincideixin amb un patró. Requereix ser administrador (UID a FIREBASE_ADMIN_UIDS).",
+    operation_description="Elimina claus de cache que coincideixin amb un patró. Requereix ser administrador",
     manual_parameters=[
         openapi.Parameter('pattern', openapi.IN_QUERY, 
                          description="Patró de claus a eliminar (ex: 'refugi_*')", 
