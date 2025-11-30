@@ -34,21 +34,34 @@ class RenovationDAO:
         """
         try:
             db = self.firestore_service.get_db()
-            
+
+            # Normalitzar dates a format YYYY-MM-DD per garantir ordenació correcta a Firestore
+            from datetime import date, datetime as _dt
+            if 'ini_date' in renovation_data:
+                if isinstance(renovation_data['ini_date'], _dt):
+                    renovation_data['ini_date'] = renovation_data['ini_date'].date().isoformat()
+                elif isinstance(renovation_data['ini_date'], date):
+                    renovation_data['ini_date'] = renovation_data['ini_date'].isoformat()
+            if 'fin_date' in renovation_data:
+                if isinstance(renovation_data['fin_date'], _dt):
+                    renovation_data['fin_date'] = renovation_data['fin_date'].date().isoformat()
+                elif isinstance(renovation_data['fin_date'], date):
+                    renovation_data['fin_date'] = renovation_data['fin_date'].isoformat()
+
             # Crea la renovation
             doc_ref = db.collection(self.COLLECTION_NAME).document()
             renovation_data['id'] = doc_ref.id
             doc_ref.set(renovation_data)
-            
+
             logger.info(f"Renovation creada amb ID: {doc_ref.id}")
-            
+
             # Invalida cache de llistes
             cache_service.delete_pattern('renovation_list:*')
             cache_service.delete_pattern(f"renovation_refuge:{renovation_data['refuge_id']}:*")
-            
-            # Retornar la instància del model
+
+            # Retornar la instància del model (usar les dades normalitzades)
             return self.mapper.firestore_to_model(renovation_data)
-            
+
         except Exception as e:
             logger.error(f"Error creant renovation: {str(e)}")
             return None
@@ -161,6 +174,19 @@ class RenovationDAO:
             
             renovation_data = doc.to_dict()
             refuge_id = renovation_data.get('refuge_id')
+            
+            # Normalitzar dates a format YYYY-MM-DD per garantir ordenació correcta a Firestore
+            from datetime import date, datetime as _dt
+            if 'ini_date' in update_data:
+                if isinstance(update_data['ini_date'], _dt):
+                    update_data['ini_date'] = update_data['ini_date'].date().isoformat()
+                elif isinstance(update_data['ini_date'], date):
+                    update_data['ini_date'] = update_data['ini_date'].isoformat()
+            if 'fin_date' in update_data:
+                if isinstance(update_data['fin_date'], _dt):
+                    update_data['fin_date'] = update_data['fin_date'].date().isoformat()
+                elif isinstance(update_data['fin_date'], date):
+                    update_data['fin_date'] = update_data['fin_date'].isoformat()
             
             # Actualitza només els camps proporcionats
             doc_ref.update(update_data)
