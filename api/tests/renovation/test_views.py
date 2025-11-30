@@ -167,59 +167,58 @@ class TestRenovationViews:
     
     @patch('api.views.renovation_views.RenovationController')
     def test_get_renovation_success(self, mock_controller_class, sample_renovation):
-        """Test GET /renovations/?id=xxx"""
+        """Test GET /renovations/{id}/"""
         mock_controller = mock_controller_class.return_value
         mock_controller.get_renovation_by_id.return_value = (True, sample_renovation, None)
         
-        request = self._get_authenticated_request('GET', '/api/renovations/', query_params={'id': 'test_id'})
+        request = self._get_authenticated_request('GET', '/api/renovations/test_id/')
         
         view = RenovationAPIView.as_view()
         view.cls.authentication_classes = []
         view.cls.get_permissions = lambda self: []
-        response = view(request)
+        response = view(request, id='test_id')
         
         assert response.status_code == http_status.HTTP_200_OK
         assert response.data['id'] == sample_renovation.id
     
     @patch('api.views.renovation_views.RenovationController')
     def test_get_renovation_not_found(self, mock_controller_class):
-        """Test GET /renovations/?id=xxx (no trobada)"""
+        """Test GET /renovations/{id}/ (no trobada)"""
         mock_controller = mock_controller_class.return_value
         mock_controller.get_renovation_by_id.return_value = (False, None, 'Renovation no trobada')
         
-        request = self._get_authenticated_request('GET', '/api/renovations/', query_params={'id': 'nonexistent'})
+        request = self._get_authenticated_request('GET', '/api/renovations/nonexistent/')
         
         view = RenovationAPIView.as_view()
         view.cls.authentication_classes = []
         view.cls.get_permissions = lambda self: []
-        response = view(request)
+        response = view(request, id='nonexistent')
         
         assert response.status_code == http_status.HTTP_404_NOT_FOUND
     
     @patch('api.views.renovation_views.RenovationController')
     def test_update_renovation_success(self, mock_controller_class, sample_renovation):
-        """Test PATCH /renovations/?id=xxx"""
+        """Test PATCH /renovations/{id}/"""
         mock_controller = mock_controller_class.return_value
         mock_controller.update_renovation.return_value = (True, sample_renovation, None)
         
         request = self._get_authenticated_request(
             'PATCH',
-            '/api/renovations/',
+            '/api/renovations/test_id/',
             {'description': 'Updated'},
-            query_params={'id': 'test_id'},
             user_uid=sample_renovation.creator_uid
         )
         
         view = RenovationAPIView.as_view()
         view.cls.authentication_classes = []
         view.cls.get_permissions = lambda self: []
-        response = view(request)
+        response = view(request, id='test_id')
         
         assert response.status_code == http_status.HTTP_200_OK
     
     @patch('api.views.renovation_views.RenovationController')
     def test_update_renovation_forbidden(self, mock_controller_class):
-        """Test PATCH /renovations/?id=xxx (no creador)"""
+        """Test PATCH /renovations/{id}/ (no creador)"""
         mock_controller = mock_controller_class.return_value
         mock_controller.update_renovation.return_value = (
             False,
@@ -229,16 +228,15 @@ class TestRenovationViews:
         
         request = self._get_authenticated_request(
             'PATCH',
-            '/api/renovations/',
+            '/api/renovations/test_id/',
             {'description': 'Updated'},
-            query_params={'id': 'test_id'},
             user_uid='other_user'
         )
         
         view = RenovationAPIView.as_view()
         view.cls.authentication_classes = []
         view.cls.get_permissions = lambda self: []
-        response = view(request)
+        response = view(request, id='test_id')
         
         assert response.status_code == http_status.HTTP_403_FORBIDDEN
     
@@ -247,16 +245,15 @@ class TestRenovationViews:
         """Test PATCH /renovations/ sense user_uid"""
         request = self._get_authenticated_request(
             'PATCH',
-            '/api/renovations/',
+            '/api/renovations/test_id/',
             {'description': 'Updated'},
-            query_params={'id': 'test_id'},
             user_uid=None
         )
         
         view = RenovationAPIView.as_view()
         view.cls.authentication_classes = []
         view.cls.get_permissions = lambda self: []
-        response = view(request)
+        response = view(request, id='test_id')
         
         assert response.status_code == http_status.HTTP_401_UNAUTHORIZED
     
@@ -268,41 +265,39 @@ class TestRenovationViews:
         
         request = self._get_authenticated_request(
             'PATCH',
-            '/api/renovations/',
-            {'description': 'Updated'},
-            query_params={'id': 'test_id'}
+            '/api/renovations/test_id/',
+            {'description': 'Updated'}
         )
         
         view = RenovationAPIView.as_view()
         view.cls.authentication_classes = []
         view.cls.get_permissions = lambda self: []
-        response = view(request)
+        response = view(request, id='test_id')
         
         assert response.status_code == http_status.HTTP_500_INTERNAL_SERVER_ERROR
     
     @patch('api.views.renovation_views.RenovationController')
     def test_delete_renovation_success(self, mock_controller_class, sample_renovation):
-        """Test DELETE /renovations/?id=xxx"""
+        """Test DELETE /renovations/{id}/"""
         mock_controller = mock_controller_class.return_value
         mock_controller.delete_renovation.return_value = (True, None)
         
         request = self._get_authenticated_request(
             'DELETE',
-            '/api/renovations/',
-            query_params={'id': 'test_id'},
+            '/api/renovations/test_id/',
             user_uid=sample_renovation.creator_uid
         )
         
         view = RenovationAPIView.as_view()
         view.cls.authentication_classes = []
         view.cls.get_permissions = lambda self: []
-        response = view(request)
+        response = view(request, id='test_id')
         
         assert response.status_code == http_status.HTTP_204_NO_CONTENT
     
     @patch('api.views.renovation_views.RenovationController')
     def test_delete_renovation_forbidden(self, mock_controller_class):
-        """Test DELETE /renovations/?id=xxx (no creador)"""
+        """Test DELETE /renovations/{id}/ (no creador)"""
         mock_controller = mock_controller_class.return_value
         mock_controller.delete_renovation.return_value = (
             False,
@@ -311,15 +306,14 @@ class TestRenovationViews:
         
         request = self._get_authenticated_request(
             'DELETE',
-            '/api/renovations/',
-            query_params={'id': 'test_id'},
+            '/api/renovations/test_id/',
             user_uid='other_user'
         )
         
         view = RenovationAPIView.as_view()
         view.cls.authentication_classes = []
         view.cls.get_permissions = lambda self: []
-        response = view(request)
+        response = view(request, id='test_id')
         
         assert response.status_code == http_status.HTTP_403_FORBIDDEN
     
@@ -328,15 +322,14 @@ class TestRenovationViews:
         """Test DELETE /renovations/ sense user_uid"""
         request = self._get_authenticated_request(
             'DELETE',
-            '/api/renovations/',
-            query_params={'id': 'test_id'},
+            '/api/renovations/test_id/',
             user_uid=None
         )
         
         view = RenovationAPIView.as_view()
         view.cls.authentication_classes = []
         view.cls.get_permissions = lambda self: []
-        response = view(request)
+        response = view(request, id='test_id')
         
         assert response.status_code == http_status.HTTP_401_UNAUTHORIZED
     
@@ -348,14 +341,13 @@ class TestRenovationViews:
         
         request = self._get_authenticated_request(
             'DELETE',
-            '/api/renovations/',
-            query_params={'id': 'test_id'}
+            '/api/renovations/test_id/'
         )
         
         view = RenovationAPIView.as_view()
         view.cls.authentication_classes = []
         view.cls.get_permissions = lambda self: []
-        response = view(request)
+        response = view(request, id='test_id')
         
         assert response.status_code == http_status.HTTP_500_INTERNAL_SERVER_ERROR
     
@@ -369,12 +361,12 @@ class TestRenovationViews:
         mock_controller = mock_controller_class.return_value
         mock_controller.get_renovation_by_id.return_value = (True, sample_renovation, None)
         
-        request = self._get_authenticated_request('GET', '/api/renovations/', query_params={'id': 'test_id'})
+        request = self._get_authenticated_request('GET', '/api/renovations/test_id/')
         
         view = RenovationAPIView.as_view()
         view.cls.authentication_classes = []
         # No forcem get_permissions, deixem que s'executi
-        response = view(request)
+        response = view(request, id='test_id')
         
         assert response.status_code == http_status.HTTP_200_OK
     
@@ -439,53 +431,29 @@ class TestRenovationViews:
         assert response.status_code == http_status.HTTP_500_INTERNAL_SERVER_ERROR
     
     @patch('api.views.renovation_views.RenovationController')
-    def test_get_renovation_missing_id(self, mock_controller_class):
-        """Test GET /renovations/ sense ID"""
-        request = self._get_authenticated_request('GET', '/api/renovations/', query_params={})
-        
-        view = RenovationAPIView.as_view()
-        view.cls.authentication_classes = []
-        view.cls.get_permissions = lambda self: []
-        response = view(request)
-        
-        assert response.status_code == http_status.HTTP_400_BAD_REQUEST
-    
-    @patch('api.views.renovation_views.RenovationController')
     def test_get_renovation_exception(self, mock_controller_class):
         """Test GET /renovations/ amb excepció"""
         mock_controller = mock_controller_class.return_value
         mock_controller.get_renovation_by_id.side_effect = Exception('Unexpected error')
         
-        request = self._get_authenticated_request('GET', '/api/renovations/', query_params={'id': 'test_id'})
+        request = self._get_authenticated_request('GET', '/api/renovations/test_id/')
         
         view = RenovationAPIView.as_view()
         view.cls.authentication_classes = []
         view.cls.get_permissions = lambda self: []
-        response = view(request)
+        response = view(request, id='test_id')
         
         assert response.status_code == http_status.HTTP_500_INTERNAL_SERVER_ERROR
     
     @patch('api.views.renovation_views.RenovationController')
-    def test_update_renovation_missing_id(self, mock_controller_class):
-        """Test PATCH /renovations/ sense ID"""
-        request = self._get_authenticated_request('PATCH', '/api/renovations/', {'description': 'Updated'}, query_params={})
-        
-        view = RenovationAPIView.as_view()
-        view.cls.authentication_classes = []
-        view.cls.get_permissions = lambda self: []
-        response = view(request)
-        
-        assert response.status_code == http_status.HTTP_400_BAD_REQUEST
-    
-    @patch('api.views.renovation_views.RenovationController')
     def test_update_renovation_invalid_data(self, mock_controller_class):
         """Test PATCH /renovations/ amb dades invàlides"""
-        request = self._get_authenticated_request('PATCH', '/api/renovations/', {'ini_date': 'invalid'}, query_params={'id': 'test_id'})
+        request = self._get_authenticated_request('PATCH', '/api/renovations/test_id/', {'ini_date': 'invalid'})
         
         view = RenovationAPIView.as_view()
         view.cls.authentication_classes = []
         view.cls.get_permissions = lambda self: []
-        response = view(request)
+        response = view(request, id='test_id')
         
         assert response.status_code == http_status.HTTP_400_BAD_REQUEST
     
@@ -495,12 +463,12 @@ class TestRenovationViews:
         mock_controller = mock_controller_class.return_value
         mock_controller.update_renovation.return_value = (False, None, 'Renovation no trobada')
         
-        request = self._get_authenticated_request('PATCH', '/api/renovations/', {'description': 'Updated'}, query_params={'id': 'test_id'})
+        request = self._get_authenticated_request('PATCH', '/api/renovations/test_id/', {'description': 'Updated'})
         
         view = RenovationAPIView.as_view()
         view.cls.authentication_classes = []
         view.cls.get_permissions = lambda self: []
-        response = view(request)
+        response = view(request, id='test_id')
         
         assert response.status_code == http_status.HTTP_404_NOT_FOUND
     
@@ -510,12 +478,12 @@ class TestRenovationViews:
         mock_controller = mock_controller_class.return_value
         mock_controller.update_renovation.return_value = (False, sample_renovation, 'Solapament temporal')
         
-        request = self._get_authenticated_request('PATCH', '/api/renovations/', {'description': 'Updated'}, query_params={'id': 'test_id'})
+        request = self._get_authenticated_request('PATCH', '/api/renovations/test_id/', {'description': 'Updated'})
         
         view = RenovationAPIView.as_view()
         view.cls.authentication_classes = []
         view.cls.get_permissions = lambda self: []
-        response = view(request)
+        response = view(request, id='test_id')
         
         assert response.status_code == http_status.HTTP_409_CONFLICT
     
@@ -525,26 +493,14 @@ class TestRenovationViews:
         mock_controller = mock_controller_class.return_value
         mock_controller.update_renovation.side_effect = Exception('Unexpected error')
         
-        request = self._get_authenticated_request('PATCH', '/api/renovations/', {'description': 'Updated'}, query_params={'id': 'test_id'})
+        request = self._get_authenticated_request('PATCH', '/api/renovations/test_id/', {'description': 'Updated'})
         
         view = RenovationAPIView.as_view()
         view.cls.authentication_classes = []
         view.cls.get_permissions = lambda self: []
-        response = view(request)
+        response = view(request, id='test_id')
         
         assert response.status_code == http_status.HTTP_500_INTERNAL_SERVER_ERROR
-    
-    @patch('api.views.renovation_views.RenovationController')
-    def test_delete_renovation_missing_id(self, mock_controller_class):
-        """Test DELETE /renovations/ sense ID"""
-        request = self._get_authenticated_request('DELETE', '/api/renovations/', query_params={})
-        
-        view = RenovationAPIView.as_view()
-        view.cls.authentication_classes = []
-        view.cls.get_permissions = lambda self: []
-        response = view(request)
-        
-        assert response.status_code == http_status.HTTP_400_BAD_REQUEST
     
     @patch('api.views.renovation_views.RenovationController')
     def test_delete_renovation_not_found(self, mock_controller_class):
@@ -552,12 +508,12 @@ class TestRenovationViews:
         mock_controller = mock_controller_class.return_value
         mock_controller.delete_renovation.return_value = (False, 'Renovation no trobada')
         
-        request = self._get_authenticated_request('DELETE', '/api/renovations/', query_params={'id': 'test_id'})
+        request = self._get_authenticated_request('DELETE', '/api/renovations/test_id/')
         
         view = RenovationAPIView.as_view()
         view.cls.authentication_classes = []
         view.cls.get_permissions = lambda self: []
-        response = view(request)
+        response = view(request, id='test_id')
         
         assert response.status_code == http_status.HTTP_404_NOT_FOUND
     
@@ -567,12 +523,12 @@ class TestRenovationViews:
         mock_controller = mock_controller_class.return_value
         mock_controller.delete_renovation.side_effect = Exception('Unexpected error')
         
-        request = self._get_authenticated_request('DELETE', '/api/renovations/', query_params={'id': 'test_id'})
+        request = self._get_authenticated_request('DELETE', '/api/renovations/test_id/')
         
         view = RenovationAPIView.as_view()
         view.cls.authentication_classes = []
         view.cls.get_permissions = lambda self: []
-        response = view(request)
+        response = view(request, id='test_id')
         
         assert response.status_code == http_status.HTTP_500_INTERNAL_SERVER_ERROR
     

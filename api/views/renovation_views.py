@@ -192,7 +192,7 @@ class RenovationAPIView(APIView):
         manual_parameters=[
             openapi.Parameter(
                 'id',
-                openapi.IN_QUERY,
+                openapi.IN_PATH,
                 description="ID de la renovation",
                 type=openapi.TYPE_STRING,
                 required=True
@@ -206,21 +206,16 @@ class RenovationAPIView(APIView):
                     'application/json': EXAMPLE_RENOVATION_1
                 }
             ),
-            400: ERROR_400_MISSING_ID,
             401: ERROR_401_UNAUTHORIZED,
             404: ERROR_404_RENOVATION_NOT_FOUND,
             500: ERROR_500_INTERNAL_ERROR
         }
     )
-    def get(self, request):
+    def get(self, request, id):
         """Obtenir una renovation específica"""
         try:
-            # Obtenir ID de la renovation
-            renovation_id = request.query_params.get('id')
-            if not renovation_id:
-                return Response({
-                    'error': 'ID de renovation requerit'
-                }, status=status.HTTP_400_BAD_REQUEST)
+            # Obtenir ID de la renovation des del path parameter
+            renovation_id = id
             
             # Obtenir renovation
             controller = RenovationController()
@@ -266,7 +261,7 @@ class RenovationAPIView(APIView):
         manual_parameters=[
             openapi.Parameter(
                 'id',
-                openapi.IN_QUERY,
+                openapi.IN_PATH,
                 description="ID de la renovation a actualitzar",
                 type=openapi.TYPE_STRING,
                 required=True
@@ -288,15 +283,11 @@ class RenovationAPIView(APIView):
             500: ERROR_500_INTERNAL_ERROR
         }
     )
-    def patch(self, request):
+    def patch(self, request, id):
         """Actualitzar una renovation"""
         try:
-            # Obtenir ID de la renovation
-            renovation_id = request.query_params.get('id')
-            if not renovation_id:
-                return Response({
-                    'error': 'ID de renovation requerit'
-                }, status=status.HTTP_400_BAD_REQUEST)
+            # Obtenir ID de la renovation des del path parameter
+            renovation_id = id
             
             # Validar dades
             serializer = RenovationUpdateSerializer(data=request.data)
@@ -359,7 +350,7 @@ class RenovationAPIView(APIView):
         manual_parameters=[
             openapi.Parameter(
                 'id',
-                openapi.IN_QUERY,
+                openapi.IN_PATH,
                 description="ID de la renovation a eliminar",
                 type=openapi.TYPE_STRING,
                 required=True
@@ -367,22 +358,17 @@ class RenovationAPIView(APIView):
         ],
         responses={
             204: SUCCESS_204_NO_CONTENT,
-            400: ERROR_400_MISSING_ID,
             401: ERROR_401_UNAUTHORIZED,
             403: ERROR_403_NOT_CREATOR,
             404: ERROR_404_RENOVATION_NOT_FOUND,
             500: ERROR_500_INTERNAL_ERROR
         }
     )
-    def delete(self, request):
+    def delete(self, request, id):
         """Eliminar una renovation"""
         try:
-            # Obtenir ID de la renovation
-            renovation_id = request.query_params.get('id')
-            if not renovation_id:
-                return Response({
-                    'error': 'ID de renovation requerit'
-                }, status=status.HTTP_400_BAD_REQUEST)
+            # Obtenir ID de la renovation des del path parameter
+            renovation_id = id
             
             # Obtenir UID de l'usuari autenticat
             user_uid = getattr(request, 'user_uid', None)
