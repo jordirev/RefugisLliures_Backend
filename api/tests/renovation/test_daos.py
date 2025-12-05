@@ -257,7 +257,7 @@ class TestRenovationDAO:
         mock_db.collection.return_value = mock_collection
         
         dao = RenovationDAO()
-        result = dao.delete_renovation('test_id')
+        result = dao.delete_renovation('test_id', 'test_creator_uid')
         
         assert result is True
         mock_doc_ref.delete.assert_called_once()
@@ -602,7 +602,7 @@ class TestRenovationDAO:
         mock_db.collection.return_value = mock_collection
         
         dao = RenovationDAO()
-        result = dao.delete_renovation('nonexistent_id')
+        result = dao.delete_renovation('nonexistent_id', 'test_creator_uid')
         
         assert result is False
     
@@ -614,7 +614,7 @@ class TestRenovationDAO:
         mock_firestore_instance.get_db.side_effect = Exception("Delete error")
         
         dao = RenovationDAO()
-        result = dao.delete_renovation('test_id')
+        result = dao.delete_renovation('test_id', 'test_creator_uid')
         
         assert result is False
     

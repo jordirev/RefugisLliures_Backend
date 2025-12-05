@@ -203,7 +203,7 @@ class TestRefugiDAO:
         mock_db.collection.return_value = mock_collection
         
         dao = RefugiLliureDAO()
-        filters = RefugiSearchFilters(region='Pirineus', departement='Ariège')
+        filters = RefugiSearchFilters(type='garde', condition='bon')
         results = dao.search_refugis(filters)
         
         assert isinstance(results, dict)
@@ -241,7 +241,7 @@ class TestRefugiDAO:
     def test_has_active_filters_true(self):
         """Test comprovació de filtres actius (true)"""
         dao = RefugiLliureDAO()
-        filters = RefugiSearchFilters(name='Test', region='Pirineus')
+        filters = RefugiSearchFilters(name='Test', type='garde')
         
         result = dao._has_active_filters(filters)
         
@@ -256,55 +256,212 @@ class TestRefugiDAO:
         
         assert result is False
     
-    def test_matches_memory_filters_places_range(self):
-        """Test filtres en memòria per rang de places"""
+    @patch('api.daos.refugi_lliure_dao.firestore_service')
+    @patch('api.daos.refugi_lliure_dao.cache_service')
+    def test_refugi_exists_true(self, mock_cache, mock_firestore, sample_refugi_data):
+        """Test comprovar existència de refugi (existeix)"""
+        mock_cache.get.return_value = None
+        
+        mock_db = MagicMock()
+        mock_firestore.get_db.return_value = mock_db
+        
+        mock_doc_snapshot = MagicMock()
+        mock_doc_snapshot.exists = True
+        mock_doc_snapshot.to_dict.return_value = sample_refugi_data
+        
+        mock_doc_ref = MagicMock()
+        mock_doc_ref.get.return_value = mock_doc_snapshot
+        
+        mock_collection = MagicMock()
+        mock_collection.document.return_value = mock_doc_ref
+        mock_db.collection.return_value = mock_collection
+        
         dao = RefugiLliureDAO()
-        refugi_data = {'places': 10}
-        filters = RefugiSearchFilters(places_min=5, places_max=15)
-        
-        result = dao._matches_memory_filters(refugi_data, filters)
-        
+        result = dao.refugi_exists('refugi_001')
         assert result is True
     
-    def test_matches_memory_filters_places_out_of_range(self):
-        """Test filtres en memòria amb places fora de rang"""
+    @patch('api.daos.refugi_lliure_dao.firestore_service')
+    @patch('api.daos.refugi_lliure_dao.cache_service')
+    def test_refugi_exists_false(self, mock_cache, mock_firestore):
+        """Test comprovar existència de refugi (no existeix)"""
+        mock_cache.get.return_value = None
+        
+        mock_db = MagicMock()
+        mock_firestore.get_db.return_value = mock_db
+        
+        mock_doc_snapshot = MagicMock()
+        mock_doc_snapshot.exists = False
+        
+        mock_doc_ref = MagicMock()
+        mock_doc_ref.get.return_value = mock_doc_snapshot
+        
+        mock_collection = MagicMock()
+        mock_collection.document.return_value = mock_doc_ref
+        mock_db.collection.return_value = mock_collection
+        
         dao = RefugiLliureDAO()
-        refugi_data = {'places': 20}
-        filters = RefugiSearchFilters(places_min=5, places_max=15)
-        
-        result = dao._matches_memory_filters(refugi_data, filters)
-        
+        result = dao.refugi_exists('nonexistent')
         assert result is False
     
-    def test_matches_memory_filters_amenities(self):
-        """Test filtres en memòria per amenitats"""
+    @patch('api.daos.refugi_lliure_dao.cache_service')
+    def test_refugi_exists_from_cache(self, mock_cache):
+        """Test existència des de cache"""
+        mock_cache.get.return_value = {'id': 'refugi_001', 'name': 'Test'}
+        
         dao = RefugiLliureDAO()
-        refugi_data = {
-            'info_comp': {
-                'cheminee': 1,
-                'eau': 1
-            }
-        }
-        filters = RefugiSearchFilters(cheminee=1, eau=1)
-        
-        result = dao._matches_memory_filters(refugi_data, filters)
-        
+        result = dao.refugi_exists('refugi_001')
         assert result is True
     
-    def test_matches_memory_filters_missing_amenities(self):
-        """Test filtres amb amenitats no disponibles"""
+    @patch('api.daos.refugi_lliure_dao.firestore_service')
+    @patch('api.daos.refugi_lliure_dao.cache_service')
+    def test_add_visitor_to_refugi_success(self, mock_cache, mock_firestore, sample_refugi_data):
+        """Test afegir visitant amb èxit"""
+        mock_cache.get.return_value = None
+        
+        mock_db = MagicMock()
+        mock_firestore.get_db.return_value = mock_db
+        
+        # Mock per get_by_id
+        mock_doc_snapshot = MagicMock()
+        mock_doc_snapshot.exists = True
+        mock_doc_snapshot.to_dict.return_value = sample_refugi_data
+        
+        mock_doc_ref = MagicMock()
+        mock_doc_ref.get.return_value = mock_doc_snapshot
+        
+        mock_collection = MagicMock()
+        mock_collection.document.return_value = mock_doc_ref
+        mock_db.collection.return_value = mock_collection
+        
         dao = RefugiLliureDAO()
-        refugi_data = {
-            'info_comp': {
-                'cheminee': 0,
-                'eau': 1
-            }
-        }
-        filters = RefugiSearchFilters(cheminee=1, eau=1)
+        result = dao.add_visitor_to_refugi('refugi_001', 'user_123')
+        assert result is True
+    
+    @patch('api.daos.refugi_lliure_dao.firestore_service')
+    @patch('api.daos.refugi_lliure_dao.cache_service')
+    def test_add_visitor_refugi_not_found(self, mock_cache, mock_firestore):
+        """Test afegir visitant a refugi inexistent"""
+        mock_cache.get.return_value = None
         
-        result = dao._matches_memory_filters(refugi_data, filters)
+        mock_db = MagicMock()
+        mock_firestore.get_db.return_value = mock_db
         
+        mock_doc_snapshot = MagicMock()
+        mock_doc_snapshot.exists = False
+        
+        mock_doc_ref = MagicMock()
+        mock_doc_ref.get.return_value = mock_doc_snapshot
+        
+        mock_collection = MagicMock()
+        mock_collection.document.return_value = mock_doc_ref
+        mock_db.collection.return_value = mock_collection
+        
+        dao = RefugiLliureDAO()
+        result = dao.add_visitor_to_refugi('nonexistent', 'user_123')
         assert result is False
+    
+    @patch('api.daos.refugi_lliure_dao.firestore_service')
+    @patch('api.daos.refugi_lliure_dao.cache_service')
+    def test_add_visitor_already_exists(self, mock_cache, mock_firestore, sample_refugi_data):
+        """Test afegir visitant que ja està a la llista"""
+        mock_cache.get.return_value = None
+        
+        mock_db = MagicMock()
+        mock_firestore.get_db.return_value = mock_db
+        
+        # Refugi amb visitant ja existent
+        refugi_with_visitor = sample_refugi_data.copy()
+        refugi_with_visitor['visitors'] = ['user_123']
+        
+        mock_doc_snapshot = MagicMock()
+        mock_doc_snapshot.exists = True
+        mock_doc_snapshot.to_dict.return_value = refugi_with_visitor
+        
+        mock_doc_ref = MagicMock()
+        mock_doc_ref.get.return_value = mock_doc_snapshot
+        
+        mock_collection = MagicMock()
+        mock_collection.document.return_value = mock_doc_ref
+        mock_db.collection.return_value = mock_collection
+        
+        dao = RefugiLliureDAO()
+        result = dao.add_visitor_to_refugi('refugi_001', 'user_123')
+        assert result is True
+    
+    @patch('api.daos.refugi_lliure_dao.firestore_service')
+    @patch('api.daos.refugi_lliure_dao.cache_service')
+    def test_remove_visitor_from_refugi_success(self, mock_cache, mock_firestore, sample_refugi_data):
+        """Test eliminar visitant amb èxit"""
+        mock_cache.get.return_value = None
+        
+        mock_db = MagicMock()
+        mock_firestore.get_db.return_value = mock_db
+        
+        # Refugi amb visitant
+        refugi_with_visitor = sample_refugi_data.copy()
+        refugi_with_visitor['visitors'] = ['user_123']
+        
+        mock_doc_snapshot = MagicMock()
+        mock_doc_snapshot.exists = True
+        mock_doc_snapshot.to_dict.return_value = refugi_with_visitor
+        
+        mock_doc_ref = MagicMock()
+        mock_doc_ref.get.return_value = mock_doc_snapshot
+        
+        mock_collection = MagicMock()
+        mock_collection.document.return_value = mock_doc_ref
+        mock_db.collection.return_value = mock_collection
+        
+        dao = RefugiLliureDAO()
+        result = dao.remove_visitor_from_refugi('refugi_001', 'user_123')
+        assert result is True
+    
+    @patch('api.daos.refugi_lliure_dao.firestore_service')
+    @patch('api.daos.refugi_lliure_dao.cache_service')
+    def test_remove_visitor_refugi_not_found(self, mock_cache, mock_firestore):
+        """Test eliminar visitant de refugi inexistent"""
+        mock_cache.get.return_value = None
+        
+        mock_db = MagicMock()
+        mock_firestore.get_db.return_value = mock_db
+        
+        mock_doc_snapshot = MagicMock()
+        mock_doc_snapshot.exists = False
+        
+        mock_doc_ref = MagicMock()
+        mock_doc_ref.get.return_value = mock_doc_snapshot
+        
+        mock_collection = MagicMock()
+        mock_collection.document.return_value = mock_doc_ref
+        mock_db.collection.return_value = mock_collection
+        
+        dao = RefugiLliureDAO()
+        result = dao.remove_visitor_from_refugi('nonexistent', 'user_123')
+        assert result is False
+    
+    @patch('api.daos.refugi_lliure_dao.firestore_service')
+    @patch('api.daos.refugi_lliure_dao.cache_service')
+    def test_remove_visitor_not_in_list(self, mock_cache, mock_firestore, sample_refugi_data):
+        """Test eliminar visitant que no està a la llista"""
+        mock_cache.get.return_value = None
+        
+        mock_db = MagicMock()
+        mock_firestore.get_db.return_value = mock_db
+        
+        mock_doc_snapshot = MagicMock()
+        mock_doc_snapshot.exists = True
+        mock_doc_snapshot.to_dict.return_value = sample_refugi_data
+        
+        mock_doc_ref = MagicMock()
+        mock_doc_ref.get.return_value = mock_doc_snapshot
+        
+        mock_collection = MagicMock()
+        mock_collection.document.return_value = mock_doc_ref
+        mock_db.collection.return_value = mock_collection
+        
+        dao = RefugiLliureDAO()
+        result = dao.remove_visitor_from_refugi('refugi_001', 'user_999')
+        assert result is True
 
 
 # ==================== TESTS DE CONTROLLERS ====================

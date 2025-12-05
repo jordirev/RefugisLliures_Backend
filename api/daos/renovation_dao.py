@@ -53,6 +53,11 @@ class RenovationDAO:
             renovation_data['id'] = doc_ref.id
             doc_ref.set(renovation_data)
 
+            # Incrementar el comptador de refugis renovats de l'usuari
+            from ..daos.user_dao import UserDAO
+            user_dao = UserDAO()
+            user_dao.increment_renovated_refuges(renovation_data['creator_uid'])
+
             logger.info(f"Renovation creada amb ID: {doc_ref.id}")
 
             # Invalida cache de llistes
@@ -206,7 +211,7 @@ class RenovationDAO:
             logger.error(f"Error actualitzant renovation {renovation_id}: {str(e)}")
             return False
     
-    def delete_renovation(self, renovation_id: str) -> bool:
+    def delete_renovation(self, renovation_id: str, creator_uid: str) -> bool:
         """
         Elimina una renovation
         
@@ -230,6 +235,11 @@ class RenovationDAO:
             refuge_id = renovation_data.get('refuge_id')
             
             doc_ref.delete()
+
+            # Decrementar el comptador de refugis renovats de l'usuari
+            from ..daos.user_dao import UserDAO
+            user_dao = UserDAO()
+            user_dao.decrement_renovated_refuges(creator_uid)
             
             # Invalida cache
             cache_service.delete(cache_service.generate_key('renovation_detail', renovation_id=renovation_id))

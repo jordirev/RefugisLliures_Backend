@@ -179,13 +179,13 @@ class TestRefugiModels:
         """Test creació de RefugiSearchFilters"""
         filters = RefugiSearchFilters(
             name='Test',
-            region='Pirineus',
+            type='garde',
             places_min=5,
             places_max=15
         )
         
         assert filters.name == 'Test'
-        assert filters.region == 'Pirineus'
+        assert filters.type == 'garde'
         assert filters.places_min == 5
         assert filters.places_max == 15
     
@@ -194,9 +194,10 @@ class TestRefugiModels:
         filters = RefugiSearchFilters()
         
         assert filters.name == ""
-        assert filters.region == ""
+        assert filters.type == ""
+        assert filters.condition == ""
         assert filters.places_min is None
-        assert filters.cheminee is None
+        assert filters.altitude_max is None
     
     def test_refugi_search_filters_to_dict(self, sample_search_filters):
         """Test conversió de filtres a diccionari"""
@@ -204,7 +205,8 @@ class TestRefugiModels:
         
         assert isinstance(filters_dict, dict)
         assert 'name' in filters_dict
-        assert filters_dict['cheminee'] == 1
+        assert 'type' in filters_dict
+        assert 'condition' in filters_dict
     
     def test_refugi_search_filters_to_dict_empty(self):
         """Test conversió de filtres buits a diccionari"""

@@ -183,12 +183,9 @@ class RefugiSearchFilters:
     # Text search
     name: str = ""
     
-    # Location filters
-    region: str = ""
-    departement: str = ""
-
     # Characteristics filters
     type: str = ""
+    condition: str = ""
     
     # Numeric range filters
     places_min: Optional[int] = None
@@ -196,28 +193,15 @@ class RefugiSearchFilters:
     altitude_min: Optional[int] = None
     altitude_max: Optional[int] = None
     
-    # Info complementaria filters (1 = has feature, 0 or None = ignore)
-    cheminee: Optional[int] = None
-    poele: Optional[int] = None
-    couvertures: Optional[int] = None
-    latrines: Optional[int] = None
-    bois: Optional[int] = None
-    eau: Optional[int] = None
-    matelas: Optional[int] = None
-    couchage: Optional[int] = None
-    lits: Optional[int] = None
-    
     def __post_init__(self):
         """Validacions dels filtres"""
         # Normalize empty strings to defaults
         if self.name is None:
             self.name = ""
-        if self.region is None:
-            self.region = ""
-        if self.departement is None:
-            self.departement = ""
         if self.type is None:
             self.type = ""
+        if self.condition is None:
+            self.condition = ""
 
     def to_dict(self) -> dict:
         """Retorna una representació dict dels filtres.
@@ -231,12 +215,10 @@ class RefugiSearchFilters:
         # Include text filters only when non-empty
         if isinstance(self.name, str) and self.name.strip():
             out['name'] = self.name.strip()
-        if isinstance(self.region, str) and self.region.strip():
-            out['region'] = self.region.strip()
-        if isinstance(self.departement, str) and self.departement.strip():
-            out['departement'] = self.departement.strip()
         if isinstance(self.type, str) and self.type.strip():
             out['type'] = self.type.strip()
+        if isinstance(self.condition, str) and self.condition.strip():
+            out['condition'] = self.condition.strip()
 
         # Numeric ranges
         if self.places_min is not None:
@@ -248,16 +230,6 @@ class RefugiSearchFilters:
         if self.altitude_max is not None:
             out['altitude_max'] = self.altitude_max
 
-        # Include amenity filters only when explicitly requested (== 1)
-        amenity_fields = [
-            'cheminee', 'poele', 'couvertures', 'latrines',
-            'bois', 'eau', 'matelas', 'couchage', 'lits'
-        ]
-        for field_name in amenity_fields:
-            value = getattr(self, field_name)
-            if value == 1:
-                out[field_name] = 1
-
         return out
 
     @classmethod
@@ -265,21 +237,11 @@ class RefugiSearchFilters:
         """Crea un RefugiSearchFilters a partir d'un dict (opcional)."""
         return cls(
             name=data.get('name', ''),
-            region=data.get('region', ''),
-            departement=data.get('departement', ''),
             type=data.get('type', ''),
+            condition=data.get('condition', ''),
             places_min=data.get('places_min'),
             places_max=data.get('places_max'),
             altitude_min=data.get('altitude_min'),
             altitude_max=data.get('altitude_max'),
-            cheminee=data.get('cheminee'),
-            poele=data.get('poele'),
-            couvertures=data.get('couvertures'),
-            latrines=data.get('latrines'),
-            bois=data.get('bois'),
-            eau=data.get('eau'),
-            matelas=data.get('matelas'),
-            couchage=data.get('couchage'),
-            lits=data.get('lits'),
         )
             
