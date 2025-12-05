@@ -227,15 +227,12 @@ def sample_search_filters():
     """Filtres de cerca de mostra"""
     return RefugiSearchFilters(
         name='Refugi Test',
-        region='Pirineus',
-        departement=DEPARTMENT,
         type='garde',
+        condition='bon',
         places_min=5,
         places_max=15,
         altitude_min=1500,
-        altitude_max=2500,
-        cheminee=1,
-        eau=1
+        altitude_max=2500
     )
 
 

@@ -28,10 +28,12 @@ from ..utils.swagger_examples import (
 from ..utils.swagger_error_responses import (
     ERROR_400_INVALID_DATA,
     ERROR_400_MISSING_ID,
+    ERROR_400_ALREADY_PARTICIPANT,
     ERROR_400_CREATOR_CANNOT_JOIN,
     ERROR_401_UNAUTHORIZED,
     ERROR_403_FORBIDDEN,
     ERROR_403_NOT_CREATOR,
+    ERROR_403_EXPELLED,
     ERROR_404_RENOVATION_NOT_FOUND,
     ERROR_409_OVERLAP,
     ERROR_500_INTERNAL_ERROR,
@@ -437,8 +439,9 @@ class RenovationParticipantsAPIView(APIView):
             ),
             400: ERROR_400_CREATOR_CANNOT_JOIN,
             401: ERROR_401_UNAUTHORIZED,
-            403: ERROR_403_FORBIDDEN,
+            403: ERROR_403_EXPELLED,
             404: ERROR_404_RENOVATION_NOT_FOUND,
+            409: ERROR_400_ALREADY_PARTICIPANT,
             500: ERROR_500_INTERNAL_ERROR
         }
     )
@@ -461,10 +464,18 @@ class RenovationParticipantsAPIView(APIView):
                     return Response({
                         'error': error
                     }, status=status.HTTP_404_NOT_FOUND)
-                elif 'creador' in error.lower() or 'ja és participant' in error.lower():
+                elif 'expulsat' in error.lower():
+                    return Response({
+                        'error': error
+                    }, status=status.HTTP_403_FORBIDDEN)
+                elif 'creador' in error.lower():
                     return Response({
                         'error': error
                     }, status=status.HTTP_400_BAD_REQUEST)
+                elif 'ja és participant' in error.lower():
+                    return Response({
+                        'error': error
+                    }, status=status.HTTP_409_CONFLICT)
                 else:
                     return Response({
                         'error': error

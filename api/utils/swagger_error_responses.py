@@ -152,12 +152,32 @@ ERROR_400_ALREADY_EXISTS = openapi.Response(
     }
 )
 
+ERROR_400_ALREADY_PARTICIPANT = openapi.Response(
+    description="L'usuari ja és participant d'aquesta renovation",
+    schema=ERROR_SCHEMA_SIMPLE,
+    examples={
+        "application/json": {
+            "error": "L'usuari ja és participant d'aquesta renovation"
+        }
+    }
+)
+
 ERROR_400_CREATOR_CANNOT_JOIN = openapi.Response(
     description="El creador no pot unir-se com a participant",
     schema=ERROR_SCHEMA_SIMPLE,
     examples={
         "application/json": {
             "error": "El creador no pot unir-se a la seva pròpia renovation"
+        }
+    }
+)
+
+ERROR_403_EXPELLED = openapi.Response(
+    description="Usuari expulsat - No pot tornar a unir-se",
+    schema=ERROR_SCHEMA_SIMPLE,
+    examples={
+        "application/json": {
+            "error": "Aquest usuari ha estat expulsat d'aquesta renovation i no pot tornar a unir-se"
         }
     }
 )

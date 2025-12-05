@@ -20,7 +20,8 @@ def sample_renovation_data():
         'description': 'Test renovation description',
         'materials_needed': 'Wood, nails, paint',
         'group_link': 'https://wa.me/group/test',
-        'participants_uids': ['participant1', 'participant2']
+        'participants_uids': ['participant1', 'participant2'],
+        'expelled_uids': []
     }
 @pytest.fixture
 def sample_renovation(sample_renovation_data):
@@ -34,7 +35,8 @@ def sample_renovation(sample_renovation_data):
         description=sample_renovation_data['description'],
         materials_needed=sample_renovation_data['materials_needed'],
         group_link=sample_renovation_data['group_link'],
-        participants_uids=sample_renovation_data['participants_uids']
+        participants_uids=sample_renovation_data['participants_uids'],
+        expelled_uids=sample_renovation_data['expelled_uids']
     )
 @pytest.fixture
 def minimal_renovation_data():
@@ -255,7 +257,7 @@ class TestRenovationDAO:
         mock_db.collection.return_value = mock_collection
         
         dao = RenovationDAO()
-        result = dao.delete_renovation('test_id')
+        result = dao.delete_renovation('test_id', 'test_creator_uid')
         
         assert result is True
         mock_doc_ref.delete.assert_called_once()
@@ -349,9 +351,10 @@ class TestRenovationDAO:
         mock_user_dao.increment_renovated_refuges.return_value = True
         
         dao = RenovationDAO()
-        result = dao.add_participant('test_id', 'new_participant')
+        success, error_code = dao.add_participant('test_id', 'new_participant')
         
-        assert result is True
+        assert success is True
+        assert error_code is None
         mock_user_dao.increment_renovated_refuges.assert_called_once_with('new_participant')
     
     @patch('api.daos.renovation_dao.FirestoreService')
@@ -374,9 +377,39 @@ class TestRenovationDAO:
         mock_db.collection.return_value = mock_collection
         
         dao = RenovationDAO()
-        result = dao.add_participant('test_id', 'participant1')  # Ja existeix
+        success, error_code = dao.add_participant('test_id', 'participant1')  # Ja existeix
         
-        assert result is False
+        assert success is False
+        assert error_code == 'already_participant'
+    
+    @patch('api.daos.renovation_dao.FirestoreService')
+    @patch('api.daos.renovation_dao.cache_service')
+    def test_add_participant_expelled(self, mock_cache, mock_firestore_service, sample_renovation_data):
+        """Test afegir participant que està expulsat"""
+        mock_db = MagicMock()
+        mock_firestore_instance = mock_firestore_service.return_value
+        mock_firestore_instance.get_db.return_value = mock_db
+        
+        # Afegir expelled_uids al sample_renovation_data
+        renovation_data = sample_renovation_data.copy()
+        renovation_data['expelled_uids'] = ['expelled_user']
+        
+        mock_doc = MagicMock()
+        mock_doc.exists = True
+        mock_doc.to_dict.return_value = renovation_data
+        
+        mock_doc_ref = MagicMock()
+        mock_doc_ref.get.return_value = mock_doc
+        
+        mock_collection = MagicMock()
+        mock_collection.document.return_value = mock_doc_ref
+        mock_db.collection.return_value = mock_collection
+        
+        dao = RenovationDAO()
+        success, error_code = dao.add_participant('test_id', 'expelled_user')
+        
+        assert success is False
+        assert error_code == 'expelled'
     
     @patch('api.daos.user_dao.UserDAO')
     @patch('api.daos.renovation_dao.FirestoreService')
@@ -433,6 +466,42 @@ class TestRenovationDAO:
         result = dao.remove_participant('test_id', 'nonexistent_participant')
         
         assert result is False
+    
+    @patch('api.daos.user_dao.UserDAO')
+    @patch('api.daos.renovation_dao.FirestoreService')
+    @patch('api.daos.renovation_dao.cache_service')
+    def test_remove_participant_expulsion(self, mock_cache, mock_firestore_service, mock_user_dao_class, sample_renovation_data):
+        """Test eliminar participant amb expulsió (afegir a expelled_uids)"""
+        mock_cache.generate_key.return_value = 'test_cache_key'
+        
+        mock_db = MagicMock()
+        mock_firestore_instance = mock_firestore_service.return_value
+        mock_firestore_instance.get_db.return_value = mock_db
+        
+        mock_doc = MagicMock()
+        mock_doc.exists = True
+        mock_doc.to_dict.return_value = sample_renovation_data
+        
+        mock_doc_ref = MagicMock()
+        mock_doc_ref.get.return_value = mock_doc
+        
+        mock_collection = MagicMock()
+        mock_collection.document.return_value = mock_doc_ref
+        mock_db.collection.return_value = mock_collection
+        
+        # Mock UserDAO
+        mock_user_dao = mock_user_dao_class.return_value
+        mock_user_dao.decrement_renovated_refuges.return_value = True
+        
+        dao = RenovationDAO()
+        result = dao.remove_participant('test_id', 'participant1', is_expulsion=True)
+        
+        assert result is True
+        # Verificar que s'ha cridat update amb expelled_uids
+        update_call_args = mock_doc_ref.update.call_args[0][0]
+        assert 'expelled_uids' in update_call_args
+        assert 'participant1' in update_call_args['expelled_uids']
+        mock_user_dao.decrement_renovated_refuges.assert_called_once_with('participant1')
     
     # ===== NOUS TESTS PER COBRIR EXCEPCIONS I CASOS NO COBERTS DEL DAO =====
     
@@ -533,7 +602,7 @@ class TestRenovationDAO:
         mock_db.collection.return_value = mock_collection
         
         dao = RenovationDAO()
-        result = dao.delete_renovation('nonexistent_id')
+        result = dao.delete_renovation('nonexistent_id', 'test_creator_uid')
         
         assert result is False
     
@@ -545,7 +614,7 @@ class TestRenovationDAO:
         mock_firestore_instance.get_db.side_effect = Exception("Delete error")
         
         dao = RenovationDAO()
-        result = dao.delete_renovation('test_id')
+        result = dao.delete_renovation('test_id', 'test_creator_uid')
         
         assert result is False
     
@@ -568,8 +637,12 @@ class TestRenovationDAO:
         mock_query = MagicMock()
         mock_query.stream.return_value = [mock_doc]
         
+        # Mock per al chain: collection().where().order_by()
+        mock_where = MagicMock()
+        mock_where.order_by.return_value = mock_query
+        
         mock_collection = MagicMock()
-        mock_collection.where.return_value = mock_query
+        mock_collection.where.return_value = mock_where
         mock_db.collection.return_value = mock_collection
         
         dao = RenovationDAO()
@@ -739,9 +812,10 @@ class TestRenovationDAO:
         mock_db.collection.return_value = mock_collection
         
         dao = RenovationDAO()
-        result = dao.add_participant('nonexistent_id', 'participant_uid')
+        success, error_code = dao.add_participant('nonexistent_id', 'participant_uid')
         
-        assert result is False
+        assert success is False
+        assert error_code == 'not_found'
     
     @patch('api.daos.renovation_dao.FirestoreService')
     @patch('api.daos.renovation_dao.cache_service')
@@ -751,9 +825,10 @@ class TestRenovationDAO:
         mock_firestore_instance.get_db.side_effect = Exception("Add error")
         
         dao = RenovationDAO()
-        result = dao.add_participant('test_id', 'participant_uid')
+        success, error_code = dao.add_participant('test_id', 'participant_uid')
         
-        assert result is False
+        assert success is False
+        assert error_code is None
     
     @patch('api.daos.renovation_dao.FirestoreService')
     @patch('api.daos.renovation_dao.cache_service')

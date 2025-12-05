@@ -33,6 +33,7 @@ class RenovationController:
             # Afegir creator_uid
             renovation_data['creator_uid'] = creator_uid
             renovation_data['participants_uids'] = []
+            renovation_data['expelled_uids'] = []
             
             # Comprovar solapaments temporals
             overlapping_renovation = self.renovation_dao.check_overlapping_renovations(
@@ -204,9 +205,16 @@ class RenovationController:
                 return False, None, "El creador no pot unir-se a la seva pròpia renovation"
             
             # Afegir participant
-            success = self.renovation_dao.add_participant(renovation_id, participant_uid)
+            success, error_code = self.renovation_dao.add_participant(renovation_id, participant_uid)
             if not success:
-                return False, None, "Error afegint participant o ja és participant"
+                if error_code == 'expelled':
+                    return False, None, "Aquest usuari ha estat expulsat d'aquesta renovation i no pot tornar a unir-se"
+                elif error_code == 'already_participant':
+                    return False, None, "L'usuari ja és participant d'aquesta renovation"
+                elif error_code == 'not_found':
+                    return False, None, f"Renovation amb ID {renovation_id} no trobada"
+                else:
+                    return False, None, "Error afegint participant"
             
             # Obtenir la renovation actualitzada
             renovation = self.renovation_dao.get_renovation_by_id(renovation_id)
@@ -240,8 +248,11 @@ class RenovationController:
             if requester_uid != participant_uid and requester_uid != renovation.creator_uid:
                 return False, None, "No tens permís per eliminar aquest participant"
             
+            # Detectar si és una expulsió (creador elimina un altre participant)
+            is_expulsion = (requester_uid == renovation.creator_uid and requester_uid != participant_uid)
+            
             # Eliminar participant
-            success = self.renovation_dao.remove_participant(renovation_id, participant_uid)
+            success = self.renovation_dao.remove_participant(renovation_id, participant_uid, is_expulsion=is_expulsion)
             if not success:
                 return False, None, "Error eliminant participant o no és participant"
             

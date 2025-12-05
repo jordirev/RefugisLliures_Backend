@@ -578,6 +578,36 @@ class TestRenovationViews:
         assert response.status_code == http_status.HTTP_400_BAD_REQUEST
     
     @patch('api.views.renovation_views.RenovationController')
+    def test_add_participant_expelled(self, mock_controller_class):
+        """Test POST /renovations/{id}/participants/ quan l'usuari està expulsat"""
+        mock_controller = mock_controller_class.return_value
+        mock_controller.add_participant.return_value = (False, None, 'Aquest usuari ha estat expulsat d\'aquesta renovation i no pot tornar a unir-se')
+        
+        request = self._get_authenticated_request('POST', '/api/renovations/test_id/participants/')
+        
+        view = RenovationParticipantsAPIView.as_view()
+        view.cls.authentication_classes = []
+        view.cls.permission_classes = []
+        response = view(request, id='test_id')
+        
+        assert response.status_code == http_status.HTTP_403_FORBIDDEN
+    
+    @patch('api.views.renovation_views.RenovationController')
+    def test_add_participant_already_participant(self, mock_controller_class):
+        """Test POST /renovations/{id}/participants/ quan l'usuari ja és participant"""
+        mock_controller = mock_controller_class.return_value
+        mock_controller.add_participant.return_value = (False, None, 'L\'usuari ja és participant d\'aquesta renovation')
+        
+        request = self._get_authenticated_request('POST', '/api/renovations/test_id/participants/')
+        
+        view = RenovationParticipantsAPIView.as_view()
+        view.cls.authentication_classes = []
+        view.cls.permission_classes = []
+        response = view(request, id='test_id')
+        
+        assert response.status_code == http_status.HTTP_409_CONFLICT
+    
+    @patch('api.views.renovation_views.RenovationController')
     def test_add_participant_no_user_uid(self, mock_controller_class):
         """Test POST /renovations/{id}/participants/ sense user_uid"""
         request = self._get_authenticated_request('POST', '/api/renovations/test_id/participants/', user_uid=None)

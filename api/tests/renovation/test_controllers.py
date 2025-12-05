@@ -218,7 +218,7 @@ class TestRenovationController:
         """Test afegir participant amb èxit"""
         mock_dao = mock_dao_class.return_value
         mock_dao.get_renovation_by_id.return_value = sample_renovation
-        mock_dao.add_participant.return_value = True
+        mock_dao.add_participant.return_value = (True, None)  # (success, error_code)
         
         controller = RenovationController()
         success, renovation, error = controller.add_participant('test_id', 'new_participant')
@@ -252,6 +252,23 @@ class TestRenovationController:
         assert success is True
         assert renovation is not None
         assert error is None
+    
+    @patch('api.controllers.renovation_controller.RenovationDAO')
+    def test_remove_participant_expulsion_by_creator(self, mock_dao_class, sample_renovation):
+        """Test expulsió d'un participant pel creador"""
+        mock_dao = mock_dao_class.return_value
+        mock_dao.get_renovation_by_id.return_value = sample_renovation
+        mock_dao.remove_participant.return_value = True
+        
+        controller = RenovationController()
+        # El creador expulsa un participant
+        success, renovation, error = controller.remove_participant('test_id', 'participant1', sample_renovation.creator_uid)
+        
+        assert success is True
+        assert renovation is not None
+        assert error is None
+        # Verificar que es crida amb is_expulsion=True
+        mock_dao.remove_participant.assert_called_once_with('test_id', 'participant1', is_expulsion=True)
     
     @patch('api.controllers.renovation_controller.RenovationDAO')
     def test_remove_participant_no_permission(self, mock_dao_class, sample_renovation):
@@ -475,14 +492,28 @@ class TestRenovationController:
         """Test quan el DAO retorna False (participant ja existeix o error)"""
         mock_dao = mock_dao_class.return_value
         mock_dao.get_renovation_by_id.return_value = sample_renovation
-        mock_dao.add_participant.return_value = False  # DAO retorna False
+        mock_dao.add_participant.return_value = (False, 'already_participant')  # DAO retorna False amb error_code
         
         controller = RenovationController()
         success, renovation, error = controller.add_participant('test_id', 'new_participant')
         
         assert success is False
         assert renovation is None
-        assert 'Error afegint participant o ja és participant' in error
+        assert 'ja és participant' in error.lower()
+    
+    @patch('api.controllers.renovation_controller.RenovationDAO')
+    def test_add_participant_expelled(self, mock_dao_class, sample_renovation):
+        """Test quan l'usuari està expulsat"""
+        mock_dao = mock_dao_class.return_value
+        mock_dao.get_renovation_by_id.return_value = sample_renovation
+        mock_dao.add_participant.return_value = (False, 'expelled')
+        
+        controller = RenovationController()
+        success, renovation, error = controller.add_participant('test_id', 'expelled_user')
+        
+        assert success is False
+        assert renovation is None
+        assert 'expulsat' in error.lower()
     
     @patch('api.controllers.renovation_controller.RenovationDAO')
     def test_add_participant_exception(self, mock_dao_class, sample_renovation):
