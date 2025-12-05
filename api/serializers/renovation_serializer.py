@@ -88,6 +88,11 @@ class RenovationSerializer(serializers.Serializer, DateValidationMixin):
         help_text="UIDs dels participants a la reforma",
         read_only=True
     )
+    expelled_uids = serializers.ListField(
+        child=serializers.CharField(),
+        help_text="UIDs dels usuaris expulsats pel creador",
+        read_only=True
+    )
     
     def validate(self, data):
         """Validació general de les dades"""
