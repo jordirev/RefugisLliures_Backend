@@ -53,6 +53,11 @@ class RenovationDAO:
             renovation_data['id'] = doc_ref.id
             doc_ref.set(renovation_data)
 
+            # Incrementar el comptador de refugis renovats de l'usuari
+            from ..daos.user_dao import UserDAO
+            user_dao = UserDAO()
+            user_dao.increment_renovated_refuges(renovation_data['creator_uid'])
+
             logger.info(f"Renovation creada amb ID: {doc_ref.id}")
 
             # Invalida cache de llistes
@@ -206,7 +211,7 @@ class RenovationDAO:
             logger.error(f"Error actualitzant renovation {renovation_id}: {str(e)}")
             return False
     
-    def delete_renovation(self, renovation_id: str) -> bool:
+    def delete_renovation(self, renovation_id: str, creator_uid: str) -> bool:
         """
         Elimina una renovation
         
@@ -230,6 +235,11 @@ class RenovationDAO:
             refuge_id = renovation_data.get('refuge_id')
             
             doc_ref.delete()
+
+            # Decrementar el comptador de refugis renovats de l'usuari
+            from ..daos.user_dao import UserDAO
+            user_dao = UserDAO()
+            user_dao.decrement_renovated_refuges(creator_uid)
             
             # Invalida cache
             cache_service.delete(cache_service.generate_key('renovation_detail', renovation_id=renovation_id))
@@ -306,14 +316,21 @@ class RenovationDAO:
         
         Args:
             refuge_id: ID del refugi
-            ini_date: Data d'inici en format ISO (YYYY-MM-DD)
-            fin_date: Data de finalització en format ISO (YYYY-MM-DD)
+            ini_date: Data d'inici en format ISO (YYYY-MM-DD) o objecte date
+            fin_date: Data de finalització en format ISO (YYYY-MM-DD) o objecte date
             exclude_id: ID de renovation a excloure de la comprovació (per edicions)
             
         Returns:
             Optional[Renovation]: Instància de la renovation que se solapa, o None si no hi ha solapament
         """
         try:
+            # Normalitzar dates a format ISO string per comparació
+            from datetime import date, datetime as _dt
+            if isinstance(ini_date, (_dt, date)):
+                ini_date = ini_date.isoformat() if isinstance(ini_date, date) else ini_date.date().isoformat()
+            if isinstance(fin_date, (_dt, date)):
+                fin_date = fin_date.isoformat() if isinstance(fin_date, date) else fin_date.date().isoformat()
+            
             madrid_today_str = get_madrid_today().isoformat()
             
             db = self.firestore_service.get_db()
@@ -352,7 +369,7 @@ class RenovationDAO:
             logger.error(f"Error comprovant solapaments: {str(e)}")
             return None
     
-    def add_participant(self, renovation_id: str, participant_uid: str) -> bool:
+    def add_participant(self, renovation_id: str, participant_uid: str) -> tuple[bool, Optional[str]]:
         """
         Afegeix un participant a una renovation
         
@@ -361,7 +378,7 @@ class RenovationDAO:
             participant_uid: UID del participant
             
         Returns:
-            bool: True si s'ha afegit correctament, False altrament
+            tuple: (success, error_code) on error_code pot ser 'not_found', 'expelled', 'already_participant', o None si èxit
         """
         try:
             db = self.firestore_service.get_db()
@@ -371,16 +388,22 @@ class RenovationDAO:
             doc = doc_ref.get()
             if not doc.exists:
                 logger.warning(f"Renovation amb ID {renovation_id} no existeix")
-                return False
+                return False, 'not_found'
             
             renovation_data = doc.to_dict()
             participants = renovation_data.get('participants_uids', [])
+            expelled = renovation_data.get('expelled_uids', [])
             refuge_id = renovation_data.get('refuge_id')
+            
+            # Comprovar si l'usuari està expulsat
+            if participant_uid in expelled:
+                logger.warning(f"Participant {participant_uid} està expulsat de la renovation {renovation_id}")
+                return False, 'expelled'
             
             # Comprovar si ja és participant
             if participant_uid in participants:
                 logger.warning(f"Participant {participant_uid} ja està a la renovation {renovation_id}")
-                return False
+                return False, 'already_participant'
             
             # Afegir participant
             participants.append(participant_uid)
@@ -398,19 +421,20 @@ class RenovationDAO:
                 cache_service.delete_pattern(f'renovation_refuge:{refuge_id}:*')
             
             logger.info(f"Participant {participant_uid} afegit a renovation {renovation_id}")
-            return True
+            return True, None
             
         except Exception as e:
             logger.error(f"Error afegint participant a renovation {renovation_id}: {str(e)}")
-            return False
+            return False, None
     
-    def remove_participant(self, renovation_id: str, participant_uid: str) -> bool:
+    def remove_participant(self, renovation_id: str, participant_uid: str, is_expulsion: bool = False) -> bool:
         """
         Elimina un participant d'una renovation
         
         Args:
             renovation_id: ID de la renovation
             participant_uid: UID del participant
+            is_expulsion: True si és una expulsió pel creador (l'usuari s'afegeix a expelled_uids)
             
         Returns:
             bool: True si s'ha eliminat correctament, False altrament
@@ -436,7 +460,17 @@ class RenovationDAO:
             
             # Eliminar participant
             participants.remove(participant_uid)
-            doc_ref.update({'participants_uids': participants})
+            update_data = {'participants_uids': participants}
+            
+            # Si és una expulsió, afegir l'usuari a expelled_uids
+            if is_expulsion:
+                expelled = renovation_data.get('expelled_uids', [])
+                if participant_uid not in expelled:
+                    expelled.append(participant_uid)
+                    update_data['expelled_uids'] = expelled
+                    logger.info(f"Participant {participant_uid} afegit a expelled_uids de renovation {renovation_id}")
+            
+            doc_ref.update(update_data)
             
             # Decrementar el comptador de refugis renovats de l'usuari
             from ..daos.user_dao import UserDAO

@@ -17,6 +17,7 @@ class Renovation:
     materials_needed: Optional[str] = None
     group_link: str = None  # Enllaç a grup de coordinació (Whatsapp o Telegram)
     participants_uids: Optional[list] = None
+    expelled_uids: Optional[list] = None  # UIDs dels usuaris expulsats pel creador
 
     def __post_init__(self):
         """Validacions després de la inicialització"""
@@ -46,7 +47,8 @@ class Renovation:
             'description': self.description,
             'materials_needed': self.materials_needed,
             'group_link': self.group_link,
-            'participants_uids': self.participants_uids or []            
+            'participants_uids': self.participants_uids or [],
+            'expelled_uids': self.expelled_uids or []
         }
     
     @classmethod
@@ -61,7 +63,8 @@ class Renovation:
             description=data.get('description'),
             materials_needed=data.get('materials_needed'),
             group_link=data['group_link'],
-            participants_uids=data.get('participants_uids', [])
+            participants_uids=data.get('participants_uids', []),
+            expelled_uids=data.get('expelled_uids', [])
         )
     
     def __str__(self) -> str:

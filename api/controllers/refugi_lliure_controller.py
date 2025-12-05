@@ -50,22 +50,11 @@ class RefugiLliureController:
             # Crear filtres de cerca des dels query_params validats
             filters = RefugiSearchFilters(
                 name=query_params.get('name', '').strip(),
-                region=query_params.get('region', '').strip(),
-                departement=query_params.get('departement', '').strip(),
                 type=query_params.get('type', '').strip(),
                 places_min=query_params.get('places_min'),
                 places_max=query_params.get('places_max'),
                 altitude_min=query_params.get('altitude_min'),
                 altitude_max=query_params.get('altitude_max'),
-                cheminee=query_params.get('cheminee'),
-                poele=query_params.get('poele'),
-                couvertures=query_params.get('couvertures'),
-                latrines=query_params.get('latrines'),
-                bois=query_params.get('bois'),
-                eau=query_params.get('eau'),
-                matelas=query_params.get('matelas'),
-                couchage=query_params.get('couchage'),
-                lits=query_params.get('lits')
             )
             
             # Obtenir dades del DAO (ja inclou models si cal)
