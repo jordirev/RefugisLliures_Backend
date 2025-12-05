@@ -110,7 +110,7 @@ class RenovationDAO:
     
     def get_all_renovations(self) -> List[Renovation]:
         """
-        Obté totes les renovations actives (ini_date >= data actual en zona horaria Madrid)
+        Obté totes les renovations actives (fin_date >= data actual en zona horaria Madrid)
         Filtra directament a Firestore per optimitzar la consulta
         
         Returns:
@@ -130,8 +130,10 @@ class RenovationDAO:
             madrid_today_str = madrid_today.isoformat()
             
             # Filtrar directament a Firestore per obtenir només renovations actives
-            logger.log(23, f"Firestore READ: collection={self.COLLECTION_NAME} where ini_date>={madrid_today_str}")
-            query = db.collection(self.COLLECTION_NAME).where('ini_date', '>=', madrid_today_str).order_by('ini_date')
+            logger.log(23, f"Firestore READ: collection={self.COLLECTION_NAME} where fin_date>={madrid_today_str}")
+            query = db.collection(self.COLLECTION_NAME)\
+                        .where('fin_date', '>=', madrid_today_str)\
+                        .order_by('ini_date')
             docs = query.stream()
             
             renovations_data = []
@@ -264,13 +266,20 @@ class RenovationDAO:
         
         try:
             db = self.firestore_service.get_db()
-            query = db.collection(self.COLLECTION_NAME).where('refuge_id', '==', refuge_id)
+            query = db.collection(self.COLLECTION_NAME)
             
             if active_only:
                 # Obtenir renovations que encara no han començat o estan en curs (zona horaria Madrid)
                 madrid_today_str = get_madrid_today().isoformat()
-                query = query.where('ini_date', '>=', madrid_today_str).order_by('ini_date')
-            
+                query = query\
+                    .where('refuge_id', '==', refuge_id)\
+                    .where('fin_date', '>=', madrid_today_str)\
+                    .order_by('ini_date')
+            else:
+                query = query\
+                    .where('refuge_id', '==', refuge_id)\
+                    .order_by('ini_date')
+
             logger.log(23, f"Firestore READ: collection={self.COLLECTION_NAME} where refuge_id={refuge_id}")
             docs = query.stream()
             
@@ -313,7 +322,7 @@ class RenovationDAO:
             logger.log(23, f"Firestore READ: collection={self.COLLECTION_NAME} where refuge_id={refuge_id} AND ini_date>={madrid_today_str}")
             query = db.collection(self.COLLECTION_NAME)\
                 .where('refuge_id', '==', refuge_id)\
-                .where('ini_date', '>=', madrid_today_str)\
+                .where('fin_date', '>=', madrid_today_str)\
                 .order_by('ini_date')
             docs = query.stream()
             
