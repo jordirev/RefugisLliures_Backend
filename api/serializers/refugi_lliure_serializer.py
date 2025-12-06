@@ -70,8 +70,19 @@ class RefugiSearchFiltersSerializer(serializers.Serializer):
     region = serializers.CharField(required=False, default='', allow_blank=True)
     departement = serializers.CharField(required=False, default='', allow_blank=True)
 
-    # Characteristics filters
-    type = serializers.CharField(required=False, default='', allow_blank=True)
+    # Characteristics filters - accepten strings amb comes o llistes
+    type = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        default='',
+        help_text="Comma-separated list of refuge types to filter by"
+    )
+    condition = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        default='',
+        help_text="Comma-separated list of conditions to filter by (0, 1, or 2)"
+    )
     
     # Numeric range filters
     places_min = serializers.IntegerField(required=False, allow_null=True, min_value=0)
@@ -106,6 +117,24 @@ class RefugiSearchFiltersSerializer(serializers.Serializer):
     
     def validate(self, data):
         """Validació personalitzada per assegurar que min < max i que siguin enters positius"""
+        # Convertir type i condition de strings amb comes a llistes
+        if 'type' in data and isinstance(data['type'], str):
+            if data['type'].strip():
+                data['type'] = [t.strip() for t in data['type'].split(',') if t.strip()]
+            else:
+                data['type'] = []
+        
+        if 'condition' in data and isinstance(data['condition'], str):
+            if data['condition'].strip():
+                try:
+                    data['condition'] = [int(c.strip()) for c in data['condition'].split(',') if c.strip()]
+                except ValueError:
+                    raise serializers.ValidationError({
+                        'condition': 'condition ha de contenir només enters (0, 1, o 2) separats per comes'
+                    })
+            else:
+                data['condition'] = []
+        
         places_min = data.get('places_min')
         places_max = data.get('places_max')
         self._validate_range(places_min, places_max, 'places')

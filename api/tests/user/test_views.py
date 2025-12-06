@@ -216,9 +216,6 @@ class TestUserViews:
         assert 'error' in response.data
 
 
-# ==================== TESTS D'INTEGRACIÓ ====================
-
-
 # ==================== TESTS REFUGIS PREFERITS I VISITATS ====================
 
 @pytest.mark.views

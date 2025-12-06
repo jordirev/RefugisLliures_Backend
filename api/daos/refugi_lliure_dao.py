@@ -162,9 +162,9 @@ class RefugiLliureDAO:
         if filters.name and filters.name.strip():
             return True
         
-        # Comprova altres filtres
-        has_type = bool(filters.type and filters.type.strip())
-        has_condition = bool(filters.condition and filters.condition.strip())
+        # Comprova altres filtres - només compte si té valors no buits
+        has_type = bool(filters.type and len(filters.type) > 0 and any(t.strip() for t in filters.type if isinstance(t, str)))
+        has_condition = bool(filters.condition and len(filters.condition) > 0)
         has_places = filters.places_min is not None or filters.places_max is not None
         has_altitude = filters.altitude_min is not None or filters.altitude_max is not None
         
@@ -206,7 +206,7 @@ class RefugiLliureDAO:
             Llista amb un sol refugi si es troba, llista buida si no
         """
         try:
-            query = db.collection(self.collection_name).where('name', '==', name)
+            query = db.collection(self.collection_name).where(filter=firestore_service.firestore.FieldFilter('name', '==', name))
             logger.log(23, f"Firestore QUERY: collection={self.collection_name} filters=name")
             docs = query.stream()
             results = [doc.to_dict() for doc in docs]
