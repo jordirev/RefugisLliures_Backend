@@ -104,7 +104,7 @@ class UserDAO:
         try:
             db = self.firestore_service.get_db()
             logger.log(23, f"Firestore QUERY: collection={self.COLLECTION_NAME} filter=email=={email}")
-            query = db.collection(self.COLLECTION_NAME).where('email', '==', email).limit(1)
+            query = db.collection(self.COLLECTION_NAME).where(filter=self.firestore_service.firestore.FieldFilter('email', '==', email)).limit(1)
             docs = query.get()
 
             if docs:
@@ -144,7 +144,7 @@ class UserDAO:
         try:
             db = self.firestore_service.get_db()
             logger.log(23, f"Firestore QUERY: collection={self.COLLECTION_NAME} filter=email=={email} (exists check)")
-            query = db.collection(self.COLLECTION_NAME).where('email', '==', email).limit(1)
+            query = db.collection(self.COLLECTION_NAME).where(filter=self.firestore_service.firestore.FieldFilter('email', '==', email)).limit(1)
             docs = query.get()
             
             exists = len(docs) > 0

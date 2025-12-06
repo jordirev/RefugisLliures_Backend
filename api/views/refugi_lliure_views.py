@@ -50,6 +50,7 @@ class RefugiLliureCollectionAPIView(APIView):
             "Obté una llista de refugis amb suport per filtres opcionals. "
             "\n- Quan no s'especifiquen filtres, retorna totes les coordenades dels refugis. "
             "\n- Quan s'utilitzen filtres, retorna els refugis que compleixen els criteris especificats. "
+            "\n- Els filtres 'type' i 'condition' accepten múltiples valors separats per comes."
             "\n\nAquest endpoint no requereix autenticació."
         ),
         manual_parameters=[
@@ -63,17 +64,17 @@ class RefugiLliureCollectionAPIView(APIView):
             openapi.Parameter(
                 'type',
                 openapi.IN_QUERY,
-                description="Filtre per tipus de refugi",
-                type=openapi.TYPE_STRING,
-                enum=['non gardé', 'fermée', 'cabane ouverte mais ocupee par le berger l ete', 'orri'],
+                description="Filtre per tipus de refugi (pot especificar múltiples valors separats per comes)",
+                type=openapi.TYPE_ARRAY,
+                items=openapi.Items(type=openapi.TYPE_STRING, enum=['non gardé', 'fermée', 'cabane ouverte mais ocupee par le berger l ete', 'orri']),
                 required=False
             ),
             openapi.Parameter(
                 'condition',
                 openapi.IN_QUERY,
-                description="Filtre per tipus de refugi",
-                type=openapi.TYPE_NUMBER,
-                enum=[0, 1, 2],
+                description="Filtre per condició del refugi (pot especificar múltiples valors separats per comes)",
+                type=openapi.TYPE_ARRAY,
+                items=openapi.Items(type=openapi.TYPE_INTEGER, enum=[0, 1, 2]),
                 required=False
             ),
             openapi.Parameter(
@@ -244,6 +245,13 @@ class RefugeRenovationsAPIView(APIView):
                 description="Identificador únic del refugi",
                 type=openapi.TYPE_STRING,
                 required=True
+            ),
+            openapi.Parameter(
+                'active_only',
+                openapi.IN_QUERY,
+                description="Filtrar només renovations actives",
+                type=openapi.TYPE_BOOLEAN,
+                required=False
             )
         ],
         responses={
@@ -258,11 +266,11 @@ class RefugeRenovationsAPIView(APIView):
             500: ERROR_500_INTERNAL_ERROR
         }
     )
-    def get(self, request, refuge_id):
+    def get(self, request, refuge_id, active_only: bool = False):
         """Obtenir renovations d'un refugi"""
         try:
             controller = RenovationController()
-            success, renovations, error_message = controller.get_renovations_by_refuge(refuge_id)
+            success, renovations, error_message = controller.get_renovations_by_refuge(refuge_id, active_only)
             
             if not success:
                 return Response({

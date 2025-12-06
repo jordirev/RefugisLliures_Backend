@@ -54,13 +54,13 @@ class TypeConditionPlacesStrategy(RefugiSearchStrategy):
         query = db.collection(collection_name)
         
         # Ordre segons índex: type, condition, places
-        query = query.where('type', '==', filters.type)
-        query = query.where('condition', '==', filters.condition)
+        query = query.where(filter=firestore.FieldFilter('type', 'in', filters.type))
+        query = query.where(filter=firestore.FieldFilter('condition', 'in', filters.condition))
         
         if filters.places_min is not None:
-            query = query.where('places', '>=', filters.places_min)
+            query = query.where(filter=firestore.FieldFilter('places', '>=', filters.places_min))
         if filters.places_max is not None:
-            query = query.where('places', '<=', filters.places_max)
+            query = query.where(filter=firestore.FieldFilter('places', '<=', filters.places_max))
         
         logger.log(23, f"Firestore QUERY: collection={collection_name} filters=type+condition+places")
         docs = query.stream()
@@ -77,13 +77,13 @@ class TypeConditionAltitudeStrategy(RefugiSearchStrategy):
         query = db.collection(collection_name)
         
         # Ordre segons índex: type, condition, altitude
-        query = query.where('type', '==', filters.type)
-        query = query.where('condition', '==', filters.condition)
+        query = query.where(filter=firestore.FieldFilter('type', 'in', filters.type))
+        query = query.where(filter=firestore.FieldFilter('condition', 'in', filters.condition))
         
         if filters.altitude_min is not None:
-            query = query.where('altitude', '>=', filters.altitude_min)
+            query = query.where(filter=firestore.FieldFilter('altitude', '>=', filters.altitude_min))
         if filters.altitude_max is not None:
-            query = query.where('altitude', '<=', filters.altitude_max)
+            query = query.where(filter=firestore.FieldFilter('altitude', '<=', filters.altitude_max))
         
         logger.log(23, f"Firestore QUERY: collection={collection_name} filters=type+condition+altitude")
         docs = query.stream()
@@ -103,13 +103,13 @@ class TypeConditionPlacesAltitudeStrategy(RefugiSearchStrategy):
         query = db.collection(collection_name)
         
         # Utilitza índex: type, condition, places
-        query = query.where('type', '==', filters.type)
-        query = query.where('condition', '==', filters.condition)
+        query = query.where(filter=firestore.FieldFilter('type', 'in', filters.type))
+        query = query.where(filter=firestore.FieldFilter('condition', 'in', filters.condition))
         
         if filters.places_min is not None:
-            query = query.where('places', '>=', filters.places_min)
+            query = query.where(filter=firestore.FieldFilter('places', '>=', filters.places_min))
         if filters.places_max is not None:
-            query = query.where('places', '<=', filters.places_max)
+            query = query.where(filter=firestore.FieldFilter('places', '<=', filters.places_max))
         
         logger.log(23, f"Firestore QUERY: collection={collection_name} filters=type+condition+places (manual altitude)")
         docs = query.stream()
@@ -142,12 +142,12 @@ class TypePlacesStrategy(RefugiSearchStrategy):
         query = db.collection(collection_name)
         
         # Ordre segons índex: type, places
-        query = query.where('type', '==', filters.type)
+        query = query.where(filter=firestore.FieldFilter('type', 'in', filters.type))
         
         if filters.places_min is not None:
-            query = query.where('places', '>=', filters.places_min)
+            query = query.where(filter=firestore.FieldFilter('places', '>=', filters.places_min))
         if filters.places_max is not None:
-            query = query.where('places', '<=', filters.places_max)
+            query = query.where(filter=firestore.FieldFilter('places', '<=', filters.places_max))
         
         logger.log(23, f"Firestore QUERY: collection={collection_name} filters=type+places")
         docs = query.stream()
@@ -164,12 +164,12 @@ class TypeAltitudeStrategy(RefugiSearchStrategy):
         query = db.collection(collection_name)
         
         # Ordre segons índex: type, altitude
-        query = query.where('type', '==', filters.type)
+        query = query.where(filter=firestore.FieldFilter('type', 'in', filters.type))
         
         if filters.altitude_min is not None:
-            query = query.where('altitude', '>=', filters.altitude_min)
+            query = query.where(filter=firestore.FieldFilter('altitude', '>=', filters.altitude_min))
         if filters.altitude_max is not None:
-            query = query.where('altitude', '<=', filters.altitude_max)
+            query = query.where(filter=firestore.FieldFilter('altitude', '<=', filters.altitude_max))
         
         logger.log(23, f"Firestore QUERY: collection={collection_name} filters=type+altitude")
         docs = query.stream()
@@ -186,12 +186,12 @@ class ConditionPlacesStrategy(RefugiSearchStrategy):
         query = db.collection(collection_name)
         
         # Ordre segons índex: condition, places
-        query = query.where('condition', '==', filters.condition)
+        query = query.where(filter=firestore.FieldFilter('condition', 'in', filters.condition))
         
         if filters.places_min is not None:
-            query = query.where('places', '>=', filters.places_min)
+            query = query.where(filter=firestore.FieldFilter('places', '>=', filters.places_min))
         if filters.places_max is not None:
-            query = query.where('places', '<=', filters.places_max)
+            query = query.where(filter=firestore.FieldFilter('places', '<=', filters.places_max))
         
         logger.log(23, f"Firestore QUERY: collection={collection_name} filters=condition+places")
         docs = query.stream()
@@ -208,12 +208,12 @@ class ConditionAltitudeStrategy(RefugiSearchStrategy):
         query = db.collection(collection_name)
         
         # Ordre segons índex: condition, altitude
-        query = query.where('condition', '==', filters.condition)
+        query = query.where(filter=firestore.FieldFilter('condition', 'in', filters.condition))
         
         if filters.altitude_min is not None:
-            query = query.where('altitude', '>=', filters.altitude_min)
+            query = query.where(filter=firestore.FieldFilter('altitude', '>=', filters.altitude_min))
         if filters.altitude_max is not None:
-            query = query.where('altitude', '<=', filters.altitude_max)
+            query = query.where(filter=firestore.FieldFilter('altitude', '<=', filters.altitude_max))
         
         logger.log(23, f"Firestore QUERY: collection={collection_name} filters=condition+altitude")
         docs = query.stream()
@@ -233,12 +233,12 @@ class TypePlacesAltitudeStrategy(RefugiSearchStrategy):
         query = db.collection(collection_name)
         
         # Utilitza índex: type, places
-        query = query.where('type', '==', filters.type)
+        query = query.where(filter=firestore.FieldFilter('type', 'in', filters.type))
         
         if filters.places_min is not None:
-            query = query.where('places', '>=', filters.places_min)
+            query = query.where(filter=firestore.FieldFilter('places', '>=', filters.places_min))
         if filters.places_max is not None:
-            query = query.where('places', '<=', filters.places_max)
+            query = query.where(filter=firestore.FieldFilter('places', '<=', filters.places_max))
         
         logger.log(23, f"Firestore QUERY: collection={collection_name} filters=type+places (manual altitude)")
         docs = query.stream()
@@ -272,12 +272,12 @@ class ConditionPlacesAltitudeStrategy(RefugiSearchStrategy):
         query = db.collection(collection_name)
         
         # Utilitza índex: condition, places
-        query = query.where('condition', '==', filters.condition)
+        query = query.where(filter=firestore.FieldFilter('condition', 'in', filters.condition))
         
         if filters.places_min is not None:
-            query = query.where('places', '>=', filters.places_min)
+            query = query.where(filter=firestore.FieldFilter('places', '>=', filters.places_min))
         if filters.places_max is not None:
-            query = query.where('places', '<=', filters.places_max)
+            query = query.where(filter=firestore.FieldFilter('places', '<=', filters.places_max))
         
         logger.log(23, f"Firestore QUERY: collection={collection_name} filters=condition+places (manual altitude)")
         docs = query.stream()
@@ -312,9 +312,9 @@ class PlacesAltitudeStrategy(RefugiSearchStrategy):
         
         # Utilitza filtre de places (no hi ha índex compost sense type o condition)
         if filters.places_min is not None:
-            query = query.where('places', '>=', filters.places_min)
+            query = query.where(filter=firestore.FieldFilter('places', '>=', filters.places_min))
         if filters.places_max is not None:
-            query = query.where('places', '<=', filters.places_max)
+            query = query.where(filter=firestore.FieldFilter('places', '<=', filters.places_max))
         
         logger.log(23, f"Firestore QUERY: collection={collection_name} filters=places (manual altitude)")
         docs = query.stream()
@@ -345,7 +345,7 @@ class TypeOnlyStrategy(RefugiSearchStrategy):
     
     def execute_query(self, db: firestore.Client, collection_name: str, filters: 'RefugiSearchFilters') -> List[Dict[str, Any]]:
         query = db.collection(collection_name)
-        query = query.where('type', '==', filters.type)
+        query = query.where(filter=firestore.FieldFilter('type', 'in', filters.type))
         
         logger.log(23, f"Firestore QUERY: collection={collection_name} filters=type")
         docs = query.stream()
@@ -360,7 +360,7 @@ class ConditionOnlyStrategy(RefugiSearchStrategy):
     
     def execute_query(self, db: firestore.Client, collection_name: str, filters: 'RefugiSearchFilters') -> List[Dict[str, Any]]:
         query = db.collection(collection_name)
-        query = query.where('condition', '==', filters.condition)
+        query = query.where(filter=firestore.FieldFilter('condition', 'in', filters.condition))
         
         logger.log(23, f"Firestore QUERY: collection={collection_name} filters=condition")
         docs = query.stream()
@@ -377,9 +377,9 @@ class PlacesOnlyStrategy(RefugiSearchStrategy):
         query = db.collection(collection_name)
         
         if filters.places_min is not None:
-            query = query.where('places', '>=', filters.places_min)
+            query = query.where(filter=firestore.FieldFilter('places', '>=', filters.places_min))
         if filters.places_max is not None:
-            query = query.where('places', '<=', filters.places_max)
+            query = query.where(filter=firestore.FieldFilter('places', '<=', filters.places_max))
         
         logger.log(23, f"Firestore QUERY: collection={collection_name} filters=places")
         docs = query.stream()
@@ -396,9 +396,9 @@ class AltitudeOnlyStrategy(RefugiSearchStrategy):
         query = db.collection(collection_name)
         
         if filters.altitude_min is not None:
-            query = query.where('altitude', '>=', filters.altitude_min)
+            query = query.where(filter=firestore.FieldFilter('altitude', '>=', filters.altitude_min))
         if filters.altitude_max is not None:
-            query = query.where('altitude', '<=', filters.altitude_max)
+            query = query.where(filter=firestore.FieldFilter('altitude', '<=', filters.altitude_max))
         
         logger.log(23, f"Firestore QUERY: collection={collection_name} filters=altitude")
         docs = query.stream()
@@ -424,8 +424,8 @@ class SearchStrategySelector:
         Returns:
             Estratègia de cerca adequada
         """
-        has_type = bool(filters.type and filters.type.strip())
-        has_condition = bool(filters.condition and filters.condition.strip())
+        has_type = bool(filters.type and len(filters.type) > 0)
+        has_condition = bool(filters.condition and len(filters.condition) > 0)
         has_places = filters.places_min is not None or filters.places_max is not None
         has_altitude = filters.altitude_min is not None or filters.altitude_max is not None
         

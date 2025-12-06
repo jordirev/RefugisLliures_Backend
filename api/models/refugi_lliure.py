@@ -184,8 +184,8 @@ class RefugiSearchFilters:
     name: str = ""
     
     # Characteristics filters
-    type: str = ""
-    condition: str = ""
+    type: List[str] = field(default_factory=list)
+    condition: List[int] = field(default_factory=list)
     
     # Numeric range filters
     places_min: Optional[int] = None
@@ -199,9 +199,9 @@ class RefugiSearchFilters:
         if self.name is None:
             self.name = ""
         if self.type is None:
-            self.type = ""
+            self.type = []
         if self.condition is None:
-            self.condition = ""
+            self.condition = []
 
     def to_dict(self) -> dict:
         """Retorna una representació dict dels filtres.
@@ -215,10 +215,10 @@ class RefugiSearchFilters:
         # Include text filters only when non-empty
         if isinstance(self.name, str) and self.name.strip():
             out['name'] = self.name.strip()
-        if isinstance(self.type, str) and self.type.strip():
-            out['type'] = self.type.strip()
-        if isinstance(self.condition, str) and self.condition.strip():
-            out['condition'] = self.condition.strip()
+        if isinstance(self.type, list) and len(self.type) > 0:
+            out['type'] = sorted(self.type)  # Sort for consistent cache keys
+        if isinstance(self.condition, list) and len(self.condition) > 0:
+            out['condition'] = sorted(self.condition)  # Sort for consistent cache keys
 
         # Numeric ranges
         if self.places_min is not None:
@@ -237,8 +237,8 @@ class RefugiSearchFilters:
         """Crea un RefugiSearchFilters a partir d'un dict (opcional)."""
         return cls(
             name=data.get('name', ''),
-            type=data.get('type', ''),
-            condition=data.get('condition', ''),
+            type=data.get('type', []),
+            condition=data.get('condition', []),
             places_min=data.get('places_min'),
             places_max=data.get('places_max'),
             altitude_min=data.get('altitude_min'),

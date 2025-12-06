@@ -179,13 +179,13 @@ class TestRefugiModels:
         """Test creació de RefugiSearchFilters"""
         filters = RefugiSearchFilters(
             name='Test',
-            type='garde',
+            type=['garde'],
             places_min=5,
             places_max=15
         )
         
         assert filters.name == 'Test'
-        assert filters.type == 'garde'
+        assert filters.type == ['garde']
         assert filters.places_min == 5
         assert filters.places_max == 15
     
@@ -194,19 +194,28 @@ class TestRefugiModels:
         filters = RefugiSearchFilters()
         
         assert filters.name == ""
-        assert filters.type == ""
-        assert filters.condition == ""
+        assert filters.type == []
+        assert filters.condition == []
         assert filters.places_min is None
         assert filters.altitude_max is None
     
-    def test_refugi_search_filters_to_dict(self, sample_search_filters):
+    def test_refugi_search_filters_to_dict(self):
         """Test conversió de filtres a diccionari"""
-        filters_dict = sample_search_filters.to_dict()
+        filters = RefugiSearchFilters(
+            name='Test',
+            type=['garde', 'orri'],
+            condition=[0, 1],
+            places_min=5,
+            altitude_max=2500
+        )
+        filters_dict = filters.to_dict()
         
         assert isinstance(filters_dict, dict)
-        assert 'name' in filters_dict
-        assert 'type' in filters_dict
-        assert 'condition' in filters_dict
+        assert filters_dict['name'] == 'Test'
+        assert filters_dict['type'] == ['garde', 'orri']
+        assert filters_dict['condition'] == [0, 1]
+        assert filters_dict['places_min'] == 5
+        assert filters_dict['altitude_max'] == 2500
     
     def test_refugi_search_filters_to_dict_empty(self):
         """Test conversió de filtres buits a diccionari"""
