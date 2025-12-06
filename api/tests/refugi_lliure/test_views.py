@@ -514,6 +514,3 @@ class TestRefugiViews:
         
         assert response.status_code == http_status.HTTP_500_INTERNAL_SERVER_ERROR
         assert 'error' in response.data
-
-
-# ==================== TESTS D'INTEGRACIÓ ====================

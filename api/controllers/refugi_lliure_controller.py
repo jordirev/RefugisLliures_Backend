@@ -49,8 +49,9 @@ class RefugiLliureController:
         try:
             # Crear filtres de cerca des dels query_params validats
             filters = RefugiSearchFilters(
-                name=query_params.get('name', '').strip(),
-                type=query_params.get('type', '').strip(),
+                name=query_params.get('name', '').strip() if isinstance(query_params.get('name', ''), str) else '',
+                type=query_params.get('type', []),
+                condition=query_params.get('condition', []),
                 places_min=query_params.get('places_min'),
                 places_max=query_params.get('places_max'),
                 altitude_min=query_params.get('altitude_min'),

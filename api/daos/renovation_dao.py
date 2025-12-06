@@ -240,6 +240,11 @@ class RenovationDAO:
             from ..daos.user_dao import UserDAO
             user_dao = UserDAO()
             user_dao.decrement_renovated_refuges(creator_uid)
+
+            # Decrementar el comptador de refugis renovats dels participants
+            participants = renovation_data.get('participants_uids', [])
+            for participant_uid in participants:
+                user_dao.decrement_renovated_refuges(participant_uid)
             
             # Invalida cache
             cache_service.delete(cache_service.generate_key('renovation_detail', renovation_id=renovation_id))
