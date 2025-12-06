@@ -244,6 +244,13 @@ class RefugeRenovationsAPIView(APIView):
                 description="Identificador únic del refugi",
                 type=openapi.TYPE_STRING,
                 required=True
+            ),
+            openapi.Parameter(
+                'active_only',
+                openapi.IN_QUERY,
+                description="Filtrar només renovations actives",
+                type=openapi.TYPE_BOOLEAN,
+                required=False
             )
         ],
         responses={
@@ -258,11 +265,11 @@ class RefugeRenovationsAPIView(APIView):
             500: ERROR_500_INTERNAL_ERROR
         }
     )
-    def get(self, request, refuge_id):
+    def get(self, request, refuge_id, active_only: bool = False):
         """Obtenir renovations d'un refugi"""
         try:
             controller = RenovationController()
-            success, renovations, error_message = controller.get_renovations_by_refuge(refuge_id)
+            success, renovations, error_message = controller.get_renovations_by_refuge(refuge_id, active_only)
             
             if not success:
                 return Response({

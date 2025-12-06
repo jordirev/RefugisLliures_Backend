@@ -266,7 +266,7 @@ class RenovationController:
             logger.error(f"Error en remove_participant: {str(e)}")
             return False, None, f"Error intern: {str(e)}"
     
-    def get_renovations_by_refuge(self, refuge_id: str) -> Tuple[bool, List[Renovation], Optional[str]]:
+    def get_renovations_by_refuge(self, refuge_id: str, active_only: bool = False) -> Tuple[bool, List[Renovation], Optional[str]]:
         """
         Obté les renovations d'un refugi
         
@@ -277,7 +277,7 @@ class RenovationController:
             tuple: (success, list_of_renovations, error_message)
         """
         try:
-            renovations = self.renovation_dao.get_renovations_by_refuge(refuge_id)
+            renovations = self.renovation_dao.get_renovations_by_refuge(refuge_id, active_only)
             return True, renovations, None
             
         except Exception as e:
