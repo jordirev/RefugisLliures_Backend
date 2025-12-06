@@ -53,11 +53,6 @@ class RenovationDAO:
             renovation_data['id'] = doc_ref.id
             doc_ref.set(renovation_data)
 
-            # Incrementar el comptador de refugis renovats de l'usuari
-            from ..daos.user_dao import UserDAO
-            user_dao = UserDAO()
-            user_dao.increment_renovated_refuges(renovation_data['creator_uid'])
-
             logger.info(f"Renovation creada amb ID: {doc_ref.id}")
 
             # Invalida cache de llistes
@@ -211,7 +206,7 @@ class RenovationDAO:
             logger.error(f"Error actualitzant renovation {renovation_id}: {str(e)}")
             return False
     
-    def delete_renovation(self, renovation_id: str, creator_uid: str) -> bool:
+    def delete_renovation(self, renovation_id: str) -> tuple[bool, Optional[str], Optional[list[str]]]:
         """
         Elimina una renovation
         
@@ -219,7 +214,7 @@ class RenovationDAO:
             renovation_id: ID de la renovation
             
         Returns:
-            bool: True si s'ha eliminat correctament, False altrament
+            tuple: (success, creator_uid, list_of_participant_uids) per permetre al controller decrementar comptadors
         """
         try:
             db = self.firestore_service.get_db()
@@ -229,22 +224,14 @@ class RenovationDAO:
             doc = doc_ref.get()
             if not doc.exists:
                 logger.warning(f"Renovation amb ID {renovation_id} no existeix")
-                return False
+                return False, None, None
             
             renovation_data = doc.to_dict()
             refuge_id = renovation_data.get('refuge_id')
+            creator_uid_from_data = renovation_data.get('creator_uid')
+            participants = renovation_data.get('participants_uids', [])
             
             doc_ref.delete()
-
-            # Decrementar el comptador de refugis renovats de l'usuari
-            from ..daos.user_dao import UserDAO
-            user_dao = UserDAO()
-            user_dao.decrement_renovated_refuges(creator_uid)
-
-            # Decrementar el comptador de refugis renovats dels participants
-            participants = renovation_data.get('participants_uids', [])
-            for participant_uid in participants:
-                user_dao.decrement_renovated_refuges(participant_uid)
             
             # Invalida cache
             cache_service.delete(cache_service.generate_key('renovation_detail', renovation_id=renovation_id))
@@ -253,11 +240,11 @@ class RenovationDAO:
                 cache_service.delete_pattern(f'renovation_refuge:{refuge_id}:*')
             
             logger.info(f"Renovation eliminada: {renovation_id}")
-            return True
+            return True, creator_uid_from_data, participants
             
         except Exception as e:
             logger.error(f"Error eliminant renovation {renovation_id}: {str(e)}")
-            return False
+            return False, None, None
     
     def get_renovations_by_refuge(self, refuge_id: str, active_only: bool = False) -> List[Renovation]:
         """
@@ -414,11 +401,6 @@ class RenovationDAO:
             participants.append(participant_uid)
             doc_ref.update({'participants_uids': participants})
             
-            # Incrementar el comptador de refugis renovats de l'usuari
-            from ..daos.user_dao import UserDAO
-            user_dao = UserDAO()
-            user_dao.increment_renovated_refuges(participant_uid)
-            
             # Invalida cache de la renovation
             cache_service.delete(cache_service.generate_key('renovation_detail', renovation_id=renovation_id))
             cache_service.delete_pattern('renovation_list:*')
@@ -476,11 +458,6 @@ class RenovationDAO:
                     logger.info(f"Participant {participant_uid} afegit a expelled_uids de renovation {renovation_id}")
             
             doc_ref.update(update_data)
-            
-            # Decrementar el comptador de refugis renovats de l'usuari
-            from ..daos.user_dao import UserDAO
-            user_dao = UserDAO()
-            user_dao.decrement_renovated_refuges(participant_uid)
             
             # Invalida cache de la renovation
             cache_service.delete(cache_service.generate_key('renovation_detail', renovation_id=renovation_id))

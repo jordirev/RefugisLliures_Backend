@@ -162,8 +162,8 @@ class RefugiLliureDAO:
         if filters.name and filters.name.strip():
             return True
         
-        # Comprova altres filtres
-        has_type = bool(filters.type and len(filters.type) > 0)
+        # Comprova altres filtres - només compte si té valors no buits
+        has_type = bool(filters.type and len(filters.type) > 0 and any(t.strip() for t in filters.type if isinstance(t, str)))
         has_condition = bool(filters.condition and len(filters.condition) > 0)
         has_places = filters.places_min is not None or filters.places_max is not None
         has_altitude = filters.altitude_min is not None or filters.altitude_max is not None

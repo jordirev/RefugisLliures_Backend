@@ -33,8 +33,8 @@ class TestSearchStrategySelector:
     def test_select_type_condition_places_altitude(self):
         """Test selecció: type + condition + places + altitude"""
         filters = RefugiSearchFilters()
-        filters.type = "Cabane"
-        filters.condition = "Bon estat"
+        filters.type = ["Cabane"]
+        filters.condition = ["Bon estat"]
         filters.places_min = 5
         filters.altitude_min = 2000
         
@@ -45,8 +45,8 @@ class TestSearchStrategySelector:
     def test_select_type_condition_places(self):
         """Test selecció: type + condition + places"""
         filters = RefugiSearchFilters()
-        filters.type = "Cabane"
-        filters.condition = "Bon estat"
+        filters.type = ["Cabane"]
+        filters.condition = ["Bon estat"]
         filters.places_min = 5
         
         strategy = SearchStrategySelector.select_strategy(filters)
@@ -56,8 +56,8 @@ class TestSearchStrategySelector:
     def test_select_type_condition_altitude(self):
         """Test selecció: type + condition + altitude"""
         filters = RefugiSearchFilters()
-        filters.type = "Cabane"
-        filters.condition = "Bon estat"
+        filters.type = ["Cabane"]
+        filters.condition = ["Bon estat"]
         filters.altitude_min = 2000
         
         strategy = SearchStrategySelector.select_strategy(filters)
@@ -67,7 +67,7 @@ class TestSearchStrategySelector:
     def test_select_type_places_altitude(self):
         """Test selecció: type + places + altitude"""
         filters = RefugiSearchFilters()
-        filters.type = "Cabane"
+        filters.type = ["Cabane"]
         filters.places_min = 5
         filters.altitude_min = 2000
         
@@ -78,7 +78,7 @@ class TestSearchStrategySelector:
     def test_select_type_places(self):
         """Test selecció: type + places"""
         filters = RefugiSearchFilters()
-        filters.type = "Cabane"
+        filters.type = ["Cabane"]
         filters.places_min = 5
         
         strategy = SearchStrategySelector.select_strategy(filters)
@@ -88,7 +88,7 @@ class TestSearchStrategySelector:
     def test_select_type_altitude(self):
         """Test selecció: type + altitude"""
         filters = RefugiSearchFilters()
-        filters.type = "Cabane"
+        filters.type = ["Cabane"]
         filters.altitude_min = 2000
         
         strategy = SearchStrategySelector.select_strategy(filters)
@@ -98,7 +98,7 @@ class TestSearchStrategySelector:
     def test_select_type_only(self):
         """Test selecció: només type"""
         filters = RefugiSearchFilters()
-        filters.type = "Cabane"
+        filters.type = ["Cabane"]
         
         strategy = SearchStrategySelector.select_strategy(filters)
         assert isinstance(strategy, TypeOnlyStrategy)
@@ -107,7 +107,7 @@ class TestSearchStrategySelector:
     def test_select_condition_places_altitude(self):
         """Test selecció: condition + places + altitude"""
         filters = RefugiSearchFilters()
-        filters.condition = "Bon estat"
+        filters.condition = ["Bon estat"]
         filters.places_min = 5
         filters.altitude_min = 2000
         
@@ -118,7 +118,7 @@ class TestSearchStrategySelector:
     def test_select_condition_places(self):
         """Test selecció: condition + places"""
         filters = RefugiSearchFilters()
-        filters.condition = "Bon estat"
+        filters.condition = ["Bon estat"]
         filters.places_min = 5
         
         strategy = SearchStrategySelector.select_strategy(filters)
@@ -128,7 +128,7 @@ class TestSearchStrategySelector:
     def test_select_condition_altitude(self):
         """Test selecció: condition + altitude"""
         filters = RefugiSearchFilters()
-        filters.condition = "Bon estat"
+        filters.condition = ["Bon estat"]
         filters.altitude_min = 2000
         
         strategy = SearchStrategySelector.select_strategy(filters)
@@ -138,7 +138,7 @@ class TestSearchStrategySelector:
     def test_select_condition_only(self):
         """Test selecció: només condition"""
         filters = RefugiSearchFilters()
-        filters.condition = "Bon estat"
+        filters.condition = ["Bon estat"]
         
         strategy = SearchStrategySelector.select_strategy(filters)
         assert isinstance(strategy, ConditionOnlyStrategy)
@@ -207,8 +207,8 @@ class TestIndividualStrategies:
         mock_db = self.setup_mock_db(refugi_data)
         
         filters = RefugiSearchFilters()
-        filters.type = "Cabane"
-        filters.condition = "Bon estat"
+        filters.type = ["Cabane"]
+        filters.condition = ["Bon estat"]
         filters.places_min = 5
         filters.places_max = 15
         
@@ -224,8 +224,8 @@ class TestIndividualStrategies:
         mock_db = self.setup_mock_db(refugi_data)
         
         filters = RefugiSearchFilters()
-        filters.type = "Cabane"
-        filters.condition = "Bon estat"
+        filters.type = ["Cabane"]
+        filters.condition = ["Bon estat"]
         filters.altitude_min = 2000
         filters.altitude_max = 3000
         
@@ -255,8 +255,8 @@ class TestIndividualStrategies:
         mock_db.collection.return_value = mock_collection
         
         filters = RefugiSearchFilters()
-        filters.type = "Cabane"
-        filters.condition = "Bon estat"
+        filters.type = ["Cabane"]
+        filters.condition = ["Bon estat"]
         filters.places_min = 5
         filters.altitude_min = 2000
         
@@ -273,7 +273,7 @@ class TestIndividualStrategies:
         mock_db = self.setup_mock_db(refugi_data)
         
         filters = RefugiSearchFilters()
-        filters.type = "Cabane"
+        filters.type = ["Cabane"]
         filters.altitude_min = 2000
         
         strategy = TypeAltitudeStrategy()
@@ -288,7 +288,7 @@ class TestIndividualStrategies:
         mock_db = self.setup_mock_db(refugi_data)
         
         filters = RefugiSearchFilters()
-        filters.condition = "Bon estat"
+        filters.condition = ["Bon estat"]
         filters.places_min = 5
         
         strategy = ConditionPlacesStrategy()
@@ -303,7 +303,7 @@ class TestIndividualStrategies:
         mock_db = self.setup_mock_db(refugi_data)
         
         filters = RefugiSearchFilters()
-        filters.condition = "Bon estat"
+        filters.condition = ["Bon estat"]
         filters.altitude_min = 2000
         
         strategy = ConditionAltitudeStrategy()
@@ -332,7 +332,7 @@ class TestIndividualStrategies:
         mock_db.collection.return_value = mock_collection
         
         filters = RefugiSearchFilters()
-        filters.condition = "Bon estat"
+        filters.condition = ["Bon estat"]
         filters.places_min = 5
         filters.altitude_min = 2000
         
@@ -349,7 +349,7 @@ class TestIndividualStrategies:
         mock_db = self.setup_mock_db(refugi_data)
         
         filters = RefugiSearchFilters()
-        filters.type = "Cabane"
+        filters.type = ["Cabane"]
         
         strategy = TypeOnlyStrategy()
         results = strategy.execute_query(mock_db, 'test_collection', filters)
@@ -363,7 +363,7 @@ class TestIndividualStrategies:
         mock_db = self.setup_mock_db(refugi_data)
         
         filters = RefugiSearchFilters()
-        filters.condition = "Bon estat"
+        filters.condition = ["Bon estat"]
         
         strategy = ConditionOnlyStrategy()
         results = strategy.execute_query(mock_db, 'test_collection', filters)
@@ -421,7 +421,7 @@ class TestIndividualStrategies:
         mock_db.collection.return_value = mock_collection
         
         filters = RefugiSearchFilters()
-        filters.type = "Cabane"
+        filters.type = ["Cabane"]
         filters.places_min = 5
         filters.altitude_min = 2000
         
@@ -439,7 +439,7 @@ class TestIndividualStrategies:
         mock_db = self.setup_mock_db(refugi_data)
         
         filters = RefugiSearchFilters()
-        filters.type = "Cabane"
+        filters.type = ["Cabane"]
         filters.places_min = 5
         # Sense altitude_min ni altitude_max
         
@@ -560,7 +560,7 @@ class TestRefugiLliureDAOWithStrategies:
         
         dao = RefugiLliureDAO()
         filters = RefugiSearchFilters()
-        filters.type = "Cabane"
+        filters.type = ["Cabane"]
         filters.places_min = 5
         
         results = dao.search_refugis(filters)
@@ -580,7 +580,7 @@ class TestRefugiLliureDAOWithStrategies:
         """Test _has_active_filters amb type"""
         dao = RefugiLliureDAO()
         filters = RefugiSearchFilters()
-        filters.type = "Cabane"
+        filters.type = ["Cabane"]
         
         assert dao._has_active_filters(filters) == True
     
@@ -588,7 +588,7 @@ class TestRefugiLliureDAOWithStrategies:
         """Test _has_active_filters amb condition"""
         dao = RefugiLliureDAO()
         filters = RefugiSearchFilters()
-        filters.condition = "Bon estat"
+        filters.condition = ["Bon estat"]
         
         assert dao._has_active_filters(filters) == True
     
@@ -665,7 +665,7 @@ class TestRefugiLliureDAOWithStrategies:
         
         dao = RefugiLliureDAO()
         filters = RefugiSearchFilters()
-        filters.type = "Cabane"
+        filters.type = ["Cabane"]
         
         results = dao.search_refugis(filters)
         
@@ -715,7 +715,7 @@ class TestRefugiLliureDAOWithStrategies:
         
         dao = RefugiLliureDAO()
         filters = RefugiSearchFilters()
-        filters.type = "Cabane"
+        filters.type = ["Cabane"]
         filters.places_min = 5
         
         results = dao._build_optimized_query(mock_db, filters)
@@ -732,8 +732,8 @@ class TestEdgeCasesAndExceptions:
     def test_filters_with_empty_strings(self):
         """Test filtres amb strings buits"""
         filters = RefugiSearchFilters()
-        filters.type = "  "  # String amb espais
-        filters.condition = ""  # String buit
+        filters.type = ["  "]  # Llista amb string amb espais
+        filters.condition = []  # Llista buida
         
         dao = RefugiLliureDAO()
         assert dao._has_active_filters(filters) == False
@@ -743,8 +743,8 @@ class TestEdgeCasesAndExceptions:
         filters = RefugiSearchFilters()
         
         # __post_init__ hauria de normalitzar els valors per defecte
-        assert filters.type == ""
-        assert filters.condition == ""
+        assert filters.type == []
+        assert filters.condition == []
         assert filters.name == ""
         assert filters.places_min is None
         assert filters.altitude_min is None
@@ -837,8 +837,8 @@ class TestEdgeCasesAndExceptions:
         mock_db.collection.return_value = mock_collection
         
         filters = RefugiSearchFilters()
-        filters.type = "Cabane"
-        filters.condition = "Bon estat"
+        filters.type = ["Cabane"]
+        filters.condition = ["Bon estat"]
         filters.places_max = 10  # Només max
         
         strategy = TypeConditionPlacesStrategy()
@@ -863,8 +863,8 @@ class TestEdgeCasesAndExceptions:
         mock_db.collection.return_value = mock_collection
         
         filters = RefugiSearchFilters()
-        filters.type = "Cabane"
-        filters.condition = "Bon estat"
+        filters.type = ["Cabane"]
+        filters.condition = ["Bon estat"]
         filters.altitude_max = 2000  # Només max
         
         strategy = TypeConditionAltitudeStrategy()
@@ -893,7 +893,7 @@ class TestEdgeCasesAndExceptions:
         mock_db.collection.return_value = mock_collection
         
         filters = RefugiSearchFilters()
-        filters.type = "Cabane"
+        filters.type = ["Cabane"]
         filters.places_min = 5
         filters.altitude_max = 2000  # Només max per al filtre manual
         
@@ -926,7 +926,7 @@ class TestEdgeCasesAndExceptions:
         mock_db.collection.return_value = mock_collection
         
         filters = RefugiSearchFilters()
-        filters.condition = "Bon estat"
+        filters.condition = ["Bon estat"]
         filters.places_min = 5
         filters.altitude_min = 2000
         filters.altitude_max = 2500
@@ -1002,7 +1002,8 @@ class TestEdgeCasesAndExceptions:
         
         dao = RefugiLliureDAO()
         filters = RefugiSearchFilters()
-        filters.type = "Cabane"
+        filters.type = ["Cabane"]
         
         with pytest.raises(Exception, match="Firestore connection failed"):
             dao.search_refugis(filters)
+
