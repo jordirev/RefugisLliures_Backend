@@ -5,6 +5,9 @@ python-dotenv==1.0.0
 django-cors-headers==4.4.0
 firebase-admin==6.5.0
 
+# Cloudflare R2 / AWS S3 compatible storage
+boto3==1.35.78
+
 # Gestió d'arxius estàtics
 whitenoise==6.6.0
 

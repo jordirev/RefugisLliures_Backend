@@ -23,6 +23,13 @@ class InfoComplementariaSerializer(serializers.Serializer):
     lits = serializers.IntegerField(default=0)
     mezzanine_etage = serializers.IntegerField(default=0, source='mezzanine/etage')
 
+class MediaMetadataSerializer(serializers.Serializer):
+    """Serializer per a metadades de mitjans"""
+    key = serializers.CharField()
+    url = serializers.URLField()
+    creator_uid = serializers.CharField()
+    uploaded_at = serializers.CharField()  # ISO 8601 format
+
 class RefugiSerializer(serializers.Serializer):
     """Serializer per a refugi"""
     id = serializers.CharField()
@@ -39,6 +46,8 @@ class RefugiSerializer(serializers.Serializer):
     region = serializers.CharField(default=None, allow_null=True, required=False)
     departement = serializers.CharField(default=None, allow_null=True, required=False)
     visitors = serializers.ListField(child=serializers.CharField(), default=list, required=False)
+    media_metadata = serializers.DictField(child=serializers.DictField(), default=dict, required=False)
+    images_metadata = MediaMetadataSerializer(many=True, default=list, required=False)
 
 class RefugiCoordinatesSerializer(serializers.Serializer):
     """Serializer per a coordenades de refugi"""

@@ -57,13 +57,6 @@ INTERNAL_SERVER_ERROR = "Error intern del servidor"
 # Configurar logging
 logger = logging.getLogger(__name__)
 
-# Funció auxiliar per obtenir el UID del token de Firebase
-def get_uid_from_firebase_token(request):
-    """
-    Funció auxiliar per obtenir el UID del token de Firebase des de la request
-    """
-    return getattr(request, 'user_uid', None)
-
 # ========== COLLECTION ENDPOINT: /users/ ==========
 
 class UsersCollectionAPIView(APIView):
@@ -103,7 +96,7 @@ class UsersCollectionAPIView(APIView):
     def post(self, request):
         """Crear nou usuari amb el UID del token de Firebase"""
         try:
-            uid = get_uid_from_firebase_token(request)
+            uid = getattr(request, 'user_uid', None)
             if not uid:
                 return Response({
                     'error': UID_NOT_FOUND_ERROR,

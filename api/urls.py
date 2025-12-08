@@ -5,6 +5,10 @@ from .views.refugi_lliure_views import (
     RefugiLliureCollectionAPIView,
     RefugeRenovationsAPIView
 )
+from .views.refugi_media_views import (
+    RefugiMediaAPIView,
+    RefugiMediaDeleteAPIView
+)
 from .views.user_views import (
     UsersCollectionAPIView,
     UserDetailAPIView,
@@ -29,6 +33,10 @@ urlpatterns = [
     path('refuges/', RefugiLliureCollectionAPIView.as_view(), name='refugi_lliure_collection'),
     path('refuges/<str:refuge_id>/', RefugiLliureDetailAPIView.as_view(), name='refugi_lliure_detail'),
     path('refuges/<str:refuge_id>/renovations/', RefugeRenovationsAPIView.as_view(), name='refuge_renovations'),  # GET /refuges/{id}/renovations/
+    
+    # Refugi media endpoints
+    path('refuges/<str:id>/media/', RefugiMediaAPIView.as_view(), name='refugi_media'),  # GET + POST /refuges/{id}/media/
+    path('refuges/<str:id>/media/<path:key>/', RefugiMediaDeleteAPIView.as_view(), name='refugi_media_delete'),  # DELETE /refuges/{id}/media/{key}/
     
     # Users endpoints
     path('users/', UsersCollectionAPIView.as_view(), name='users_collection'),  # POST /users/ (crear)

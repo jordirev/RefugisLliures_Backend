@@ -30,12 +30,13 @@ class RefugiLliureMapper:
 
     
     @staticmethod
-    def format_search_response(refugis: List[Refugi], include_visitors: bool = False) -> Dict[str, Any]:
+    def format_search_response(refugis: List[Refugi], include_visitors: bool = False, include_media_metadata: bool = False) -> Dict[str, Any]:
         """
         Formatea la resposta de cerca
         Args:
             refugis: Llista de refugis
             include_visitors: Si True, inclou la llista de visitants. Si False, l'omet.
+            include_media_metadata: Si True, inclou media_metadata i images_metadata. Si False, els omet.
         """
         results = []
         for refugi in refugis:
@@ -43,6 +44,12 @@ class RefugiLliureMapper:
             # Eliminar visitors si no cal incloure'ls
             if not include_visitors and 'visitors' in refugi_dict:
                 del refugi_dict['visitors']
+            # Eliminar media_metadata i images_metadata si no cal incloure'ls
+            if not include_media_metadata:
+                if 'media_metadata' in refugi_dict:
+                    del refugi_dict['media_metadata']
+                if 'images_metadata' in refugi_dict:
+                    del refugi_dict['images_metadata']
             results.append(refugi_dict)
         
         return {

@@ -135,7 +135,8 @@ class RefugiLliureCollectionAPIView(APIView):
             controller = RefugiLliureController()
             search_result, error = controller.search_refugis(
                 filters_serializer.validated_data,
-                include_visitors=is_authenticated
+                include_visitors=is_authenticated,
+                include_media_metadata=is_authenticated
             )
             
             if error:
@@ -201,7 +202,7 @@ class RefugiLliureDetailAPIView(APIView):
             is_authenticated = request.user and hasattr(request.user, 'is_authenticated') and request.user.is_authenticated
             
             controller = RefugiLliureController()
-            refugi, error = controller.get_refugi_by_id(refuge_id, include_visitors=is_authenticated)
+            refugi, error = controller.get_refugi_by_id(refuge_id, include_visitors=is_authenticated, include_media_metadata=is_authenticated)
             
             if error:
                 if "not found" in error.lower():

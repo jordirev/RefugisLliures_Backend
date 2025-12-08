@@ -3,6 +3,7 @@ Model de refugi per a l'aplicació RefugisLliures
 """
 from dataclasses import dataclass, field
 from typing import Optional, List, Dict, Any
+from .media_metadata import MediaMetadata
 
 @dataclass
 class Coordinates:
@@ -89,6 +90,8 @@ class Refugi:
     region: Optional[str] = None
     departement: Optional[str] = None
     visitors: List[str] = field(default_factory=list)
+    media_metadata: Dict[str, Dict[str, str]] = field(default_factory=dict)  # Diccionari de mitjans (clau: key, valor: metadata amb creator_uid i uploaded_at)
+    images_metadata: List[MediaMetadata] = field(default_factory=list)  # Metadades amb URLs prefirmades (generades dinàmicament)
     
     def __post_init__(self):
         """Validacions després de la inicialització"""
@@ -115,7 +118,9 @@ class Refugi:
             'modified_at': self.modified_at,
             'region': self.region,
             'departement': self.departement,
-            'visitors': self.visitors
+            'visitors': self.visitors,
+            'media_metadata': self.media_metadata,
+            'images_metadata': [m.to_dict() if isinstance(m, MediaMetadata) else m for m in self.images_metadata]
         }
     
     @classmethod
@@ -138,7 +143,9 @@ class Refugi:
             modified_at=data.get('modified_at', ''),
             region=data.get('region'),
             departement=data.get('departement'),
-            visitors=data.get('visitors', [])
+            visitors=data.get('visitors', []),
+            media_metadata=data.get('media_metadata', {}),
+            images_metadata=[MediaMetadata.from_dict(m) if isinstance(m, dict) else m for m in data.get('images_metadata', [])]
         )
     
     def __str__(self) -> str:

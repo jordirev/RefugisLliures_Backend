@@ -93,26 +93,104 @@ class IsFirebaseAdmin(permissions.BasePermission):
 
 class IsCreator(permissions.BasePermission):
     """
-    Permís personalitzat que només permet accedir al creador d'una renovation.
+    Permís personalitzat que només permet accedir al creador d'una clase.
     Comprova que el creator_uid de l'objecte coincideix amb l'UID de l'usuari autenticat.
     """
     
-    def has_permission(self, request, view):
+    def has_permission(self, request):
         """
         Comprova si l'usuari està autenticat
         """
         return request.user and hasattr(request.user, 'is_authenticated') and request.user.is_authenticated
     
-    def has_object_permission(self, request, view, obj):
+    def has_object_permission(self, request, view):
         """
         Comprova si l'usuari és el creador de l'objecte
         """
+        # Només aplica a mètodes no segurs (POST, PUT, PATCH, DELETE)
+        if request.method in permissions.SAFE_METHODS:
+            return True
+        
         # Obté el UID de l'usuari autenticat
         user_uid = getattr(request, 'user_uid', None)
         if not user_uid:
             return False
         
-        # Comprova si l'objecte té un camp 'creator_uid' i coincideix amb l'usuari autenticat
-        if hasattr(obj, 'creator_uid'):
-            return obj.creator_uid == user_uid
-        return False
+        from daos.renovation_dao import RenovationDAO
+        
+        # Obtenim l'objecte des de la base de dades
+        renovation = RenovationDAO.get_renovation_by_id(view.kwargs.get('id'))
+        if not renovation:
+            return False
+        
+        # Comprova si l'usuari és el creador de la renovació
+        return renovation.get('creator_uid') == user_uid
+
+
+class IsMediaUploader(permissions.BasePermission):
+    """
+    Permís personalitzat que verifica si l'usuari és qui va pujar el mitjà.
+    
+    Busca el mitjà dins del diccionari media_metadata del refugi i comprova
+    que el creator_uid del mitjà coincideix amb l'UID de l'usuari autenticat.
+    
+    Requereix que la vista rebi els paràmetres 'id' (refugi) i 'key' (mitjà).
+    """
+    
+    def has_permission(self, request, view):
+        """
+        Comprova si l'usuari està autenticat i si és el creador del mitjà
+        """
+        # Comprova que l'usuari està autenticat
+        if not request.user or not hasattr(request.user, 'is_authenticated') or not request.user.is_authenticated:
+            return False
+        
+        # Només aplica a mètodes no segurs (POST, PUT, PATCH, DELETE)
+        if request.method in permissions.SAFE_METHODS:
+            return True
+        
+        # Obté els paràmetres de la URL
+        refugi_id = view.kwargs.get('id')
+        media_key = view.kwargs.get('key')
+        
+        # Si no hi ha key, no es pot verificar (potser és un endpoint diferent)
+        if not media_key or not refugi_id:
+            return True
+        
+        # Decodificar la key si ve codificada
+        from urllib.parse import unquote
+        decoded_key = unquote(media_key)
+        
+        # Obté el UID de l'usuari autenticat
+        user_uid = getattr(request.user, 'uid', None)
+        if not user_uid:
+            return False
+        
+        try:
+            # Importa el servei de Firestore
+            from daos.refugi_lliure_dao import RefugiLliureDAO
+            
+            # Obté el refugi des de Firestore
+            refugi = RefugiLliureDAO.get_by_id(refugi_id)
+            if not refugi:
+                return False
+            
+            # Busca el mitjà dins de media_metadata (ara és un diccionari)
+            if 'media_metadata' not in refugi:
+                return False
+            
+            media_metadata = refugi['media_metadata']
+            if decoded_key in media_metadata:
+                # Comprova si l'usuari és el creador del mitjà
+                return media_metadata[decoded_key].get('creator_uid') == user_uid
+            
+            # Si no es troba el mitjà, denega l'accés
+            return False
+            
+        except Exception as e:
+            # En cas d'error, denega l'accés per seguretat
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Error verificant permís IsMediaUploader: {str(e)}")
+            return False
+

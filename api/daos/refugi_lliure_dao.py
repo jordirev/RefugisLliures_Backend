@@ -2,7 +2,7 @@
 DAO per a la gestió de refugis amb Firestore
 """
 import logging
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Tuple
 from ..services import firestore_service, cache_service
 from ..models.refugi_lliure import Refugi, RefugiCoordinates, RefugiSearchFilters
 from ..mappers.refugi_lliure_mapper import RefugiLliureMapper
@@ -350,3 +350,113 @@ class RefugiLliureDAO:
         except Exception as e:
             logger.error(f"Error eliminant visitant {uid} del refugi {refugi_id}: {str(e)}")
             return False
+    
+    def get_media_metadata(self, refugi_id: str) -> Optional[Dict[str, Dict[str, Any]]]:
+        """
+        Obté el mapa de media_metadata d'un refugi
+        
+        Args:
+            refugi_id: ID del refugi
+            
+        Returns:
+            Diccionari de media_metadata (clau: key, valor: metadata) o None si el refugi no existeix
+        """
+        try:
+            db = firestore_service.get_db()
+            doc_ref = db.collection(self.collection_name).document(str(refugi_id))
+            logger.log(23, f"Firestore READ: collection={self.collection_name} document={refugi_id} (media_metadata)")
+            doc = doc_ref.get()
+            
+            if not doc.exists:
+                return None
+            
+            data = doc.to_dict()
+            return data.get('media_metadata', {})
+            
+        except Exception as e:
+            logger.error(f'Error obtenint media_metadata del refugi {refugi_id}: {str(e)}')
+            raise
+    
+    def add_media_metadata(self, refugi_id: str, media_metadata_dict: Dict[str, Dict[str, Any]]) -> bool:
+        """
+        Afegeix nous media_metadata a un refugi
+        
+        Args:
+            refugi_id: ID del refugi
+            media_metadata_dict: Diccionari de media_metadata a afegir (clau: key, valor: metadata)
+            
+        Returns:
+            bool: True si s'ha afegit correctament
+        """
+        try:
+            db = firestore_service.get_db()
+            doc_ref = db.collection(self.collection_name).document(str(refugi_id))
+            doc = doc_ref.get()
+            
+            if not doc.exists:
+                logger.warning(f"No es pot afegir media_metadata, refugi no trobat amb ID: {refugi_id}")
+                return False
+            
+            # Obtenir media_metadata actuals i afegir les noves
+            current_metadata = doc.to_dict().get('media_metadata', {})
+            current_metadata.update(media_metadata_dict)
+            
+            # Actualitzar document
+            doc_ref.update({'media_metadata': current_metadata})
+            
+            # Invalida cache del refugi
+            cache_service.delete(cache_service.generate_key('refugi_detail', refugi_id=refugi_id))
+            
+            logger.log(23, f"Afegits {len(media_metadata_dict)} media_metadata al refugi {refugi_id}")
+            return True
+            
+        except Exception as e:
+            logger.error(f'Error afegint media_metadata al refugi {refugi_id}: {str(e)}')
+            return False
+    
+    def delete_media_metadata(self, refugi_id: str, media_key: str) -> Tuple[bool, Optional[Dict[str, Any]]]:
+        """
+        Elimina un media_metadata específic d'un refugi
+        
+        Args:
+            refugi_id: ID del refugi
+            media_key: Key del mitjà a eliminar
+            
+        Returns:
+            bool: True si s'ha eliminat correctament
+            Optional[Dict[str, Any]]: Metadada del mitjà eliminat o None si no s'ha trobat
+        """
+        try:
+            db = firestore_service.get_db()
+            doc_ref = db.collection(self.collection_name).document(str(refugi_id))
+            doc = doc_ref.get()
+            
+            if not doc.exists:
+                logger.warning(f"No es pot eliminar media_metadata, refugi no trobat amb ID: {refugi_id}")
+                return False, None
+            
+            # Obtenir media_metadata actuals
+            current_metadata = doc.to_dict().get('media_metadata', {})
+            
+            # Verificar si el mitjà existeix
+            if media_key not in current_metadata:
+                return False, None  # No s'ha trobat el mitjà a eliminar
+            
+            # Guardar metadada eliminada
+            metadata_backup = current_metadata[media_key]
+            
+            # Eliminar el mitjà del diccionari
+            del current_metadata[media_key]
+            
+            # Actualitzar document
+            doc_ref.update({'media_metadata': current_metadata})
+            
+            # Invalida cache del refugi
+            cache_service.delete(cache_service.generate_key('refugi_detail', refugi_id=refugi_id))
+            
+            logger.log(23, f"Eliminat media_metadata {media_key} del refugi {refugi_id}")
+            return True, metadata_backup 
+            
+        except Exception as e:
+            logger.error(f'Error eliminant media_metadata del refugi {refugi_id}: {str(e)}')
+            return False, None
