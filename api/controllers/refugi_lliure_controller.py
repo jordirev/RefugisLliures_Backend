@@ -3,6 +3,8 @@ Controller per a la gestió de refugis
 """
 import logging
 from typing import Dict, Any, List, Optional, Tuple
+
+from api.models.media_metadata import RefugeMediaMetadata
 from ..daos.refugi_lliure_dao import RefugiLliureDAO
 from ..models.refugi_lliure import Refugi, RefugiCoordinates, RefugiSearchFilters
 from ..services.r2_media_service import get_refugi_media_service
@@ -170,9 +172,8 @@ class RefugiLliureController:
                 try:
                     url = self.media_service.generate_presigned_url(key, expiration)
 
-                    #Create media metadata dictionary
-                    from ..models.media_metadata import MediaMetadata
-                    media_metadata = MediaMetadata(
+                    # Crear instància de RefugeMediaMetadata
+                    media_metadata = RefugeMediaMetadata(
                         key=key,
                         url=url,
                         creator_uid=metadata.get('creator_uid', ''),
@@ -234,8 +235,7 @@ class RefugiLliureController:
                     }
 
                     # Crear instància de MediaMetadata
-                    from ..models.media_metadata import MediaMetadata
-                    media_metadata = MediaMetadata(
+                    media_metadata = RefugeMediaMetadata(
                         key=result['key'],
                         url=result['url'],
                         creator_uid=creator_uid,

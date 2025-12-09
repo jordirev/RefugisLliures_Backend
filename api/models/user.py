@@ -1,8 +1,9 @@
 """
 Model d'usuari per a l'aplicació RefugisLliures
 """
-from dataclasses import dataclass
-from typing import Optional, Dict
+from dataclasses import dataclass, field
+from typing import Optional, Dict, List
+from .media_metadata import MediaMetadata
 
 @dataclass
 class User:
@@ -10,8 +11,8 @@ class User:
     uid: str
     username: str
     email: str
-    avatar: Optional[str] = None
-    avatar_metadata: Optional[Dict[str, str]] = None  # Metadades de l'avatar (key, creator_uid, uploaded_at)
+    media_metadata: Optional[Dict[str, str]] = None  # Metadades de l'avatar {'key': str, 'uploaded_at': str}
+    avatar_metadata: MediaMetadata = None  # Metadades amb URLs prefirmades (generades dinàmicament) {'key': str, 'url': str, 'uploaded_at': str}
     language: str = 'ca'
     favourite_refuges: Optional[list] = None
     visited_refuges: Optional[list] = None
@@ -35,8 +36,8 @@ class User:
             'uid': self.uid,
             'username': self.username,
             'email': self.email,
-            'avatar': self.avatar,
-            'avatar_metadata': self.avatar_metadata,
+            'media_metadata': self.media_metadata,
+            'avatar_metadata': self.avatar_metadata.to_dict() if isinstance(self.avatar_metadata, MediaMetadata) else self.avatar_metadata,
             'language': self.language,
             'favourite_refuges': self.favourite_refuges,
             'visited_refuges': self.visited_refuges,
@@ -53,8 +54,8 @@ class User:
             uid=data.get('uid', ''),
             username=data.get('username', ''),
             email=data.get('email', ''),
-            avatar=data.get('avatar', ''),
-            avatar_metadata=data.get('avatar_metadata'),
+            media_metadata= data.get('media_metadata'),
+            avatar_metadata=MediaMetadata.from_dict(data.get('avatar_metadata')) if isinstance(data.get('avatar_metadata'), dict) else data.get('avatar_metadata'),
             language=data.get('language', 'ca'),
             favourite_refuges=data.get('favourite_refuges', []),
             visited_refuges=data.get('visited_refuges', []),

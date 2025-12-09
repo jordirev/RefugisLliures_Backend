@@ -52,6 +52,11 @@ class UserValidatorMixin:
             raise serializers.ValidationError("UID no pot estar buit")
         return value.strip()
 
+class MediaMetadataSerializer(serializers.Serializer):
+    """Serializer per a metadades de mitjans"""
+    key = serializers.CharField()
+    url = serializers.URLField()
+    uploaded_at = serializers.CharField()  # ISO 8601 formatelp_text="Data i hora de pujada (ISO 8601)"
 
 class UserSerializer(UserValidatorMixin, serializers.Serializer):
     """Serializer per a usuaris"""
@@ -70,15 +75,10 @@ class UserSerializer(UserValidatorMixin, serializers.Serializer):
     email = serializers.EmailField(
         help_text=EMAIL_HELPER_TEXT
     )
-    avatar = serializers.URLField(
-        allow_blank=True, 
-        required=False, 
-        help_text=URL_AVATAR_HELPER_TEXT
-    )
-    avatar_metadata = serializers.DictField(
+    avatar_metadata = MediaMetadataSerializer(
         required=False,
         allow_null=True,
-        help_text="Metadades de l'avatar (key, creator_uid, uploaded_at)",
+        help_text="Metadades de l'avatar (key, url, uploaded_at)",
         read_only=True
     )
     language = serializers.CharField(
@@ -148,8 +148,6 @@ class UserCreateSerializer(UserValidatorMixin, serializers.Serializer):
     username = serializers.CharField(max_length=255, allow_blank=True, required=False, 
                                    help_text=USERNAME_HELPER_TEXT)
     email = serializers.EmailField(help_text=EMAIL_HELPER_TEXT)
-    avatar = serializers.URLField(allow_blank=True, required=False, 
-                                help_text=URL_AVATAR_HELPER_TEXT)
     language = serializers.CharField(default='ca', max_length=5, required=False,
                                 help_text=LANGUAGE_HELPER_TEXT)
     
@@ -168,8 +166,6 @@ class UserUpdateSerializer(UserValidatorMixin, serializers.Serializer):
     username = serializers.CharField(max_length=255, allow_blank=True, required=False, 
                                    help_text=USERNAME_HELPER_TEXT)
     email = serializers.EmailField(required=False, help_text=EMAIL_HELPER_TEXT)
-    avatar = serializers.URLField(allow_blank=True, required=False, 
-                                help_text=URL_AVATAR_HELPER_TEXT)
     language = serializers.CharField(default='ca', max_length=5, required=False,
                                 help_text=LANGUAGE_HELPER_TEXT)
     
@@ -194,32 +190,4 @@ class UserRefugiSerializer(serializers.Serializer):
     refuge_id = serializers.CharField(
         max_length=255,
         help_text="Identificador únic del refugi"
-    )
-
-
-class AvatarMetadataSerializer(serializers.Serializer):
-    """Serializer per a metadades d'avatar"""
-    
-    key = serializers.CharField(
-        help_text="Clau del fitxer a R2"
-    )
-    url = serializers.URLField(
-        help_text="URL prefirmada de l'avatar"
-    )
-    creator_uid = serializers.CharField(
-        help_text="UID de l'usuari que va pujar l'avatar"
-    )
-    uploaded_at = serializers.CharField(
-        help_text="Data i hora de pujada (ISO 8601)"
-    )
-
-
-class AvatarUploadResponseSerializer(serializers.Serializer):
-    """Serializer per a la resposta de pujada d'avatar"""
-    
-    message = serializers.CharField(
-        help_text="Missatge de confirmació"
-    )
-    avatar_metadata = AvatarMetadataSerializer(
-        help_text="Metadades de l'avatar pujat"
     )

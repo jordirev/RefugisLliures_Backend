@@ -14,11 +14,11 @@ from urllib3 import request
 from ..controllers.user_controller import UserController
 from ..controllers.renovation_controller import RenovationController
 from ..serializers.user_serializer import (
+    MediaMetadataSerializer,
     UserRefugiSerializer,
     UserSerializer, 
     UserCreateSerializer, 
     UserUpdateSerializer,
-    AvatarUploadResponseSerializer,
 )
 from ..serializers.refugi_lliure_serializer import (
     UserRefugiInfoResponseSerializer,
@@ -663,7 +663,7 @@ class UserAvatarAPIView(APIView):
         responses={
             200: openapi.Response(
                 description="Avatar pujat correctament",
-                schema=AvatarUploadResponseSerializer,
+                schema=MediaMetadataSerializer,
                 examples={
                     'application/json': EXAMPLE_AVATAR_UPLOAD_RESPONSE
                 }
@@ -684,7 +684,7 @@ class UserAvatarAPIView(APIView):
                     'error': 'No s\'ha proporcionat cap fitxer'
                 }, status=status.HTTP_400_BAD_REQUEST)
             
-            file = request.FILES['file']
+            file=  request.FILES['file']
             
             # Pujar avatar
             controller = UserController()
@@ -704,22 +704,7 @@ class UserAvatarAPIView(APIView):
                         'error': error_message
                     }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
             
-            # Generar URL prefirmada per a la resposta
-            from ..services.r2_media_service import get_user_avatar_service
-            avatar_service = get_user_avatar_service()
-            avatar_url = avatar_service.generate_presigned_url(avatar_metadata['key'], expiration=3600)
-            
-            response_data = {
-                'message': 'Avatar pujat correctament',
-                'avatar_metadata': {
-                    'key': avatar_metadata['key'],
-                    'url': avatar_url,
-                    'creator_uid': avatar_metadata['creator_uid'],
-                    'uploaded_at': avatar_metadata['uploaded_at']
-                }
-            }
-            
-            serializer = AvatarUploadResponseSerializer(response_data)
+            serializer = MediaMetadataSerializer(avatar_metadata)
             return Response(serializer.data, status=status.HTTP_200_OK)
             
         except Exception as e:

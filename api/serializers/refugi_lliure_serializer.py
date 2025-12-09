@@ -23,7 +23,7 @@ class InfoComplementariaSerializer(serializers.Serializer):
     lits = serializers.IntegerField(default=0)
     mezzanine_etage = serializers.IntegerField(default=0, source='mezzanine/etage')
 
-class MediaMetadataSerializer(serializers.Serializer):
+class RefugeMediaMetadataSerializer(serializers.Serializer):
     """Serializer per a metadades de mitjans"""
     key = serializers.CharField()
     url = serializers.URLField()
@@ -46,7 +46,7 @@ class RefugiSerializer(serializers.Serializer):
     region = serializers.CharField(default=None, allow_null=True, required=False)
     departement = serializers.CharField(default=None, allow_null=True, required=False)
     visitors = serializers.ListField(child=serializers.CharField(), default=list, required=False)
-    images_metadata = MediaMetadataSerializer(many=True, required=False, allow_null=True)
+    images_metadata = RefugeMediaMetadataSerializer(many=True, required=False, allow_null=True)
 
     def to_representation(self, instance):
         data = super().to_representation(instance)

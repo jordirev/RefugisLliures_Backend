@@ -498,14 +498,13 @@ class UserDAO:
             logger.error(f"Error decrementant comptador de refugis renovats per l'usuari {uid}: {str(e)}")
             return False
     
-    def update_avatar_metadata(self, uid: str, avatar_metadata: Dict[str, str], avatar_url: str) -> bool:
+    def update_avatar_metadata(self, uid: str, media_metadata: Dict[str, str]) -> bool:
         """
         Actualitza les metadades de l'avatar d'un usuari
         
         Args:
             uid: UID de l'usuari
-            avatar_metadata: Diccionari amb metadades de l'avatar (key, creator_uid, uploaded_at)
-            avatar_url: URL prefirmada de l'avatar
+            media_metadata: Diccionari amb metadades de l'avatar (key, uploaded_at)
             
         Returns:
             bool: True si s'ha actualitzat correctament
@@ -522,8 +521,7 @@ class UserDAO:
             
             # Actualitza les metadades de l'avatar
             doc_ref.update({
-                'avatar_metadata': avatar_metadata,
-                'avatar': avatar_url
+                'media_metadata': media_metadata,
             })
             
             # Invalida cache de l'usuari
@@ -557,19 +555,18 @@ class UserDAO:
                 return False, None
             
             user_data = doc.to_dict()
-            avatar_metadata = user_data.get('avatar_metadata')
+            media_metadata = user_data.get('media_metadata')
             
             # Elimina les metadades de l'avatar
             doc_ref.update({
-                'avatar_metadata': None,
-                'avatar': None
+                'media_metadata': None,
             })
             
             # Invalida cache de l'usuari
             cache_service.delete(cache_service.generate_key('user_detail', uid=uid))
             
             logger.info(f"Avatar eliminat per l'usuari {uid}")
-            return True, avatar_metadata
+            return True, media_metadata
             
         except Exception as e:
             logger.error(f"Error eliminant avatar per l'usuari {uid}: {str(e)}")

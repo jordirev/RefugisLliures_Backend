@@ -3,6 +3,8 @@ Controller per a la gestió d'usuaris
 """
 import logging
 from typing import List, Optional, Dict, Any, Tuple
+
+from api.models.media_metadata import MediaMetadata
 from ..daos.user_dao import UserDAO
 from ..daos.refugi_lliure_dao import RefugiLliureDAO
 from ..models.user import User
@@ -378,7 +380,7 @@ class UserController:
         """
         return self._get_refugis_info_by_type(uid, 'visited_refuges')
     
-    def upload_user_avatar(self, uid: str, file: Any) -> Tuple[bool, Optional[Dict[str, str]], Optional[str]]:
+    def upload_user_avatar(self, uid: str, file: Any) -> Tuple[bool, Optional[MediaMetadata], Optional[str]]:
         """
         Puja o actualitza l'avatar d'un usuari
         
@@ -415,15 +417,14 @@ class UserController:
             )
             
             # Preparar metadades
-            from ..utils.timezone_utils import get_madrid_now
-            avatar_metadata = {
+            from ..utils.timezone_utils import get_madrid_today
+            media_metadata = {
                 'key': result['key'],
-                'creator_uid': uid,
-                'uploaded_at': get_madrid_now().isoformat()
+                'uploaded_at': get_madrid_today().isoformat()
             }
             
             # Actualitzar metadades a Firestore
-            success = self.user_dao.update_avatar_metadata(uid, avatar_metadata, result['url'])
+            success = self.user_dao.update_avatar_metadata(uid, media_metadata)
             if not success:
                 # Si falla l'actualització a Firestore, intentar eliminar el fitxer pujat
                 try:
@@ -431,9 +432,15 @@ class UserController:
                 except:
                     pass
                 return False, None, "Error actualitzant metadades de l'avatar"
-            
-            logger.info(f"Avatar pujat correctament per l'usuari {uid}")
-            return True, avatar_metadata, None
+            else:
+                logger.info(f"Avatar pujat correctament per l'usuari {uid}")
+                #Generar objecte MediaMetadata per retornar
+                avatar_metadata = MediaMetadata(
+                    key=media_metadata['key'],
+                    url=result['url'],
+                    uploaded_at=media_metadata['uploaded_at']
+                )  
+                return True, avatar_metadata, None
             
         except ValueError as e:
             logger.warning(f"Error de validació pujant avatar: {str(e)}")
@@ -454,23 +461,24 @@ class UserController:
         """
         try:
             # Obtenir metadades de l'avatar abans d'eliminar
-            success, avatar_metadata = self.user_dao.delete_avatar_metadata(uid)
+            success, media_metadata = self.user_dao.delete_avatar_metadata(uid)
             
             if not success:
                 return False, f"Usuari amb UID {uid} no trobat"
             
-            if not avatar_metadata:
+            if not media_metadata:
                 return False, "L'usuari no té cap avatar"
             
             # Eliminar fitxer de R2
-            media_key = avatar_metadata.get('key')
+            media_key = media_metadata.get('key')
             if media_key:
                 try:
                     self.avatar_service.delete_file(media_key)
                     logger.info(f"Avatar eliminat de R2: {media_key}")
                 except Exception as e:
                     logger.error(f"Error eliminant avatar de R2: {str(e)}")
-                    # Continuar encara que falli l'eliminació de R2, ja que Firestore ja s'ha actualitzat
+                    # Tornar a afegir les metadades a l'usuari a Firestore ja que no s'ha pogut eliminar el fitxer
+                    self.user_dao.update_avatar_metadata(uid, media_metadata)
             
             logger.info(f"Avatar eliminat correctament per l'usuari {uid}")
             return True, None
