@@ -9,7 +9,7 @@ from ..daos.user_dao import UserDAO
 from ..daos.refugi_lliure_dao import RefugiLliureDAO
 from ..models.user import User
 from ..utils.timezone_utils import get_madrid_now
-from ..services.r2_media_service import get_user_avatar_service
+from ..services import r2_media_service
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +22,7 @@ class UserController:
         """Inicialitza el controller"""
         self.user_dao = UserDAO()
         self.refugi_dao = RefugiLliureDAO()
-        self.avatar_service = get_user_avatar_service()
+        self.avatar_service = r2_media_service.get_user_avatar_service()
     
     def create_user(self, user_data: Dict[str, Any], uid: str) -> tuple[bool, Optional[User], Optional[str]]:
         """
@@ -399,7 +399,7 @@ class UserController:
             
             # Si ja té un avatar, eliminar-lo abans de pujar el nou
             if user.avatar_metadata:
-                old_key = user.avatar_metadata.get('key')
+                old_key = user.avatar_metadata.key
                 if old_key:
                     try:
                         self.avatar_service.delete_file(old_key)
@@ -435,11 +435,8 @@ class UserController:
             else:
                 logger.info(f"Avatar pujat correctament per l'usuari {uid}")
                 #Generar objecte MediaMetadata per retornar
-                avatar_metadata = MediaMetadata(
-                    key=media_metadata['key'],
-                    url=result['url'],
-                    uploaded_at=media_metadata['uploaded_at']
-                )  
+                media_service = r2_media_service.get_user_avatar_service()
+                avatar_metadata = media_service.generate_media_metadata_from_dict(media_metadata)
                 return True, avatar_metadata, None
             
         except ValueError as e:

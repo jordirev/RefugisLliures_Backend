@@ -10,7 +10,7 @@ from urllib.parse import urlparse, unquote
 from datetime import datetime
 from botocore.exceptions import ClientError
 from ..r2_config import get_r2_client, R2_BUCKET_NAME, R2_ENDPOINT
-from ..models.media_metadata import MediaMetadata
+from ..models.media_metadata import MediaMetadata, RefugeMediaMetadata
 
 logger = logging.getLogger(__name__)
 
@@ -33,6 +33,11 @@ class MediaPathStrategy(ABC):
     @abstractmethod
     def validate_file(self, content_type: str) -> bool:
         """Valida si el content type és permès."""
+        pass
+
+    @abstractmethod
+    def generate_media_metadata_from_dict(self, metadata_dict: Dict[str, str], service, expiration: int = 3600) -> MediaMetadata:
+        """Genera un objecte MediaMetadata amb URL prefirmada a partir d'un diccionari de metadades."""
         pass
 
 
@@ -66,6 +71,30 @@ class RefugiMediaStrategy(MediaPathStrategy):
     
     def validate_file(self, content_type: str) -> bool:
         return content_type in self.get_allowed_content_types()
+    
+    def generate_media_metadata_from_dict(self, metadata_dict: Dict[str, str], service, expiration: int = 3600) -> MediaMetadata:
+        """
+        Genera un objecte MediaMetadata amb URL prefirmada a partir d'un diccionari de metadades.
+        Per a mitjans de refugi.
+
+        Args:
+            metadata_dict: Diccionari amb keys: {'key': {'creator_uid':, 'uploaded_at': }}
+            service: Instància de R2MediaService per generar URLs
+            expiration: Temps d'expiració de la URL en segons
+        
+        Returns:
+            Objecte MediaMetadata amb URL prefirmada
+        """
+        key = next(iter(metadata_dict)) if metadata_dict else ''
+        key_dict = metadata_dict[key] if key else {}
+        url = service.generate_presigned_url(key, expiration) if key else ''
+        
+        return RefugeMediaMetadata(
+            key=key,
+            url=url,
+            creator_uid=key_dict.get('creator_uid', ''),
+            uploaded_at=key_dict.get('uploaded_at', '')
+        )
 
 
 class UserAvatarStrategy(MediaPathStrategy):
@@ -91,6 +120,28 @@ class UserAvatarStrategy(MediaPathStrategy):
     
     def validate_file(self, content_type: str) -> bool:
         return content_type in self.get_allowed_content_types()
+    
+    def generate_media_metadata_from_dict(self, metadata_dict: Dict[str, str], service, expiration: int = 3600) -> MediaMetadata:
+        """
+        Genera un objecte MediaMetadata amb URL prefirmada a partir d'un diccionari de metadades.
+        Per a l'avatar d'usuari.
+
+        Args:
+            metadata_dict: Diccionari amb keys: {'key': , 'uploaded_at': }
+            service: Instància de R2MediaService per generar URLs
+            expiration: Temps d'expiració de la URL en segons
+        
+        Returns:
+            Objecte MediaMetadata amb URL prefirmada
+        """
+        key = metadata_dict.get('key', '')
+        url = service.generate_presigned_url(key, expiration) if key else ''
+        
+        return MediaMetadata(
+            key=key,
+            url=url,
+            uploaded_at=metadata_dict.get('uploaded_at', '')
+        )
 
 
 class R2MediaService:
@@ -227,17 +278,9 @@ class R2MediaService:
             expiration: Temps d'expiració de la URL en segons
         
         Returns:
-            Objecte MediaMetadata amb URL prefirmada
+            Objecte MediaMetadata amb URL prefirmada segons si es Refugi o Avatar (sense creator_uid)
         """
-        key = metadata_dict.get('key', '')
-        url = self.generate_presigned_url(key, expiration) if key else ''
-        
-        return MediaMetadata(
-            key=key,
-            url=url,
-            creator_uid=metadata_dict.get('creator_uid', ''),
-            uploaded_at=metadata_dict.get('uploaded_at', '')
-        )
+        return self.strategy.generate_media_metadata_from_dict(metadata_dict, self, expiration)
     
     def generate_media_metadata_list(self, metadata_input, expiration: int = 3600) -> List[MediaMetadata]:
         """
@@ -257,9 +300,9 @@ class R2MediaService:
         if isinstance(metadata_input, dict):
             for key, metadata in metadata_input.items():
                 try:
-                    # Afegir la key al metadata si no hi és
-                    metadata_with_key = {'key': key, **metadata}
-                    media_metadata = self.generate_media_metadata_from_dict(metadata_with_key, expiration)
+                    # Crear diccionari amb key i metadata
+                    single_key_dict = {key: metadata}
+                    media_metadata = self.strategy.generate_media_metadata_from_dict(single_key_dict, self, expiration)
                     result.append(media_metadata)
                 except Exception as e:
                     logger.warning(f"No s'ha pogut generar MediaMetadata per {key}: {str(e)}")
@@ -318,38 +361,6 @@ class R2MediaService:
         return {
             'deleted': deleted,
             'failed': failed
-        }
-    
-    def delete_files_by_presigned_urls(self, presigned_urls: List[str]) -> Dict[str, List[str]]:
-        """
-        Elimina fitxers a partir de les seves URLs prefirmades.
-        Extreu els keys de les URLs i els elimina.
-        
-        Args:
-            presigned_urls: Llista d'URLs prefirmades
-        
-        Returns:
-            Dict amb 'deleted' (URLs eliminades) i 'failed' (URLs amb error)
-        """
-        deleted_urls = []
-        failed_urls = []
-        
-        for url in presigned_urls:
-            try:
-                # Extreure el key de la URL prefirmada
-                key = self._extract_key_from_presigned_url(url)
-                
-                if key and self.delete_file(key):
-                    deleted_urls.append(url)
-                else:
-                    failed_urls.append(url)
-            except Exception as e:
-                logger.warning(f"Error processant URL {url}: {str(e)}")
-                failed_urls.append(url)
-        
-        return {
-            'deleted': deleted_urls,
-            'failed': failed_urls
         }
     
     def list_files(self, entity_id: str) -> List[str]:

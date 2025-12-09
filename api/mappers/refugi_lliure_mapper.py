@@ -15,7 +15,10 @@ class RefugiLliureMapper:
     @staticmethod
     def model_to_firestore(refugi: Refugi) -> Dict[str, Any]:
         """Converteix model Refugi a format Firestore"""
-        return refugi.to_dict()
+        refugi_dict = refugi.to_dict()
+        if 'images_metadata' in refugi_dict:
+            refugi_dict.pop('images_metadata')
+        return refugi_dict
     
     @staticmethod
     def firestore_list_to_models(data_list: List[Dict[str, Any]]) -> List[Refugi]:
@@ -39,7 +42,10 @@ class RefugiLliureMapper:
             include_media_metadata: Si True, inclou media_metadata i images_metadata. Si False, els omet.
         """
         results = []
-        for refugi in refugis:                 
+        for refugi in refugis:
+            refugi_dict = refugi.to_dict()
+            if 'media_metadata' in refugi_dict:
+                refugi_dict.pop('media_metadata', None)
             results.append(refugi.to_dict())
         
         return {

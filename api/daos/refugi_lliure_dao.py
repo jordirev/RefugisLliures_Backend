@@ -3,7 +3,7 @@ DAO per a la gestió de refugis amb Firestore
 """
 import logging
 from typing import List, Optional, Dict, Any, Tuple
-from ..services import firestore_service, cache_service
+from ..services import firestore_service, cache_service, r2_media_service
 from ..models.refugi_lliure import Refugi, RefugiCoordinates, RefugiSearchFilters
 from ..mappers.refugi_lliure_mapper import RefugiLliureMapper
 from .search_strategies import SearchStrategySelector
@@ -371,7 +371,14 @@ class RefugiLliureDAO:
                 return None
             
             data = doc.to_dict()
-            return data.get('media_metadata', {})
+
+            # Generem les metadades amb URLs prefirmades
+            media_service = r2_media_service.get_refugi_media_service()
+            media_metadata = data.get('media_metadata', {})             
+            media_metadata_objects = media_service.generate_media_metadata_list(media_metadata)
+            
+            # Convertir objectes MediaMetadata a diccionaris
+            return [obj.to_dict() for obj in media_metadata_objects]
             
         except Exception as e:
             logger.error(f'Error obtenint media_metadata del refugi {refugi_id}: {str(e)}')

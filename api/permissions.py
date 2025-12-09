@@ -2,6 +2,7 @@
 Permisos personalitzats per a l'API
 """
 from rest_framework import permissions
+from .services import firestore_service
 
 
 class IsOwnerOrReadOnly(permissions.BasePermission):
@@ -173,27 +174,36 @@ class IsMediaUploader(permissions.BasePermission):
             logger.info("No s'ha pogut obtenir l'UID de l'usuari autenticat.")
             return False
         
-        try:
-            # Importa el servei de Firestore
-            from .daos.refugi_lliure_dao import RefugiLliureDAO
+        # Comprova si és admin
+        user_claims = getattr(request, 'user_claims', {})
+        if not user_claims:
+            user_claims = getattr(request.user, 'claims', {})
+        
+        if user_claims.get('role') == 'admin':
+            logger.info(f"Usuari {user_uid} és admin, permetent accés.")
+            return True
+        
+        try:            
+            db = firestore_service.get_db()
+            doc_ref = db.collection('data_refugis_lliures').document(str(refugi_id))
+            doc = doc_ref.get()
             
-            # Obté el refugi des de Firestore
-            refugi_lliure_dao = RefugiLliureDAO()
-            refugi = refugi_lliure_dao.get_by_id(refugi_id)
-            if not refugi:
+            if not doc.exists:
                 logger.info(f"Refugi amb ID {refugi_id} no trobat.")
                 return False
             
-            # Busca el mitjà dins de media_metadata (refugi és un objecte Refugi)
-            media_metadata = getattr(refugi, 'media_metadata', {})
+            data = doc.to_dict()
+            media_metadata = data.get('media_metadata', {})
+            
             if not media_metadata:
                 logger.info(f"El refugi amb ID {refugi_id} no té metadades de mitjans.")
                 return False
             
             if decoded_key in media_metadata:
                 # Comprova si l'usuari és el creador del mitjà
-                logger.info(f"Verificant permís per a l'usuari {user_uid} sobre el mitjà {decoded_key}.")
-                return media_metadata[decoded_key].get('creator_uid') == user_uid
+                creator_uid = media_metadata[decoded_key].get('creator_uid')
+                logger.info(f"Verificant permís per a l'usuari {user_uid} sobre el mitjà {decoded_key}. Creador: {creator_uid}")
+                return creator_uid == user_uid
             
             # Si no es troba el mitjà, denega l'accés
             logger.info(f"Mitjà amb key {decoded_key} no trobat en el refugi {refugi_id}.")

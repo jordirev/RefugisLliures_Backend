@@ -7,7 +7,7 @@ from typing import Dict, Any, List, Optional, Tuple
 from api.models.media_metadata import RefugeMediaMetadata
 from ..daos.refugi_lliure_dao import RefugiLliureDAO
 from ..models.refugi_lliure import Refugi, RefugiCoordinates, RefugiSearchFilters
-from ..services.r2_media_service import get_refugi_media_service
+from ..services import r2_media_service
 
 logger = logging.getLogger(__name__)
 
@@ -16,7 +16,7 @@ class RefugiLliureController:
     
     def __init__(self):
         self.refugi_dao = RefugiLliureDAO()
-        self.media_service = get_refugi_media_service()
+        self.media_service = r2_media_service.get_refugi_media_service()
     
     def get_refugi_by_id(self, refuge_id: str, is_authenticated: bool) -> Tuple[Optional[Refugi], Optional[str]]:
         """
@@ -33,21 +33,9 @@ class RefugiLliureController:
             if not refugi:
                 return None, "Refugi not found"                
             
-            # Si volem incloure metadades de mitjans, generar-les
-            if is_authenticated:
-                # Generar MediaMetadata amb URLs prefirmades per als mitjans si existeixen media_metadata
-                if hasattr(refugi, 'media_metadata') and refugi.media_metadata:
-                    try:
-                        refugi.images_metadata = self.media_service.generate_media_metadata_list(refugi.media_metadata)
-                    except Exception as e:
-                        logger.warning(f"Error generant MediaMetadata per refugi {refuge_id}: {str(e)}")
-                        refugi.images_metadata = []
-                else:
-                    refugi.images_metadata = []
-            else:
-                # No incloure metadades de mitjans
+            # Excloure informació sensible si l'usuari no està autenticat
+            if not is_authenticated:
                 refugi.visitors = []
-                refugi.media_metadata = {}
                 refugi.images_metadata = []
             
             return refugi, None
@@ -82,24 +70,11 @@ class RefugiLliureController:
             refugis_results = search_result['results']
             has_filters = search_result['has_filters']
             
-            # Generar MediaMetadata per als refugis amb filtres aplicats
-            if has_filters:
+            # Excloure informació sensible si l'usuari no està autenticat
+            if has_filters and not is_authenticated:
                 for refugi in refugis_results:
-                    if is_authenticated:
-                        if hasattr(refugi, 'media_metadata') and refugi.media_metadata:
-                            try:
-                                refugi.images_metadata = self.media_service.generate_media_metadata_list(refugi.media_metadata)
-                            except Exception as e:
-                                logger.warning(f"Error generant MediaMetadata per refugi {refugi.id}: {str(e)}")
-                                refugi.images_metadata = []
-                        else:
-                            refugi.images_metadata = []
-                    else:
-                        # No incloure metadades de mitjans
-                        # Si no volem incloure visitants, eliminar-los
-                        refugi.visitors = []
-                        refugi.media_metadata = {}
-                        refugi.images_metadata = []
+                    refugi.visitors = []
+                    refugi.images_metadata = []
             
             # El DAO ja retorna models o dades raw segons calgui
             # Necessitem crear resposta segons el format
@@ -160,32 +135,13 @@ class RefugiLliureController:
         """
         try:
             # Obtenir media_metadata de Firestore
-            media_metadata_dict = self.refugi_dao.get_media_metadata(refugi_id)
+            images_metadata_list = self.refugi_dao.get_media_metadata(refugi_id)
             
-            if media_metadata_dict is None:
+            if images_metadata_list is None:
                 # Refugi no existeix
                 return None, "Refugi not found"
             
-            # Generar URLs prefirmades per cada mitjà
-            media_with_urls = []
-            for key, metadata in media_metadata_dict.items():
-                try:
-                    url = self.media_service.generate_presigned_url(key, expiration)
-
-                    # Crear instància de RefugeMediaMetadata
-                    media_metadata = RefugeMediaMetadata(
-                        key=key,
-                        url=url,
-                        creator_uid=metadata.get('creator_uid', ''),
-                        uploaded_at=metadata.get('uploaded_at', '')
-                    )
-
-                    media_with_urls.append(media_metadata.to_dict())
-                
-                except Exception as e:
-                    logger.warning(f"Error generant URL per {key}: {str(e)}")
-            
-            return media_with_urls, None
+            return images_metadata_list, None
             
         except Exception as e:
             logger.error(f"Error obtenint mitjans del refugi {refugi_id}: {str(e)}")
@@ -229,20 +185,19 @@ class RefugiLliureController:
                     uploaded_at = get_madrid_today().isoformat()
                     
                     # Utilitzar la key com a clau del diccionari
-                    media_metadata_dict[result['key']] = {
+                    key = result['key']
+                    metadata = {
                         'creator_uid': creator_uid,
                         'uploaded_at': uploaded_at
                     }
+                    media_metadata_dict[key] = metadata
 
-                    # Crear instància de MediaMetadata
-                    media_metadata = RefugeMediaMetadata(
-                        key=result['key'],
-                        url=result['url'],
-                        creator_uid=creator_uid,
-                        uploaded_at=uploaded_at
-                    )
+                    # Generar l'objecte RefugeMediaMetadata per a la resposta
+                    # Passar només l'entrada actual amb la key i metadata
+                    single_entry = {key: metadata}
+                    image_metadata = self.media_service.generate_media_metadata_from_dict(single_entry)
                     
-                    uploaded.append(media_metadata.to_dict())  
+                    uploaded.append(image_metadata.to_dict())  
                     
                 except ValueError as e:
                     failed.append({

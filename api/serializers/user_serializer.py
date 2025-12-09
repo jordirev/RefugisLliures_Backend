@@ -74,7 +74,7 @@ class UserSerializer(UserValidatorMixin, serializers.Serializer):
     )
     email = serializers.EmailField(
         help_text=EMAIL_HELPER_TEXT
-    )
+    )    
     avatar_metadata = MediaMetadataSerializer(
         required=False,
         allow_null=True,
@@ -128,7 +128,10 @@ class UserSerializer(UserValidatorMixin, serializers.Serializer):
     def to_representation(self, instance):
         """Converteix instància a representació JSON"""
         if isinstance(instance, User):
-            return instance.to_dict()
+            user_dict = instance.to_dict()
+            if 'media_metadata' in user_dict:
+                user_dict.pop('media_metadata')
+            return user_dict
         return super().to_representation(instance)
     
     def create(self, validated_data):

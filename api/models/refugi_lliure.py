@@ -1,9 +1,11 @@
 """
 Model de refugi per a l'aplicació RefugisLliures
 """
+from asyncio.log import logger
 from dataclasses import dataclass, field
 from typing import Optional, List, Dict, Any
 from .media_metadata import RefugeMediaMetadata
+from ..services import r2_media_service
 
 @dataclass
 class Coordinates:
@@ -90,7 +92,6 @@ class Refugi:
     region: Optional[str] = None
     departement: Optional[str] = None
     visitors: List[str] = field(default_factory=list)
-    media_metadata: Dict[str, Dict[str, str]] = field(default_factory=dict)  # Diccionari de mitjans (clau: key, valor: metadata amb creator_uid i uploaded_at)
     images_metadata: List[RefugeMediaMetadata] = field(default_factory=list)  # Metadades amb URLs prefirmades (generades dinàmicament)
     
     def __post_init__(self):
@@ -104,6 +105,21 @@ class Refugi:
     
     def to_dict(self) -> dict:
         """Converteix el refugi a diccionari"""
+        
+        # Generem les metadades per a guardar a Firestore sense URLs prefirmades
+        media_metadata = {}
+        if self.images_metadata:
+            for image in self.images_metadata:
+                media_metadata[image.key] = {
+                    'creator_uid': image.creator_uid,
+                    'uploaded_at': image.uploaded_at
+                }
+        
+        # Convertir images_metadata a diccionaris per a la resposta JSON
+        images_metadata_dicts = []
+        if self.images_metadata:
+            images_metadata_dicts = [img.to_dict() for img in self.images_metadata]
+
         return {
             'id': self.id,
             'name': self.name,
@@ -119,8 +135,8 @@ class Refugi:
             'region': self.region,
             'departement': self.departement,
             'visitors': self.visitors,
-            'media_metadata': self.media_metadata,
-            'images_metadata': [m.to_dict() if isinstance(m, RefugeMediaMetadata) else m for m in self.images_metadata]
+            'media_metadata': media_metadata,
+            'images_metadata': images_metadata_dicts,
         }
     
     @classmethod
@@ -128,6 +144,16 @@ class Refugi:
         """Crea un refugi des d'un diccionari"""
         coord_data = data.get('coord', {})
         info_comp_data = data.get('info_comp', {})
+
+        # Generem les metadades amb URLs prefirmades
+        images_metadata = []
+        if 'media_metadata' in data and data['media_metadata']:
+            try:
+                media_service = r2_media_service.get_refugi_media_service()
+                images_metadata = media_service.generate_media_metadata_list(data['media_metadata'])
+            except Exception as e:
+                logger.warning(f"Error generant MediaMetadata per refugi {data.get('id', '')}: {str(e)}")
+                images_metadata = []
         
         return cls(
             id=str(data.get('id', '')),
@@ -144,8 +170,7 @@ class Refugi:
             region=data.get('region'),
             departement=data.get('departement'),
             visitors=data.get('visitors', []),
-            media_metadata=data.get('media_metadata', {}),
-            images_metadata=[RefugeMediaMetadata.from_dict(m) if isinstance(m, dict) else m for m in data.get('images_metadata', [])]
+            images_metadata=images_metadata
         )
     
     def __str__(self) -> str:
