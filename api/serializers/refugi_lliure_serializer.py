@@ -46,38 +46,31 @@ class RefugiSerializer(serializers.Serializer):
     region = serializers.CharField(default=None, allow_null=True, required=False)
     departement = serializers.CharField(default=None, allow_null=True, required=False)
     visitors = serializers.ListField(child=serializers.CharField(), default=list, required=False)
-    media_metadata = serializers.DictField(child=serializers.DictField(), default=dict, required=False)
-    images_metadata = MediaMetadataSerializer(many=True, default=list, required=False)
+    images_metadata = MediaMetadataSerializer(many=True, required=False, allow_null=True)
 
-class RefugiCoordinatesSerializer(serializers.Serializer):
-    """Serializer per a coordenades de refugi"""
-    refugi_id = serializers.CharField()
-    refugi_name = serializers.CharField()
-    coord = CoordinatesSerializer()
-    geohash = serializers.CharField(default=None, allow_null=True)
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+
+        # Eliminem  informació sensible si l'usuari no està autenticat
+        is_authenticated = self.context.get('is_authenticated', False)
+        if not is_authenticated:
+            if 'visitors' in data:
+                data.pop('visitors', None)
+            if 'media_metadata' in data:
+                data.pop('media_metadata', None)
+            if 'images_metadata' in data:
+                data.pop('images_metadata', None)
+        return data
 
 class RefugiSearchResponseSerializer(serializers.Serializer):
     """Serializer per a resposta de cerca"""
     count = serializers.IntegerField()
     results = RefugiSerializer(many=True)
 
-
-class HealthCheckResponseSerializer(serializers.Serializer):
-    """Serializer per a resposta de health check"""
-    status = serializers.CharField()
-    message = serializers.CharField()
-    firebase = serializers.BooleanField()
-    firestore = serializers.BooleanField(required=False)
-    collections_count = serializers.IntegerField(required=False)
-
 class RefugiSearchFiltersSerializer(serializers.Serializer):
     """Serializer per a filtres de cerca"""
     # Text search
     name = serializers.CharField(required=False, default='', allow_blank=True)
-    
-    # Location filters
-    region = serializers.CharField(required=False, default='', allow_blank=True)
-    departement = serializers.CharField(required=False, default='', allow_blank=True)
 
     # Characteristics filters - accepten strings amb comes o llistes
     type = serializers.CharField(
@@ -98,17 +91,6 @@ class RefugiSearchFiltersSerializer(serializers.Serializer):
     places_max = serializers.IntegerField(required=False, allow_null=True, min_value=0)
     altitude_min = serializers.IntegerField(required=False, allow_null=True, min_value=0)
     altitude_max = serializers.IntegerField(required=False, allow_null=True, min_value=0)
-    
-    # Info complementaria filters (1 = required feature)
-    cheminee = serializers.IntegerField(required=False, allow_null=True, min_value=0, max_value=1)
-    poele = serializers.IntegerField(required=False, allow_null=True, min_value=0, max_value=1)
-    couvertures = serializers.IntegerField(required=False, allow_null=True, min_value=0, max_value=1)
-    latrines = serializers.IntegerField(required=False, allow_null=True, min_value=0, max_value=1)
-    bois = serializers.IntegerField(required=False, allow_null=True, min_value=0, max_value=1)
-    eau = serializers.IntegerField(required=False, allow_null=True, min_value=0, max_value=1)
-    matelas = serializers.IntegerField(required=False, allow_null=True, min_value=0, max_value=1)
-    couchage = serializers.IntegerField(required=False, allow_null=True, min_value=0, max_value=1)
-    lits = serializers.IntegerField(required=False, allow_null=True, min_value=0, max_value=1)
     
     def _validate_range(self, min_value, max_value, field_prefix):
         if min_value is not None and min_value < 0:
@@ -154,10 +136,6 @@ class RefugiSearchFiltersSerializer(serializers.Serializer):
         
         return data
 
-#class RefugiCoordinatesFiltersSerializer(serializers.Serializer):
-    """Serializer per a filtres de coordenades"""
-    """Serà util per quan haguem de filtrar per ubicació"""
-
 class UserRefugiInfoSerializer(serializers.Serializer):
     """Serializer per a llistar refugis preferits o visitats amb informació resumida"""
     
@@ -187,3 +165,11 @@ class UserRefugiInfoResponseSerializer(serializers.Serializer):
         many=True,
         help_text="Llista de refugis amb informació resumida"
     )
+
+class HealthCheckResponseSerializer(serializers.Serializer):
+    """Serializer per a resposta de health check"""
+    status = serializers.CharField()
+    message = serializers.CharField()
+    firebase = serializers.BooleanField()
+    firestore = serializers.BooleanField(required=False)
+    collections_count = serializers.IntegerField(required=False)

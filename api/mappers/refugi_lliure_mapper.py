@@ -30,7 +30,7 @@ class RefugiLliureMapper:
 
     
     @staticmethod
-    def format_search_response(refugis: List[Refugi], include_visitors: bool = False, include_media_metadata: bool = False) -> Dict[str, Any]:
+    def format_search_response(refugis: List[Refugi]) -> Dict[str, Any]:
         """
         Formatea la resposta de cerca
         Args:
@@ -39,21 +39,12 @@ class RefugiLliureMapper:
             include_media_metadata: Si True, inclou media_metadata i images_metadata. Si False, els omet.
         """
         results = []
-        for refugi in refugis:
-            refugi_dict = refugi.to_dict()
-            # Eliminar visitors si no cal incloure'ls
-            if not include_visitors and 'visitors' in refugi_dict:
-                del refugi_dict['visitors']
-            # Eliminar media_metadata i images_metadata si no cal incloure'ls
-            if not include_media_metadata:
-                if 'media_metadata' in refugi_dict:
-                    del refugi_dict['media_metadata']
-                if 'images_metadata' in refugi_dict:
-                    del refugi_dict['images_metadata']
-            results.append(refugi_dict)
+        for refugi in refugis:                 
+            results.append(refugi.to_dict())
         
         return {
             'count': len(refugis),
+            'has_filters': True,
             'results': results
         }
     
@@ -62,6 +53,7 @@ class RefugiLliureMapper:
         """Formatea la resposta de cerca des de dades raw (per coordenades)"""
         return {
             'count': len(refugis_data),
+            'has_filters': False,
             'results': refugis_data
         }
     

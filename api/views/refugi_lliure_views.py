@@ -45,13 +45,12 @@ class RefugiLliureCollectionAPIView(APIView):
     permission_classes = [AllowAny]
     
     @swagger_auto_schema(
-        security=[],
         operation_description=(
             "Obté una llista de refugis amb suport per filtres opcionals. "
             "\n- Quan no s'especifiquen filtres, retorna totes les coordenades dels refugis. "
             "\n- Quan s'utilitzen filtres, retorna els refugis que compleixen els criteris especificats. "
             "\n- Els filtres 'type' i 'condition' accepten múltiples valors separats per comes."
-            "\n\nAquest endpoint no requereix autenticació."
+            "\n\n**Autenticació:** Opcional. Si s'envia un token d'autenticació, la resposta inclourà camps addicionals com visitants i metadades de mitjans."
         ),
         manual_parameters=[
             openapi.Parameter(
@@ -135,8 +134,7 @@ class RefugiLliureCollectionAPIView(APIView):
             controller = RefugiLliureController()
             search_result, error = controller.search_refugis(
                 filters_serializer.validated_data,
-                include_visitors=is_authenticated,
-                include_media_metadata=is_authenticated
+                is_authenticated=is_authenticated
             )
             
             if error:
@@ -144,11 +142,20 @@ class RefugiLliureCollectionAPIView(APIView):
                     'error': error
                 }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
             
-            # Serialitzar la resposta
-            response_serializer = RefugiSearchResponseSerializer(data=search_result)
-            if response_serializer.is_valid():
-                return Response(response_serializer.validated_data, status=status.HTTP_200_OK)
+            # Serialitzar la resposta segons si hi ha filtres o no
+            # Si no hi ha filtres, els results són coordenades simples
+            # Si hi ha filtres, els results són refugis complets
+            has_filters = search_result.get('has_filters', True)
+            
+            if has_filters:
+                # Refugis complets - usar RefugiSerializer amb context d'autenticació
+                response_serializer = RefugiSearchResponseSerializer(
+                    search_result,
+                    context={'is_authenticated': is_authenticated}
+                )
+                return Response(response_serializer.data, status=status.HTTP_200_OK)
             else:
+                # Només coordenades - no necessita context d'autenticació
                 return Response(search_result, status=status.HTTP_200_OK)
             
         except Exception as e:
@@ -167,16 +174,15 @@ class RefugiLliureDetailAPIView(APIView):
     permission_classes = [AllowAny]
     
     @swagger_auto_schema(
-        security=[],
         operation_description=(
             "Obté els detalls complets d'un refugi específic per ID. "
             "\nRetorna informació completa del refugi incloent nom, descripció, coordenades, "
             "dificultats, rutes properes i altres detalls. "
-            "\nAquest endpoint no requereix autenticació."
+            "\n\n**Autenticació:** Opcional. Si s'envia un token d'autenticació, la resposta inclourà camps addicionals com visitants i metadades de mitjans."
         ),
         manual_parameters=[
             openapi.Parameter(
-                'refuge_id',
+                'id',
                 openapi.IN_PATH,
                 description="Identificador únic del refugi",
                 type=openapi.TYPE_STRING,
@@ -195,14 +201,14 @@ class RefugiLliureDetailAPIView(APIView):
             500: ERROR_500_INTERNAL_ERROR
         }
     )
-    def get(self, request, refuge_id):
+    def get(self, request, id):
         """Obtenir detalls d'un refugi per ID"""
         try:
             # Comprovar si l'usuari està autenticat
             is_authenticated = request.user and hasattr(request.user, 'is_authenticated') and request.user.is_authenticated
             
             controller = RefugiLliureController()
-            refugi, error = controller.get_refugi_by_id(refuge_id, include_visitors=is_authenticated, include_media_metadata=is_authenticated)
+            refugi, error = controller.get_refugi_by_id(id, is_authenticated=is_authenticated)
             
             if error:
                 if "not found" in error.lower():
@@ -214,8 +220,11 @@ class RefugiLliureDetailAPIView(APIView):
                         'error': error
                     }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
             
-            # Serialitzar el refugi
-            serializer = RefugiSerializer(refugi.to_dict())
+            # Convertir a diccionari
+            refugi_dict = refugi.to_dict()
+            
+            # Serialitzar el refugi passant el context d'autenticació
+            serializer = RefugiSerializer(refugi_dict, context={'is_authenticated': is_authenticated})
             return Response(serializer.data, status=status.HTTP_200_OK)
             
         except Exception as e:
@@ -241,7 +250,7 @@ class RefugeRenovationsAPIView(APIView):
         ),
         manual_parameters=[
             openapi.Parameter(
-                'refuge_id',
+                'id',
                 openapi.IN_PATH,
                 description="Identificador únic del refugi",
                 type=openapi.TYPE_STRING,
@@ -267,11 +276,11 @@ class RefugeRenovationsAPIView(APIView):
             500: ERROR_500_INTERNAL_ERROR
         }
     )
-    def get(self, request, refuge_id, active_only: bool = False):
+    def get(self, request, id, active_only: bool = False):
         """Obtenir renovations d'un refugi"""
         try:
             controller = RenovationController()
-            success, renovations, error_message = controller.get_renovations_by_refuge(refuge_id, active_only)
+            success, renovations, error_message = controller.get_renovations_by_refuge(id, active_only)
             
             if not success:
                 return Response({

@@ -16,7 +16,7 @@ class RefugiLliureController:
         self.refugi_dao = RefugiLliureDAO()
         self.media_service = get_refugi_media_service()
     
-    def get_refugi_by_id(self, refuge_id: str, include_visitors: bool = False, include_media_metadata: bool = False) -> Tuple[Optional[Refugi], Optional[str]]:
+    def get_refugi_by_id(self, refuge_id: str, is_authenticated: bool) -> Tuple[Optional[Refugi], Optional[str]]:
         """
         Obtenir un refugi per ID
         Args:
@@ -29,14 +29,10 @@ class RefugiLliureController:
             refugi = self.refugi_dao.get_by_id(refuge_id)
             
             if not refugi:
-                return None, "Refugi not found"
-            
-            # Si no volem incloure visitants, eliminar-los
-            if not include_visitors:
-                refugi.visitors = []
+                return None, "Refugi not found"                
             
             # Si volem incloure metadades de mitjans, generar-les
-            if include_media_metadata:
+            if is_authenticated:
                 # Generar MediaMetadata amb URLs prefirmades per als mitjans si existeixen media_metadata
                 if hasattr(refugi, 'media_metadata') and refugi.media_metadata:
                     try:
@@ -48,6 +44,7 @@ class RefugiLliureController:
                     refugi.images_metadata = []
             else:
                 # No incloure metadades de mitjans
+                refugi.visitors = []
                 refugi.media_metadata = {}
                 refugi.images_metadata = []
             
@@ -57,7 +54,7 @@ class RefugiLliureController:
             logger.error(f'Error in get_refugi_by_id: {str(e)}')
             return None, f"Internal server error: {str(e)}"
     
-    def search_refugis(self, query_params: Dict[str, Any], include_visitors: bool = False, include_media_metadata: bool = False) -> Tuple[Optional[Dict[str, Any]], Optional[str]]:
+    def search_refugis(self, query_params: Dict[str, Any], is_authenticated: bool) -> Tuple[Optional[Dict[str, Any]], Optional[str]]:
         """
         Cercar refugis amb filtres
         Args:
@@ -86,7 +83,7 @@ class RefugiLliureController:
             # Generar MediaMetadata per als refugis amb filtres aplicats
             if has_filters:
                 for refugi in refugis_results:
-                    if include_media_metadata:
+                    if is_authenticated:
                         if hasattr(refugi, 'media_metadata') and refugi.media_metadata:
                             try:
                                 refugi.images_metadata = self.media_service.generate_media_metadata_list(refugi.media_metadata)
@@ -97,6 +94,8 @@ class RefugiLliureController:
                             refugi.images_metadata = []
                     else:
                         # No incloure metadades de mitjans
+                        # Si no volem incloure visitants, eliminar-los
+                        refugi.visitors = []
                         refugi.media_metadata = {}
                         refugi.images_metadata = []
             
@@ -107,7 +106,7 @@ class RefugiLliureController:
             
             if has_filters:
                 # Filters applied - refugis_results són models
-                response = mapper.format_search_response(refugis_results, include_visitors=include_visitors, include_media_metadata=include_media_metadata)
+                response = mapper.format_search_response(refugis_results)
             else:
                 # No filters - refugis_results són dades raw de coordenades
                 response = mapper.format_search_response_from_raw_data(refugis_results)

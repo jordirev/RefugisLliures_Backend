@@ -31,8 +31,8 @@ urlpatterns = [
     
     # Refugis endpoints 
     path('refuges/', RefugiLliureCollectionAPIView.as_view(), name='refugi_lliure_collection'),
-    path('refuges/<str:refuge_id>/', RefugiLliureDetailAPIView.as_view(), name='refugi_lliure_detail'),
-    path('refuges/<str:refuge_id>/renovations/', RefugeRenovationsAPIView.as_view(), name='refuge_renovations'),  # GET /refuges/{id}/renovations/
+    path('refuges/<str:id>/', RefugiLliureDetailAPIView.as_view(), name='refugi_lliure_detail'),
+    path('refuges/<str:id>/renovations/', RefugeRenovationsAPIView.as_view(), name='refuge_renovations'),  # GET /refuges/{id}/renovations/
     
     # Refugi media endpoints
     path('refuges/<str:id>/media/', RefugiMediaAPIView.as_view(), name='refugi_media'),  # GET + POST /refuges/{id}/media/

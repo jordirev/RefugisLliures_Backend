@@ -12,7 +12,7 @@ from drf_yasg import openapi
 
 from api.views.user_views import UID_NOT_FOUND_ERROR, UID_NOT_FOUND_MESSAGE
 from ..controllers.refugi_lliure_controller import RefugiLliureController
-from ..permissions import IsAdminUser, IsSameUser, IsMediaUploader
+from ..permissions import IsMediaUploader
 
 logger = logging.getLogger(__name__)
 
@@ -110,18 +110,15 @@ class RefugiMediaAPIView(APIView):
                 description="ID del refugi",
                 type=openapi.TYPE_STRING,
                 required=True
+            ),
+            openapi.Parameter(
+                'files',
+                openapi.IN_FORM,
+                description='Fitxers a pujar (imatges o vídeos)',
+                type=openapi.TYPE_FILE,
+                required=True
             )
         ],
-        request_body=openapi.Schema(
-            type=openapi.TYPE_OBJECT,
-            properties={
-                'files': openapi.Schema(
-                    type=openapi.TYPE_ARRAY,
-                    items=openapi.Schema(type=openapi.TYPE_FILE),
-                    description='Fitxers a pujar (imatges o vídeos)'
-                )
-            }
-        ),
         responses={
             200: openapi.Response(
                 description="Mitjans pujats correctament",

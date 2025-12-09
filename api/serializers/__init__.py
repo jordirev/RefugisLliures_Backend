@@ -7,7 +7,6 @@ from .user_serializer import (
 )
 from .refugi_lliure_serializer import (
     RefugiSerializer,
-    RefugiCoordinatesSerializer,
     RefugiSearchResponseSerializer,
     HealthCheckResponseSerializer,
     RefugiSearchFiltersSerializer,
@@ -21,7 +20,6 @@ __all__ = [
     'UserCreateSerializer', 
     'UserUpdateSerializer',
     'RefugiSerializer',
-    'RefugiCoordinatesSerializer',
     'RefugiSearchResponseSerializer',
     'HealthCheckResponseSerializer',
     'RefugiSearchFiltersSerializer',
