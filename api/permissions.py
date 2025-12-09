@@ -116,7 +116,7 @@ class IsCreator(permissions.BasePermission):
         if not user_uid:
             return False
         
-        from daos.renovation_dao import RenovationDAO
+        from .daos.renovation_dao import RenovationDAO
         
         # Obtenim l'objecte des de la base de dades
         renovation = RenovationDAO.get_renovation_by_id(view.kwargs.get('id'))
@@ -141,12 +141,17 @@ class IsMediaUploader(permissions.BasePermission):
         """
         Comprova si l'usuari està autenticat i si és el creador del mitjà
         """
+        import logging
+        logger = logging.getLogger(__name__)
+        
         # Comprova que l'usuari està autenticat
         if not request.user or not hasattr(request.user, 'is_authenticated') or not request.user.is_authenticated:
+            logger.info("Usuari no autenticat intentant accedir a un mitjà protegit.")
             return False
         
         # Només aplica a mètodes no segurs (POST, PUT, PATCH, DELETE)
         if request.method in permissions.SAFE_METHODS:
+            logger.info("Mètode segur, permetent accés al mitjà.")
             return True
         
         # Obté els paràmetres de la URL
@@ -155,6 +160,7 @@ class IsMediaUploader(permissions.BasePermission):
         
         # Si no hi ha key, no es pot verificar (potser és un endpoint diferent)
         if not media_key or not refugi_id:
+            logger.info("Falten paràmetres 'id' o 'key' per verificar el permís IsMediaUploader.")
             return True
         
         # Decodificar la key si ve codificada
@@ -164,33 +170,37 @@ class IsMediaUploader(permissions.BasePermission):
         # Obté el UID de l'usuari autenticat
         user_uid = getattr(request.user, 'uid', None)
         if not user_uid:
+            logger.info("No s'ha pogut obtenir l'UID de l'usuari autenticat.")
             return False
         
         try:
             # Importa el servei de Firestore
-            from daos.refugi_lliure_dao import RefugiLliureDAO
+            from .daos.refugi_lliure_dao import RefugiLliureDAO
             
             # Obté el refugi des de Firestore
-            refugi = RefugiLliureDAO.get_by_id(refugi_id)
+            refugi_lliure_dao = RefugiLliureDAO()
+            refugi = refugi_lliure_dao.get_by_id(refugi_id)
             if not refugi:
+                logger.info(f"Refugi amb ID {refugi_id} no trobat.")
                 return False
             
-            # Busca el mitjà dins de media_metadata (ara és un diccionari)
-            if 'media_metadata' not in refugi:
+            # Busca el mitjà dins de media_metadata (refugi és un objecte Refugi)
+            media_metadata = getattr(refugi, 'media_metadata', {})
+            if not media_metadata:
+                logger.info(f"El refugi amb ID {refugi_id} no té metadades de mitjans.")
                 return False
             
-            media_metadata = refugi['media_metadata']
             if decoded_key in media_metadata:
                 # Comprova si l'usuari és el creador del mitjà
+                logger.info(f"Verificant permís per a l'usuari {user_uid} sobre el mitjà {decoded_key}.")
                 return media_metadata[decoded_key].get('creator_uid') == user_uid
             
             # Si no es troba el mitjà, denega l'accés
+            logger.info(f"Mitjà amb key {decoded_key} no trobat en el refugi {refugi_id}.")
             return False
             
         except Exception as e:
             # En cas d'error, denega l'accés per seguretat
-            import logging
-            logger = logging.getLogger(__name__)
             logger.error(f"Error verificant permís IsMediaUploader: {str(e)}")
             return False
 
