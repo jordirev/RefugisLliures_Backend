@@ -15,7 +15,8 @@ from .views.user_views import (
     UserFavouriteRefugesAPIView,
     UserFavouriteRefugesDetailAPIView,
     UserVisitedRefugesAPIView,
-    UserVisitedRefugesDetailAPIView
+    UserVisitedRefugesDetailAPIView,
+    UserAvatarAPIView
 )
 from .views.renovation_views import (
     RenovationListAPIView,
@@ -41,6 +42,7 @@ urlpatterns = [
     # Users endpoints
     path('users/', UsersCollectionAPIView.as_view(), name='users_collection'),  # POST /users/ (crear)
     path('users/<str:uid>/', UserDetailAPIView.as_view(), name='user_detail'),  # GET + PATCH + DELETE /users/{uid}/
+    path('users/<str:uid>/avatar/', UserAvatarAPIView.as_view(), name='user_avatar'),  # PATCH + DELETE /users/{uid}/avatar/
     path('users/<str:uid>/favorite-refuges/', UserFavouriteRefugesAPIView.as_view(), name='user_refugis_preferits'),  # GET + POST /users/{uid}/favorite-refuges/
     path('users/<str:uid>/favorite-refuges/<str:refuge_id>/', UserFavouriteRefugesDetailAPIView.as_view(), name='user_favourite_refuges_delete'),  # DELETE /users/{uid}/favorite-refuges/{refuge_id}/
     path('users/<str:uid>/visited-refuges/', UserVisitedRefugesAPIView.as_view(), name='user_visited_refuges'),  # GET + POST /users/{uid}/visited-refuges/

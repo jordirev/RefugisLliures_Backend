@@ -10,9 +10,19 @@ from rest_framework.parsers import MultiPartParser, FormParser
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 
-from api.views.user_views import UID_NOT_FOUND_ERROR, UID_NOT_FOUND_MESSAGE
 from ..controllers.refugi_lliure_controller import RefugiLliureController
 from ..permissions import IsMediaUploader
+from ..utils.swagger_examples import EXAMPLE_REFUGI_MEDIA_LIST, EXAMPLE_REFUGI_MEDIA_UPLOAD_RESPONSE
+from ..utils.swagger_error_responses import (
+    ERROR_400_INVALID_FILE_TYPE,
+    ERROR_400_NO_FILES,
+    ERROR_401_UNAUTHORIZED,
+    ERROR_403_NOT_MEDIA_OWNER,
+    ERROR_404_REFUGI_NOT_FOUND,
+    ERROR_404_MEDIA_NOT_FOUND,
+    ERROR_500_INTERNAL_ERROR,
+    SUCCESS_204_NO_CONTENT
+)
 
 logger = logging.getLogger(__name__)
 
@@ -47,21 +57,12 @@ class RefugiMediaAPIView(APIView):
             200: openapi.Response(
                 description="Llista de mitjans",
                 examples={
-                    'application/json': {
-                        'media': [
-                            {
-                                'key': 'refugis-lliures/refugi123/photo1.jpg',
-                                'url': 'https://presigned-url...',
-                                'creator_uid': 'user123',
-                                'uploaded_at': '2024-12-08T10:30:00Z'
-                            }
-                        ]
-                    }
+                    'application/json': EXAMPLE_REFUGI_MEDIA_LIST
                 }
             ),
-            401: openapi.Response(description="No autenticat"),
-            404: openapi.Response(description="Refugi no trobat"),
-            500: openapi.Response(description="Error del servidor")
+            401: ERROR_401_UNAUTHORIZED,
+            404: ERROR_404_REFUGI_NOT_FOUND,
+            500: ERROR_500_INTERNAL_ERROR
         }
     )
     def get(self, request, id):
@@ -123,30 +124,13 @@ class RefugiMediaAPIView(APIView):
             200: openapi.Response(
                 description="Mitjans pujats correctament",
                 examples={
-                    'application/json': {
-                        'uploaded': [
-                            {
-                                'filename': 'photo1.jpg',
-                                'key': 'refugis-lliures/refugi123/uuid.jpg',
-                                'url': 'https://presigned-url...',
-                                'creator_uid': 'user123',
-                                'uploaded_at': '2024-12-08T10:30:00Z'
-                            }
-                        ],
-                        'failed': [
-                            {
-                                'filename': 'invalid.txt',
-                                'error': 'Content type not allowed'
-                            }
-                        ]
-                    }
+                    'application/json': EXAMPLE_REFUGI_MEDIA_UPLOAD_RESPONSE
                 }
             ),
-            400: openapi.Response(description="Petició invàlida"),
-            401: openapi.Response(description="No autenticat"),
-            403: openapi.Response(description="No autoritzat"),
-            404: openapi.Response(description="Refugi no trobat"),
-            500: openapi.Response(description="Error del servidor")
+            400: ERROR_400_NO_FILES,
+            401: ERROR_401_UNAUTHORIZED,
+            404: ERROR_404_REFUGI_NOT_FOUND,
+            500: ERROR_500_INTERNAL_ERROR
         }
     )
     def post(self, request, id):
@@ -166,8 +150,8 @@ class RefugiMediaAPIView(APIView):
             creator_uid = getattr(request, 'user_uid', None)
             if not creator_uid:
                 return Response({
-                    'error': UID_NOT_FOUND_ERROR,
-                    'message': UID_NOT_FOUND_MESSAGE
+                    'error': 'No autenticat',
+                    'message': 'UID d\'usuari no trobat'
                 }, status=status.HTTP_401_UNAUTHORIZED)
             
             # Delegar al controller
@@ -227,21 +211,11 @@ class RefugiMediaDeleteAPIView(APIView):
             )
         ],
         responses={
-            200: openapi.Response(
-                description="Mitjà eliminat correctament",
-                examples={
-                    'application/json': {
-                        'success': True,
-                        'message': 'Mitjà eliminat correctament',
-                        'key': 'refugis-lliures/refugi123/uuid.jpg'
-                    }
-                }
-            ),
-            400: openapi.Response(description="Petició invàlida"),
-            401: openapi.Response(description="No autenticat"),
-            403: openapi.Response(description="No autoritzat"),
-            404: openapi.Response(description="Mitjà no trobat"),
-            500: openapi.Response(description="Error del servidor")
+            204: SUCCESS_204_NO_CONTENT,
+            401: ERROR_401_UNAUTHORIZED,
+            403: ERROR_403_NOT_MEDIA_OWNER,
+            404: ERROR_404_MEDIA_NOT_FOUND,
+            500: ERROR_500_INTERNAL_ERROR
         }
     )
     def delete(self, request, id, key):

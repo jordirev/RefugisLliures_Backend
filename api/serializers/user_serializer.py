@@ -75,6 +75,12 @@ class UserSerializer(UserValidatorMixin, serializers.Serializer):
         required=False, 
         help_text=URL_AVATAR_HELPER_TEXT
     )
+    avatar_metadata = serializers.DictField(
+        required=False,
+        allow_null=True,
+        help_text="Metadades de l'avatar (key, creator_uid, uploaded_at)",
+        read_only=True
+    )
     language = serializers.CharField(
         max_length=5,
         default='ca',
@@ -188,4 +194,32 @@ class UserRefugiSerializer(serializers.Serializer):
     refuge_id = serializers.CharField(
         max_length=255,
         help_text="Identificador únic del refugi"
+    )
+
+
+class AvatarMetadataSerializer(serializers.Serializer):
+    """Serializer per a metadades d'avatar"""
+    
+    key = serializers.CharField(
+        help_text="Clau del fitxer a R2"
+    )
+    url = serializers.URLField(
+        help_text="URL prefirmada de l'avatar"
+    )
+    creator_uid = serializers.CharField(
+        help_text="UID de l'usuari que va pujar l'avatar"
+    )
+    uploaded_at = serializers.CharField(
+        help_text="Data i hora de pujada (ISO 8601)"
+    )
+
+
+class AvatarUploadResponseSerializer(serializers.Serializer):
+    """Serializer per a la resposta de pujada d'avatar"""
+    
+    message = serializers.CharField(
+        help_text="Missatge de confirmació"
+    )
+    avatar_metadata = AvatarMetadataSerializer(
+        help_text="Metadades de l'avatar pujat"
     )

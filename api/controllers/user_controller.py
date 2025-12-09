@@ -2,11 +2,12 @@
 Controller per a la gestió d'usuaris
 """
 import logging
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Tuple
 from ..daos.user_dao import UserDAO
 from ..daos.refugi_lliure_dao import RefugiLliureDAO
 from ..models.user import User
 from ..utils.timezone_utils import get_madrid_now
+from ..services.r2_media_service import get_user_avatar_service
 
 logger = logging.getLogger(__name__)
 
@@ -19,6 +20,7 @@ class UserController:
         """Inicialitza el controller"""
         self.user_dao = UserDAO()
         self.refugi_dao = RefugiLliureDAO()
+        self.avatar_service = get_user_avatar_service()
     
     def create_user(self, user_data: Dict[str, Any], uid: str) -> tuple[bool, Optional[User], Optional[str]]:
         """
@@ -375,5 +377,107 @@ class UserController:
             tuple: (success, list_refugis_info, error_message)
         """
         return self._get_refugis_info_by_type(uid, 'visited_refuges')
+    
+    def upload_user_avatar(self, uid: str, file: Any) -> Tuple[bool, Optional[Dict[str, str]], Optional[str]]:
+        """
+        Puja o actualitza l'avatar d'un usuari
+        
+        Args:
+            uid: UID de l'usuari
+            file: Fitxer de l'avatar a pujar
+            
+        Returns:
+            tuple: (success, avatar_metadata, error_message)
+        """
+        try:
+            # Verificar que l'usuari existeix
+            user = self.user_dao.get_user_by_uid(uid)
+            if not user:
+                return False, None, f"Usuari amb UID {uid} no trobat"
+            
+            # Si ja té un avatar, eliminar-lo abans de pujar el nou
+            if user.avatar_metadata:
+                old_key = user.avatar_metadata.get('key')
+                if old_key:
+                    try:
+                        self.avatar_service.delete_file(old_key)
+                        logger.info(f"Avatar anterior eliminat: {old_key}")
+                    except Exception as e:
+                        logger.warning(f"Error eliminant avatar anterior: {str(e)}")
+            
+            # Pujar nou avatar
+            content_type = file.content_type
+            result = self.avatar_service.upload_file(
+                file_content=file,
+                entity_id=uid,
+                content_type=content_type,
+                filename=file.name
+            )
+            
+            # Preparar metadades
+            from ..utils.timezone_utils import get_madrid_now
+            avatar_metadata = {
+                'key': result['key'],
+                'creator_uid': uid,
+                'uploaded_at': get_madrid_now().isoformat()
+            }
+            
+            # Actualitzar metadades a Firestore
+            success = self.user_dao.update_avatar_metadata(uid, avatar_metadata, result['url'])
+            if not success:
+                # Si falla l'actualització a Firestore, intentar eliminar el fitxer pujat
+                try:
+                    self.avatar_service.delete_file(result['key'])
+                except:
+                    pass
+                return False, None, "Error actualitzant metadades de l'avatar"
+            
+            logger.info(f"Avatar pujat correctament per l'usuari {uid}")
+            return True, avatar_metadata, None
+            
+        except ValueError as e:
+            logger.warning(f"Error de validació pujant avatar: {str(e)}")
+            return False, None, str(e)
+        except Exception as e:
+            logger.error(f"Error pujant avatar per l'usuari {uid}: {str(e)}")
+            return False, None, f"Error intern: {str(e)}"
+    
+    def delete_user_avatar(self, uid: str) -> Tuple[bool, Optional[str]]:
+        """
+        Elimina l'avatar d'un usuari
+        
+        Args:
+            uid: UID de l'usuari
+            
+        Returns:
+            tuple: (success, error_message)
+        """
+        try:
+            # Obtenir metadades de l'avatar abans d'eliminar
+            success, avatar_metadata = self.user_dao.delete_avatar_metadata(uid)
+            
+            if not success:
+                return False, f"Usuari amb UID {uid} no trobat"
+            
+            if not avatar_metadata:
+                return False, "L'usuari no té cap avatar"
+            
+            # Eliminar fitxer de R2
+            media_key = avatar_metadata.get('key')
+            if media_key:
+                try:
+                    self.avatar_service.delete_file(media_key)
+                    logger.info(f"Avatar eliminat de R2: {media_key}")
+                except Exception as e:
+                    logger.error(f"Error eliminant avatar de R2: {str(e)}")
+                    # Continuar encara que falli l'eliminació de R2, ja que Firestore ja s'ha actualitzat
+            
+            logger.info(f"Avatar eliminat correctament per l'usuari {uid}")
+            return True, None
+            
+        except Exception as e:
+            logger.error(f"Error eliminant avatar per l'usuari {uid}: {str(e)}")
+            return False, f"Error intern: {str(e)}"
+    
     
     

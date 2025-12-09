@@ -7,6 +7,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework.parsers import MultiPartParser, FormParser
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 from urllib3 import request
@@ -17,6 +18,7 @@ from ..serializers.user_serializer import (
     UserSerializer, 
     UserCreateSerializer, 
     UserUpdateSerializer,
+    AvatarUploadResponseSerializer,
 )
 from ..serializers.refugi_lliure_serializer import (
     UserRefugiInfoResponseSerializer,
@@ -36,6 +38,7 @@ from ..utils.swagger_examples import (
     EXAMPLE_USER_REFUGI_INFO_RESPONSE_1,
     EXAMPLE_USER_VISITED_REFUGI_INFO_RESPONSE_2,
     EXAMPLE_USER_VISITED_REFUGI_INFO_RESPONSE_3,
+    EXAMPLE_AVATAR_UPLOAD_RESPONSE,
 )
 from ..utils.swagger_error_responses import (
     ERROR_400_INVALID_DATA,
@@ -46,6 +49,8 @@ from ..utils.swagger_error_responses import (
     ERROR_409_USER_EXISTS,
     ERROR_500_INTERNAL_ERROR,
     SUCCESS_204_NO_CONTENT,
+    ERROR_400_INVALID_FILE_TYPE,
+    ERROR_404_AVATAR_NOT_FOUND,
 )
 
 # Constants d'error per usar dins del codi (no Swagger)
@@ -274,6 +279,16 @@ class UserDetailAPIView(APIView):
                 'error': INTERNAL_SERVER_ERROR
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
+# ========== ITEM ENDPOINT: /users/{uid}/avatar ==========
+
+class UserAvatarAPIView(APIView):
+    """
+    Gestiona la pujada i eliminació d'avatars per a un usuari específic.
+    """
+    permission_classes = [IsAuthenticated, IsSameUser]
+    
+
+
 # ========== ITEM ENDPOINT: /users/{uid}/favorite-refuges/ ==========
 
 class UserFavouriteRefugesAPIView(APIView):
@@ -607,4 +622,155 @@ class UserVisitedRefugesDetailAPIView(APIView):
             logger.error(f"Error en delete_refugi_visitat: {str(e)}")
             return Response({
                 'error': INTERNAL_SERVER_ERROR
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+# ========== USER AVATAR ENDPOINT: /users/{uid}/avatar/ ==========
+
+class UserAvatarAPIView(APIView):
+    """
+    Gestiona operacions sobre l'avatar d'un usuari:
+    - PATCH: Puja o actualitza l'avatar de l'usuari (requereix autenticació, només el mateix usuari)
+    - DELETE: Elimina l'avatar de l'usuari (requereix autenticació, només el mateix usuari)
+    """
+    permission_classes = [IsAuthenticated, IsSameUser]
+    parser_classes = [MultiPartParser, FormParser]
+    
+    @swagger_auto_schema(
+        tags=['Users'],
+        operation_description=(
+            "Puja o actualitza l'avatar d'un usuari. "
+            "El fitxer es guarda a R2 en la carpeta users-avatars/{uid}/. "
+            "\n\nFormats acceptats: JPEG, JPG, PNG, WebP, HEIC, HEIF"
+            "\n\nRequereix autenticació i només pot ser executat pel mateix usuari."
+        ),
+        manual_parameters=[
+            openapi.Parameter(
+                'uid',
+                openapi.IN_PATH,
+                description="UID de l'usuari",
+                type=openapi.TYPE_STRING,
+                required=True
+            ),
+            openapi.Parameter(
+                'file',
+                openapi.IN_FORM,
+                description="Fitxer d'imatge de l'avatar",
+                type=openapi.TYPE_FILE,
+                required=True
+            )
+        ],
+        responses={
+            200: openapi.Response(
+                description="Avatar pujat correctament",
+                schema=AvatarUploadResponseSerializer,
+                examples={
+                    'application/json': EXAMPLE_AVATAR_UPLOAD_RESPONSE
+                }
+            ),
+            400: ERROR_400_INVALID_FILE_TYPE,
+            401: ERROR_401_UNAUTHORIZED,
+            403: ERROR_403_FORBIDDEN,
+            404: ERROR_404_USER_NOT_FOUND,
+            500: ERROR_500_INTERNAL_ERROR
+        }
+    )
+    def patch(self, request, uid):
+        """Puja o actualitza l'avatar d'un usuari"""
+        try:
+            # Verificar que hi ha fitxer
+            if 'file' not in request.FILES:
+                return Response({
+                    'error': 'No s\'ha proporcionat cap fitxer'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            file = request.FILES['file']
+            
+            # Pujar avatar
+            controller = UserController()
+            success, avatar_metadata, error_message = controller.upload_user_avatar(uid, file)
+            
+            if not success:
+                if 'no trobat' in error_message:
+                    return Response({
+                        'error': error_message
+                    }, status=status.HTTP_404_NOT_FOUND)
+                elif 'no permès' in error_message or 'Content type' in error_message:
+                    return Response({
+                        'error': error_message
+                    }, status=status.HTTP_400_BAD_REQUEST)
+                else:
+                    return Response({
+                        'error': error_message
+                    }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            
+            # Generar URL prefirmada per a la resposta
+            from ..services.r2_media_service import get_user_avatar_service
+            avatar_service = get_user_avatar_service()
+            avatar_url = avatar_service.generate_presigned_url(avatar_metadata['key'], expiration=3600)
+            
+            response_data = {
+                'message': 'Avatar pujat correctament',
+                'avatar_metadata': {
+                    'key': avatar_metadata['key'],
+                    'url': avatar_url,
+                    'creator_uid': avatar_metadata['creator_uid'],
+                    'uploaded_at': avatar_metadata['uploaded_at']
+                }
+            }
+            
+            serializer = AvatarUploadResponseSerializer(response_data)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+            
+        except Exception as e:
+            logger.error(f"Error pujant avatar: {str(e)}")
+            return Response({
+                'error': 'Error pujant l\'avatar'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    @swagger_auto_schema(
+        tags=['Users'],
+        operation_description=(
+            "Elimina l'avatar d'un usuari. "
+            "\n\nRequereix autenticació i només pot ser executat pel mateix usuari."
+        ),
+        manual_parameters=[
+            openapi.Parameter(
+                'uid',
+                openapi.IN_PATH,
+                description="UID de l'usuari",
+                type=openapi.TYPE_STRING,
+                required=True
+            )
+        ],
+        responses={
+            204: SUCCESS_204_NO_CONTENT,
+            401: ERROR_401_UNAUTHORIZED,
+            403: ERROR_403_FORBIDDEN,
+            404: ERROR_404_AVATAR_NOT_FOUND,
+            500: ERROR_500_INTERNAL_ERROR
+        }
+    )
+    def delete(self, request, uid):
+        """Elimina l'avatar d'un usuari"""
+        try:
+            controller = UserController()
+            success, error_message = controller.delete_user_avatar(uid)
+            
+            if not success:
+                if 'no trobat' in error_message or 'no té cap avatar' in error_message:
+                    return Response({
+                        'error': error_message
+                    }, status=status.HTTP_404_NOT_FOUND)
+                else:
+                    return Response({
+                        'error': error_message
+                    }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            
+            return Response(status=status.HTTP_204_NO_CONTENT)
+            
+        except Exception as e:
+            logger.error(f"Error eliminant avatar: {str(e)}")
+            return Response({
+                'error': 'Error eliminant l\'avatar'
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

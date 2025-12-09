@@ -388,3 +388,53 @@ EXAMPLE_HEALTH_CHECK_UNHEALTHY = {
     'message': 'Error connecting to Firebase',
     'firebase': False
 }
+
+# ========== EXEMPLES D'AVATAR ==========
+
+EXAMPLE_AVATAR_UPLOAD_RESPONSE = {
+    'message': 'Avatar pujat correctament',
+    'avatar_metadata': {
+        'key': 'users-avatars/uid_123abc/avatar.jpg',
+        'url': 'https://r2-bucket.example.com/users-avatars/uid_123abc/avatar.jpg?presigned=true',
+        'creator_uid': 'uid_123abc',
+        'uploaded_at': '2025-12-09T14:30:00Z'
+    }
+}
+
+# ========== EXEMPLES DE MITJANS (REFUGIS) ==========
+
+EXAMPLE_REFUGI_MEDIA_LIST = {
+    'media': [
+        {
+            'key': 'refugis-lliures/refugi_colomers/photo1.jpg',
+            'url': 'https://r2-bucket.example.com/refugis-lliures/refugi_colomers/photo1.jpg?presigned=true',
+            'creator_uid': 'uid_123abc',
+            'uploaded_at': '2025-12-08T10:30:00Z'
+        },
+        {
+            'key': 'refugis-lliures/refugi_colomers/photo2.jpg',
+            'url': 'https://r2-bucket.example.com/refugis-lliures/refugi_colomers/photo2.jpg?presigned=true',
+            'creator_uid': 'uid_456def',
+            'uploaded_at': '2025-12-09T12:15:00Z'
+        }
+    ]
+}
+
+EXAMPLE_REFUGI_MEDIA_UPLOAD_RESPONSE = {
+    'message': 'Mitjans pujats correctament',
+    'uploaded_count': 2,
+    'media': [
+        {
+            'key': 'refugis-lliures/refugi_colomers/photo3.jpg',
+            'url': 'https://r2-bucket.example.com/refugis-lliures/refugi_colomers/photo3.jpg?presigned=true',
+            'creator_uid': 'uid_123abc',
+            'uploaded_at': '2025-12-09T14:45:00Z'
+        },
+        {
+            'key': 'refugis-lliures/refugi_colomers/video1.mp4',
+            'url': 'https://r2-bucket.example.com/refugis-lliures/refugi_colomers/video1.mp4?presigned=true',
+            'creator_uid': 'uid_123abc',
+            'uploaded_at': '2025-12-09T14:46:00Z'
+        }
+    ]
+}

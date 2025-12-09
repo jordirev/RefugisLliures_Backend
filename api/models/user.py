@@ -2,7 +2,7 @@
 Model d'usuari per a l'aplicació RefugisLliures
 """
 from dataclasses import dataclass
-from typing import Optional
+from typing import Optional, Dict
 
 @dataclass
 class User:
@@ -11,6 +11,7 @@ class User:
     username: str
     email: str
     avatar: Optional[str] = None
+    avatar_metadata: Optional[Dict[str, str]] = None  # Metadades de l'avatar (key, creator_uid, uploaded_at)
     language: str = 'ca'
     favourite_refuges: Optional[list] = None
     visited_refuges: Optional[list] = None
@@ -35,6 +36,7 @@ class User:
             'username': self.username,
             'email': self.email,
             'avatar': self.avatar,
+            'avatar_metadata': self.avatar_metadata,
             'language': self.language,
             'favourite_refuges': self.favourite_refuges,
             'visited_refuges': self.visited_refuges,
@@ -52,6 +54,7 @@ class User:
             username=data.get('username', ''),
             email=data.get('email', ''),
             avatar=data.get('avatar', ''),
+            avatar_metadata=data.get('avatar_metadata'),
             language=data.get('language', 'ca'),
             favourite_refuges=data.get('favourite_refuges', []),
             visited_refuges=data.get('visited_refuges', []),
