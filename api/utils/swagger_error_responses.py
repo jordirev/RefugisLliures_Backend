@@ -414,3 +414,25 @@ ERROR_403_NOT_MEDIA_OWNER = openapi.Response(
         }
     }
 )
+
+# ========== ERRORS ESPECÍFICS PER PROPOSTES DE REFUGIS ==========
+
+ERROR_404_PROPOSAL_NOT_FOUND = openapi.Response(
+    description='Proposta no trobada',
+    schema=ERROR_SCHEMA_SIMPLE,
+    examples={
+        'application/json': {
+            'error': 'Proposal not found'
+        }
+    }
+)
+
+ERROR_409_PROPOSAL_ALREADY_REVIEWED = openapi.Response(
+    description='La proposta ja ha estat revisada',
+    schema=ERROR_SCHEMA_SIMPLE,
+    examples={
+        'application/json': {
+            'error': 'Proposal is already approved'
+        }
+    }
+)

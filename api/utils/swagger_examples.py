@@ -438,3 +438,148 @@ EXAMPLE_REFUGI_MEDIA_UPLOAD_RESPONSE = {
         }
     ]
 }
+
+# ========== EXEMPLES DE PROPOSTES DE REFUGIS ==========
+
+EXAMPLE_REFUGE_PROPOSAL_CREATE = {
+    'action': 'create',
+    'payload': {
+        'name': 'Refugi Nou de Prova',
+        'coord': {
+            'long': 1.234,
+            'lat': 42.567
+        },
+        'altitude': 1800,
+        'places': 15,
+        'remarque': 'Refugi en bon estat',
+        'info_comp': {
+            'manque_un_mur': 0,
+            'cheminee': 1,
+            'poele': 0,
+            'couvertures': 1,
+            'latrines': 1,
+            'bois': 1,
+            'eau': 1,
+            'matelas': 0,
+            'couchage': 1,
+            'bas_flancs': 0,
+            'lits': 1,
+            'mezzanine/etage': 0
+        },
+        'description': 'Refugi de muntanya amb bones condicions',
+        'links': [],
+        'type': 'non gardé',
+        'region': 'Pirineus',
+        'departement': 'Lleida'
+    },
+    'comment': 'He visitat aquest refugi recentment i crec que hauria d\'estar a la base de dades'
+}
+
+EXAMPLE_REFUGE_PROPOSAL_UPDATE = {
+    'refuge_id': 'refugi_colomers',
+    'action': 'update',
+    'payload': {
+        'places': 45,
+        'remarque': 'Refugi guardat a la Vall d\'Aran - Actualització de capacitat',
+        'description': 'Refugi molt ben equipat amb vistes espectaculars. Recentment ampliat.'
+    },
+    'comment': 'He estat al refugi aquest mes i han ampliat la capacitat'
+}
+
+EXAMPLE_REFUGE_PROPOSAL_DELETE = {
+    'refuge_id': 'refugi_antiga',
+    'action': 'delete',
+    'comment': 'Aquest refugi ja no existeix, va ser destruït per una allau'
+}
+
+EXAMPLE_REFUGE_PROPOSAL_RESPONSE = {
+    'id': 'proposal_abc123',
+    'refuge_id': None,
+    'action': 'create',
+    'payload': {
+        'name': 'Refugi Nou de Prova',
+        'coord': {
+            'long': 1.234,
+            'lat': 42.567
+        },
+        'altitude': 1800,
+        'places': 15,
+        'remarque': 'Refugi en bon estat',
+        'info_comp': {
+            'manque_un_mur': 0,
+            'cheminee': 1,
+            'poele': 0,
+            'couvertures': 1,
+            'latrines': 1,
+            'bois': 1,
+            'eau': 1,
+            'matelas': 0,
+            'couchage': 1,
+            'bas_flancs': 0,
+            'lits': 1,
+            'mezzanine/etage': 0
+        },
+        'description': 'Refugi de muntanya amb bones condicions',
+        'links': [],
+        'type': 'non gardé',
+        'region': 'Pirineus',
+        'departement': 'Lleida'
+    },
+    'comment': 'He visitat aquest refugi recentment i crec que hauria d\'estar a la base de dades',
+    'status': 'pending',
+    'creator_uid': 'uid_123abc',
+    'created_at': '2025-12-10',
+    'reviewer_uid': None,
+    'reviewed_at': None,
+    'rejection_reason': None
+}
+
+EXAMPLE_REFUGE_PROPOSALS_LIST = [
+    {
+        'id': 'proposal_abc123',
+        'refuge_id': None,
+        'action': 'create',
+        'payload': {
+            'name': 'Refugi Nou de Prova',
+            'coord': {'long': 1.234, 'lat': 42.567},
+            'altitude': 1800,
+            'places': 15
+        },
+        'comment': 'Nou refugi descobert',
+        'status': 'pending',
+        'creator_uid': 'uid_123abc',
+        'created_at': '2025-12-10',
+        'reviewer_uid': None,
+        'reviewed_at': None,
+        'rejection_reason': None
+    },
+    {
+        'id': 'proposal_def456',
+        'refuge_id': 'refugi_colomers',
+        'action': 'update',
+        'payload': {
+            'places': 45,
+            'remarque': 'Capacitat actualitzada'
+        },
+        'comment': 'Ampliació recent del refugi',
+        'status': 'approved',
+        'creator_uid': 'uid_456def',
+        'created_at': '2025-12-08',
+        'reviewer_uid': 'admin_uid_789',
+        'reviewed_at': '2025-12-09',
+        'rejection_reason': None
+    },
+    {
+        'id': 'proposal_ghi789',
+        'refuge_id': 'refugi_antiga',
+        'action': 'delete',
+        'payload': None,
+        'comment': 'Refugi destruït per allau',
+        'status': 'rejected',
+        'creator_uid': 'uid_789ghi',
+        'created_at': '2025-12-07',
+        'reviewer_uid': 'admin_uid_789',
+        'reviewed_at': '2025-12-08',
+        'rejection_reason': 'Necessitem més evidències abans d\'eliminar el refugi'
+    }
+]
