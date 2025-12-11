@@ -11,6 +11,7 @@ from drf_yasg import openapi
 from ..controllers.refuge_proposal_controller import RefugeProposalController
 from ..serializers.refuge_proposal_serializer import (
     RefugeProposalCreateSerializer,
+    RefugeProposalPayloadSerializer,
     RefugeProposalResponseSerializer,
     RefugeProposalRejectSerializer
 )
@@ -58,7 +59,23 @@ class RefugeProposalCollectionAPIView(APIView):
             "- `delete`: Eliminar un refugi (requereix `refuge_id`, no `payload`)\n\n"
             "La proposta quedarà en estat `pending` fins que un administrador l'aprovi o rebutgi."
         ),
-        request_body=RefugeProposalCreateSerializer,
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            properties={
+                "refuge_id": openapi.Schema(type=openapi.TYPE_STRING, description="ID del refugi (no necessari per a 'create')"),
+                "action": openapi.Schema(type=openapi.TYPE_STRING, enum=['create', 'update', 'delete'], description="Tipus d'acció"),
+                "payload": openapi.Schema(type=openapi.TYPE_OBJECT, description="Dades del refugi (obligatori per CREATE i UPDATE)"),
+                "comment": openapi.Schema(type=openapi.TYPE_STRING, description="Comentari opcional"),
+            },
+            required=['action'],
+            examples={
+                'application/json': {
+                    "create": EXAMPLE_REFUGE_PROPOSAL_CREATE,
+                    "update": EXAMPLE_REFUGE_PROPOSAL_UPDATE,
+                    "delete": EXAMPLE_REFUGE_PROPOSAL_DELETE
+                }
+            }
+        ),
         responses={
             201: openapi.Response(
                 description="Proposta creada correctament",

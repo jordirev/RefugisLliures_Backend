@@ -256,9 +256,9 @@ class CreateRefugeStrategy(ProposalApprovalStrategy):
             proposal_ref.update({'refuge_id': new_refugi_id})
             
             # Invalidar cache de llistes de refugis
-            cache_service.invalidate_pattern('refugi_list:*')
-            cache_service.invalidate_pattern('refugi_search:*')
-            cache_service.invalidate_pattern('refugi_coords:*')
+            cache_service.delete_pattern('refugi_list:*')
+            cache_service.delete_pattern('refugi_search:*')
+            cache_service.delete_pattern('refugi_coords:*')
             
             logger.info(f"Refugi creat amb ID {new_refugi_id} des de la proposta {proposal.id}")
             return True, None
@@ -297,10 +297,10 @@ class UpdateRefugeStrategy(ProposalApprovalStrategy):
             update_coords_refugis_update(db, proposal.refuge_id, update_data)
             
             # Invalidar cache relacionada amb aquest refugi
-            cache_service.invalidate_pattern(f'refugi_detail:refugi_id:{proposal.refuge_id}:*')
-            cache_service.invalidate_pattern('refugi_list:*')
-            cache_service.invalidate_pattern('refugi_search:*')
-            cache_service.invalidate_pattern('refugi_coords:*')
+            cache_service.delete_pattern(f'refugi_detail:refugi_id:{proposal.refuge_id}:*')
+            cache_service.delete_pattern('refugi_list:*')
+            cache_service.delete_pattern('refugi_search:*')
+            cache_service.delete_pattern('refugi_coords:*')
             
             logger.info(f"Refugi {proposal.refuge_id} actualitzat des de la proposta {proposal.id}")
             return True, None
@@ -335,10 +335,10 @@ class DeleteRefugeStrategy(ProposalApprovalStrategy):
             update_coords_refugis_delete(db, proposal.refuge_id)
             
             # Invalidar cache relacionada amb aquest refugi
-            cache_service.invalidate_pattern(f'refugi_detail:refugi_id:{proposal.refuge_id}:*')
-            cache_service.invalidate_pattern('refugi_list:*')
-            cache_service.invalidate_pattern('refugi_search:*')
-            cache_service.invalidate_pattern('refugi_coords:*')
+            cache_service.delete_pattern(f'refugi_detail:refugi_id:{proposal.refuge_id}:*')
+            cache_service.delete_pattern('refugi_list:*')
+            cache_service.delete_pattern('refugi_search:*')
+            cache_service.delete_pattern('refugi_coords:*')
             
             logger.info(f"Refugi {proposal.refuge_id} eliminat des de la proposta {proposal.id}")
             return True, None
@@ -398,7 +398,7 @@ class RefugeProposalDAO:
             doc_ref.set(proposal_dict)
             
             # Invalidar cache de llistes de propostes
-            cache_service.invalidate_pattern('proposal_list:*')
+            cache_service.delete_pattern('proposal_list:*')
             
             return self.mapper.firestore_to_model(proposal_dict)
             
@@ -501,8 +501,8 @@ class RefugeProposalDAO:
             })
             
             # Invalidar cache
-            cache_service.invalidate_pattern(f'proposal_detail:proposal_id:{proposal_id}:*')
-            cache_service.invalidate_pattern('proposal_list:*')
+            cache_service.delete_pattern(f'proposal_detail:proposal_id:{proposal_id}:*')
+            cache_service.delete_pattern('proposal_list:*')
             
             return True, None
             
@@ -538,8 +538,8 @@ class RefugeProposalDAO:
             proposal_ref.update(update_data)
             
             # Invalidar cache
-            cache_service.invalidate_pattern(f'proposal_detail:proposal_id:{proposal_id}:*')
-            cache_service.invalidate_pattern('proposal_list:*')
+            cache_service.delete_pattern(f'proposal_detail:proposal_id:{proposal_id}:*')
+            cache_service.delete_pattern('proposal_list:*')
             
             return True, None
             

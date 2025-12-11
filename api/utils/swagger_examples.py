@@ -543,7 +543,27 @@ EXAMPLE_REFUGE_PROPOSALS_LIST = [
             'name': 'Refugi Nou de Prova',
             'coord': {'long': 1.234, 'lat': 42.567},
             'altitude': 1800,
-            'places': 15
+            'places': 15,
+            'remarque': 'Refugi en bon estat',
+            'info_comp': {
+                'manque_un_mur': 0,
+                'cheminee': 1,
+                'poele': 0,
+                'couvertures': 1,
+                'latrines': 1,
+                'bois': 1,
+                'eau': 1,
+                'matelas': 0,
+                'couchage': 1,
+                'bas_flancs': 0,
+                'lits': 1,
+                'mezzanine/etage': 0
+            },
+            'description': 'Refugi de muntanya amb bones condicions',
+            'links': [],
+            'type': 'non gardé',
+            'region': 'Pirineus',
+            'departement': 'Lleida'
         },
         'comment': 'Nou refugi descobert',
         'status': 'pending',
