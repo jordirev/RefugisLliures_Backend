@@ -133,7 +133,8 @@ class RefugeProposalCollectionAPIView(APIView):
     @swagger_auto_schema(
         operation_description=(
             "Llista totes les propostes de refugis. Només accessible per administradors.\n\n"
-            "Es pot filtrar per status utilitzant el paràmetre `status`."
+            "Es pot filtrar per status i/o per refuge_id. Els filtres es poden combinar.\n"
+            "Les propostes es retornen ordenades per data de creació (més recents primer)."
         ),
         manual_parameters=[
             openapi.Parameter(
@@ -142,6 +143,13 @@ class RefugeProposalCollectionAPIView(APIView):
                 description="Filtre per status de la proposta",
                 type=openapi.TYPE_STRING,
                 enum=['pending', 'approved', 'rejected'],
+                required=False
+            ),
+            openapi.Parameter(
+                'refuge-id',
+                openapi.IN_QUERY,
+                description="Filtre per ID del refugi. Retorna totes les propostes relacionades amb aquest refugi.",
+                type=openapi.TYPE_STRING,
                 required=False
             )
         ],
@@ -162,12 +170,13 @@ class RefugeProposalCollectionAPIView(APIView):
     )
     def get(self, request):
         """Llistar totes les propostes (només admins)"""
-        # Obtenir el filtre de status (opcional)
+        # Obtenir els filtres (opcionals)
         status_filter = request.query_params.get('status', None)
+        refuge_filter = request.query_params.get('refuge-id', None)
         
         # Llistar les propostes
         controller = RefugeProposalController()
-        proposals, error = controller.list_proposals(status_filter)
+        proposals, error = controller.list_proposals(status_filter, refuge_filter)
         
         if error:
             return Response(

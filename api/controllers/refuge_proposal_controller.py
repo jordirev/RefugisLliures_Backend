@@ -69,7 +69,7 @@ class RefugeProposalController:
             logger.error(f'Error in get_proposal_by_id: {str(e)}')
             return None, f"Internal server error: {str(e)}"
     
-    def list_proposals(self, status_filter: Optional[str] = None) -> Tuple[Optional[List[RefugeProposal]], Optional[str]]:
+    def list_proposals(self, status_filter: Optional[str] = None, refuge_filter: Optional[str] = None) -> Tuple[Optional[List[RefugeProposal]], Optional[str]]:
         """
         Llista totes les propostes amb filtre opcional per status
         
@@ -84,7 +84,7 @@ class RefugeProposalController:
             if status_filter and status_filter not in ['pending', 'approved', 'rejected']:
                 return None, f"Invalid status filter: {status_filter}. Must be 'pending', 'approved', or 'rejected'"
             
-            proposals = self.proposal_dao.list_all(status_filter)
+            proposals = self.proposal_dao.list_all(status_filter, refuge_filter)
             
             return proposals, None
             

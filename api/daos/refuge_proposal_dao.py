@@ -9,7 +9,9 @@ from typing import List, Optional, Dict, Any, Tuple
 from google.cloud import firestore
 from ..services import firestore_service, cache_service
 from ..models.refuge_proposal import RefugeProposal
+from ..models.refugi_lliure import Refugi, Coordinates, InfoComplementaria
 from ..mappers.refuge_proposal_mapper import RefugeProposalMapper
+from ..mappers.refugi_lliure_mapper import RefugiLliureMapper
 from ..utils.timezone_utils import get_madrid_now
 
 logger = logging.getLogger(__name__)
@@ -237,45 +239,41 @@ class CreateRefugeStrategy(ProposalApprovalStrategy):
             new_refugi_ref = refugis_ref.document()
             new_refugi_id = new_refugi_ref.id
             
-            # Preparar les dades del refugi
-            refugi_data = proposal.payload.copy()
-            refugi_data['id'] = new_refugi_id
-            
             # Assignar modified_at com a la data de creació de la proposta (sense hora)
             modified_at = datetime.fromisoformat(proposal.created_at.replace("Z", "")).date().isoformat()
-            refugi_data['modified_at'] = modified_at
             
-            # Assegurar que els camps opcionals no completats siguin null excepte info_comp
-            # Camps que haurien de ser null si no estan presents
-            optional_fields = ['altitude', 'places', 'remarque', 'description', 'links', 'type', 'region', 'departement']
-            for field in optional_fields:
-                if field not in refugi_data or refugi_data[field] == '':
-                    refugi_data[field] = None
+            # Crear el model Refugi a partir del payload
+            # Assegurar camps obligatoris
+            coord_data = proposal.payload.get('coord', {})
+            coord = Coordinates(long=coord_data.get('long'), lat=coord_data.get('lat'))
             
-            # Assegurar que info_comp sempre té un valor (diccionari amb valors per defecte 0)
-            if 'info_comp' not in refugi_data or not refugi_data['info_comp']:
-                refugi_data['info_comp'] = {
-                    'manque_un_mur': 0,
-                    'cheminee': 0,
-                    'poele': 0,
-                    'couvertures': 0,
-                    'latrines': 0,
-                    'bois': 0,
-                    'eau': 0,
-                    'matelas': 0,
-                    'couchage': 0,
-                    'bas_flancs': 0,
-                    'lits': 0,
-                    'mezzanine/etage': 0
-                }
+            # Assegurar que info_comp sempre té un valor
+            info_comp_data = proposal.payload.get('info_comp', {})
+            info_comp = InfoComplementaria.from_dict(info_comp_data) if info_comp_data else InfoComplementaria()
             
-            # Assegurar que els camps obligatoris estan presents
-            if 'visitors' not in refugi_data:
-                refugi_data['visitors'] = []
-            if 'media_metadata' not in refugi_data:
-                refugi_data['media_metadata'] = {}
+            # Crear el model Refugi
+            refugi = Refugi(
+                id=new_refugi_id,
+                name=proposal.payload.get('name'),
+                coord=coord,
+                altitude=proposal.payload.get('altitude'),
+                places=proposal.payload.get('places'),
+                remarque=proposal.payload.get('remarque'),
+                info_comp=info_comp,
+                description=proposal.payload.get('description'),
+                links=proposal.payload.get('links', []),
+                type=proposal.payload.get('type', 'non gardé'),
+                modified_at=modified_at,
+                region=proposal.payload.get('region'),
+                departement=proposal.payload.get('departement'),
+                visitors=[],
+                images_metadata=[]
+            )
             
-            # Crear el refugi
+            # Convertir el model a format Firestore utilitzant el mapper
+            refugi_data = RefugiLliureMapper.model_to_firestore(refugi)
+            
+            # Crear el refugi a Firestore
             logger.log(23, f"Firestore WRITE: collection=data_refugis_lliures document={new_refugi_id} (CREATE from proposal)")
             new_refugi_ref.set(refugi_data)
             
@@ -317,12 +315,27 @@ class UpdateRefugeStrategy(ProposalApprovalStrategy):
             if not refugi_doc.exists:
                 return False, f"Refuge with ID {proposal.refuge_id} not found"
             
-            # Preparar les dades d'actualització
-            update_data = proposal.payload.copy()
-
+            # Preparar les dades d'actualització a partir del payload
+            update_data = {}
+            
             # Assignar modified_at com a la data de creació de la proposta (sense hora)
             modified_at = datetime.fromisoformat(proposal.created_at.replace("Z", "")).date().isoformat()
             update_data['modified_at'] = modified_at
+            
+            # Copiar només els camps presents al payload
+            for key, value in proposal.payload.items():
+                if key == 'coord':
+                    # Convertir coordenades al format correcte
+                    update_data['coord'] = {
+                        'long': value.get('long'),
+                        'lat': value.get('lat')
+                    }
+                elif key == 'info_comp':
+                    # Convertir info_comp al format correcte
+                    info_comp = InfoComplementaria.from_dict(value)
+                    update_data['info_comp'] = info_comp.to_dict()
+                else:
+                    update_data[key] = value
             
             # Actualitzar el refugi
             logger.log(23, f"Firestore UPDATE: collection=data_refugis_lliures document={proposal.refuge_id} (UPDATE from proposal)")
@@ -469,9 +482,13 @@ class RefugeProposalDAO:
             logger.error(f'Error getting proposal by ID {proposal_id}: {str(e)}')
             return None
     
-    def list_all(self, status_filter: Optional[str] = None) -> List[RefugeProposal]:
-        """Llista totes les propostes amb filtre opcional per status amb cache"""
-        cache_key = cache_service.generate_key('proposal_list', status=status_filter or 'all')
+    def list_all(self, status_filter: Optional[str] = None, refuge_id_filter: Optional[str] = None) -> List[RefugeProposal]:
+        """Llista totes les propostes amb filtres opcionals per status i refuge_id amb cache"""
+        cache_key = cache_service.generate_key(
+            'proposal_list', 
+            status=status_filter or 'all',
+            refuge_id=refuge_id_filter or 'all'
+        )
         
         cached_data = cache_service.get(cache_key)
         if cached_data is not None:
@@ -481,11 +498,23 @@ class RefugeProposalDAO:
             db = firestore_service.get_db()
             query = db.collection(self.collection_name)
             
+            # Construir la query amb els filtres
+            filters_applied = []
+
             if status_filter:
                 logger.log(23, f"Firestore READ: collection={self.collection_name} where status={status_filter}")
                 query = query.where('status', '==', status_filter)
-            else:
+                filters_applied.append(f"status={status_filter}")
+            
+            if refuge_id_filter:
+                logger.log(23, f"Firestore READ: collection={self.collection_name} where refuge_id={refuge_id_filter}")
+                query = query.where('refuge_id', '==', refuge_id_filter)
+                filters_applied.append(f"refuge_id={refuge_id_filter}")
+            
+            if not filters_applied:
                 logger.log(23, f"Firestore READ: collection={self.collection_name} (all proposals)")
+            else:
+                logger.log(23, f"Firestore READ: collection={self.collection_name} with filters: {', '.join(filters_applied)}")
             
             # Ordenar per data de creació (més recents primer)
             query = query.order_by('created_at', direction=firestore.Query.DESCENDING)

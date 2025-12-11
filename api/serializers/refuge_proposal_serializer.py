@@ -13,8 +13,8 @@ class RefugeProposalPayloadSerializer(serializers.Serializer):
     coord = CoordinatesSerializer(required=False)
     
     # Camps opcionals
-    altitude = serializers.IntegerField(required=False, allow_null=True)
-    places = serializers.IntegerField(required=False, allow_null=True)
+    altitude = serializers.IntegerField(required=False, allow_null=True, min_value=0, max_value=8848)
+    places = serializers.IntegerField(required=False, allow_null=True, min_value=0)
     remarque = serializers.CharField(required=False, allow_blank=True, default='')
     info_comp = InfoComplementariaSerializer(required=False)
     description = serializers.CharField(required=False, allow_blank=True, default='')
@@ -32,6 +32,38 @@ class RefugeProposalPayloadSerializer(serializers.Serializer):
                 raise serializers.ValidationError({
                     field: f"El camp '{field}' no pot estar present al payload de la proposta"
                 })
+        
+        # Validar info_comp si està present
+        if 'info_comp' in data and data['info_comp']:
+            allowed_info_comp_fields = {
+                'manque_un_mur', 'cheminee', 'poele', 'couvertures', 'latrines',
+                'bois', 'eau', 'matelas', 'couchage', 'bas_flancs', 'lits', 'mezzanine/etage'
+            }
+            info_comp = data['info_comp']
+            if isinstance(info_comp, dict):
+                unknown_fields = set(info_comp.keys()) - allowed_info_comp_fields
+                if unknown_fields:
+                    raise serializers.ValidationError({
+                        'info_comp': f"Camps no permesos en info_comp: {', '.join(unknown_fields)}. "
+                                    f"Camps permesos: {', '.join(sorted(allowed_info_comp_fields))}"
+                    })
+        
+        return data
+    
+    def validate_unknown_fields(self, data):
+        """Valida que no hi hagi camps desconeguts al payload"""
+        # Camps permesos al payload
+        allowed_fields = {
+            'name', 'coord', 'altitude', 'places', 'remarque', 'info_comp',
+            'description', 'links', 'type', 'region', 'departement'
+        }
+        
+        unknown_fields = set(data.keys()) - allowed_fields
+        if unknown_fields:
+            raise serializers.ValidationError(
+                f"Camps no permesos al payload: {', '.join(unknown_fields)}. "
+                f"Camps permesos: {', '.join(sorted(allowed_fields))}"
+            )
         
         return data
 
@@ -94,6 +126,36 @@ class RefugeProposalCreateSerializer(serializers.Serializer):
         
         # Validar l'estructura del payload si existeix
         if payload and (action in ['create', 'update']):
+            # Primer validar que no hi hagi camps desconeguts
+            allowed_payload_fields = {
+                'name', 'coord', 'altitude', 'places', 'remarque', 'info_comp',
+                'description', 'links', 'type', 'region', 'departement'
+            }
+            unknown_fields = set(payload.keys()) - allowed_payload_fields
+            if unknown_fields:
+                raise serializers.ValidationError({
+                    'payload': f"Camps no permesos al payload: {', '.join(sorted(unknown_fields))}. "
+                              f"Camps permesos: {', '.join(sorted(allowed_payload_fields))}"
+                })
+            
+            # Validar info_comp si està present
+            if 'info_comp' in payload and payload['info_comp']:
+                allowed_info_comp_fields = {
+                    'manque_un_mur', 'cheminee', 'poele', 'couvertures', 'latrines',
+                    'bois', 'eau', 'matelas', 'couchage', 'bas_flancs', 'lits', 'mezzanine/etage'
+                }
+                info_comp = payload['info_comp']
+                if isinstance(info_comp, dict):
+                    unknown_info_comp_fields = set(info_comp.keys()) - allowed_info_comp_fields
+                    if unknown_info_comp_fields:
+                        raise serializers.ValidationError({
+                            'payload': {
+                                'info_comp': f"Camps no permesos en info_comp: {', '.join(sorted(unknown_info_comp_fields))}. "
+                                           f"Camps permesos: {', '.join(sorted(allowed_info_comp_fields))}"
+                            }
+                        })
+            
+            # Després validar amb el serializer
             payload_serializer = RefugeProposalPayloadSerializer(data=payload)
             if not payload_serializer.is_valid():
                 raise serializers.ValidationError({
