@@ -73,7 +73,8 @@ class RefugiSearchFiltersSerializer(serializers.Serializer):
     name = serializers.CharField(required=False, default='', allow_blank=True)
 
     # Characteristics filters - accepten strings amb comes o llistes
-    type = serializers.CharField(
+    type = serializers.MultipleChoiceField(
+        choices= ['non gardé', 'fermée', 'cabane ouverte mais occupee par le berger l ete', 'orri'],
         required=False,
         allow_blank=True,
         default='',

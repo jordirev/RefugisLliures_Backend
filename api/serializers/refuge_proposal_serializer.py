@@ -19,7 +19,7 @@ class RefugeProposalPayloadSerializer(serializers.Serializer):
     info_comp = InfoComplementariaSerializer(required=False)
     description = serializers.CharField(required=False, allow_blank=True, default='')
     links = serializers.ListField(child=serializers.URLField(), required=False, default=list)
-    type = serializers.CharField(required=False, default='no guardat')
+    type = serializers.ChoiceField(choices=['non gardé', 'fermée', 'cabane ouverte mais occupee par le berger l ete', 'orri'], required=False, default='non gardé')
     region = serializers.CharField(required=False, allow_null=True)
     departement = serializers.CharField(required=False, allow_null=True)
     

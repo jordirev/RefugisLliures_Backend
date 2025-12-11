@@ -5,6 +5,7 @@ import logging
 from typing import Dict, Any, List, Optional, Tuple
 from ..daos.refuge_proposal_dao import RefugeProposalDAO
 from ..models.refuge_proposal import RefugeProposal
+from ..daos.refugi_lliure_dao import RefugiLliureDAO
 
 logger = logging.getLogger(__name__)
 
@@ -27,6 +28,14 @@ class RefugeProposalController:
             (RefugeProposal o None, missatge d'error o None)
         """
         try:
+            # Validar l'existència del refugi per a accions diferents d'update/delete
+            if proposal_data.get('action') in ['update', 'delete']:
+                refugi_lliure_dao = RefugiLliureDAO()
+                refugi_exists = refugi_lliure_dao.refugi_exists(proposal_data.get('refuge_id'))
+                if not refugi_exists:
+                    return None, "Refuge does not exists"
+            
+            # Crear la proposta
             proposal = self.proposal_dao.create(proposal_data, creator_uid)
             
             if not proposal:

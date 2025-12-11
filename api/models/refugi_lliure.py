@@ -81,18 +81,18 @@ class Refugi:
     id: str
     name: str
     coord: Coordinates
-    altitude: int = 0
-    places: int = 0
-    remarque: str = ""
+    altitude: Optional[int] = None
+    places: Optional[int] = None
+    remarque: Optional[str] = None
     info_comp: InfoComplementaria = field(default_factory=InfoComplementaria)
-    description: str = ""
-    links: List[str] = field(default_factory=list)
-    type: str = ""
-    modified_at: str = ""
+    description: Optional[str] = None
+    links: Optional[List[str]] = field(default_factory=list)
+    type: str = 'non gardé'
+    modified_at: Optional[str] = None
     region: Optional[str] = None
     departement: Optional[str] = None
-    visitors: List[str] = field(default_factory=list)
-    images_metadata: List[RefugeMediaMetadata] = field(default_factory=list)  # Metadades amb URLs prefirmades (generades dinàmicament)
+    visitors: Optional[List[str]] = field(default_factory=list)
+    images_metadata: Optional[List[RefugeMediaMetadata]] = field(default_factory=list)  # Metadades amb URLs prefirmades (generades dinàmicament)
     
     def __post_init__(self):
         """Validacions després de la inicialització"""

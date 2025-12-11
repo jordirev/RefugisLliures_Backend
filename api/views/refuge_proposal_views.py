@@ -113,6 +113,11 @@ class RefugeProposalCollectionAPIView(APIView):
         proposal, error = controller.create_proposal(serializer.validated_data, creator_uid)
         
         if error:
+            if 'not exists' in error.lower():
+                return Response(
+                    {'error': error},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
             return Response(
                 {'error': error},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR

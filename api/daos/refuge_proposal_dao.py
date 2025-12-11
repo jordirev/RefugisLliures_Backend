@@ -2,6 +2,7 @@
 DAO per a la gestió de propostes de refugis amb Firestore
 Implementa el patró Strategy per gestionar les diferents accions (create, update, delete)
 """
+from datetime import datetime
 import logging
 from abc import ABC, abstractmethod
 from typing import List, Optional, Dict, Any, Tuple
@@ -9,7 +10,7 @@ from google.cloud import firestore
 from ..services import firestore_service, cache_service
 from ..models.refuge_proposal import RefugeProposal
 from ..mappers.refuge_proposal_mapper import RefugeProposalMapper
-from ..utils.timezone_utils import get_madrid_today
+from ..utils.timezone_utils import get_madrid_now
 
 logger = logging.getLogger(__name__)
 
@@ -240,8 +241,39 @@ class CreateRefugeStrategy(ProposalApprovalStrategy):
             refugi_data = proposal.payload.copy()
             refugi_data['id'] = new_refugi_id
             
-            # Assegurar que les dates estan correctes
-            refugi_data['modified_at'] = proposal.created_at
+            # Assignar modified_at com a la data de creació de la proposta (sense hora)
+            modified_at = datetime.fromisoformat(proposal.created_at.replace("Z", "")).date().isoformat()
+            refugi_data['modified_at'] = modified_at
+            
+            # Assegurar que els camps opcionals no completats siguin null excepte info_comp
+            # Camps que haurien de ser null si no estan presents
+            optional_fields = ['altitude', 'places', 'remarque', 'description', 'links', 'type', 'region', 'departement']
+            for field in optional_fields:
+                if field not in refugi_data or refugi_data[field] == '':
+                    refugi_data[field] = None
+            
+            # Assegurar que info_comp sempre té un valor (diccionari amb valors per defecte 0)
+            if 'info_comp' not in refugi_data or not refugi_data['info_comp']:
+                refugi_data['info_comp'] = {
+                    'manque_un_mur': 0,
+                    'cheminee': 0,
+                    'poele': 0,
+                    'couvertures': 0,
+                    'latrines': 0,
+                    'bois': 0,
+                    'eau': 0,
+                    'matelas': 0,
+                    'couchage': 0,
+                    'bas_flancs': 0,
+                    'lits': 0,
+                    'mezzanine/etage': 0
+                }
+            
+            # Assegurar que els camps obligatoris estan presents
+            if 'visitors' not in refugi_data:
+                refugi_data['visitors'] = []
+            if 'media_metadata' not in refugi_data:
+                refugi_data['media_metadata'] = {}
             
             # Crear el refugi
             logger.log(23, f"Firestore WRITE: collection=data_refugis_lliures document={new_refugi_id} (CREATE from proposal)")
@@ -287,7 +319,10 @@ class UpdateRefugeStrategy(ProposalApprovalStrategy):
             
             # Preparar les dades d'actualització
             update_data = proposal.payload.copy()
-            update_data['modified_at'] = proposal.created_at
+
+            # Assignar modified_at com a la data de creació de la proposta (sense hora)
+            modified_at = datetime.fromisoformat(proposal.created_at.replace("Z", "")).date().isoformat()
+            update_data['modified_at'] = modified_at
             
             # Actualitzar el refugi
             logger.log(23, f"Firestore UPDATE: collection=data_refugis_lliures document={proposal.refuge_id} (UPDATE from proposal)")
@@ -384,7 +419,7 @@ class RefugeProposalDAO:
                 'comment': proposal_data.get('comment'),
                 'status': 'pending',
                 'creator_uid': creator_uid,
-                'created_at': get_madrid_today().isoformat(),
+                'created_at': get_madrid_now().isoformat(),
                 'reviewer_uid': None,
                 'reviewed_at': None,
                 'rejection_reason': None
@@ -497,7 +532,7 @@ class RefugeProposalDAO:
             proposal_ref.update({
                 'status': 'approved',
                 'reviewer_uid': reviewer_uid,
-                'reviewed_at': get_madrid_today().isoformat()
+                'reviewed_at': get_madrid_now().isoformat()
             })
             
             # Invalidar cache
@@ -528,7 +563,7 @@ class RefugeProposalDAO:
             update_data = {
                 'status': 'rejected',
                 'reviewer_uid': reviewer_uid,
-                'reviewed_at': get_madrid_today().isoformat()
+                'reviewed_at': get_madrid_now().isoformat()
             }
             
             if reason:
