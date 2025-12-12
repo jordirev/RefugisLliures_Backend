@@ -278,14 +278,6 @@ class UserDetailAPIView(APIView):
             return Response({
                 'error': INTERNAL_SERVER_ERROR
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        
-# ========== ITEM ENDPOINT: /users/{uid}/avatar ==========
-
-class UserAvatarAPIView(APIView):
-    """
-    Gestiona la pujada i eliminació d'avatars per a un usuari específic.
-    """
-    permission_classes = [IsAuthenticated, IsSameUser]
     
 
 

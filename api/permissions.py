@@ -98,13 +98,13 @@ class IsCreator(permissions.BasePermission):
     Comprova que el creator_uid de l'objecte coincideix amb l'UID de l'usuari autenticat.
     """
     
-    def has_permission(self, request):
+    def has_permission(self, request, view):
         """
         Comprova si l'usuari està autenticat
         """
         return request.user and hasattr(request.user, 'is_authenticated') and request.user.is_authenticated
     
-    def has_object_permission(self, request, view):
+    def has_object_permission(self, request, view, obj):
         """
         Comprova si l'usuari és el creador de l'objecte
         """
