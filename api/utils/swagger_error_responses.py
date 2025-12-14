@@ -362,3 +362,77 @@ SUCCESS_200_CACHE_INVALIDATED = openapi.Response(
         }
     }
 )
+
+# ========== ERRORS ESPECÍFICS DE MITJANS ==========
+
+ERROR_400_INVALID_FILE_TYPE = openapi.Response(
+    description="Tipus de fitxer no permès",
+    schema=ERROR_SCHEMA_SIMPLE,
+    examples={
+        "application/json": {
+            "error": "Content type 'application/pdf' no permès. Tipus permesos: ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/heic', 'image/heif']"
+        }
+    }
+)
+
+ERROR_400_NO_FILES = openapi.Response(
+    description="No s'han proporcionat fitxers",
+    schema=ERROR_SCHEMA_SIMPLE,
+    examples={
+        "application/json": {
+            "error": "No s'han proporcionat fitxers"
+        }
+    }
+)
+
+ERROR_404_MEDIA_NOT_FOUND = openapi.Response(
+    description="Mitjà no trobat",
+    schema=ERROR_SCHEMA_SIMPLE,
+    examples={
+        "application/json": {
+            "error": "Mitjà no trobat"
+        }
+    }
+)
+
+ERROR_404_AVATAR_NOT_FOUND = openapi.Response(
+    description="Avatar no trobat",
+    schema=ERROR_SCHEMA_SIMPLE,
+    examples={
+        "application/json": {
+            "error": "L'usuari no té cap avatar"
+        }
+    }
+)
+
+ERROR_403_NOT_MEDIA_OWNER = openapi.Response(
+    description="No tens permís per eliminar aquest mitjà",
+    schema=ERROR_SCHEMA_SIMPLE,
+    examples={
+        "application/json": {
+            "error": "No tens permís per eliminar aquest mitjà"
+        }
+    }
+)
+
+# ========== ERRORS ESPECÍFICS PER PROPOSTES DE REFUGIS ==========
+
+ERROR_404_PROPOSAL_NOT_FOUND = openapi.Response(
+    description='Proposta no trobada',
+    schema=ERROR_SCHEMA_SIMPLE,
+    examples={
+        'application/json': {
+            'error': 'Proposal not found'
+        }
+    }
+)
+
+ERROR_409_PROPOSAL_ALREADY_REVIEWED = openapi.Response(
+    description='La proposta ja ha estat revisada',
+    schema=ERROR_SCHEMA_SIMPLE,
+    examples={
+        'application/json': {
+            'error': 'Proposal is already approved'
+        }
+    }
+)

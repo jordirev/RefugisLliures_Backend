@@ -52,6 +52,11 @@ class UserValidatorMixin:
             raise serializers.ValidationError("UID no pot estar buit")
         return value.strip()
 
+class MediaMetadataSerializer(serializers.Serializer):
+    """Serializer per a metadades de mitjans"""
+    key = serializers.CharField()
+    url = serializers.URLField()
+    uploaded_at = serializers.CharField()  # ISO 8601 formatelp_text="Data i hora de pujada (ISO 8601)"
 
 class UserSerializer(UserValidatorMixin, serializers.Serializer):
     """Serializer per a usuaris"""
@@ -69,11 +74,12 @@ class UserSerializer(UserValidatorMixin, serializers.Serializer):
     )
     email = serializers.EmailField(
         help_text=EMAIL_HELPER_TEXT
-    )
-    avatar = serializers.URLField(
-        allow_blank=True, 
-        required=False, 
-        help_text=URL_AVATAR_HELPER_TEXT
+    )    
+    avatar_metadata = MediaMetadataSerializer(
+        required=False,
+        allow_null=True,
+        help_text="Metadades de l'avatar (key, url, uploaded_at)",
+        read_only=True
     )
     language = serializers.CharField(
         max_length=5,
@@ -122,7 +128,10 @@ class UserSerializer(UserValidatorMixin, serializers.Serializer):
     def to_representation(self, instance):
         """Converteix instància a representació JSON"""
         if isinstance(instance, User):
-            return instance.to_dict()
+            user_dict = instance.to_dict()
+            if 'media_metadata' in user_dict:
+                user_dict.pop('media_metadata')
+            return user_dict
         return super().to_representation(instance)
     
     def create(self, validated_data):
@@ -142,8 +151,6 @@ class UserCreateSerializer(UserValidatorMixin, serializers.Serializer):
     username = serializers.CharField(max_length=255, allow_blank=True, required=False, 
                                    help_text=USERNAME_HELPER_TEXT)
     email = serializers.EmailField(help_text=EMAIL_HELPER_TEXT)
-    avatar = serializers.URLField(allow_blank=True, required=False, 
-                                help_text=URL_AVATAR_HELPER_TEXT)
     language = serializers.CharField(default='ca', max_length=5, required=False,
                                 help_text=LANGUAGE_HELPER_TEXT)
     
@@ -162,8 +169,6 @@ class UserUpdateSerializer(UserValidatorMixin, serializers.Serializer):
     username = serializers.CharField(max_length=255, allow_blank=True, required=False, 
                                    help_text=USERNAME_HELPER_TEXT)
     email = serializers.EmailField(required=False, help_text=EMAIL_HELPER_TEXT)
-    avatar = serializers.URLField(allow_blank=True, required=False, 
-                                help_text=URL_AVATAR_HELPER_TEXT)
     language = serializers.CharField(default='ca', max_length=5, required=False,
                                 help_text=LANGUAGE_HELPER_TEXT)
     

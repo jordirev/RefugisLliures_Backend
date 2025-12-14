@@ -31,7 +31,10 @@ class UserMapper:
         Returns:
             Dict: Diccionari amb dades per Firebase
         """
-        return User.to_dict(user)
+        user_dict = User.to_dict(user)
+        if 'avatar_metadata' in user_dict:
+            user_dict.pop('avatar_metadata')  # No enviem avatar_metadata a Firebase
+        return user_dict    
     
     @staticmethod
     def validate_firebase_data(firebase_data: Dict[str, Any]) -> tuple[bool, Optional[str]]:

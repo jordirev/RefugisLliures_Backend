@@ -4,16 +4,22 @@ from .user_serializer import (
     UserCreateSerializer, 
     UserUpdateSerializer,
     UserRefugiSerializer,
+    MediaMetadataSerializer
 )
 from .refugi_lliure_serializer import (
     RefugiSerializer,
-    RefugiCoordinatesSerializer,
     RefugiSearchResponseSerializer,
     HealthCheckResponseSerializer,
     RefugiSearchFiltersSerializer,
     CoordinatesSerializer,
     InfoComplementariaSerializer,
     UserRefugiInfoSerializer,
+    RefugeMediaMetadataSerializer,
+)
+from .renovation_serializer import (
+    RenovationSerializer,
+    RenovationCreateSerializer,
+    RenovationUpdateSerializer,
 )
 
 __all__ = [
@@ -21,7 +27,6 @@ __all__ = [
     'UserCreateSerializer', 
     'UserUpdateSerializer',
     'RefugiSerializer',
-    'RefugiCoordinatesSerializer',
     'RefugiSearchResponseSerializer',
     'HealthCheckResponseSerializer',
     'RefugiSearchFiltersSerializer',
@@ -29,4 +34,9 @@ __all__ = [
     'InfoComplementariaSerializer',
     'UserRefugiSerializer',
     'UserRefugiInfoSerializer',
+    'MediaMetadataSerializer',
+    'RefugeMediaMetadataSerializer',
+    'RenovationSerializer',
+    'RenovationCreateSerializer',
+    'RenovationUpdateSerializer',
 ]

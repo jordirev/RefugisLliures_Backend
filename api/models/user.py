@@ -1,8 +1,12 @@
 """
 Model d'usuari per a l'aplicació RefugisLliures
 """
-from dataclasses import dataclass
-from typing import Optional
+from dataclasses import dataclass, field
+from typing import Optional, Dict, List
+from venv import logger
+
+from api.services import r2_media_service
+from .media_metadata import MediaMetadata
 
 @dataclass
 class User:
@@ -10,7 +14,7 @@ class User:
     uid: str
     username: str
     email: str
-    avatar: Optional[str] = None
+    avatar_metadata: MediaMetadata = None  # Metadades amb URLs prefirmades (generades dinàmicament) {'key': str, 'url': str, 'uploaded_at': str}
     language: str = 'ca'
     favourite_refuges: Optional[list] = None
     visited_refuges: Optional[list] = None
@@ -30,11 +34,20 @@ class User:
     
     def to_dict(self) -> dict:
         """Converteix l'usuari a diccionari"""
+
+        media_metadata = {}
+        if self.avatar_metadata:
+            media_metadata = {
+                'key': self.avatar_metadata.key,
+                'uploaded_at': self.avatar_metadata.uploaded_at
+            }
+
         return {
             'uid': self.uid,
             'username': self.username,
             'email': self.email,
-            'avatar': self.avatar,
+            'media_metadata': media_metadata,
+            'avatar_metadata': self.avatar_metadata.to_dict() if self.avatar_metadata else None,
             'language': self.language,
             'favourite_refuges': self.favourite_refuges,
             'visited_refuges': self.visited_refuges,
@@ -47,11 +60,22 @@ class User:
     @classmethod
     def from_dict(cls, data: dict) -> 'User':
         """Crea un usuari des d'un diccionari"""
+
+        # Generem les metadades amb URL prefirmada per a l'avatar
+        avatar_metadata = None
+        if 'media_metadata' in data and data['media_metadata']:
+            try:
+                media_service = r2_media_service.get_user_avatar_service()
+                avatar_metadata = media_service.generate_media_metadata_from_dict(data['media_metadata'])
+            except Exception as e:
+                logger.warning(f"Error generant MediaMetadata per usuari {data.get('uid', '')}: {str(e)}")
+                avatar_metadata = None
+
         return cls(
             uid=data.get('uid', ''),
             username=data.get('username', ''),
             email=data.get('email', ''),
-            avatar=data.get('avatar', ''),
+            avatar_metadata= avatar_metadata,
             language=data.get('language', 'ca'),
             favourite_refuges=data.get('favourite_refuges', []),
             visited_refuges=data.get('visited_refuges', []),

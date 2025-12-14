@@ -15,7 +15,10 @@ class RefugiLliureMapper:
     @staticmethod
     def model_to_firestore(refugi: Refugi) -> Dict[str, Any]:
         """Converteix model Refugi a format Firestore"""
-        return refugi.to_dict()
+        refugi_dict = refugi.to_dict()
+        if 'images_metadata' in refugi_dict:
+            refugi_dict.pop('images_metadata')
+        return refugi_dict
     
     @staticmethod
     def firestore_list_to_models(data_list: List[Dict[str, Any]]) -> List[Refugi]:
@@ -30,23 +33,24 @@ class RefugiLliureMapper:
 
     
     @staticmethod
-    def format_search_response(refugis: List[Refugi], include_visitors: bool = False) -> Dict[str, Any]:
+    def format_search_response(refugis: List[Refugi]) -> Dict[str, Any]:
         """
         Formatea la resposta de cerca
         Args:
             refugis: Llista de refugis
             include_visitors: Si True, inclou la llista de visitants. Si False, l'omet.
+            include_media_metadata: Si True, inclou media_metadata i images_metadata. Si False, els omet.
         """
         results = []
         for refugi in refugis:
             refugi_dict = refugi.to_dict()
-            # Eliminar visitors si no cal incloure'ls
-            if not include_visitors and 'visitors' in refugi_dict:
-                del refugi_dict['visitors']
-            results.append(refugi_dict)
+            if 'media_metadata' in refugi_dict:
+                refugi_dict.pop('media_metadata', None)
+            results.append(refugi.to_dict())
         
         return {
             'count': len(refugis),
+            'has_filters': True,
             'results': results
         }
     
@@ -55,6 +59,7 @@ class RefugiLliureMapper:
         """Formatea la resposta de cerca des de dades raw (per coordenades)"""
         return {
             'count': len(refugis_data),
+            'has_filters': False,
             'results': refugis_data
         }
     

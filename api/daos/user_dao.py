@@ -2,7 +2,7 @@
 DAO per a la gestió d'usuaris amb Firestore
 """
 import logging
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Tuple
 from ..services.firestore_service import FirestoreService
 from ..services.cache_service import cache_service
 from ..mappers.user_mapper import UserMapper
@@ -497,3 +497,77 @@ class UserDAO:
         except Exception as e:
             logger.error(f"Error decrementant comptador de refugis renovats per l'usuari {uid}: {str(e)}")
             return False
+    
+    def update_avatar_metadata(self, uid: str, media_metadata: Dict[str, str]) -> bool:
+        """
+        Actualitza les metadades de l'avatar d'un usuari
+        
+        Args:
+            uid: UID de l'usuari
+            media_metadata: Diccionari amb metadades de l'avatar (key, uploaded_at)
+            
+        Returns:
+            bool: True si s'ha actualitzat correctament
+        """
+        try:
+            db = self.firestore_service.get_db()
+            doc_ref = db.collection(self.COLLECTION_NAME).document(uid)
+            
+            # Comprova que l'usuari existeixi
+            doc = doc_ref.get()
+            if not doc.exists:
+                logger.warning(f"No es pot actualitzar avatar, usuari no trobat amb UID: {uid}")
+                return False
+            
+            # Actualitza les metadades de l'avatar
+            doc_ref.update({
+                'media_metadata': media_metadata,
+            })
+            
+            # Invalida cache de l'usuari
+            cache_service.delete(cache_service.generate_key('user_detail', uid=uid))
+            
+            logger.info(f"Avatar actualitzat per l'usuari {uid}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error actualitzant avatar per l'usuari {uid}: {str(e)}")
+            return False
+    
+    def delete_avatar_metadata(self, uid: str) -> Tuple[bool, Optional[Dict[str, str]]]:
+        """
+        Elimina les metadades de l'avatar d'un usuari
+        
+        Args:
+            uid: UID de l'usuari
+            
+        Returns:
+            Tuple[bool, Optional[Dict]]: (True si s'ha eliminat correctament, metadades de l'avatar eliminat)
+        """
+        try:
+            db = self.firestore_service.get_db()
+            doc_ref = db.collection(self.COLLECTION_NAME).document(uid)
+            
+            # Comprova que l'usuari existeixi i obté les metadades actuals
+            doc = doc_ref.get()
+            if not doc.exists:
+                logger.warning(f"No es pot eliminar avatar, usuari no trobat amb UID: {uid}")
+                return False, None
+            
+            user_data = doc.to_dict()
+            media_metadata = user_data.get('media_metadata')
+            
+            # Elimina les metadades de l'avatar
+            doc_ref.update({
+                'media_metadata': None,
+            })
+            
+            # Invalida cache de l'usuari
+            cache_service.delete(cache_service.generate_key('user_detail', uid=uid))
+            
+            logger.info(f"Avatar eliminat per l'usuari {uid}")
+            return True, media_metadata
+            
+        except Exception as e:
+            logger.error(f"Error eliminant avatar per l'usuari {uid}: {str(e)}")
+            return False, None

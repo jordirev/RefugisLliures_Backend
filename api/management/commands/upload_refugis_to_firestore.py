@@ -7,6 +7,14 @@ from firebase_admin import credentials, firestore
 from pathlib import Path
 
 
+"""
+IMPORTANT: Aquesta comanda està dissenyada per a ser executada una sola vegada per migrar les dades dels refugis existents a una nova col·lecció
+anomenada 'data_refugis_lliures'. Aquesta col·lecció contindrà un document per a cada refugi amb tota la informació rellevant.
+
+Si ja s'ha executat aquesta comanda i la col·lecció 'data_refugis_lliures' ja existeix, NO s'ha d'executar de nou per evitar duplicats, inconsistències o perdua d'informació.
+
+"""
+
 class Command(BaseCommand):
     help = 'Upload refugis data from JSON to Firestore'
 

@@ -29,22 +29,31 @@ class FirebaseAuthenticationMiddleware(MiddlewareMixin):
     def process_request(self, request):
         """
         Processa la request abans que arribi a la vista.
-        Verifica el token JWT si l'endpoint ho requereix.
+        Verifica el token JWT si està present.
+        Si el path està exclòs i no hi ha token, permet continuar.
+        Si hi ha token (exclòs o no), el valida i configura request.user.
         """
-        # Comprova si el path està exclòs
-        if self._is_path_excluded(request.path):
-            return None
-        
         # Obté el token del header Authorization
         auth_header = request.META.get('HTTP_AUTHORIZATION', '')
         
+        # Comprova si el path està exclòs
+        is_path_excluded = self._is_path_excluded(request.path)
+        
+        # Si no hi ha token i el path està exclòs, permet continuar sense autenticació
+        if not auth_header and is_path_excluded:
+            return None
+        
+        # Si no hi ha token i el path NO està exclòs, retorna error
         if not auth_header:
             return self._unauthorized_response('Token d\'autenticació no proporcionat')
         
         # Extreu el token del format "Bearer <token>"
         token_parts = auth_header.split()
         if len(token_parts) != 2 or token_parts[0].lower() != 'bearer':
-            return self._unauthorized_response('Token d\'autenticació no proporcionat')
+            # Si el token és mal format i el path està exclòs, permet continuar
+            if is_path_excluded:
+                return None
+            return self._unauthorized_response('Format de token invàlid')
         
         token = token_parts[1]
         
@@ -57,6 +66,17 @@ class FirebaseAuthenticationMiddleware(MiddlewareMixin):
             request.user_uid = decoded_token.get('uid')
             # Extreu els custom claims del token
             request.user_claims = decoded_token
+            
+            # Crear un objecte user mínim compatible amb Django REST Framework
+            class FirebaseUser:
+                def __init__(self, uid, claims):
+                    self.uid = uid
+                    self.claims = claims
+                    self.is_authenticated = True
+                    self.is_active = True
+                    self.is_anonymous = False
+            
+            request.user = FirebaseUser(decoded_token.get('uid'), decoded_token)
             
             logger.info(f"Token verificat correctament per a l'usuari: {request.user_uid}")
             return None

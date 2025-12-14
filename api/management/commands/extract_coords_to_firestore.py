@@ -5,6 +5,13 @@ import firebase_admin
 from firebase_admin import credentials, firestore
 from pathlib import Path
 
+"""
+IMPORTANT: Aquesta comanda està dissenyada per a ser executada una sola vegada per migrar les coordenades dels refugis existents a una nova col·lecció
+anomenada 'coords_refugis'. Aquesta col·lecció contindrà un únic document amb totes les coordenades per facilitar les consultes geogràfiques.
+
+Si ja s'ha executat aquesta comanda i la col·lecció 'coords_refugis' ja existeix, NO s'ha d'executar de nou per evitar duplicats, inconsistències o perdua d'informació.
+
+"""
 
 class Command(BaseCommand):
     help = 'Extract coordinates from existing refugis in Firestore and create a coords_refugis collection'
@@ -94,7 +101,7 @@ class Command(BaseCommand):
                         'long': coord_info['long']
                     },
                     # Add geohash for efficient geo queries
-                    'geohash': self._generate_simple_geohash(coord_info['lat'], coord_info['long'])
+                    'geohash': self.generate_simple_geohash(coord_info['lat'], coord_info['long'])
                 }
 
                 # Add refugi name if available for easier identification
@@ -195,7 +202,7 @@ class Command(BaseCommand):
         except Exception as e:
             self.stdout.write(f'Could not get collection stats: {str(e)}')
 
-    def _generate_simple_geohash(self, lat, lng, precision=5):
+    def generate_simple_geohash(self, lat, lng, precision=5):
         """Generate a simple geohash for geographical indexing"""
         # Simple implementation for demonstration
         # In production, consider using a proper geohash library
