@@ -21,7 +21,7 @@ class InfoComplementariaSerializer(serializers.Serializer):
     couchage = serializers.IntegerField(default=0)
     bas_flancs = serializers.IntegerField(default=0)
     lits = serializers.IntegerField(default=0)
-    mezzanine_etage = serializers.IntegerField(default=0, source='mezzanine/etage')
+    mezzanine_etage = serializers.IntegerField(default=0)
 
 class RefugeMediaMetadataSerializer(serializers.Serializer):
     """Serializer per a metadades de mitjans"""

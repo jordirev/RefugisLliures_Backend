@@ -37,7 +37,7 @@ class RefugeProposalPayloadSerializer(serializers.Serializer):
         if 'info_comp' in data and data['info_comp']:
             allowed_info_comp_fields = {
                 'manque_un_mur', 'cheminee', 'poele', 'couvertures', 'latrines',
-                'bois', 'eau', 'matelas', 'couchage', 'bas_flancs', 'lits', 'mezzanine/etage'
+                'bois', 'eau', 'matelas', 'couchage', 'bas_flancs', 'lits', 'mezzanine_etage'
             }
             info_comp = data['info_comp']
             if isinstance(info_comp, dict):
@@ -142,7 +142,7 @@ class RefugeProposalCreateSerializer(serializers.Serializer):
             if 'info_comp' in payload and payload['info_comp']:
                 allowed_info_comp_fields = {
                     'manque_un_mur', 'cheminee', 'poele', 'couvertures', 'latrines',
-                    'bois', 'eau', 'matelas', 'couchage', 'bas_flancs', 'lits', 'mezzanine/etage'
+                    'bois', 'eau', 'matelas', 'couchage', 'bas_flancs', 'lits', 'mezzanine_etage'
                 }
                 info_comp = payload['info_comp']
                 if isinstance(info_comp, dict):

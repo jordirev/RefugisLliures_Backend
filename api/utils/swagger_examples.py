@@ -70,7 +70,7 @@ EXAMPLE_REFUGI_COLOMERS = {
         'couchage': 1,
         'bas_flancs': 0,
         'lits': 1,
-        'mezzanine/etage': 1
+        'mezzanine_etage': 1
     },
     'description': 'Refugi molt ben equipat amb vistes espectaculars',
     'links': ['https://www.feec.cat/refugis/colomers'],
@@ -102,7 +102,7 @@ EXAMPLE_REFUGI_COLOMERS_DETAILED = {
         'couchage': 1,
         'bas_flancs': 0,
         'lits': 1,
-        'mezzanine/etage': 1
+        'mezzanine_etage': 1
     },
     'description': 'Refugi molt ben equipat amb vistes espectaculars als Estanys de Colomers. Ideal per a excursions familiars i de diversos dies.',
     'links': [
@@ -137,7 +137,7 @@ EXAMPLE_REFUGI_RESTANCA = {
         'couchage': 1,
         'bas_flancs': 1,
         'lits': 0,
-        'mezzanine/etage': 0
+        'mezzanine_etage': 0
     },
     'description': 'Refugi situat prop del llac de Restanca',
     'links': [],
@@ -464,7 +464,7 @@ EXAMPLE_REFUGE_PROPOSAL_CREATE = {
             'couchage': 1,
             'bas_flancs': 0,
             'lits': 1,
-            'mezzanine/etage': 0
+            'mezzanine_etage': 0
         },
         'description': 'Refugi de muntanya amb bones condicions',
         'links': [],
@@ -517,7 +517,7 @@ EXAMPLE_REFUGE_PROPOSAL_RESPONSE = {
             'couchage': 1,
             'bas_flancs': 0,
             'lits': 1,
-            'mezzanine/etage': 0
+            'mezzanine_etage': 0
         },
         'description': 'Refugi de muntanya amb bones condicions',
         'links': [],
@@ -557,7 +557,7 @@ EXAMPLE_REFUGE_PROPOSALS_LIST = [
                 'couchage': 1,
                 'bas_flancs': 0,
                 'lits': 1,
-                'mezzanine/etage': 0
+                'mezzanine_etage': 0
             },
             'description': 'Refugi de muntanya amb bones condicions',
             'links': [],

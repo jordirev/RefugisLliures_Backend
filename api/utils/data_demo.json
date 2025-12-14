@@ -14,7 +14,7 @@
       "matelas": 0,
       "bas_flancs": 0,
       "lits": 0,
-      "mezzanine/etage": 0
+      "mezzanine_etage": 0
     },
     "coord": {
       "long": 2.305361,
@@ -41,7 +41,7 @@
       "matelas": 0,
       "bas_flancs": 0,
       "lits": 0,
-      "mezzanine/etage": 0
+      "mezzanine_etage": 0
     },
     "coord": {
       "long": 1.028327,
@@ -76,7 +76,7 @@
       "bas_flancs": 0,
       "poele": 0,
       "manque_un_mur": 0,
-      "mezzanine/etage": 0,
+      "mezzanine_etage": 0,
       "bois": 1,
       "lits": 0,
       "cheminee": 1,
@@ -105,7 +105,7 @@
       "couvertures": 0,
       "matelas": 0,
       "latrines": 0,
-      "mezzanine/etage": 0,
+      "mezzanine_etage": 0,
       "eau": 1,
       "lits": 0,
       "bois": 1,
@@ -144,7 +144,7 @@
       "bas_flancs": 0,
       "poele": 0,
       "manque_un_mur": 0,
-      "mezzanine/etage": 1,
+      "mezzanine_etage": 1,
       "bois": 1,
       "lits": 0,
       "cheminee": 1,
@@ -170,7 +170,7 @@
       "matelas": 0,
       "bas_flancs": 0,
       "lits": 0,
-      "mezzanine/etage": 0
+      "mezzanine_etage": 0
     },
     "coord": {
       "long": 0.278317,
@@ -198,7 +198,7 @@
       "matelas": 0,
       "bas_flancs": 0,
       "lits": 0,
-      "mezzanine/etage": 0
+      "mezzanine_etage": 0
     },
     "coord": {
       "long": -0.605283,
@@ -225,7 +225,7 @@
       "matelas": 0,
       "bas_flancs": 0,
       "lits": 0,
-      "mezzanine/etage": 0
+      "mezzanine_etage": 0
     },
     "coord": {
       "long": -0.6509,
@@ -252,7 +252,7 @@
       "matelas": 0,
       "bas_flancs": 0,
       "lits": 0,
-      "mezzanine/etage": 0
+      "mezzanine_etage": 0
     },
     "coord": {
       "long": -1.020522,
@@ -279,7 +279,7 @@
       "matelas": 0,
       "bas_flancs": 0,
       "lits": 0,
-      "mezzanine/etage": 0
+      "mezzanine_etage": 0
     },
     "coord": {
       "long": -0.1012,
@@ -306,7 +306,7 @@
       "matelas": 0,
       "bas_flancs": 0,
       "lits": 0,
-      "mezzanine/etage": 1
+      "mezzanine_etage": 1
     },
     "info_couchage": "mezzanine pour 6 places",
     "coord": {
@@ -342,7 +342,7 @@
       "bas_flancs": 0,
       "poele": 0,
       "manque_un_mur": 0,
-      "mezzanine/etage": 0,
+      "mezzanine_etage": 0,
       "bois": 1,
       "lits": 0,
       "cheminee": 1,
@@ -375,7 +375,7 @@
       "bas_flancs": 1,
       "poele": 0,
       "manque_un_mur": 0,
-      "mezzanine/etage": 0,
+      "mezzanine_etage": 0,
       "bois": 1,
       "lits": 0,
       "cheminee": 0,
@@ -401,7 +401,7 @@
       "matelas": 0,
       "bas_flancs": 0,
       "lits": 0,
-      "mezzanine/etage": 0
+      "mezzanine_etage": 0
     },
     "coord": {
       "long": 1.1623,
@@ -428,7 +428,7 @@
       "matelas": 0,
       "bas_flancs": 1,
       "lits": 0,
-      "mezzanine/etage": 0
+      "mezzanine_etage": 0
     },
     "info_couchage": "Bas flancs",
     "coord": {
@@ -457,7 +457,7 @@
       "matelas": 0,
       "bas_flancs": 0,
       "lits": 0,
-      "mezzanine/etage": 0
+      "mezzanine_etage": 0
     },
     "coord": {
       "long": 0.729829,
@@ -485,7 +485,7 @@
       "matelas": 0,
       "bas_flancs": 1,
       "lits": 0,
-      "mezzanine/etage": 0
+      "mezzanine_etage": 0
     },
     "info_couchage": "bat-flanc sur toute la largeur de la cabane",
     "coord": {
@@ -513,7 +513,7 @@
       "matelas": 0,
       "bas_flancs": 1,
       "lits": 0,
-      "mezzanine/etage": 0
+      "mezzanine_etage": 0
     },
     "info_couchage": "Bas flancs",
     "coord": {
@@ -541,7 +541,7 @@
       "matelas": 0,
       "bas_flancs": 0,
       "lits": 0,
-      "mezzanine/etage": 0
+      "mezzanine_etage": 0
     },
     "coord": {
       "long": 1.82943,
@@ -576,7 +576,7 @@
       "bas_flancs": 0,
       "poele": 1,
       "manque_un_mur": 0,
-      "mezzanine/etage": 0,
+      "mezzanine_etage": 0,
       "bois": 1,
       "lits": 0,
       "cheminee": 1,
@@ -602,7 +602,7 @@
       "matelas": 0,
       "bas_flancs": 0,
       "lits": 0,
-      "mezzanine/etage": 0
+      "mezzanine_etage": 0
     },
     "coord": {
       "long": 1.076044,
@@ -629,7 +629,7 @@
       "matelas": 0,
       "bas_flancs": 0,
       "lits": 0,
-      "mezzanine/etage": 0
+      "mezzanine_etage": 0
     },
     "coord": {
       "long": 1.646628,
@@ -660,7 +660,7 @@
       "couchage": 0,
       "bas_flancs": 0,
       "lits": 0,
-      "mezzanine/etage": 0
+      "mezzanine_etage": 0
     },
     "description": "Cabane située à quelques minutes au Nord Est du [->5444]. Cette cabane ressemble à une buvette ! Elle n'est pas fermée, isolation très mauvaise mais un toit ! Peut servir d'abri de secours ... [b][i]Équipement :[/i][/b] - 1 grande table - 2 bancs Idem [->5444] : La cabane refuge se trouve dans la vallée du Madriu, au NE du refuge Riu dels Orris. La vallée du Madriu est classée au Patrimoine Mondial de l'Unesco ! rien que ça !, infos UNESCO : [url=http://whc.unesco.org/fr/list/1160]La Vallée du Madriu-Perafita-Claror[/url] [b][i]Depuis la [->5413] :[/i][/b] - On remontant le Val Madriu d'abord vers le SE, puis après un plat reposant vers le NE, on passe le refuge Riu del Orris, puis avant de traverser le torrent, on aperçoit la cabane sur la gauche à peu plus haut. [b][i]Depuis le [->5435] :[/i][/b] On continue de descendre la vallée ...jusqu'à la cabane située à droite sur le plat avant d'arriver au refuge Riu del Orris.",
     "links": [
@@ -687,7 +687,7 @@
       "matelas": 0,
       "bas_flancs": 0,
       "lits": 0,
-      "mezzanine/etage": 0
+      "mezzanine_etage": 0
     },
     "coord": {
       "long": 1.450056,
@@ -714,7 +714,7 @@
       "matelas": 0,
       "bas_flancs": 1,
       "lits": 0,
-      "mezzanine/etage": 0
+      "mezzanine_etage": 0
     },
     "info_couchage": "bat-flanc pour 4 personnes",
     "coord": {
@@ -742,7 +742,7 @@
       "matelas": 0,
       "bas_flancs": 0,
       "lits": 0,
-      "mezzanine/etage": 0
+      "mezzanine_etage": 0
     },
     "coord": {
       "long": 0.640307,
@@ -769,7 +769,7 @@
       "matelas": 0,
       "bas_flancs": 0,
       "lits": 0,
-      "mezzanine/etage": 0
+      "mezzanine_etage": 0
     },
     "coord": {
       "long": -0.556354,
@@ -796,7 +796,7 @@
       "matelas": 0,
       "bas_flancs": 0,
       "lits": 0,
-      "mezzanine/etage": 0
+      "mezzanine_etage": 0
     },
     "coord": {
       "long": -0.68832,
@@ -827,7 +827,7 @@
       "couchage": 0,
       "bas_flancs": 0,
       "lits": 0,
-      "mezzanine/etage": 0
+      "mezzanine_etage": 0
     },
     "description": "Refuge qui apparait sur les cartes IGN (Espagnoles) mais qui est en fait un refuge privé appartenant aux chasseurs du coin (et fermé). Chasseurs d'Elizondo",
     "links": [
@@ -854,7 +854,7 @@
       "matelas": 0,
       "bas_flancs": 0,
       "lits": 0,
-      "mezzanine/etage": 0
+      "mezzanine_etage": 0
     },
     "coord": {
       "long": 0.27837,
@@ -881,7 +881,7 @@
       "matelas": 0,
       "bas_flancs": 0,
       "lits": 0,
-      "mezzanine/etage": 0
+      "mezzanine_etage": 0
     },
     "coord": {
       "long": 0.761404,
@@ -908,7 +908,7 @@
       "matelas": 0,
       "bas_flancs": 0,
       "lits": 1,
-      "mezzanine/etage": 0
+      "mezzanine_etage": 0
     },
     "info_couchage": "14 lits avec couvertures.",
     "coord": {
@@ -936,7 +936,7 @@
       "matelas": 0,
       "bas_flancs": 0,
       "lits": 0,
-      "mezzanine/etage": 0
+      "mezzanine_etage": 0
     },
     "coord": {
       "long": 0.237558,
@@ -963,7 +963,7 @@
       "matelas": 0,
       "bas_flancs": 0,
       "lits": 0,
-      "mezzanine/etage": 0
+      "mezzanine_etage": 0
     },
     "coord": {
       "long": -0.6413,
@@ -998,7 +998,7 @@
       "bas_flancs": 0,
       "poele": 0,
       "manque_un_mur": 0,
-      "mezzanine/etage": 0,
+      "mezzanine_etage": 0,
       "bois": 1,
       "lits": 0,
       "cheminee": 0,
@@ -1023,7 +1023,7 @@
       "matelas": 0,
       "bas_flancs": 0,
       "lits": 0,
-      "mezzanine/etage": 0
+      "mezzanine_etage": 0
     },
     "coord": {
       "long": 1.1359,
@@ -1050,7 +1050,7 @@
       "matelas": 0,
       "bas_flancs": 0,
       "lits": 1,
-      "mezzanine/etage": 0
+      "mezzanine_etage": 0
     },
     "info_couchage": "Lit superpose metallique. plan",
     "coord": {
@@ -1082,7 +1082,7 @@
       "couvertures": 0,
       "matelas": 0,
       "latrines": 1,
-      "mezzanine/etage": 0,
+      "mezzanine_etage": 0,
       "eau": 1,
       "lits": 0,
       "bois": 1,
@@ -1113,7 +1113,7 @@
       "matelas": 0,
       "bas_flancs": 0,
       "lits": 0,
-      "mezzanine/etage": 0
+      "mezzanine_etage": 0
     },
     "coord": {
       "long": 0.048611,
@@ -1144,7 +1144,7 @@
       "couvertures": 0,
       "matelas": 0,
       "latrines": 0,
-      "mezzanine/etage": 0,
+      "mezzanine_etage": 0,
       "eau": 0,
       "lits": 0,
       "bois": 0,
@@ -1175,7 +1175,7 @@
       "matelas": 0,
       "bas_flancs": 0,
       "lits": 0,
-      "mezzanine/etage": 0
+      "mezzanine_etage": 0
     },
     "coord": {
       "long": 0.032122,
@@ -1202,7 +1202,7 @@
       "matelas": 0,
       "bas_flancs": 0,
       "lits": 0,
-      "mezzanine/etage": 0
+      "mezzanine_etage": 0
     },
     "coord": {
       "long": 0.442157,
@@ -1237,7 +1237,7 @@
       "bas_flancs": 0,
       "poele": 1,
       "manque_un_mur": 0,
-      "mezzanine/etage": 0,
+      "mezzanine_etage": 0,
       "bois": 0,
       "lits": 0,
       "cheminee": 1,
@@ -1271,7 +1271,7 @@
       "bas_flancs": 0,
       "poele": 0,
       "manque_un_mur": 0,
-      "mezzanine/etage": 0,
+      "mezzanine_etage": 0,
       "bois": 0,
       "lits": 0,
       "cheminee": 1,
@@ -1296,7 +1296,7 @@
       "matelas": 0,
       "bas_flancs": 0,
       "lits": 0,
-      "mezzanine/etage": 0
+      "mezzanine_etage": 0
     },
     "coord": {
       "long": 0.69775,
@@ -1323,7 +1323,7 @@
       "matelas": 0,
       "bas_flancs": 0,
       "lits": 0,
-      "mezzanine/etage": 0
+      "mezzanine_etage": 0
     },
     "coord": {
       "long": 1.9752,
@@ -1350,7 +1350,7 @@
       "matelas": 0,
       "bas_flancs": 0,
       "lits": 0,
-      "mezzanine/etage": 0
+      "mezzanine_etage": 0
     },
     "coord": {
       "long": 0.850599,
@@ -1385,7 +1385,7 @@
       "bas_flancs": 0,
       "poele": 0,
       "manque_un_mur": 0,
-      "mezzanine/etage": 0,
+      "mezzanine_etage": 0,
       "bois": 1,
       "lits": 0,
       "cheminee": 0,
@@ -1410,7 +1410,7 @@
       "matelas": 0,
       "bas_flancs": 0,
       "lits": 0,
-      "mezzanine/etage": 0
+      "mezzanine_etage": 0
     },
     "coord": {
       "long": 1.50543,
@@ -1437,7 +1437,7 @@
       "matelas": 0,
       "bas_flancs": 0,
       "lits": 0,
-      "mezzanine/etage": 0
+      "mezzanine_etage": 0
     },
     "coord": {
       "long": 0.189219,
@@ -1464,7 +1464,7 @@
       "matelas": 0,
       "bas_flancs": 0,
       "lits": 0,
-      "mezzanine/etage": 0
+      "mezzanine_etage": 0
     },
     "coord": {
       "long": -0.608491,
@@ -1495,7 +1495,7 @@
       "couvertures": 0,
       "matelas": 1,
       "latrines": 0,
-      "mezzanine/etage": 0,
+      "mezzanine_etage": 0,
       "eau": 0,
       "lits": 0,
       "bois": 1,
@@ -1534,7 +1534,7 @@
       "bas_flancs": 0,
       "poele": 1,
       "manque_un_mur": 0,
-      "mezzanine/etage": 1,
+      "mezzanine_etage": 1,
       "bois": 0,
       "lits": 0,
       "cheminee": 1,
@@ -1564,7 +1564,7 @@
       "couvertures": 0,
       "matelas": 0,
       "latrines": 1,
-      "mezzanine/etage": 0,
+      "mezzanine_etage": 0,
       "eau": 1,
       "lits": 0,
       "bois": 1,
@@ -1595,7 +1595,7 @@
       "matelas": 0,
       "bas_flancs": 0,
       "lits": 0,
-      "mezzanine/etage": 0
+      "mezzanine_etage": 0
     },
     "coord": {
       "long": -0.4707,
@@ -1630,7 +1630,7 @@
       "bas_flancs": 1,
       "poele": 1,
       "manque_un_mur": 0,
-      "mezzanine/etage": 1,
+      "mezzanine_etage": 1,
       "bois": 1,
       "lits": 0,
       "cheminee": 1,
@@ -1664,7 +1664,7 @@
       "bas_flancs": 0,
       "poele": 1,
       "manque_un_mur": 0,
-      "mezzanine/etage": 0,
+      "mezzanine_etage": 0,
       "bois": 0,
       "lits": 0,
       "cheminee": 1,
@@ -1689,7 +1689,7 @@
       "matelas": 0,
       "bas_flancs": 0,
       "lits": 0,
-      "mezzanine/etage": 0
+      "mezzanine_etage": 0
     },
     "coord": {
       "long": -0.532108,
@@ -1716,7 +1716,7 @@
       "matelas": 0,
       "bas_flancs": 0,
       "lits": 0,
-      "mezzanine/etage": 0
+      "mezzanine_etage": 0
     },
     "coord": {
       "long": -0.54912,
@@ -1743,7 +1743,7 @@
       "matelas": 0,
       "bas_flancs": 0,
       "lits": 0,
-      "mezzanine/etage": 0
+      "mezzanine_etage": 0
     },
     "coord": {
       "long": -0.6349,
@@ -1770,7 +1770,7 @@
       "matelas": 0,
       "bas_flancs": 0,
       "lits": 0,
-      "mezzanine/etage": 0
+      "mezzanine_etage": 0
     },
     "coord": {
       "long": 1.459444,
@@ -1797,7 +1797,7 @@
       "matelas": 0,
       "bas_flancs": 0,
       "lits": 0,
-      "mezzanine/etage": 0
+      "mezzanine_etage": 0
     },
     "coord": {
       "long": -0.484975,
@@ -1824,7 +1824,7 @@
       "matelas": 0,
       "bas_flancs": 0,
       "lits": 0,
-      "mezzanine/etage": 0
+      "mezzanine_etage": 0
     },
     "info_couchage": "oui",
     "coord": {
@@ -1856,7 +1856,7 @@
       "couvertures": 0,
       "matelas": 0,
       "latrines": 0,
-      "mezzanine/etage": 0,
+      "mezzanine_etage": 0,
       "eau": 1,
       "lits": 0,
       "bois": 1,
@@ -1891,7 +1891,7 @@
       "couvertures": 0,
       "matelas": 0,
       "latrines": 0,
-      "mezzanine/etage": 1,
+      "mezzanine_etage": 1,
       "eau": 1,
       "lits": 1,
       "bois": 1,
@@ -1930,7 +1930,7 @@
       "bas_flancs": 0,
       "poele": 1,
       "manque_un_mur": 0,
-      "mezzanine/etage": 0,
+      "mezzanine_etage": 0,
       "bois": 1,
       "lits": 0,
       "cheminee": 1,
@@ -1963,7 +1963,7 @@
       "bas_flancs": 0,
       "poele": 0,
       "manque_un_mur": 0,
-      "mezzanine/etage": 0,
+      "mezzanine_etage": 0,
       "bois": 1,
       "lits": 0,
       "cheminee": 1,
@@ -1996,7 +1996,7 @@
       "bas_flancs": 0,
       "poele": 0,
       "manque_un_mur": 0,
-      "mezzanine/etage": 0,
+      "mezzanine_etage": 0,
       "bois": 0,
       "lits": 1,
       "cheminee": 1,
@@ -2021,7 +2021,7 @@
       "matelas": 1,
       "bas_flancs": 1,
       "lits": 0,
-      "mezzanine/etage": 0
+      "mezzanine_etage": 0
     },
     "info_couchage": "deux bat-flancs avec matelas.",
     "coord": {
@@ -2049,7 +2049,7 @@
       "matelas": 0,
       "bas_flancs": 0,
       "lits": 0,
-      "mezzanine/etage": 0
+      "mezzanine_etage": 0
     },
     "info_couchage": "?",
     "coord": {
@@ -2077,7 +2077,7 @@
       "matelas": 1,
       "bas_flancs": 0,
       "lits": 1,
-      "mezzanine/etage": 0
+      "mezzanine_etage": 0
     },
     "info_couchage": "2 lits, 3 matelas, 1 mousse",
     "coord": {
@@ -2113,7 +2113,7 @@
       "bas_flancs": 0,
       "poele": 0,
       "manque_un_mur": 0,
-      "mezzanine/etage": 0,
+      "mezzanine_etage": 0,
       "bois": 1,
       "lits": 0,
       "cheminee": 1,
@@ -2138,7 +2138,7 @@
       "matelas": 0,
       "bas_flancs": 0,
       "lits": 0,
-      "mezzanine/etage": 0
+      "mezzanine_etage": 0
     },
     "info_couchage": "1",
     "coord": {
@@ -2174,7 +2174,7 @@
       "bas_flancs": 0,
       "poele": 0,
       "manque_un_mur": 0,
-      "mezzanine/etage": 0,
+      "mezzanine_etage": 0,
       "bois": 1,
       "lits": 0,
       "cheminee": 1,
@@ -2203,7 +2203,7 @@
       "couvertures": 0,
       "matelas": 1,
       "latrines": 0,
-      "mezzanine/etage": 0,
+      "mezzanine_etage": 0,
       "eau": 1,
       "lits": 1,
       "bois": 0,
@@ -2234,7 +2234,7 @@
       "matelas": 0,
       "bas_flancs": 0,
       "lits": 0,
-      "mezzanine/etage": 0
+      "mezzanine_etage": 0
     },
     "coord": {
       "long": 1.688508,
@@ -2261,7 +2261,7 @@
       "matelas": 0,
       "bas_flancs": 0,
       "lits": 0,
-      "mezzanine/etage": 0
+      "mezzanine_etage": 0
     },
     "coord": {
       "long": 1.4059,
@@ -2296,7 +2296,7 @@
       "bas_flancs": 0,
       "poele": 0,
       "manque_un_mur": 1,
-      "mezzanine/etage": 0,
+      "mezzanine_etage": 0,
       "bois": 1,
       "lits": 0,
       "cheminee": 0,
@@ -2326,7 +2326,7 @@
       "couvertures": 0,
       "matelas": 1,
       "latrines": 0,
-      "mezzanine/etage": 0,
+      "mezzanine_etage": 0,
       "eau": 1,
       "lits": 0,
       "bois": 1,
@@ -2365,7 +2365,7 @@
       "bas_flancs": 0,
       "poele": 0,
       "manque_un_mur": 0,
-      "mezzanine/etage": 0,
+      "mezzanine_etage": 0,
       "bois": 1,
       "lits": 0,
       "cheminee": 1,
@@ -2390,7 +2390,7 @@
       "matelas": 0,
       "bas_flancs": 0,
       "lits": 0,
-      "mezzanine/etage": 0
+      "mezzanine_etage": 0
     },
     "coord": {
       "long": 1.716211,
@@ -2417,7 +2417,7 @@
       "matelas": 0,
       "bas_flancs": 0,
       "lits": 0,
-      "mezzanine/etage": 0
+      "mezzanine_etage": 0
     },
     "coord": {
       "long": 1.658421,
@@ -2444,7 +2444,7 @@
       "matelas": 0,
       "bas_flancs": 0,
       "lits": 0,
-      "mezzanine/etage": 0
+      "mezzanine_etage": 0
     },
     "info_couchage": "0 (ouest), 5/6 (est : roche)",
     "coord": {
@@ -2480,7 +2480,7 @@
       "bas_flancs": 0,
       "poele": 0,
       "manque_un_mur": 0,
-      "mezzanine/etage": 0,
+      "mezzanine_etage": 0,
       "bois": 1,
       "lits": 0,
       "cheminee": 0,
@@ -2513,7 +2513,7 @@
       "bas_flancs": 0,
       "poele": 0,
       "manque_un_mur": 0,
-      "mezzanine/etage": 0,
+      "mezzanine_etage": 0,
       "bois": 0,
       "lits": 0,
       "cheminee": 0,
@@ -2538,7 +2538,7 @@
       "matelas": 0,
       "bas_flancs": 0,
       "lits": 0,
-      "mezzanine/etage": 0
+      "mezzanine_etage": 0
     },
     "coord": {
       "long": 1.9249,
@@ -2573,7 +2573,7 @@
       "bas_flancs": 0,
       "poele": 0,
       "manque_un_mur": 0,
-      "mezzanine/etage": 0,
+      "mezzanine_etage": 0,
       "bois": 1,
       "lits": 0,
       "cheminee": 0,
@@ -2598,7 +2598,7 @@
       "matelas": 0,
       "bas_flancs": 0,
       "lits": 0,
-      "mezzanine/etage": 0
+      "mezzanine_etage": 0
     },
     "coord": {
       "long": 2.17,
@@ -2625,7 +2625,7 @@
       "matelas": 0,
       "bas_flancs": 0,
       "lits": 0,
-      "mezzanine/etage": 0
+      "mezzanine_etage": 0
     },
     "coord": {
       "long": 0.626666,
@@ -2652,7 +2652,7 @@
       "matelas": 0,
       "bas_flancs": 0,
       "lits": 0,
-      "mezzanine/etage": 0
+      "mezzanine_etage": 0
     },
     "coord": {
       "long": 1.4275,
@@ -2679,7 +2679,7 @@
       "matelas": 0,
       "bas_flancs": 0,
       "lits": 0,
-      "mezzanine/etage": 0
+      "mezzanine_etage": 0
     },
     "coord": {
       "long": -0.1495,
@@ -2706,7 +2706,7 @@
       "matelas": 0,
       "bas_flancs": 0,
       "lits": 0,
-      "mezzanine/etage": 0
+      "mezzanine_etage": 0
     },
     "coord": {
       "long": 2.065278,
@@ -2733,7 +2733,7 @@
       "matelas": 0,
       "bas_flancs": 0,
       "lits": 0,
-      "mezzanine/etage": 0
+      "mezzanine_etage": 0
     },
     "coord": {
       "long": 1.513345,
@@ -2760,7 +2760,7 @@
       "matelas": 0,
       "bas_flancs": 0,
       "lits": 0,
-      "mezzanine/etage": 0
+      "mezzanine_etage": 0
     },
     "info_couchage": "2",
     "coord": {
@@ -2788,7 +2788,7 @@
       "matelas": 0,
       "bas_flancs": 0,
       "lits": 0,
-      "mezzanine/etage": 0
+      "mezzanine_etage": 0
     },
     "coord": {
       "long": -1.62897,
@@ -2815,7 +2815,7 @@
       "matelas": 0,
       "bas_flancs": 0,
       "lits": 0,
-      "mezzanine/etage": 0
+      "mezzanine_etage": 0
     },
     "coord": {
       "long": 2.983926,
@@ -2842,7 +2842,7 @@
       "matelas": 0,
       "bas_flancs": 0,
       "lits": 0,
-      "mezzanine/etage": 0
+      "mezzanine_etage": 0
     },
     "coord": {
       "long": 0.603651,
@@ -2873,7 +2873,7 @@
       "couvertures": 0,
       "matelas": 0,
       "latrines": 0,
-      "mezzanine/etage": 0,
+      "mezzanine_etage": 0,
       "eau": 1,
       "lits": 0,
       "bois": 1,
@@ -2904,7 +2904,7 @@
       "matelas": 0,
       "bas_flancs": 0,
       "lits": 0,
-      "mezzanine/etage": 0
+      "mezzanine_etage": 0
     },
     "coord": {
       "long": 2.917745,
@@ -2931,7 +2931,7 @@
       "matelas": 0,
       "bas_flancs": 0,
       "lits": 0,
-      "mezzanine/etage": 0
+      "mezzanine_etage": 0
     },
     "coord": {
       "long": 1.044238,
