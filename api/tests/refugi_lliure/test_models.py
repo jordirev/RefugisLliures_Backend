@@ -95,14 +95,14 @@ class TestRefugiModels:
         
         assert isinstance(info_dict, dict)
         assert info_dict['cheminee'] == 1
-        assert info_dict['mezzanine/etage'] == 0  # Mapejat correcte
+        assert info_dict['mezzanine_etage'] == 0  # Mapejat correcte
     
     def test_info_complementaria_from_dict(self):
         """Test creació d'InfoComplementaria des de diccionari"""
         data = {
             'cheminee': 1,
             'poele': 1,
-            'mezzanine/etage': 1
+            'mezzanine_etage': 1
         }
         info = InfoComplementaria.from_dict(data)
         

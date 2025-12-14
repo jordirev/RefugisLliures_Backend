@@ -158,7 +158,7 @@ def multiple_refugis_data():
                 'cheminee': 1, 'poele': 0, 'couvertures': 1,
                 'latrines': 1, 'bois': 1, 'eau': 0,
                 'matelas': 1, 'couchage': 5, 'lits': 2,
-                'bas_flancs': 0, 'mezzanine/etage': 0, 'manque_un_mur': 0
+                'bas_flancs': 0, 'mezzanine_etage': 0, 'manque_un_mur': 0
             },
             'description': '',
             'links': [],
@@ -178,7 +178,7 @@ def multiple_refugis_data():
                 'cheminee': 0, 'poele': 1, 'couvertures': 1,
                 'latrines': 1, 'bois': 0, 'eau': 1,
                 'matelas': 0, 'couchage': 8, 'lits': 4,
-                'bas_flancs': 0, 'mezzanine/etage': 1, 'manque_un_mur': 0
+                'bas_flancs': 0, 'mezzanine_etage': 1, 'manque_un_mur': 0
             },
             'description': '',
             'links': [],
@@ -198,7 +198,7 @@ def multiple_refugis_data():
                 'cheminee': 1, 'poele': 1, 'couvertures': 0,
                 'latrines': 0, 'bois': 1, 'eau': 1,
                 'matelas': 1, 'couchage': 4, 'lits': 1,
-                'bas_flancs': 0, 'mezzanine/etage': 0, 'manque_un_mur': 0
+                'bas_flancs': 0, 'mezzanine_etage': 0, 'manque_un_mur': 0
             },
             'description': '',
             'links': [],

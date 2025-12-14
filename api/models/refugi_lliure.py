@@ -55,7 +55,7 @@ class InfoComplementaria:
             'couchage': self.couchage,
             'bas_flancs': self.bas_flancs,
             'lits': self.lits,
-            'mezzanine/etage': self.mezzanine_etage  # Mapejat de tornada al format original
+            'mezzanine_etage': self.mezzanine_etage
         }
     
     @classmethod
@@ -72,7 +72,7 @@ class InfoComplementaria:
             couchage=data.get('couchage', 0),
             bas_flancs=data.get('bas_flancs', 0),
             lits=data.get('lits', 0),
-            mezzanine_etage=data.get('mezzanine/etage', 0)
+            mezzanine_etage=data.get('mezzanine_etage', 0)
         )
 
 @dataclass
