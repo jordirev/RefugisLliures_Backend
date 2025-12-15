@@ -69,22 +69,33 @@ class RefugeProposalController:
             logger.error(f'Error in get_proposal_by_id: {str(e)}')
             return None, f"Internal server error: {str(e)}"
     
-    def list_proposals(self, status_filter: Optional[str] = None, refuge_filter: Optional[str] = None) -> Tuple[Optional[List[RefugeProposal]], Optional[str]]:
+    def list_proposals(self, filters: Optional[Dict[str, Any]] = None) -> Tuple[Optional[List[RefugeProposal]], Optional[str]]:
         """
-        Llista totes les propostes amb filtre opcional per status
+        Llista totes les propostes amb filtres opcionals
         
         Args:
-            status_filter: Filtre per status ('pending', 'approved', 'rejected') o None per totes
+            filters: Diccionari amb filtres opcionals:
+                - status: 'pending', 'approved', 'rejected'
+                - refuge_id: ID del refugi
+                - creator_uid: UID del creador
+                Nota: refuge_id i creator_uid no poden estar junts
             
         Returns:
             (Llista de RefugeProposal o None, missatge d'error o None)
         """
         try:
-            # Validar el filtre de status
-            if status_filter and status_filter not in ['pending', 'approved', 'rejected']:
-                return None, f"Invalid status filter: {status_filter}. Must be 'pending', 'approved', or 'rejected'"
+            filters = filters or {}
             
-            proposals = self.proposal_dao.list_all(status_filter, refuge_filter)
+            # Validar que refuge_id i creator_uid no estiguin junts
+            if filters.get('refuge_id') and filters.get('creator_uid'):
+                return None, "Cannot filter by both refuge_id and creator_uid simultaneously"
+            
+            # Validar el filtre de status si està present
+            status = filters.get('status')
+            if status and status not in ['pending', 'approved', 'rejected']:
+                return None, f"Invalid status filter: {status}. Must be 'pending', 'approved', or 'rejected'"
+            
+            proposals = self.proposal_dao.list_all(filters)
             
             return proposals, None
             

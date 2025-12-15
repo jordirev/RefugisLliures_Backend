@@ -482,12 +482,23 @@ class RefugeProposalDAO:
             logger.error(f'Error getting proposal by ID {proposal_id}: {str(e)}')
             return None
     
-    def list_all(self, status_filter: Optional[str] = None, refuge_id_filter: Optional[str] = None) -> List[RefugeProposal]:
-        """Llista totes les propostes amb filtres opcionals per status i refuge_id amb cache"""
+    def list_all(self, filters: Optional[Dict[str, Any]] = None) -> List[RefugeProposal]:
+        """Llista totes les propostes amb filtres opcionals amb cache
+        
+        Args:
+            filters: Diccionari amb filtres opcionals:
+                - status: Filtre per status
+                - refuge_id: Filtre per ID del refugi
+                - creator_uid: Filtre per UID del creador
+        """
+        filters = filters or {}
+        
+        # Generar clau de cache basada en els filtres
         cache_key = cache_service.generate_key(
-            'proposal_list', 
-            status=status_filter or 'all',
-            refuge_id=refuge_id_filter or 'all'
+            'proposal_list',
+            status=filters.get('status', 'all'),
+            refuge_id=filters.get('refuge_id', 'all'),
+            creator_uid=filters.get('creator_uid', 'all')
         )
         
         cached_data = cache_service.get(cache_key)
@@ -501,15 +512,17 @@ class RefugeProposalDAO:
             # Construir la query amb els filtres
             filters_applied = []
 
-            if status_filter:
-                logger.log(23, f"Firestore READ: collection={self.collection_name} where status={status_filter}")
-                query = query.where('status', '==', status_filter)
-                filters_applied.append(f"status={status_filter}")
+            if filters.get('status'):
+                query = query.where('status', '==', filters['status'])
+                filters_applied.append(f"status={filters['status']}")
             
-            if refuge_id_filter:
-                logger.log(23, f"Firestore READ: collection={self.collection_name} where refuge_id={refuge_id_filter}")
-                query = query.where('refuge_id', '==', refuge_id_filter)
-                filters_applied.append(f"refuge_id={refuge_id_filter}")
+            if filters.get('refuge_id'):
+                query = query.where('refuge_id', '==', filters['refuge_id'])
+                filters_applied.append(f"refuge_id={filters['refuge_id']}")
+            
+            if filters.get('creator_uid'):
+                query = query.where('creator_uid', '==', filters['creator_uid'])
+                filters_applied.append(f"creator_uid={filters['creator_uid']}")
             
             if not filters_applied:
                 logger.log(23, f"Firestore READ: collection={self.collection_name} (all proposals)")
