@@ -45,6 +45,7 @@ class RefugiSerializer(serializers.Serializer):
     modified_at = serializers.CharField(default=None, allow_null=True)
     region = serializers.CharField(default=None, allow_null=True, required=False)
     departement = serializers.CharField(default=None, allow_null=True, required=False)
+    condition = serializers.IntegerField(default=None, allow_null=True, required=False, min_value=0, max_value=3)
     visitors = serializers.ListField(child=serializers.CharField(), default=list, required=False)
     images_metadata = RefugeMediaMetadataSerializer(many=True, required=False, allow_null=True)
 
@@ -73,8 +74,7 @@ class RefugiSearchFiltersSerializer(serializers.Serializer):
     name = serializers.CharField(required=False, default='', allow_blank=True)
 
     # Characteristics filters - accepten strings amb comes o llistes
-    type = serializers.MultipleChoiceField(
-        choices= ['non gardé', 'fermée', 'cabane ouverte mais occupee par le berger l ete', 'orri'],
+    type = serializers.CharField(
         required=False,
         allow_blank=True,
         default='',
@@ -84,14 +84,14 @@ class RefugiSearchFiltersSerializer(serializers.Serializer):
         required=False,
         allow_blank=True,
         default='',
-        help_text="Comma-separated list of conditions to filter by (0, 1, or 2)"
+        help_text="Comma-separated list of conditions to filter by (0: pobre, 1: correcte, 2: bé)"
     )
     
     # Numeric range filters
     places_min = serializers.IntegerField(required=False, allow_null=True, min_value=0)
     places_max = serializers.IntegerField(required=False, allow_null=True, min_value=0)
-    altitude_min = serializers.IntegerField(required=False, allow_null=True, min_value=0)
-    altitude_max = serializers.IntegerField(required=False, allow_null=True, min_value=0)
+    altitude_min = serializers.IntegerField(required=False, allow_null=True, min_value=0, max_value=8848)
+    altitude_max = serializers.IntegerField(required=False, allow_null=True, min_value=0, max_value=8848)
     
     def _validate_range(self, min_value, max_value, field_prefix):
         if min_value is not None and min_value < 0:
@@ -110,20 +110,36 @@ class RefugiSearchFiltersSerializer(serializers.Serializer):
     def validate(self, data):
         """Validació personalitzada per assegurar que min < max i que siguin enters positius"""
         # Convertir type i condition de strings amb comes a llistes
+        VALID_TYPES = ['non gardé', 'fermée', 'cabane ouverte mais ocupee par le berger l ete', 'orri']
+        
         if 'type' in data and isinstance(data['type'], str):
             if data['type'].strip():
                 data['type'] = [t.strip() for t in data['type'].split(',') if t.strip()]
+                # Validar que els valors de type són vàlids
+                for t in data['type']:
+                    if t not in VALID_TYPES:
+                        raise serializers.ValidationError({
+                            'type': f'El valor "{t}" no és vàlid. Els valors permesos són: {", ".join(VALID_TYPES)}'
+                        })
             else:
                 data['type'] = []
         
         if 'condition' in data and isinstance(data['condition'], str):
             if data['condition'].strip():
                 try:
-                    data['condition'] = [int(c.strip()) for c in data['condition'].split(',') if c.strip()]
+                    data['condition'] = [int(c.strip()) for c in data['condition'].split(',') if c.strip() and (c != '' or c != '--')]
+
                 except ValueError:
                     raise serializers.ValidationError({
-                        'condition': 'condition ha de contenir només enters (0, 1, o 2) separats per comes'
+                        'condition': 'condition ha de contenir només enters (0, 1 o 2) separats per comes'
                     })
+                
+                # Validar que els valors de condition són vàlids
+                for c in data['condition']:
+                    if c not in [0, 1, 2]:
+                        raise serializers.ValidationError({
+                            'condition': 'Els valors de condition han de ser 0 (pobre), 1 (correcte) o 2 (bé)'
+                        })
             else:
                 data['condition'] = []
         

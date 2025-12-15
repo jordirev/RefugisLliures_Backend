@@ -47,6 +47,32 @@ class RefugiSearchStrategy(ABC):
 
 # ==================== ESTRATÈGIES AMB ÍNDEXS COMPOSATS DE 3 CAMPS ====================
 
+class TypeConditionStrategy(RefugiSearchStrategy):
+    """Estratègia per a filtres: type + condition (utilitza type i després filtra condition manualment)"""
+    
+    def execute_query(self, db: firestore.Client, collection_name: str, filters: 'RefugiSearchFilters') -> List[Dict[str, Any]]:
+        query = db.collection(collection_name)
+        
+        # Filtra per type primer
+        query = query.where(filter=firestore.FieldFilter('type', 'in', filters.type))
+        
+        logger.log(23, f"Firestore QUERY: collection={collection_name} filters=type (manual condition)")
+        docs = query.stream()
+        results = [doc.to_dict() for doc in docs]
+        
+        # Filtrar manualment per condition: només refugis amb condition vàlid i dins dels filtres
+        filtered = []
+        for r in results:
+            if 'condition' not in r or r['condition'] is None:
+                continue
+            if r['condition'] in filters.condition:
+                filtered.append(r)
+        return filtered
+    
+    def get_strategy_name(self) -> str:
+        return "TypeConditionStrategy"
+
+
 class TypeConditionPlacesStrategy(RefugiSearchStrategy):
     """Estratègia per a filtres: type + condition + places (utilitza índex: type, condition, places)"""
     
@@ -64,7 +90,17 @@ class TypeConditionPlacesStrategy(RefugiSearchStrategy):
         
         logger.log(23, f"Firestore QUERY: collection={collection_name} filters=type+condition+places")
         docs = query.stream()
-        return [doc.to_dict() for doc in docs]
+        results = [doc.to_dict() for doc in docs]
+        
+        # Filtrar manualment per excloure refugis amb condition null o inexistent
+        # i assegurar que el valor de condition està dins dels filtres sol·licitats
+        filtered = []
+        for r in results:
+            if 'condition' not in r or r['condition'] is None:
+                continue
+            if r['condition'] in filters.condition:
+                filtered.append(r)
+        return filtered
     
     def get_strategy_name(self) -> str:
         return "TypeConditionPlacesStrategy"
@@ -87,7 +123,17 @@ class TypeConditionAltitudeStrategy(RefugiSearchStrategy):
         
         logger.log(23, f"Firestore QUERY: collection={collection_name} filters=type+condition+altitude")
         docs = query.stream()
-        return [doc.to_dict() for doc in docs]
+        results = [doc.to_dict() for doc in docs]
+        
+        # Filtrar manualment per excloure refugis amb condition null o inexistent
+        # i assegurar que el valor de condition està dins dels filtres sol·licitats
+        filtered = []
+        for r in results:
+            if 'condition' not in r or r['condition'] is None:
+                continue
+            if r['condition'] in filters.condition:
+                filtered.append(r)
+        return filtered
     
     def get_strategy_name(self) -> str:
         return "TypeConditionAltitudeStrategy"
@@ -114,6 +160,16 @@ class TypeConditionPlacesAltitudeStrategy(RefugiSearchStrategy):
         logger.log(23, f"Firestore QUERY: collection={collection_name} filters=type+condition+places (manual altitude)")
         docs = query.stream()
         results = [doc.to_dict() for doc in docs]
+        
+        # Filtrar manualment per excloure refugis amb condition null o inexistent
+        # i assegurar que el valor de condition està dins dels filtres sol·licitats
+        filtered_by_condition = []
+        for r in results:
+            if 'condition' not in r or r['condition'] is None:
+                continue
+            if r['condition'] in filters.condition:
+                filtered_by_condition.append(r)
+        results = filtered_by_condition
         
         # Filtre manual per altitude
         if filters.altitude_min is not None or filters.altitude_max is not None:
@@ -195,7 +251,10 @@ class ConditionPlacesStrategy(RefugiSearchStrategy):
         
         logger.log(23, f"Firestore QUERY: collection={collection_name} filters=condition+places")
         docs = query.stream()
-        return [doc.to_dict() for doc in docs]
+        results = [doc.to_dict() for doc in docs]
+        
+        # Filtrar manualment per excloure refugis amb condition null o inexistent
+        return [r for r in results if 'condition' in r and r['condition'] is not None]
     
     def get_strategy_name(self) -> str:
         return "ConditionPlacesStrategy"
@@ -217,7 +276,10 @@ class ConditionAltitudeStrategy(RefugiSearchStrategy):
         
         logger.log(23, f"Firestore QUERY: collection={collection_name} filters=condition+altitude")
         docs = query.stream()
-        return [doc.to_dict() for doc in docs]
+        results = [doc.to_dict() for doc in docs]
+        
+        # Filtrar manualment per excloure refugis amb condition null o inexistent
+        return [r for r in results if 'condition' in r and r['condition'] is not None]
     
     def get_strategy_name(self) -> str:
         return "ConditionAltitudeStrategy"
@@ -282,6 +344,9 @@ class ConditionPlacesAltitudeStrategy(RefugiSearchStrategy):
         logger.log(23, f"Firestore QUERY: collection={collection_name} filters=condition+places (manual altitude)")
         docs = query.stream()
         results = [doc.to_dict() for doc in docs]
+        
+        # Filtrar manualment per excloure refugis amb condition null o inexistent
+        results = [r for r in results if 'condition' in r and r['condition'] is not None]
         
         # Filtre manual per altitude
         if filters.altitude_min is not None or filters.altitude_max is not None:
@@ -364,7 +429,10 @@ class ConditionOnlyStrategy(RefugiSearchStrategy):
         
         logger.log(23, f"Firestore QUERY: collection={collection_name} filters=condition")
         docs = query.stream()
-        return [doc.to_dict() for doc in docs]
+        results = [doc.to_dict() for doc in docs]
+        
+        # Filtrar manualment per excloure refugis amb condition null o inexistent
+        return [r for r in results if 'condition' in r and r['condition'] is not None]
     
     def get_strategy_name(self) -> str:
         return "ConditionOnlyStrategy"
@@ -441,6 +509,10 @@ class SearchStrategySelector:
         if has_type and has_condition and has_altitude:
             # type + condition + altitude: índex directe
             return TypeConditionAltitudeStrategy()
+        
+        if has_type and has_condition:
+            # type + condition: filtra type, després condition manualment
+            return TypeConditionStrategy()
         
         # Combinacions amb type (sense condition)
         if has_type and has_places and has_altitude:
