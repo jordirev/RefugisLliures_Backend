@@ -7,6 +7,7 @@ from unittest.mock import MagicMock, patch, Mock
 from api.models.refugi_lliure import RefugiSearchFilters
 from api.daos.search_strategies import (
     SearchStrategySelector,
+    TypeConditionStrategy,
     TypeConditionPlacesStrategy,
     TypeConditionAltitudeStrategy,
     TypeConditionPlacesAltitudeStrategy,

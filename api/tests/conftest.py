@@ -133,7 +133,8 @@ def sample_refugi_data(sample_coordinates, sample_info_complementaria):
         'type': 'garde',
         'modified_at': get_madrid_now().isoformat(),
         'region': 'Pirineus',
-        'departement': DEPARTMENT
+        'departement': DEPARTMENT,
+        'condition': 2
     }
 
 
@@ -165,7 +166,8 @@ def multiple_refugis_data():
             'type': 'garde',
             'modified_at': '',
             'region': 'Pirineus',
-            'departement': DEPARTMENT
+            'departement': DEPARTMENT,
+            'condition': 2
         },
         {
             'id': 'refugi_002',
@@ -185,7 +187,8 @@ def multiple_refugis_data():
             'type': 'no guardat',
             'modified_at': '',
             'region': 'Pirineus',
-            'departement': 'Haute-Garonne'
+            'departement': 'Haute-Garonne',
+            'condition': 1
         },
         {
             'id': 'refugi_003',
@@ -205,7 +208,8 @@ def multiple_refugis_data():
             'type': 'garde',
             'modified_at': '',
             'region': 'Pirineus',
-            'departement': DEPARTMENT
+            'departement': DEPARTMENT,
+            'condition': 2
         }
     ]
 
@@ -227,8 +231,8 @@ def sample_search_filters():
     """Filtres de cerca de mostra"""
     return RefugiSearchFilters(
         name='Refugi Test',
-        type='garde',
-        condition='bon',
+        type=['garde'],
+        condition=[2],
         places_min=5,
         places_max=15,
         altitude_min=1500,

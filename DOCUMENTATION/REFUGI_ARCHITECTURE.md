@@ -185,6 +185,7 @@ El model suporta completament l'estructura original:
     "region": null,
     "departement": null,
     "comarca": null,
+    "condition": 2,
     "id": "0"
 }
 ```

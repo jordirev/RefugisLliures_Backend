@@ -91,6 +91,7 @@ class Refugi:
     modified_at: Optional[str] = None
     region: Optional[str] = None
     departement: Optional[str] = None
+    condition: Optional[int] = None  # Estat del refugi (0-3): 0: pobre, 1: correcte, 2: be, 3: excellent
     visitors: Optional[List[str]] = field(default_factory=list)
     images_metadata: Optional[List[RefugeMediaMetadata]] = field(default_factory=list)  # Metadades amb URLs prefirmades (generades dinàmicament)
     
@@ -134,6 +135,7 @@ class Refugi:
             'modified_at': self.modified_at,
             'region': self.region,
             'departement': self.departement,
+            'condition': self.condition,
             'visitors': self.visitors,
             'media_metadata': media_metadata,
             'images_metadata': images_metadata_dicts,
@@ -169,6 +171,7 @@ class Refugi:
             modified_at=data.get('modified_at', ''),
             region=data.get('region'),
             departement=data.get('departement'),
+            condition=data.get('condition'),
             visitors=data.get('visitors', []),
             images_metadata=images_metadata
         )

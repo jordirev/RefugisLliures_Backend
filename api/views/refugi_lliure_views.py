@@ -71,9 +71,9 @@ class RefugiLliureCollectionAPIView(APIView):
             openapi.Parameter(
                 'condition',
                 openapi.IN_QUERY,
-                description="Filtre per condició del refugi (pot especificar múltiples valors separats per comes)",
+                description="Filtre per condició del refugi (pot especificar múltiples valors separats per comes). 0: pobre, 1: correcte, 2: bé.",
                 type=openapi.TYPE_ARRAY,
-                items=openapi.Items(type=openapi.TYPE_INTEGER, enum=[0, 1, 2]),
+                items=openapi.Items(type=openapi.TYPE_STRING, enum=["0", "1", "2"]),
                 required=False
             ),
             openapi.Parameter(

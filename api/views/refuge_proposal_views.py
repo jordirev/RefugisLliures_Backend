@@ -170,18 +170,23 @@ class RefugeProposalCollectionAPIView(APIView):
     )
     def get(self, request):
         """Llistar totes les propostes (només admins)"""
-        # Obtenir els filtres (opcionals)
-        status_filter = request.query_params.get('status', None)
-        refuge_filter = request.query_params.get('refuge-id', None)
+        # Construir el diccionari de filtres
+        filters = {}
+        
+        if request.query_params.get('status'):
+            filters['status'] = request.query_params.get('status')
+        
+        if request.query_params.get('refuge-id'):
+            filters['refuge_id'] = request.query_params.get('refuge-id')
         
         # Llistar les propostes
         controller = RefugeProposalController()
-        proposals, error = controller.list_proposals(status_filter, refuge_filter)
+        proposals, error = controller.list_proposals(filters)
         
         if error:
             return Response(
                 {'error': error},
-                status=status.HTTP_400_BAD_REQUEST if 'Invalid status' in error else status.HTTP_500_INTERNAL_SERVER_ERROR
+                status=status.HTTP_400_BAD_REQUEST if 'Invalid' in error else status.HTTP_500_INTERNAL_SERVER_ERROR
             )
         
         # Serialitzar la resposta
@@ -192,6 +197,81 @@ class RefugeProposalCollectionAPIView(APIView):
             status=status.HTTP_200_OK
         )
 
+
+# ========== APPROVE ENDPOINT: /my-refuges-proposals/ ==========
+
+class MyRefugeProposalCollectionAPIView(APIView):
+    """
+    Gestiona la col·lecció de propostes de refugis creades per l'usuari autenticat:
+    - GET: Llistar les propostes de l'usuari autenticat
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    @swagger_auto_schema(
+        operation_description=(
+            "Llista les propostes creades per l'usuari autenticat.\n\n"
+            "Es pot filtrar per status.\n"
+            "Les propostes es retornen ordenades per data de creació (més recents primer)."
+        ),
+        manual_parameters=[
+            openapi.Parameter(
+                'status',
+                openapi.IN_QUERY,
+                description="Filtre per status de la proposta",
+                type=openapi.TYPE_STRING,
+                enum=['pending', 'approved', 'rejected'],
+                required=False
+            ),
+        ],
+        responses={
+            200: openapi.Response(
+                description="Llista de propostes",
+                schema=RefugeProposalResponseSerializer(many=True),
+                examples={
+                    'application/json': EXAMPLE_REFUGE_PROPOSALS_LIST
+                }
+            ),
+            400: ERROR_400_INVALID_PARAMS,
+            401: ERROR_401_UNAUTHORIZED,
+            500: ERROR_500_INTERNAL_ERROR
+        },
+        tags=['Refuge Proposals']
+    )
+    def get(self, request):
+        """Llistar les propostes de l'usuari autenticat"""
+        # Obtenir l'UID de l'usuari autenticat
+        creator_uid = getattr(request.user, 'uid', None)
+
+        if not creator_uid:
+            return Response(
+                {'error': 'User UID not found'},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+        
+        # Construir el diccionari de filtres
+        filters = {'creator_uid': creator_uid}
+        
+        if request.query_params.get('status'):
+            filters['status'] = request.query_params.get('status')
+        
+        # Llistar les propostes
+        controller = RefugeProposalController()
+        proposals, error = controller.list_proposals(filters)
+        
+        if error:
+            return Response(
+                {'error': error},
+                status=status.HTTP_400_BAD_REQUEST if 'Invalid' in error else status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+        
+        # Serialitzar la resposta
+        proposals_data = [proposal.to_dict() for proposal in proposals]
+        response_serializer = RefugeProposalResponseSerializer(proposals_data, many=True)
+        return Response(
+            response_serializer.data,
+            status=status.HTTP_200_OK
+        )
 
 # ========== APPROVE ENDPOINT: /refuges-proposals/{id}/approve/ ==========
 

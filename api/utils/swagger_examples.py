@@ -77,7 +77,8 @@ EXAMPLE_REFUGI_COLOMERS = {
     'type': 'non gardé',
     'modified_at': '2025-11-15T14:30:00Z',
     'region': 'Val d\'Aran',
-    'departement': 'Lleida'
+    'departement': 'Lleida',
+    'condition': 3
 }
 
 EXAMPLE_REFUGI_COLOMERS_DETAILED = {
@@ -112,7 +113,8 @@ EXAMPLE_REFUGI_COLOMERS_DETAILED = {
     'type': 'non gardé',
     'modified_at': '2025-11-15T14:30:00Z',
     'region': 'Val d\'Aran',
-    'departement': 'Lleida'
+    'departement': 'Lleida',
+    'condition': 3
 }
 
 EXAMPLE_REFUGI_RESTANCA = {
@@ -144,7 +146,8 @@ EXAMPLE_REFUGI_RESTANCA = {
     'type': 'non gardé',
     'modified_at': '2025-10-20T10:15:00Z',
     'region': 'Val d\'Aran',
-    'departement': 'Lleida'
+    'departement': 'Lleida',
+    'condition': 2
 }
 
 EXAMPLE_REFUGI_INFO_COLOMERS = {
@@ -470,7 +473,8 @@ EXAMPLE_REFUGE_PROPOSAL_CREATE = {
         'links': [],
         'type': 'non gardé',
         'region': 'Pirineus',
-        'departement': 'Lleida'
+        'departement': 'Lleida',
+        'condition': 2
     },
     'comment': 'He visitat aquest refugi recentment i crec que hauria d\'estar a la base de dades'
 }
@@ -523,7 +527,8 @@ EXAMPLE_REFUGE_PROPOSAL_RESPONSE = {
         'links': [],
         'type': 'non gardé',
         'region': 'Pirineus',
-        'departement': 'Lleida'
+        'departement': 'Lleida',
+        'condition': 2
     },
     'comment': 'He visitat aquest refugi recentment i crec que hauria d\'estar a la base de dades',
     'status': 'pending',
@@ -563,7 +568,8 @@ EXAMPLE_REFUGE_PROPOSALS_LIST = [
             'links': [],
             'type': 'non gardé',
             'region': 'Pirineus',
-            'departement': 'Lleida'
+            'departement': 'Lleida',
+            'condition': 2
         },
         'comment': 'Nou refugi descobert',
         'status': 'pending',

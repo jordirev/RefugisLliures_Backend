@@ -6,6 +6,16 @@ from ..utils.timezone_utils import get_madrid_today
 from .refugi_lliure_serializer import CoordinatesSerializer, InfoComplementariaSerializer
 
 
+ALLOWED_INFO_COMP_FIELDS = {
+    'manque_un_mur', 'cheminee', 'poele', 'couvertures', 'latrines',
+    'bois', 'eau', 'matelas', 'couchage', 'bas_flancs', 'lits', 'mezzanine_etage'
+}
+
+ALLOWED_REFUGE_FIELDS = {
+    'name', 'coord', 'altitude', 'places', 'remarque', 'info_comp',
+    'description', 'links', 'type', 'region', 'departement', 'condition'
+}
+
 class RefugeProposalPayloadSerializer(serializers.Serializer):
     """Serializer per validar el payload d'una proposta de refugi"""
     # Camps obligatoris per CREATE (opcionals per UPDATE)
@@ -22,6 +32,7 @@ class RefugeProposalPayloadSerializer(serializers.Serializer):
     type = serializers.ChoiceField(choices=['non gardé', 'fermée', 'cabane ouverte mais occupee par le berger l ete', 'orri'], required=False, default='non gardé')
     region = serializers.CharField(required=False, allow_null=True)
     departement = serializers.CharField(required=False, allow_null=True)
+    condition = serializers.IntegerField(required=False, allow_null=True, min_value=0, max_value=3)
     
     def validate(self, data):
         """Validació extra del payload"""
@@ -35,10 +46,7 @@ class RefugeProposalPayloadSerializer(serializers.Serializer):
         
         # Validar info_comp si està present
         if 'info_comp' in data and data['info_comp']:
-            allowed_info_comp_fields = {
-                'manque_un_mur', 'cheminee', 'poele', 'couvertures', 'latrines',
-                'bois', 'eau', 'matelas', 'couchage', 'bas_flancs', 'lits', 'mezzanine_etage'
-            }
+            allowed_info_comp_fields = ALLOWED_INFO_COMP_FIELDS
             info_comp = data['info_comp']
             if isinstance(info_comp, dict):
                 unknown_fields = set(info_comp.keys()) - allowed_info_comp_fields
@@ -53,10 +61,7 @@ class RefugeProposalPayloadSerializer(serializers.Serializer):
     def validate_unknown_fields(self, data):
         """Valida que no hi hagi camps desconeguts al payload"""
         # Camps permesos al payload
-        allowed_fields = {
-            'name', 'coord', 'altitude', 'places', 'remarque', 'info_comp',
-            'description', 'links', 'type', 'region', 'departement'
-        }
+        allowed_fields = ALLOWED_REFUGE_FIELDS
         
         unknown_fields = set(data.keys()) - allowed_fields
         if unknown_fields:
@@ -127,10 +132,7 @@ class RefugeProposalCreateSerializer(serializers.Serializer):
         # Validar l'estructura del payload si existeix
         if payload and (action in ['create', 'update']):
             # Primer validar que no hi hagi camps desconeguts
-            allowed_payload_fields = {
-                'name', 'coord', 'altitude', 'places', 'remarque', 'info_comp',
-                'description', 'links', 'type', 'region', 'departement'
-            }
+            allowed_payload_fields = ALLOWED_REFUGE_FIELDS
             unknown_fields = set(payload.keys()) - allowed_payload_fields
             if unknown_fields:
                 raise serializers.ValidationError({
@@ -140,10 +142,7 @@ class RefugeProposalCreateSerializer(serializers.Serializer):
             
             # Validar info_comp si està present
             if 'info_comp' in payload and payload['info_comp']:
-                allowed_info_comp_fields = {
-                    'manque_un_mur', 'cheminee', 'poele', 'couvertures', 'latrines',
-                    'bois', 'eau', 'matelas', 'couchage', 'bas_flancs', 'lits', 'mezzanine_etage'
-                }
+                allowed_info_comp_fields = ALLOWED_INFO_COMP_FIELDS
                 info_comp = payload['info_comp']
                 if isinstance(info_comp, dict):
                     unknown_info_comp_fields = set(info_comp.keys()) - allowed_info_comp_fields

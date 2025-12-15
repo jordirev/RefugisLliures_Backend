@@ -27,7 +27,8 @@ from .views.renovation_views import (
 from .views.refuge_proposal_views import (
     RefugeProposalCollectionAPIView,
     RefugeProposalApproveAPIView,
-    RefugeProposalRejectAPIView
+    RefugeProposalRejectAPIView,
+    MyRefugeProposalCollectionAPIView
 )
 from .views.cache_views import cache_stats, cache_clear, cache_invalidate
 
@@ -61,6 +62,7 @@ urlpatterns = [
     
     # Refuge proposal endpoints
     path('refuges-proposals/', RefugeProposalCollectionAPIView.as_view(), name='refuge_proposal_collection'),  # POST /refuges-proposals/ (crear) + GET /refuges-proposals/ (llistar - només admins)
+    path('my-refuges-proposals/', MyRefugeProposalCollectionAPIView.as_view(), name='my_refuge_proposal_collection'),  # GET /my-refuges-proposals/ (llistar les pròpies propostes)
     path('refuges-proposals/<str:id>/approve/', RefugeProposalApproveAPIView.as_view(), name='refuge_proposal_approve'),  # POST /refuges-proposals/{id}/approve/ (només admins)
     path('refuges-proposals/<str:id>/reject/', RefugeProposalRejectAPIView.as_view(), name='refuge_proposal_reject'),  # POST /refuges-proposals/{id}/reject/ (només admins)
     
