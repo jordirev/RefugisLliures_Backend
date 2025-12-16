@@ -52,6 +52,13 @@ class RefugiSerializer(serializers.Serializer):
     def to_representation(self, instance):
         data = super().to_representation(instance)
 
+        # Arrodonir la condition cap a l'enter més proper
+        if 'condition' in data and data['condition'] is not None:
+            try:
+                data['condition'] = round(float(data['condition']))
+            except (TypeError, ValueError):
+                pass  # Mantenir el valor original si no es pot convertir
+
         # Eliminem  informació sensible si l'usuari no està autenticat
         is_authenticated = self.context.get('is_authenticated', False)
         if not is_authenticated:

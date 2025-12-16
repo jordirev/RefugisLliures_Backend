@@ -27,11 +27,11 @@ class RefugeProposalPayloadSerializer(serializers.Serializer):
     places = serializers.IntegerField(required=False, allow_null=True, min_value=0)
     remarque = serializers.CharField(required=False, allow_blank=True, default='')
     info_comp = InfoComplementariaSerializer(required=False)
-    description = serializers.CharField(required=False, allow_blank=True, default='')
-    links = serializers.ListField(child=serializers.URLField(), required=False, default=list)
-    type = serializers.ChoiceField(choices=['non gardé', 'fermée', 'cabane ouverte mais occupee par le berger l ete', 'orri'], required=False, default='non gardé')
-    region = serializers.CharField(required=False, allow_null=True)
-    departement = serializers.CharField(required=False, allow_null=True)
+    description = serializers.CharField(required=False, allow_blank=True, allow_null=True, default=None)
+    links = serializers.ListField(child=serializers.URLField(), required=False, default=list, allow_empty=True)
+    type = serializers.ChoiceField(choices=['non gardé', 'fermée', 'cabane ouverte mais ocupee par le berger l ete', 'orri'], required=False, default='non gardé')
+    region = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    departement = serializers.CharField(required=False, allow_blank=True, allow_null=True)
     condition = serializers.IntegerField(required=False, allow_null=True, min_value=0, max_value=3)
     
     def validate(self, data):

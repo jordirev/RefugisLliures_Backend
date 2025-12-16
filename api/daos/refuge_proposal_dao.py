@@ -8,6 +8,7 @@ from abc import ABC, abstractmethod
 from typing import List, Optional, Dict, Any, Tuple
 from google.cloud import firestore
 from ..services import firestore_service, cache_service
+from ..services.condition_service import ConditionService
 from ..models.refuge_proposal import RefugeProposal
 from ..models.refugi_lliure import Refugi, Coordinates, InfoComplementaria
 from ..mappers.refuge_proposal_mapper import RefugeProposalMapper
@@ -273,6 +274,14 @@ class CreateRefugeStrategy(ProposalApprovalStrategy):
             # Convertir el model a format Firestore utilitzant el mapper
             refugi_data = RefugiLliureMapper.model_to_firestore(refugi)
             
+            # Inicialitzar condition si està present al payload
+            if 'condition' in proposal.payload:
+                contributed_condition = proposal.payload.get('condition')
+                if contributed_condition is not None and ConditionService.validate_condition_value(contributed_condition):
+                    condition_data = ConditionService.initialize_condition(float(contributed_condition))
+                    refugi_data['condition'] = condition_data['condition']
+                    refugi_data['num_contributed_conditions'] = condition_data['num_contributed_conditions']
+            
             # Crear el refugi a Firestore
             logger.log(23, f"Firestore WRITE: collection=data_refugis_lliures document={new_refugi_id} (CREATE from proposal)")
             new_refugi_ref.set(refugi_data)
@@ -315,6 +324,9 @@ class UpdateRefugeStrategy(ProposalApprovalStrategy):
             if not refugi_doc.exists:
                 return False, f"Refuge with ID {proposal.refuge_id} not found"
             
+            # Obtenir les dades actuals del refugi per calcular la condition
+            refugi_data = refugi_doc.to_dict()
+            
             # Preparar les dades d'actualització a partir del payload
             update_data = {}
             
@@ -334,10 +346,26 @@ class UpdateRefugeStrategy(ProposalApprovalStrategy):
                     # Convertir info_comp al format correcte
                     info_comp = InfoComplementaria.from_dict(value)
                     update_data['info_comp'] = info_comp.to_dict()
+                elif key == 'condition':
+                    # Calcular la nova mitjana de condition
+                    if value is not None and ConditionService.validate_condition_value(value):
+                        current_condition = refugi_data.get('condition')
+                        num_contributed = refugi_data.get('num_contributed_conditions', 0)
+                        
+                        # Calcular els nous valors
+                        condition_data = ConditionService.calculate_condition_average(
+                            current_condition=current_condition,
+                            num_contributed_conditions=num_contributed,
+                            contributed_condition=float(value)
+                        )
+                        
+                        # Afegir els nous valors a update_data
+                        update_data['condition'] = condition_data['condition']
+                        update_data['num_contributed_conditions'] = condition_data['num_contributed_conditions']
                 else:
                     update_data[key] = value
             
-            # Actualitzar el refugi
+            # Actualitzar el refugi amb tots els camps (incloent condition si escau)
             logger.log(23, f"Firestore UPDATE: collection=data_refugis_lliures document={proposal.refuge_id} (UPDATE from proposal)")
             refugi_ref.update(update_data)
             
