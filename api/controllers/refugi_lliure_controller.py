@@ -6,6 +6,7 @@ from typing import Dict, Any, List, Optional, Tuple
 
 from api.models.media_metadata import RefugeMediaMetadata
 from ..daos.refugi_lliure_dao import RefugiLliureDAO
+from ..daos.user_dao import UserDAO
 from ..models.refugi_lliure import Refugi, RefugiCoordinates, RefugiSearchFilters
 from ..services import r2_media_service
 
@@ -16,6 +17,7 @@ class RefugiLliureController:
     
     def __init__(self):
         self.refugi_dao = RefugiLliureDAO()
+        self.user_dao = UserDAO()
         self.media_service = r2_media_service.get_refugi_media_service()
     
     def get_refugi_by_id(self, refuge_id: str, is_authenticated: bool) -> Tuple[Optional[Refugi], Optional[str]]:
@@ -219,6 +221,11 @@ class RefugiLliureController:
                     # Si no s'ha pogut guardar, eliminar els fitxers pujats
                     self.media_service.delete_files([item['key'] for item in uploaded])
                     return None, "Error intern guardant les metadades a Firestore"
+                
+                # Incrementar el comptador de fotos pujades per l'usuari
+                # Incrementem per cada foto pujada correctament
+                for _ in uploaded:
+                    self.user_dao.increment_uploaded_photos(creator_uid)
             
             return {
                 'uploaded': uploaded,
@@ -257,6 +264,12 @@ class RefugiLliureController:
                 self.refugi_dao.add_media_metadata(refugi_id, {media_key: metadata_backup})
 
                 return False, "Error deleting file from storage"
+            
+            # Decrementar el comptador de fotos pujades per l'usuari
+            # Obtenir creator_uid de les metadades
+            if metadata_backup and 'creator_uid' in metadata_backup:
+                creator_uid = metadata_backup['creator_uid']
+                self.user_dao.decrement_uploaded_photos(creator_uid)
             
             return True, None
             

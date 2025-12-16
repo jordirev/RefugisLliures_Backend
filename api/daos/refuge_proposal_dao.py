@@ -373,7 +373,7 @@ class UpdateRefugeStrategy(ProposalApprovalStrategy):
             update_coords_refugis_update(db, proposal.refuge_id, update_data)
             
             # Invalidar cache relacionada amb aquest refugi
-            cache_service.delete_pattern(f'refugi_detail:refugi_id:{proposal.refuge_id}:*')
+            cache_service.delete(cache_service.generate_key('refugi_detail', refugi_id=proposal.refuge_id))
             cache_service.delete_pattern('refugi_list:*')
             cache_service.delete_pattern('refugi_search:*')
             cache_service.delete_pattern('refugi_coords:*')
@@ -411,7 +411,7 @@ class DeleteRefugeStrategy(ProposalApprovalStrategy):
             update_coords_refugis_delete(db, proposal.refuge_id)
             
             # Invalidar cache relacionada amb aquest refugi
-            cache_service.delete_pattern(f'refugi_detail:refugi_id:{proposal.refuge_id}:*')
+            cache_service.delete(cache_service.generate_key('refugi_detail', refugi_id=proposal.refuge_id))
             cache_service.delete_pattern('refugi_list:*')
             cache_service.delete_pattern('refugi_search:*')
             cache_service.delete_pattern('refugi_coords:*')

@@ -464,6 +464,83 @@ class UserDAO:
             logger.error(f"Error incrementant comptador de refugis renovats per l'usuari {uid}: {str(e)}")
             return False
     
+    def increment_uploaded_photos(self, uid: str) -> bool:
+        """
+        Incrementa el comptador de fotos pujades per un usuari
+        
+        Args:
+            uid: UID de l'usuari
+            
+        Returns:
+            bool: True si s'ha incrementat correctament
+        """
+        try:
+            db = self.firestore_service.get_db()
+            from google.cloud.firestore_v1.transforms import Increment
+            doc_ref = db.collection(self.COLLECTION_NAME).document(uid)
+            
+            # Comprova que l'usuari existeixi
+            doc = doc_ref.get()
+            if not doc.exists:
+                logger.warning(f"No es pot incrementar comptador, usuari no trobat amb UID: {uid}")
+                return False
+            
+            # Incrementa el comptador
+            doc_ref.update({'num_uploaded_photos': Increment(1)})
+            
+            # Invalida cache de l'usuari
+            cache_service.delete(cache_service.generate_key('user_detail', uid=uid))
+            
+            logger.info(f"Comptador de fotos pujades incrementat per l'usuari {uid}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error incrementant comptador de fotos pujades per l'usuari {uid}: {str(e)}")
+            return False
+    
+    def decrement_uploaded_photos(self, uid: str) -> bool:
+        """
+        Decrementa el comptador de fotos pujades per un usuari
+        
+        Args:
+            uid: UID de l'usuari
+            
+        Returns:
+            bool: True si s'ha decrementat correctament
+        """
+        try:
+            db = self.firestore_service.get_db()
+            from google.cloud.firestore_v1.transforms import Increment
+            doc_ref = db.collection(self.COLLECTION_NAME).document(uid)
+            
+            # Comprova que l'usuari existeixi i obté el valor actual
+            doc = doc_ref.get()
+            if not doc.exists:
+                logger.warning(f"No es pot decrementar comptador, usuari no trobat amb UID: {uid}")
+                return False
+            
+            # Obté el valor actual del comptador
+            user_data = doc.to_dict()
+            current_value = user_data.get('num_uploaded_photos', 0)
+            
+            # Només decrementa si el valor actual és major que 0
+            if current_value > 0:
+                # Decrementa el comptador (Increment amb valor negatiu)
+                doc_ref.update({'num_uploaded_photos': Increment(-1)})
+                
+                # Invalida cache de l'usuari
+                cache_service.delete(cache_service.generate_key('user_detail', uid=uid))
+                
+                logger.info(f"Comptador de fotos pujades decrementat per l'usuari {uid} ({current_value} -> {current_value - 1})")
+            else:
+                logger.warning(f"No es pot decrementar comptador de fotos pujades per l'usuari {uid}, valor actual és {current_value}")
+            
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error decrementant comptador de fotos pujades per l'usuari {uid}: {str(e)}")
+            return False
+    
     def decrement_renovated_refuges(self, uid: str) -> bool:
         """
         Decrementa el comptador de refugis renovats per un usuari
@@ -479,19 +556,28 @@ class UserDAO:
             from google.cloud.firestore_v1.transforms import Increment
             doc_ref = db.collection(self.COLLECTION_NAME).document(uid)
             
-            # Comprova que l'usuari existeixi i obté les dades per tenir l'email
+            # Comprova que l'usuari existeixi i obté el valor actual
             doc = doc_ref.get()
             if not doc.exists:
                 logger.warning(f"No es pot decrementar comptador, usuari no trobat amb UID: {uid}")
                 return False
             
-            # Decrementa el comptador (increment amb valor negatiu)
-            doc_ref.update({'num_renovated_refuges': Increment(-1)})
+            # Obté el valor actual del comptador
+            user_data = doc.to_dict()
+            current_value = user_data.get('num_renovated_refuges', 0)
             
-            # Invalida cache de l'usuari
-            cache_service.delete(cache_service.generate_key('user_detail', uid=uid))
+            # Només decrementa si el valor actual és major que 0
+            if current_value > 0:
+                # Decrementa el comptador (increment amb valor negatiu)
+                doc_ref.update({'num_renovated_refuges': Increment(-1)})
+                
+                # Invalida cache de l'usuari
+                cache_service.delete(cache_service.generate_key('user_detail', uid=uid))
+                
+                logger.info(f"Comptador de refugis renovats decrementat per l'usuari {uid} ({current_value} -> {current_value - 1})")
+            else:
+                logger.warning(f"No es pot decrementar comptador de refugis renovats per l'usuari {uid}, valor actual és {current_value}")
             
-            logger.info(f"Comptador de refugis renovats decrementat per l'usuari {uid}")
             return True
             
         except Exception as e:
