@@ -3,6 +3,9 @@ Serializers per a la gestió de refugis
 """
 from rest_framework import serializers
 
+VALID_TYPES = ['non gardé', 'fermée', 'cabane ouverte mais ocupee par le berger l ete', 'orri', 'emergence', 'key_needed']
+
+
 class CoordinatesSerializer(serializers.Serializer):
     """Serializer per a coordenades"""
     long = serializers.FloatField()
@@ -117,7 +120,6 @@ class RefugiSearchFiltersSerializer(serializers.Serializer):
     def validate(self, data):
         """Validació personalitzada per assegurar que min < max i que siguin enters positius"""
         # Convertir type i condition de strings amb comes a llistes
-        VALID_TYPES = ['non gardé', 'fermée', 'cabane ouverte mais ocupee par le berger l ete', 'orri']
         
         if 'type' in data and isinstance(data['type'], str):
             if data['type'].strip():

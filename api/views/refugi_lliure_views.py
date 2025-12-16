@@ -28,7 +28,7 @@ from ..utils.swagger_error_responses import (
     ERROR_500_INTERNAL_ERROR,
 )
 
-
+VALID_TYPES = ['non gardé', 'fermée', 'cabane ouverte mais ocupee par le berger l ete', 'orri', 'emergence', 'key_needed']
 
 # Configurar logging
 logger = logging.getLogger(__name__)
@@ -65,7 +65,7 @@ class RefugiLliureCollectionAPIView(APIView):
                 openapi.IN_QUERY,
                 description="Filtre per tipus de refugi (pot especificar múltiples valors separats per comes)",
                 type=openapi.TYPE_ARRAY,
-                items=openapi.Items(type=openapi.TYPE_STRING, enum=['non gardé', 'fermée', 'cabane ouverte mais ocupee par le berger l ete', 'orri']),
+                items=openapi.Items(type=openapi.TYPE_STRING, enum=VALID_TYPES),
                 required=False
             ),
             openapi.Parameter(
