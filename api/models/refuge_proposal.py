@@ -11,7 +11,6 @@ class RefugeProposal:
     """Model per representar una proposta de refugi"""
     id: str
     refuge_id: Optional[str]  # None per a CREATE, ID del refugi per a UPDATE/DELETE
-    refuge_name: Optional[str] = None  # Nom del refugi per facilitar la visualització
     action: str  # 'create', 'update', 'delete'
     payload: Optional[Dict[str, Any]]  # None per a DELETE
     comment: Optional[str]  # Comentari opcional de l'usuari
@@ -21,6 +20,7 @@ class RefugeProposal:
     reviewer_uid: Optional[str]  # UID de l'admin que revisa
     reviewed_at: Optional[str]  # Data de revisió, format ISO 8601: YYYY-MM-DD
     rejection_reason: Optional[str] = None  # Raó del rebuig (només per rejected)
+    refuge_name: Optional[str] = None  # Nom del refugi per facilitar la visualització
     
     def to_dict(self) -> Dict[str, Any]:
         """Converteix el model a diccionari"""
