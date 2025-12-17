@@ -170,6 +170,7 @@ class RefugeProposalResponseSerializer(serializers.Serializer):
     """Serializer per la resposta de les propostes de refugi"""
     id = serializers.CharField()
     refuge_id = serializers.CharField(allow_null=True)
+    refuge_snapshot = serializers.DictField(allow_null=True, required=False, read_only=True)
     action = serializers.CharField()
     payload = serializers.DictField(allow_null=True)
     comment = serializers.CharField(allow_null=True)
@@ -179,7 +180,6 @@ class RefugeProposalResponseSerializer(serializers.Serializer):
     reviewer_uid = serializers.CharField(allow_null=True)
     reviewed_at = serializers.CharField(allow_null=True)
     rejection_reason = serializers.CharField(allow_null=True, required=False)
-    refuge_name = serializers.CharField(allow_null=True, required=False)
 
 
 class RefugeProposalRejectSerializer(serializers.Serializer):

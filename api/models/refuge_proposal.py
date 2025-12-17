@@ -20,14 +20,14 @@ class RefugeProposal:
     reviewer_uid: Optional[str]  # UID de l'admin que revisa
     reviewed_at: Optional[str]  # Data de revisió, format ISO 8601: YYYY-MM-DD
     rejection_reason: Optional[str] = None  # Raó del rebuig (només per rejected)
-    refuge_name: Optional[str] = None  # Nom del refugi per facilitar la visualització
+    refuge_snapshot: Optional[Dict[str, Any]] = None  # Snapshot del refugi (només per UPDATE/DELETE)
     
     def to_dict(self) -> Dict[str, Any]:
         """Converteix el model a diccionari"""
         return {
             'id': self.id,
             'refuge_id': self.refuge_id,
-            'refuge_name': self.refuge_name,
+            'refuge_snapshot': self.refuge_snapshot,
             'action': self.action,
             'payload': self.payload,
             'comment': self.comment,
@@ -45,7 +45,7 @@ class RefugeProposal:
         return cls(
             id=data.get('id'),
             refuge_id=data.get('refuge_id'),
-            refuge_name=data.get('refuge_name'),
+            refuge_snapshot=data.get('refuge_snapshot'),
             action=data.get('action'),
             payload=data.get('payload'),
             comment=data.get('comment'),

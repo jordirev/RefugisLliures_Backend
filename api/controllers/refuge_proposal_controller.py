@@ -28,7 +28,7 @@ class RefugeProposalController:
             (RefugeProposal o None, missatge d'error o None)
         """
         try:
-            # Validar l'existència del refugi per a accions diferents d'update/delete
+            # Validar l'existència del refugi per a accions update/delete i crear snapshot
             if proposal_data.get('action') in ['update', 'delete']:
                 refugi_lliure_dao = RefugiLliureDAO()
                 refugi_exists = refugi_lliure_dao.get_by_id(proposal_data.get('refuge_id'))
@@ -36,12 +36,8 @@ class RefugeProposalController:
                 if not refugi_exists:
                     return None, "Refuge does not exists"
                 
-                # Afegir el nom del refugi a les dades de la proposta
-                proposal_data['refuge_name'] = refugi_exists.name
-            
-            # Afegir nom del refugi per la creació
-            if proposal_data.get('action') == 'create':
-                proposal_data['refuge_name'] = proposal_data.get('payload', {}).get('name', 'Unnamed Refuge')
+                # Crear snapshot complet del refugi actual
+                proposal_data['refuge_snapshot'] = refugi_exists.to_dict()
                 
             # Crear la proposta
             proposal = self.proposal_dao.create(proposal_data, creator_uid)
