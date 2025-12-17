@@ -455,6 +455,7 @@ class RefugeProposalDAO:
             # Preparar les dades de la proposta
             proposal_dict = {
                 'refuge_id': proposal_data.get('refuge_id'),
+                'refuge_name': proposal_data.get('refuge_name'),
                 'action': proposal_data.get('action'),
                 'payload': proposal_data.get('payload'),
                 'comment': proposal_data.get('comment'),

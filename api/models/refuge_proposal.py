@@ -11,6 +11,7 @@ class RefugeProposal:
     """Model per representar una proposta de refugi"""
     id: str
     refuge_id: Optional[str]  # None per a CREATE, ID del refugi per a UPDATE/DELETE
+    refuge_name: Optional[str] = None  # Nom del refugi per facilitar la visualització
     action: str  # 'create', 'update', 'delete'
     payload: Optional[Dict[str, Any]]  # None per a DELETE
     comment: Optional[str]  # Comentari opcional de l'usuari
@@ -26,6 +27,7 @@ class RefugeProposal:
         return {
             'id': self.id,
             'refuge_id': self.refuge_id,
+            'refuge_name': self.refuge_name,
             'action': self.action,
             'payload': self.payload,
             'comment': self.comment,
@@ -43,6 +45,7 @@ class RefugeProposal:
         return cls(
             id=data.get('id'),
             refuge_id=data.get('refuge_id'),
+            refuge_name=data.get('refuge_name'),
             action=data.get('action'),
             payload=data.get('payload'),
             comment=data.get('comment'),

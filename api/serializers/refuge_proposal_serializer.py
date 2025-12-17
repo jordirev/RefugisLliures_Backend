@@ -179,6 +179,7 @@ class RefugeProposalResponseSerializer(serializers.Serializer):
     reviewer_uid = serializers.CharField(allow_null=True)
     reviewed_at = serializers.CharField(allow_null=True)
     rejection_reason = serializers.CharField(allow_null=True, required=False)
+    refuge_name = serializers.CharField(allow_null=True, required=False)
 
 
 class RefugeProposalRejectSerializer(serializers.Serializer):
