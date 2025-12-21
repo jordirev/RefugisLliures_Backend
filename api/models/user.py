@@ -16,8 +16,8 @@ class User:
     email: str
     avatar_metadata: MediaMetadata = None  # Metadades amb URLs prefirmades (generades dinàmicament) {'key': str, 'url': str, 'uploaded_at': str}
     language: str = 'ca'
-    favourite_refuges: Optional[list] = None
-    visited_refuges: Optional[list] = None
+    favourite_refuges: Optional[list] = None # Llista d'IDs de refugis preferits
+    visited_refuges: Optional[list] = None # Llista d'IDs de refugis visitats
     num_uploaded_photos: int = 0
     num_shared_experiences: int = 0
     num_renovated_refuges: int = 0
