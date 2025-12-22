@@ -30,6 +30,11 @@ from .views.refuge_proposal_views import (
     RefugeProposalRejectAPIView,
     MyRefugeProposalCollectionAPIView
 )
+from .views.refuge_visit_views import (
+    RefugeVisitsAPIView,
+    UserVisitsAPIView,
+    RefugeVisitDetailAPIView
+)
 from .views.cache_views import cache_stats, cache_clear, cache_invalidate
 
 urlpatterns = [
@@ -40,6 +45,8 @@ urlpatterns = [
     path('refuges/', RefugiLliureCollectionAPIView.as_view(), name='refugi_lliure_collection'),
     path('refuges/<str:id>/', RefugiLliureDetailAPIView.as_view(), name='refugi_lliure_detail'),
     path('refuges/<str:id>/renovations/', RefugeRenovationsAPIView.as_view(), name='refuge_renovations'),  # GET /refuges/{id}/renovations/
+    path('refuges/<str:refuge_id>/visits/', RefugeVisitsAPIView.as_view(), name='refuge_visits'),  # GET /refuges/{id}/visits/
+    path('refuges/<str:refuge_id>/visits/<str:visit_date>/', RefugeVisitDetailAPIView.as_view(), name='refuge_visit_detail'),  # POST + PATCH + DELETE /refuges/{id}/visits/{date}/
     
     # Refugi media endpoints
     path('refuges/<str:id>/media/', RefugiMediaAPIView.as_view(), name='refugi_media'),  # GET + POST /refuges/{id}/media/
@@ -53,6 +60,7 @@ urlpatterns = [
     path('users/<str:uid>/favorite-refuges/<str:refuge_id>/', UserFavouriteRefugesDetailAPIView.as_view(), name='user_favourite_refuges_delete'),  # DELETE /users/{uid}/favorite-refuges/{refuge_id}/
     path('users/<str:uid>/visited-refuges/', UserVisitedRefugesAPIView.as_view(), name='user_visited_refuges'),  # GET + POST /users/{uid}/visited-refuges/
     path('users/<str:uid>/visited-refuges/<str:refuge_id>/', UserVisitedRefugesDetailAPIView.as_view(), name='user_visited_refuges_delete'),  # DELETE /users/{uid}/visited-refuges/{refuge_id}/
+    path('users/<str:uid>/visits/', UserVisitsAPIView.as_view(), name='user_visits'),  # GET /users/{uid}/visits/
     
     # Renovations endpoints
     path('renovations/', RenovationListAPIView.as_view(), name='renovation_list'),  # GET + POST /renovations/

@@ -1,18 +1,21 @@
 """
 Model de visita programada a refugi 
-    - A Firestore, RefugeVisits és una subcol·lecció dins d'un refugi
-      lliure on cada document representa una RefugeVisit
 """
 from dataclasses import dataclass
-
 from typing import Dict
+@dataclass
+class UserVisit:
+    """Model per representar un visitant i el nombre de persones que l'acompanyen"""
+    uid: str
+    num_visitors: int
+
 
 @dataclass
 class RefugeVisit:
     """Model per representar una visita programada a refugi"""
-    date: str # Format ISO 8601: YYYY-MM-DD (Es el id del document a Firestore)
+    date: str # Format ISO 8601: YYYY-MM-DD
     refuge_id: str
-    visitors: Dict[str, int] # uid visitant -> nombre de visitants que l'acompanyen
+    visitors: list[UserVisit] = None
     total_visitors: int = 0
 
     def __post_init__(self):

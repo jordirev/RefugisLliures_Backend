@@ -21,6 +21,9 @@ drf_yasg
 redis==5.0.1
 django-redis==5.4.0
 
+# Cron jobs
+django-crontab==0.7.1
+
 # Testing
 pytest==7.4.3
 pytest-cov==4.1.0

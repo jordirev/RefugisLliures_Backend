@@ -467,3 +467,39 @@ class RefugiLliureDAO:
         except Exception as e:
             logger.error(f'Error eliminant media_metadata del refugi {refugi_id}: {str(e)}')
             return False, None
+    
+    def update_refugi_visitors(self, refugi_id: str, visitors: List[str]) -> bool:
+        """
+        Actualitza la llista de visitors d'un refugi
+        
+        Args:
+            refugi_id: ID del refugi
+            visitors: Llista d'UIDs de visitants
+            
+        Returns:
+            bool: True si s'ha actualitzat correctament
+        """
+        try:
+            db = firestore_service.get_db()
+            doc_ref = db.collection(self.collection_name).document(str(refugi_id))
+            
+            logger.log(23, f"Firestore READ: collection={self.collection_name} document={refugi_id}")
+            doc = doc_ref.get()
+            
+            if not doc.exists:
+                logger.warning(f"No es pot actualitzar visitors, refugi no trobat amb ID: {refugi_id}")
+                return False
+            
+            # Actualitza la llista de visitors
+            logger.log(23, f"Firestore UPDATE: collection={self.collection_name} document={refugi_id}")
+            doc_ref.update({'visitors': visitors})
+            
+            # Invalida cache del refugi
+            cache_service.delete(cache_service.generate_key('refugi_detail', refugi_id=refugi_id))
+            
+            logger.info(f"Actualitzada llista de visitors del refugi {refugi_id}")
+            return True
+            
+        except Exception as e:
+            logger.error(f'Error actualitzant visitors del refugi {refugi_id}: {str(e)}')
+            return False

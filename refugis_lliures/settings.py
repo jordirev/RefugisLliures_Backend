@@ -59,6 +59,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'corsheaders',
     'drf_yasg',
+    'django_crontab',
     'api',
 ]
 
@@ -279,3 +280,9 @@ SWAGGER_SETTINGS = {
     'JSON_EDITOR': True,
     'SUPPORTED_SUBMIT_METHODS': ['get', 'post', 'put', 'delete', 'patch'],
 }
+
+# Django-crontab settings
+CRONJOBS = [
+    # Processa les visites d'ahir cada dia a les 3:00 AM (hora de Madrid)
+    ('0 3 * * *', 'django.core.management.call_command', ['process_yesterday_visits'], {'verbosity': 1}),
+]
