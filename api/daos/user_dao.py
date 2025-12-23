@@ -498,12 +498,13 @@ class UserDAO:
             logger.error(f"Error incrementant comptador de fotos pujades per l'usuari {uid}: {str(e)}")
             return False
     
-    def decrement_uploaded_photos(self, uid: str) -> bool:
+    def decrement_uploaded_photos(self, uid: str, count: int = 1) -> bool:
         """
         Decrementa el comptador de fotos pujades per un usuari
         
         Args:
             uid: UID de l'usuari
+            count: Nombre de fotos a decrementar (per defecte 1)
             
         Returns:
             bool: True si s'ha decrementat correctament
@@ -526,12 +527,12 @@ class UserDAO:
             # Només decrementa si el valor actual és major que 0
             if current_value > 0:
                 # Decrementa el comptador (Increment amb valor negatiu)
-                doc_ref.update({'num_uploaded_photos': Increment(-1)})
+                doc_ref.update({'num_uploaded_photos': Increment(-1*count)})
                 
                 # Invalida cache de l'usuari
                 cache_service.delete(cache_service.generate_key('user_detail', uid=uid))
                 
-                logger.info(f"Comptador de fotos pujades decrementat per l'usuari {uid} ({current_value} -> {current_value - 1})")
+                logger.info(f"Comptador de fotos pujades decrementat per l'usuari {uid} ({current_value} -> {current_value - count})")
             else:
                 logger.warning(f"No es pot decrementar comptador de fotos pujades per l'usuari {uid}, valor actual és {current_value}")
             

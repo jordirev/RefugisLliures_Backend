@@ -29,6 +29,7 @@ class RefugeVisitsAPIView(APIView):
     permission_classes = [IsAuthenticated]
     
     @swagger_auto_schema(
+        tags=['Refuge Visits'],
         operation_description="Obté totes les visites actuals i futures d'un refugi ordenades per data ascendent",
         responses={
             200: openapi.Response(
@@ -99,6 +100,7 @@ class UserVisitsAPIView(APIView):
     permission_classes = [IsAuthenticated, IsSameUser]
     
     @swagger_auto_schema(
+        tags=['Users'],
         operation_description="Obté totes les visites d'un usuari ordenades per data descendent",
         responses={
             200: openapi.Response(
@@ -166,8 +168,8 @@ class RefugeVisitDetailAPIView(APIView):
     permission_classes = [IsAuthenticated]
     
     @swagger_auto_schema(
-        tags="refuge",
-        operation_description="Crea una nova visita o afegeix un visitant a una visita existent",
+        tags=['Refuge Visits'],
+        peration_description="Crea una nova visita o afegeix un visitant a una visita existent",
         request_body=CreateRefugeVisitSerializer,
         responses={
             201: openapi.Response(
@@ -241,6 +243,7 @@ class RefugeVisitDetailAPIView(APIView):
             )
     
     @swagger_auto_schema(
+        tags=['Refuge Visits'],
         operation_description="Actualitza el nombre de visitants d'un usuari en una visita",
         request_body=UpdateRefugeVisitSerializer,
         responses={
@@ -315,6 +318,7 @@ class RefugeVisitDetailAPIView(APIView):
             )
     
     @swagger_auto_schema(
+        tags=['Refuge Visits'],
         operation_description="Elimina un visitant d'una visita",
         responses={
             200: openapi.Response(

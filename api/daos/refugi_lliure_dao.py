@@ -468,6 +468,69 @@ class RefugiLliureDAO:
             logger.error(f'Error eliminant media_metadata del refugi {refugi_id}: {str(e)}')
             return False, None
     
+    def delete_multiple_media_metadata(self, refugi_id: str, media_keys: List[str]) -> Tuple[bool, List[Dict[str, Any]]]:
+        """
+        Elimina múltiples media_metadata d'un refugi (bulk delete)
+        
+        Args:
+            refugi_id: ID del refugi
+            media_keys: Llista de keys dels mitjans a eliminar
+            
+        Returns:
+            bool: True si s'han eliminat correctament
+            List[Dict[str, Any]]: Llista de metadades eliminades amb 'key' i les dades de metadata
+        """
+        try:
+            db = firestore_service.get_db()
+            doc_ref = db.collection(self.collection_name).document(str(refugi_id))
+            logger.log(23, f"Firestore READ: collection={self.collection_name} document={refugi_id}")
+            doc = doc_ref.get()
+            
+            if not doc.exists:
+                logger.warning(f"No es pot eliminar media_metadata, refugi no trobat amb ID: {refugi_id}")
+                return False, []
+            
+            # Obtenir media_metadata actuals
+            current_metadata = doc.to_dict().get('media_metadata', {})
+            
+            # Guardar metadades eliminades i eliminar-les del diccionari
+            metadata_backup = []
+            keys_not_found = []
+            
+            for media_key in media_keys:
+                if media_key in current_metadata:
+                    # Guardar metadada amb la key
+                    backup_entry = current_metadata[media_key].copy()
+                    backup_entry['key'] = media_key
+                    metadata_backup.append(backup_entry)
+                    
+                    # Eliminar del diccionari
+                    del current_metadata[media_key]
+                else:
+                    keys_not_found.append(media_key)
+            
+            # Si no s'ha trobat cap key, retornar error
+            if len(metadata_backup) == 0:
+                logger.warning(f"No s'ha trobat cap media_key per eliminar del refugi {refugi_id}")
+                return False, []
+            
+            # Actualitzar document amb bulk update
+            logger.log(23, f"Firestore UPDATE: collection={self.collection_name} document={refugi_id} (bulk delete {len(metadata_backup)} media)")
+            doc_ref.update({'media_metadata': current_metadata})
+            
+            # Invalida cache del refugi
+            cache_service.delete(cache_service.generate_key('refugi_detail', refugi_id=refugi_id))
+            
+            if keys_not_found:
+                logger.warning(f"Algunes keys no s'han trobat al refugi {refugi_id}: {keys_not_found}")
+            
+            logger.log(23, f"Eliminats {len(metadata_backup)} media_metadata del refugi {refugi_id}")
+            return True, metadata_backup
+            
+        except Exception as e:
+            logger.error(f'Error eliminant múltiples media_metadata del refugi {refugi_id}: {str(e)}')
+            return False, []
+    
     def update_refugi_visitors(self, refugi_id: str, visitors: List[str]) -> bool:
         """
         Actualitza la llista de visitors d'un refugi

@@ -32,6 +32,7 @@ class RefugeMediaMetadataSerializer(serializers.Serializer):
     url = serializers.URLField()
     creator_uid = serializers.CharField()
     uploaded_at = serializers.CharField()  # ISO 8601 format
+    experience_id = serializers.CharField(required=False, allow_null=True)
 
 class RefugiSerializer(serializers.Serializer):
     """Serializer per a refugi"""

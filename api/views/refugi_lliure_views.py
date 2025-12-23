@@ -45,6 +45,7 @@ class RefugiLliureCollectionAPIView(APIView):
     permission_classes = [AllowAny]
     
     @swagger_auto_schema(
+        tags=['Refuges'],
         operation_description=(
             "Obté una llista de refugis amb suport per filtres opcionals. "
             "\n- Quan no s'especifiquen filtres, retorna totes les coordenades dels refugis. "
@@ -174,6 +175,7 @@ class RefugiLliureDetailAPIView(APIView):
     permission_classes = [AllowAny]
     
     @swagger_auto_schema(
+        tags=['Refuges'],
         operation_description=(
             "Obté els detalls complets d'un refugi específic per ID. "
             "\nRetorna informació completa del refugi incloent nom, descripció, coordenades, "
@@ -244,6 +246,7 @@ class RefugeRenovationsAPIView(APIView):
     permission_classes = [IsAuthenticated]
     
     @swagger_auto_schema(
+        tags=['Refuges'],
         operation_description=(
             "Obté totes les renovations d'un refugi específic. "
             "Requereix autenticació amb token JWT de Firebase."

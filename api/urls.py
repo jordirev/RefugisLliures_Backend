@@ -9,6 +9,10 @@ from .views.refugi_media_views import (
     RefugiMediaAPIView,
     RefugiMediaDeleteAPIView
 )
+from .views.experience_views import (
+    ExperienceListAPIView,
+    ExperienceDetailAPIView
+)
 from .views.user_views import (
     UsersCollectionAPIView,
     UserDetailAPIView,
@@ -45,12 +49,18 @@ urlpatterns = [
     path('refuges/', RefugiLliureCollectionAPIView.as_view(), name='refugi_lliure_collection'),
     path('refuges/<str:id>/', RefugiLliureDetailAPIView.as_view(), name='refugi_lliure_detail'),
     path('refuges/<str:id>/renovations/', RefugeRenovationsAPIView.as_view(), name='refuge_renovations'),  # GET /refuges/{id}/renovations/
+    
+    # Refuge visits endpoints
     path('refuges/<str:refuge_id>/visits/', RefugeVisitsAPIView.as_view(), name='refuge_visits'),  # GET /refuges/{id}/visits/
     path('refuges/<str:refuge_id>/visits/<str:visit_date>/', RefugeVisitDetailAPIView.as_view(), name='refuge_visit_detail'),  # POST + PATCH + DELETE /refuges/{id}/visits/{date}/
     
     # Refugi media endpoints
     path('refuges/<str:id>/media/', RefugiMediaAPIView.as_view(), name='refugi_media'),  # GET + POST /refuges/{id}/media/
     path('refuges/<str:id>/media/<path:key>/', RefugiMediaDeleteAPIView.as_view(), name='refugi_media_delete'),  # DELETE /refuges/{id}/media/{key}/
+    
+    # Refuge experience endpoints
+    path('refuges/<str:refuge_id>/experiences/', ExperienceListAPIView.as_view(), name='experience_list'),  # GET + POST /refuges/{refuge_id}/experiences/
+    path('refuges/<str:refuge_id>/experiences/<str:experience_id>/', ExperienceDetailAPIView.as_view(), name='experience_detail'),  # PATCH + DELETE /refuges/{refuge_id}/experiences/{experience_id}/
     
     # Users endpoints
     path('users/', UsersCollectionAPIView.as_view(), name='users_collection'),  # POST /users/ (crear)

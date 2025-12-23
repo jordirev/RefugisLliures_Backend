@@ -1,8 +1,24 @@
 """
 Permisos personalitzats per a l'API
 """
+from venv import logger
 from rest_framework import permissions
 from .services import firestore_service
+
+# Helper per a comprovar si l'usuari és admin
+def is_firebase_admin(request):
+    """
+    Comprova si l'usuari autenticat és un administrador mitjançant custom claims
+    """
+    # Obté els custom claims de l'usuari
+    user_claims = getattr(request, 'user_claims', {})
+    if not user_claims:
+        # Intenta obtenir-los de l'objecte user si no estan a request
+        user_claims = getattr(request.user, 'claims', {})
+    
+    # Comprova si l'usuari té el custom claim 'role' amb valor 'admin'
+    return user_claims.get('role') == 'admin'
+
 
 
 class IsOwnerOrReadOnly(permissions.BasePermission):
@@ -66,7 +82,6 @@ class SafeMethodsOnly(permissions.BasePermission):
         """
         return request.method in permissions.SAFE_METHODS
 
-
 class IsFirebaseAdmin(permissions.BasePermission):
     """
     Permís que només permet accés als usuaris administradors de Firebase.
@@ -82,17 +97,10 @@ class IsFirebaseAdmin(permissions.BasePermission):
         if not request.user or not hasattr(request.user, 'is_authenticated') or not request.user.is_authenticated:
             return False
         
-        # Obté els custom claims de l'usuari
-        user_claims = getattr(request, 'user_claims', {})
-        if not user_claims:
-            # Intenta obtenir-los de l'objecte user si no estan a request
-            user_claims = getattr(request.user, 'claims', {})
-        
-        # Comprova si l'usuari té el custom claim 'role' amb valor 'admin'
-        return user_claims.get('role') == 'admin'
+        return is_firebase_admin(request)
 
 
-class IsCreator(permissions.BasePermission):
+class IsExperienceCreator(permissions.BasePermission):
     """
     Permís personalitzat que només permet accedir al creador d'una clase.
     Comprova que el creator_uid de l'objecte coincideix amb l'UID de l'usuari autenticat.
@@ -108,8 +116,64 @@ class IsCreator(permissions.BasePermission):
         """
         Comprova si l'usuari és el creador de l'objecte
         """
+        # Els admins tenen accés directe
+        if is_firebase_admin(request):
+            return True
+        
         # Només aplica a mètodes no segurs (POST, PUT, PATCH, DELETE)
         if request.method in permissions.SAFE_METHODS:
+            return True
+        
+        # Obté l'ID de l'objecte des de la vista
+        instance_id = view.kwargs.get('experience_id')
+    
+        # Si no hi ha id, és un endpoint de creació (POST) i no cal verificar
+        if not instance_id:
+            logger.info("No hi ha experience_id, permetent accés (creació).")
+            return True
+
+        # Obté el UID de l'usuari autenticat
+        user_uid = getattr(request, 'user_uid', None)
+        if not user_uid:
+            return False
+        
+        from .daos.experience_dao import ExperienceDAO
+        # Obtenim l'objecte des de la base de dades
+        instance = ExperienceDAO().get_experience_by_id(instance_id)
+        
+        # Comprova si l'usuari és el creador de l'objecte
+        return instance.get('creator_uid') == user_uid
+    
+class IsRenovationCreator(permissions.BasePermission):
+    """
+    Permís personalitzat que només permet accedir al creador d'una clase.
+    Comprova que el creator_uid de l'objecte coincideix amb l'UID de l'usuari autenticat.
+    """
+    
+    def has_permission(self, request, view):
+        """
+        Comprova si l'usuari està autenticat
+        """
+        return request.user and hasattr(request.user, 'is_authenticated') and request.user.is_authenticated
+    
+    def has_object_permission(self, request, view, obj):
+        """
+        Comprova si l'usuari és el creador de l'objecte
+        """
+        # Els admins tenen accés directe
+        if is_firebase_admin(request):
+            return True
+        
+        # Només aplica a mètodes no segurs (POST, PUT, PATCH, DELETE)
+        if request.method in permissions.SAFE_METHODS:
+            return True
+        
+        # Obté l'ID de l'objecte des de la vista
+        instance_id = view.kwargs.get('id')
+    
+        # Si no hi ha id, és un endpoint de creació (POST) i no cal verificar
+        if not instance_id:
+            logger.info("No hi ha experience_id, permetent accés (creació).")
             return True
         
         # Obté el UID de l'usuari autenticat
@@ -118,15 +182,11 @@ class IsCreator(permissions.BasePermission):
             return False
         
         from .daos.renovation_dao import RenovationDAO
-        
         # Obtenim l'objecte des de la base de dades
-        renovation = RenovationDAO.get_renovation_by_id(view.kwargs.get('id'))
-        if not renovation:
-            return False
+        instance = RenovationDAO().get_renovation_by_id(instance_id)
         
-        # Comprova si l'usuari és el creador de la renovació
-        return renovation.get('creator_uid') == user_uid
-
+        # Comprova si l'usuari és el creador de l'objecte
+        return instance.get('creator_uid') == user_uid
 
 class IsMediaUploader(permissions.BasePermission):
     """

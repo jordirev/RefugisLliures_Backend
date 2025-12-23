@@ -149,7 +149,7 @@ class RefugiLliureController:
             logger.error(f"Error obtenint mitjans del refugi {refugi_id}: {str(e)}")
             return None, f"Internal server error: {str(e)}"
     
-    def upload_refugi_media(self, refugi_id: str, files: List[Any], creator_uid: str) -> Tuple[Optional[Dict[str, Any]], Optional[str]]:
+    def upload_refugi_media(self, refugi_id: str, files: List[Any], creator_uid: str, experience_id: str = None, uploaded_at: str = None) -> Tuple[Optional[Dict[str, Any]], Optional[str]]:
         """
         Puja mitjans per a un refugi
         
@@ -157,6 +157,8 @@ class RefugiLliureController:
             refugi_id: ID del refugi
             files: Llista de fitxers a pujar
             creator_uid: UID de l'usuari que puja els mitjans
+            experience_id: ID de l'experiència associada (opcional)
+            uploaded_at: Data i hora de pujada (ISO 8601 format, opcional) Si no es proporciona, es genera la data actual
             
         Returns: (Diccionari amb uploaded i failed o None, missatge d'error o None)
         """
@@ -184,13 +186,15 @@ class RefugiLliureController:
                     
                     # Crear metadades del mitjà
                     from ..utils.timezone_utils import get_madrid_today
-                    uploaded_at = get_madrid_today().isoformat()
+                    if uploaded_at is None:
+                        uploaded_at = get_madrid_today().isoformat()
                     
                     # Utilitzar la key com a clau del diccionari
                     key = result['key']
                     metadata = {
                         'creator_uid': creator_uid,
-                        'uploaded_at': uploaded_at
+                        'uploaded_at': uploaded_at,
+                        'experience_id': experience_id
                     }
                     media_metadata_dict[key] = metadata
 
@@ -253,6 +257,13 @@ class RefugiLliureController:
                 # Refugi no existeix
                 return False, "Refugi or Media not found"
             
+            # Si el mitjà pertany a una experiència, eliminar-lo també de l'experiència
+            experience_id = metadata_backup.get('experience_id') if metadata_backup else None
+            if experience_id:
+                from ..daos.experience_dao import ExperienceDAO
+                experience_dao = ExperienceDAO()
+                experience_dao.remove_media_key(experience_id, media_key)
+            
             # Eliminar fitxer de R2
             try:
                 self.media_service.delete_file(media_key)
@@ -262,6 +273,12 @@ class RefugiLliureController:
                 # Restore Firestore media_metadata
                 logger.info(f"Restoring Firestore media metadata for {media_key}")
                 self.refugi_dao.add_media_metadata(refugi_id, {media_key: metadata_backup})
+                
+                # Restore experience media_key if needed
+                if experience_id:
+                    from ..daos.experience_dao import ExperienceDAO
+                    experience_dao = ExperienceDAO()
+                    experience_dao.add_media_key(experience_id, media_key)
 
                 return False, "Error deleting file from storage"
             
@@ -275,4 +292,78 @@ class RefugiLliureController:
             
         except Exception as e:
             logger.error(f"Error eliminant mitjà {media_key} del refugi {refugi_id}: {str(e)}")
+            return False, f"Internal server error: {str(e)}"
+        
+    def delete_multiple_refugi_media(self, refugi_id: str, media_keys: List[str]) -> Tuple[bool, Optional[str]]:
+        """
+        Elimina múltiples mitjans d'un refugi amb bulk delete
+        
+        Args:
+            refugi_id: ID del refugi
+            media_keys: Llista de keys dels mitjans a eliminar
+            
+        Returns: (True si s'han eliminat correctament, missatge d'error o None)
+        """
+        try:
+            # Eliminar metadades de Firestore (bulk delete)
+            success, metadata_backup_list = self.refugi_dao.delete_multiple_media_metadata(refugi_id, media_keys)
+            if not success or not metadata_backup_list:
+                # Refugi no existeix o no s'han trobat mitjans
+                return False, "Refugi or Media not found"
+            
+            # Agrupem les metadades per experience_id per optimitzar
+            experiences_to_update = {}
+            for metadata in metadata_backup_list:
+                experience_id = metadata.get('experience_id')
+                if experience_id:
+                    if experience_id not in experiences_to_update:
+                        experiences_to_update[experience_id] = []
+                    experiences_to_update[experience_id].append(metadata['key'])
+            
+            # Eliminar fitxers de R2
+            result = self.media_service.delete_files(media_keys)
+
+            deleted_keys = result['deleted']
+            failed_keys = result['failed']
+
+            # Eliminar keys de les experiències
+            if experiences_to_update:
+                from ..daos.experience_dao import ExperienceDAO
+                experience_dao = ExperienceDAO()
+                for exp_id, keys in experiences_to_update.items():
+                    for key in keys:
+                        if key not in failed_keys:
+                            experience_dao.remove_media_key(exp_id, key)
+
+            # Si hi ha errors eliminant de R2, fer rollback de les failed_deletions
+            if failed_keys:
+                logger.error(f"Error eliminant {len(failed_keys)} fitxers de R2, fent rollback...")
+                
+                # Restore Firestore media_metadata
+                restore_dict = {}
+                for metadata in metadata_backup_list:
+                    if metadata['key'] in failed_keys:
+                        restore_dict[key] = metadata
+                
+                self.refugi_dao.add_media_metadata(refugi_id, restore_dict)
+                
+                return False, "Error deleting files from storage"
+
+            # Decrementar el comptador de fotos pujades per usuari que no han fallat (agrupat per creator_uid)
+            user_photo_counts = {}
+            for metadata in metadata_backup_list:
+                if metadata['key'] not in failed_keys:
+                    creator_uid = metadata.get('creator_uid')
+                    if creator_uid:
+                        user_photo_counts[creator_uid] = user_photo_counts.get(creator_uid, 0) + 1
+            
+            # Decrementar amb count per cada usuari
+            for creator_uid, count in user_photo_counts.items():
+                self.user_dao.decrement_uploaded_photos(creator_uid, count)
+            
+            logger.info(f"Eliminats correctament {len(metadata_backup_list)} mitjans del refugi {refugi_id}")
+            return True, None
+            
+        except Exception as e:
+            logger.error(f"Error eliminant múltiples mitjans del refugi {refugi_id}: {str(e)}")
             return False, f"Internal server error: {str(e)}"

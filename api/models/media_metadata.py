@@ -9,7 +9,8 @@ from datetime import datetime
 @dataclass
 class MediaMetadata:
     """
-    Model per representar les metadades del avatar d'un usuari.
+    Model per representar imatges en format curt.
+    Utilitzat per fotos d'experiencies i avatars d'usuaris.
     
     Atributs:
         key: Path del fitxer al bucket R2
@@ -19,7 +20,7 @@ class MediaMetadata:
     """
     key: str
     url: str
-    uploaded_at: str  # ISO 8601 format: "2024-12-08T10:30:00Z"
+    uploaded_at: str = None  # ISO 8601 format: "2024-12-08T10:30:00Z"
     
     def to_dict(self) -> dict:
         """Converteix les metadades a diccionari"""
@@ -51,14 +52,18 @@ class RefugeMediaMetadata(MediaMetadata):
         url: URL prefirmada per accedir al fitxer
         creator_uid: UID de l'usuari que ha pujat el mitjà
         uploaded_at: Data i hora de pujada (ISO 8601 format)
+        experience_id: ID de l'experiència associada (opcional, per defecte None)
     """
     
-    creator_uid: str
+    creator_uid: str = None
+    experience_id: Optional[str] = None
 
     def to_dict(self) -> dict:
         """Converteix les metadades a diccionari"""
         base_dict = super().to_dict()
         base_dict['creator_uid'] = self.creator_uid
+        if self.experience_id is not None:
+            base_dict['experience_id'] = self.experience_id
         return base_dict
     
     @classmethod
@@ -68,5 +73,6 @@ class RefugeMediaMetadata(MediaMetadata):
             key=data.get('key', ''),
             url=data.get('url', ''),
             uploaded_at=data.get('uploaded_at', ''),
-            creator_uid=data.get('creator_uid', '')
+            creator_uid=data.get('creator_uid', ''),
+            experience_id=data.get('experience_id')
         )
