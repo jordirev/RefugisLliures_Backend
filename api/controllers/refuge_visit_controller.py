@@ -170,7 +170,7 @@ class RefugeVisitController:
             # Obté la visita
             result = self.visit_dao.get_visit_by_refuge_and_date(refuge_id, visit_date)
             if not result:
-                return False, None, "Visita no trobada"
+                return False, None, "Visita o refugi no trobat"
             
             visit_id, visit = result
             

@@ -143,6 +143,7 @@ class ExperienceController:
             (Model d'experiencia actualitzat o None, Diccionari dels mitjans uploaded i failed o None, missatge d'error o None)
         """
         try:
+
             # Obtenir l'experiència existent
             experience = self.experience_dao.get_experience_by_id(experience_id)
             if not experience:

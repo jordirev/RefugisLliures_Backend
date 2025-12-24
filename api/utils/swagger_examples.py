@@ -609,3 +609,122 @@ EXAMPLE_REFUGE_PROPOSALS_LIST = [
         'rejection_reason': 'Necessitem més evidències abans d\'eliminar el refugi'
     }
 ]
+
+
+# ========== EXEMPLES DE DOUBTS I ANSWERS ==========
+
+EXAMPLE_ANSWER_DETAIL = {
+    'id': 'answer_abc123',
+    'creator_uid': 'uid_456def',
+    'message': 'Sí, hi ha una font d\'aigua potable a uns 100 metres del refugi.',
+    'created_at': '2025-12-20T10:30:00+01:00',
+    'parent_answer_id': None
+}
+
+EXAMPLE_ANSWER_REPLY = {
+    'id': 'answer_def456',
+    'creator_uid': 'uid_789ghi',
+    'message': 'Gràcies per la informació! És potable tot l\'any?',
+    'created_at': '2025-12-20T11:15:00+01:00',
+    'parent_answer_id': 'answer_abc123'
+}
+
+EXAMPLE_DOUBT_DETAIL = {
+    'id': 'doubt_123abc',
+    'refuge_id': 'refugi_colomers',
+    'creator_uid': 'uid_123abc',
+    'message': 'Hi ha aigua potable prop del refugi?',
+    'created_at': '2025-12-20T09:45:00+01:00',
+    'answers_count': 0,
+    'answers': []
+}
+
+EXAMPLE_DOUBT_WITH_ANSWERS = {
+    'id': 'doubt_456def',
+    'refuge_id': 'refugi_colomers',
+    'creator_uid': 'uid_123abc',
+    'message': 'Quin és l\'estat de les cobertes actualmente?',
+    'created_at': '2025-12-19T14:20:00+01:00',
+    'answers_count': 3,
+    'answers': [
+        {
+            'id': 'answer_ghi789',
+            'creator_uid': 'uid_456def',
+            'message': 'Hi ha suficients cobertes, però estan una mica desgastades.',
+            'created_at': '2025-12-19T15:10:00+01:00',
+            'parent_answer_id': None
+        },
+        {
+            'id': 'answer_jkl012',
+            'creator_uid': 'uid_789ghi',
+            'message': 'Jo hi vaig anar la setmana passada i n\'hi havia unes 20.',
+            'created_at': '2025-12-19T16:30:00+01:00',
+            'parent_answer_id': None
+        },
+        {
+            'id': 'answer_mno345',
+            'creator_uid': 'uid_123abc',
+            'message': 'Perfecte, gràcies a tots per la informació!',
+            'created_at': '2025-12-19T17:00:00+01:00',
+            'parent_answer_id': 'answer_ghi789'
+        }
+    ]
+}
+
+EXAMPLE_DOUBT_LIST = [
+    {
+        'id': 'doubt_789xyz',
+        'refuge_id': 'refugi_colomers',
+        'creator_uid': 'uid_abc123',
+        'message': 'Es pot arribar amb cotxe fins al refugi?',
+        'created_at': '2025-12-21T08:00:00+01:00',
+        'answers_count': 2,
+        'answers': [
+            {
+                'id': 'answer_pqr678',
+                'creator_uid': 'uid_def456',
+                'message': 'No, cal fer una caminata d\'aproximadament 2 hores des del pàrquing més proper.',
+                'created_at': '2025-12-21T09:30:00+01:00',
+                'parent_answer_id': None
+            },
+            {
+                'id': 'answer_stu901',
+                'creator_uid': 'uid_ghi789',
+                'message': 'El pàrquing està al final de la carretera de Conangles.',
+                'created_at': '2025-12-21T10:15:00+01:00',
+                'parent_answer_id': 'answer_pqr678'
+            }
+        ]
+    },
+    {
+        'id': 'doubt_456def',
+        'refuge_id': 'refugi_colomers',
+        'creator_uid': 'uid_123abc',
+        'message': 'Quin és l\'estat de les cobertes actualmente?',
+        'created_at': '2025-12-19T14:20:00+01:00',
+        'answers_count': 3,
+        'answers': [
+            {
+                'id': 'answer_ghi789',
+                'creator_uid': 'uid_456def',
+                'message': 'Hi ha suficients cobertes, però estan una mica desgastades.',
+                'created_at': '2025-12-19T15:10:00+01:00',
+                'parent_answer_id': None
+            },
+            {
+                'id': 'answer_jkl012',
+                'creator_uid': 'uid_789ghi',
+                'message': 'Jo hi vaig anar la setmana passada i n\'hi havia unes 20.',
+                'created_at': '2025-12-19T16:30:00+01:00',
+                'parent_answer_id': None
+            },
+            {
+                'id': 'answer_mno345',
+                'creator_uid': 'uid_123abc',
+                'message': 'Perfecte, gràcies a tots per la informació!',
+                'created_at': '2025-12-19T17:00:00+01:00',
+                'parent_answer_id': 'answer_ghi789'
+            }
+        ]
+    }
+]

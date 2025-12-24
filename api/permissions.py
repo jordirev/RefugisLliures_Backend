@@ -274,3 +274,100 @@ class IsMediaUploader(permissions.BasePermission):
             logger.error(f"Error verificant permís IsMediaUploader: {str(e)}")
             return False
 
+
+class IsDoubtCreator(permissions.BasePermission):
+    """
+    Permís personalitzat que només permet accedir al creador d'un dubte.
+    Comprova que el creator_uid del dubte coincideix amb l'UID de l'usuari autenticat.
+    """
+    
+    def has_permission(self, request, view):
+        """
+        Comprova si l'usuari està autenticat
+        """
+        return request.user and hasattr(request.user, 'is_authenticated') and request.user.is_authenticated
+    
+    def has_object_permission(self, request, view, obj):
+        """
+        Comprova si l'usuari és el creador del dubte
+        """
+        # Els admins tenen accés directe
+        if is_firebase_admin(request):
+            return True
+        
+        # Només aplica a mètodes no segurs (POST, PUT, PATCH, DELETE)
+        if request.method in permissions.SAFE_METHODS:
+            return True
+        
+        # Obté l'ID del dubte des de la vista
+        doubt_id = view.kwargs.get('doubt_id')
+        
+        # Si no hi ha id, és un endpoint de creació (POST) i no cal verificar
+        if not doubt_id:
+            logger.info("No hi ha doubt_id, permetent accés (creació).")
+            return True
+        
+        # Obté el UID de l'usuari autenticat
+        user_uid = getattr(request, 'user_uid', None)
+        if not user_uid:
+            return False
+        
+        from .controllers.doubt_controller import DoubtController
+        # Obtenim el dubte des de la base de dades
+        doubt = DoubtController().get_doubt_by_id(doubt_id)
+        
+        if not doubt:
+            return False
+        
+        # Comprova si l'usuari és el creador del dubte
+        return doubt.creator_uid == user_uid
+
+
+class IsAnswerCreator(permissions.BasePermission):
+    """
+    Permís personalitzat que només permet accedir al creador d'una resposta.
+    Comprova que el creator_uid de la resposta coincideix amb l'UID de l'usuari autenticat.
+    """
+    
+    def has_permission(self, request, view):
+        """
+        Comprova si l'usuari està autenticat
+        """
+        return request.user and hasattr(request.user, 'is_authenticated') and request.user.is_authenticated
+    
+    def has_object_permission(self, request, view, obj):
+        """
+        Comprova si l'usuari és el creador de la resposta
+        """
+        # Els admins tenen accés directe
+        if is_firebase_admin(request):
+            return True
+        
+        # Només aplica a mètodes no segurs (POST, PUT, PATCH, DELETE)
+        if request.method in permissions.SAFE_METHODS:
+            return True
+        
+        # Obté l'ID de la resposta des de la vista
+        answer_id = view.kwargs.get('answer_id')
+        doubt_id = view.kwargs.get('doubt_id')
+        
+        # Si no hi ha id, és un endpoint de creació (POST) i no cal verificar
+        if not answer_id or not doubt_id:
+            logger.info("No hi ha answer_id o doubt_id, permetent accés (creació).")
+            return True
+        
+        # Obté el UID de l'usuari autenticat
+        user_uid = getattr(request, 'user_uid', None)
+        if not user_uid:
+            return False
+        
+        from .controllers.doubt_controller import DoubtController
+        # Obtenim la resposta des de la base de dades
+        answer = DoubtController().get_answer_by_id(doubt_id, answer_id)
+        
+        if not answer:
+            return False
+        
+        # Comprova si l'usuari és el creador de la resposta
+        return answer.creator_uid == user_uid
+

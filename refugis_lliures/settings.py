@@ -201,16 +201,6 @@ CACHES = {
     }
 }
 
-# Cache timeouts personalitzats
-CACHE_TIMEOUTS = {
-    'refugi_detail': config('CACHE_TIMEOUT_REFUGI_DETAIL', default=600, cast=int),  # 10 minuts
-    'refugi_list': config('CACHE_TIMEOUT_REFUGI_LIST', default=300, cast=int),  # 5 minuts
-    'refugi_search': config('CACHE_TIMEOUT_REFUGI_SEARCH', default=180, cast=int),  # 3 minuts
-    'refugi_coords': config('CACHE_TIMEOUT_REFUGI_COORDS', default=36000, cast=int),  # 1 hora
-    'user_detail': config('CACHE_TIMEOUT_USER_DETAIL', default=300, cast=int),  # 5 minuts
-    'proposal_detail': config('CACHE_TIMEOUT_PROPOSAL_DETAIL', default=300, cast=int),  # 5 minuts
-    'proposal_list': config('CACHE_TIMEOUT_PROPOSAL_LIST', default=180, cast=int),  # 3 minuts
-}
 
 
 # Logging configuration: enable INFO logs for cache and firestore access tracing
