@@ -78,7 +78,9 @@ class ExperienceListAPIView(APIView):
                     status=status.HTTP_500_INTERNAL_SERVER_ERROR
                 )
     
-            serializer = ExperienceListResponseSerializer([e.to_dict() for e in experiences], many=True)
+            # Wrap experiences in a dict with 'experiences' key for the serializer
+            response_data = {'experiences': [e.to_dict() for e in experiences]}
+            serializer = ExperienceListResponseSerializer(response_data)
 
             return Response(serializer.data, status=status.HTTP_200_OK)
             

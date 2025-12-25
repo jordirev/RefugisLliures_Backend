@@ -171,7 +171,7 @@ class DoubtListAPIView(APIView):
                     status=status.HTTP_500_INTERNAL_SERVER_ERROR
                 )
             
-            serializer = DoubtSerializer(doubt.to_dict())
+            serializer = DoubtSerializer(data=doubt.to_dict())
             serializer.is_valid(raise_exception=True)
             return Response(
                 serializer.data,
@@ -359,10 +359,10 @@ class AnswerListAPIView(APIView):
                     status=status.HTTP_500_INTERNAL_SERVER_ERROR
                 )
             
-            serializer = AnswerSerializer(answer.to_dict())
+            serializer = AnswerSerializer(data=answer.to_dict())
             serializer.is_valid(raise_exception=True)
             return Response(
-                answer.to_dict(),
+                serializer.data,
                 status=status.HTTP_201_CREATED
             )
             
@@ -480,7 +480,7 @@ class AnswerReplyAPIView(APIView):
                     status=status.HTTP_500_INTERNAL_SERVER_ERROR
                 )
             
-            serializer = AnswerSerializer(answer.to_dict())
+            serializer = AnswerSerializer(data=answer.to_dict())
             serializer.is_valid(raise_exception=True)
             return Response(
                 serializer.data,

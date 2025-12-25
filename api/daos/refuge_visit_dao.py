@@ -4,6 +4,7 @@ DAO per a la gestió de visites a refugis amb Firestore
 import logging
 from typing import List, Optional, Dict, Any
 from datetime import date
+from firebase_admin import firestore
 from ..services.firestore_service import FirestoreService
 from ..services.cache_service import cache_service
 from ..mappers.refuge_visit_mapper import RefugeVisitMapper
@@ -106,9 +107,9 @@ class RefugeVisitDAO:
             db = self.firestore_service.get_db()
             logger.log(23, f"Firestore QUERY: collection={self.COLLECTION_NAME} filter=refuge_id=={refuge_id} AND date=={visit_date}")
             query = db.collection(self.COLLECTION_NAME).where(
-                filter=self.firestore_service.firestore.FieldFilter('refuge_id', '==', refuge_id)
+                filter=firestore.FieldFilter('refuge_id', '==', refuge_id)
             ).where(
-                filter=self.firestore_service.firestore.FieldFilter('date', '==', visit_date)
+                filter=firestore.FieldFilter('date', '==', visit_date)
             ).limit(1)
             
             docs = query.get()
@@ -155,9 +156,9 @@ class RefugeVisitDAO:
             db = self.firestore_service.get_db()
             logger.log(23, f"Firestore QUERY: collection={self.COLLECTION_NAME} filter=refuge_id=={refuge_id} AND date>={from_date.isoformat()} order_by=date ASC")
             query = db.collection(self.COLLECTION_NAME).where(
-                filter=self.firestore_service.firestore.FieldFilter('refuge_id', '==', refuge_id)
+                filter=firestore.FieldFilter('refuge_id', '==', refuge_id)
             ).where(
-                filter=self.firestore_service.firestore.FieldFilter('date', '>=', from_date.isoformat())
+                filter=firestore.FieldFilter('date', '>=', from_date.isoformat())
             ).order_by('date')
             
             docs = query.get()
@@ -196,7 +197,7 @@ class RefugeVisitDAO:
             
             # Firestore no pot fer array-contains amb objectes, així que necessitem fer un filtre més manual
             # Obtenim totes les visites i filtrem en memòria
-            query = db.collection(self.COLLECTION_NAME).order_by('date', direction=self.firestore_service.firestore.Query.DESCENDING)
+            query = db.collection(self.COLLECTION_NAME).order_by('date', direction=firestore.Query.DESCENDING)
             
             docs = query.get()
             visits = []
@@ -376,7 +377,7 @@ class RefugeVisitDAO:
             db = self.firestore_service.get_db()
             logger.log(23, f"Firestore QUERY: collection={self.COLLECTION_NAME} filter=date=={target_date}")
             query = db.collection(self.COLLECTION_NAME).where(
-                filter=self.firestore_service.firestore.FieldFilter('date', '==', target_date)
+                filter=firestore.FieldFilter('date', '==', target_date)
             )
             
             docs = query.get()

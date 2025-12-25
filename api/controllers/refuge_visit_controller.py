@@ -8,6 +8,7 @@ from ..daos.refuge_visit_dao import RefugeVisitDAO
 from ..daos.refugi_lliure_dao import RefugiLliureDAO
 from ..mappers.refuge_visit_mapper import RefugeVisitMapper
 from ..models.refuge_visit import RefugeVisit, UserVisit
+from ..controllers.user_controller import UserController
 from ..utils.timezone_utils import get_madrid_today
 
 logger = logging.getLogger(__name__)
@@ -21,6 +22,7 @@ class RefugeVisitController:
         self.visit_dao = RefugeVisitDAO()
         self.refuge_dao = RefugiLliureDAO()
         self.mapper = RefugeVisitMapper()
+        self.user_controller = UserController()
     
     def get_refuge_visits(self, refuge_id: str) -> tuple[bool, List[RefugeVisit], Optional[str]]:
         """
@@ -34,7 +36,7 @@ class RefugeVisitController:
         """
         try:
             # Comprova que el refugi existeix
-            refuge = self.refuge_dao.get_refugi_by_id(refuge_id)
+            refuge = self.refuge_dao.get_by_id(refuge_id)
             if not refuge:
                 return False, [], f"Refugi amb ID {refuge_id} no trobat"
             
@@ -86,7 +88,7 @@ class RefugeVisitController:
         """
         try:
             # Comprova que el refugi existeix
-            refuge = self.refuge_dao.get_refugi_by_id(refuge_id)
+            refuge = self.refuge_dao.get_by_id(refuge_id)
             if not refuge:
                 return False, None, f"Refugi amb ID {refuge_id} no trobat"
             
@@ -277,7 +279,7 @@ class RefugeVisitController:
                 # Afegeix els visitants al refugi
                 if visit.visitors:
                     # Obté el refugi
-                    refuge = self.refuge_dao.get_refugi_by_id(visit.refuge_id)
+                    refuge = self.refuge_dao.get_by_id(visit.refuge_id)
                     if not refuge:
                         logger.warning(f"Refugi no trobat: {visit.refuge_id}")
                         continue
@@ -297,6 +299,10 @@ class RefugeVisitController:
                         logger.info(f"Refugi {visit.refuge_id} actualitzat amb {len(new_visitors)} visitants")
                     else:
                         logger.warning(f"Error actualitzant refugi: {visit.refuge_id}")
+
+                    # Afegeix el refuge_id a la llista de refugis visitats de cada usuari
+                    for visitor in visit.visitors:
+                        self.user_controller.add_refugi_visitat(visitor.uid, visit.refuge_id)
             
             logger.info(f"Visites d'ahir processades: {stats}")
             return True, stats, None

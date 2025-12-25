@@ -42,7 +42,7 @@ class ExperienceController:
             if not self.refugi_dao.refugi_exists(refuge_id):
                 return None, "Refuge not found"
             
-            # Obtenir experiències del DAO
+            # Obtenir experiències del DAO (ja genera URLs prefirmades)
             experiences = self.experience_dao.get_experiences_by_refuge_id(refuge_id)
 
             return experiences, None
@@ -182,7 +182,7 @@ class ExperienceController:
                 return None, upload_result, error or "Error updating experience"
             
             # Obtenir l'experiència actualitzada
-            updated_experience = self.experience_dao.get_experience_by_id(experience_id)            
+            updated_experience = self.experience_dao.get_experience_by_id(experience_id)
             return updated_experience, upload_result, None
             
         except Exception as e:
@@ -259,7 +259,8 @@ class ExperienceController:
         """
         try:            
             # Pujar mitjans al refugi de la experiència
-            result, error = RefugiLliureController.upload_refugi_media(
+            refugi_controller = RefugiLliureController()
+            result, error = refugi_controller.upload_refugi_media(
                 refugi_id=refuge_id,
                 files=files,
                 creator_uid=creator_uid,

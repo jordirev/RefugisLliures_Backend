@@ -49,9 +49,9 @@ class Experience:
                 media_service = r2_media_service.get_refugi_media_service()
                 for key in data['media_keys']:
                     url = media_service.generate_presigned_url(key)
-                    images_metadata.append(MediaMetadata(key=key, url=url)) # updated_at serà None
+                    images_metadata.append(MediaMetadata(key=key, url=url, uploaded_at=None))
             except Exception as e:
-                logger.warning(f"Error generant MediaMetadata per refugi {data.get('id', '')}: {str(e)}")
+                logger.warning(f"Error generant MediaMetadata per experiència {data.get('id', '')}: {str(e)}")
                 images_metadata = []
         
         return cls(

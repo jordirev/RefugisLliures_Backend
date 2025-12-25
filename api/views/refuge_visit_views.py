@@ -169,7 +169,8 @@ class RefugeVisitDetailAPIView(APIView):
     
     @swagger_auto_schema(
         tags=['Refuge Visits'],
-        peration_description="Crea una nova visita o afegeix un visitant a una visita existent",
+        operation_description="Crea una nova visita o afegeix un visitant a una visita existent" \
+        "\nEl format de la data ha de ser AAAA-MM-DD",
         request_body=CreateRefugeVisitSerializer,
         responses={
             201: openapi.Response(
@@ -206,8 +207,15 @@ class RefugeVisitDetailAPIView(APIView):
                     status=status.HTTP_400_BAD_REQUEST
                 )
             
-            # Obté l'UID del token
-            uid = request.user.uid
+            # Obtenir UID de l'usuari autenticat
+            uid = getattr(request, 'user_uid', None)
+            if not uid:
+                return Response({
+                    'error': 'No autenticat',
+                    'message': 'UID d\'usuari no trobat'
+                }, status=status.HTTP_401_UNAUTHORIZED)
+            
+            # Obté el nombre de visitants del cos de la sol·licitud
             num_visitors = serializer.validated_data['num_visitors']
             
             controller = RefugeVisitController()
@@ -244,7 +252,8 @@ class RefugeVisitDetailAPIView(APIView):
     
     @swagger_auto_schema(
         tags=['Refuge Visits'],
-        operation_description="Actualitza el nombre de visitants d'un usuari en una visita",
+        operation_description="Actualitza el nombre de visitants d'un usuari en una visita" \
+        "\nEl format de la data ha de ser AAAA-MM-DD",
         request_body=UpdateRefugeVisitSerializer,
         responses={
             200: openapi.Response(
@@ -281,8 +290,15 @@ class RefugeVisitDetailAPIView(APIView):
                     status=status.HTTP_400_BAD_REQUEST
                 )
             
-            # Obté l'UID del token
-            uid = request.user.uid
+            # Obtenir UID de l'usuari autenticat
+            uid = getattr(request, 'user_uid', None)
+            if not uid:
+                return Response({
+                    'error': 'No autenticat',
+                    'message': 'UID d\'usuari no trobat'
+                }, status=status.HTTP_401_UNAUTHORIZED)
+            
+            # Obté el nombre de visitants del cos de la sol·licitud
             num_visitors = serializer.validated_data['num_visitors']
             
             controller = RefugeVisitController()
@@ -319,7 +335,8 @@ class RefugeVisitDetailAPIView(APIView):
     
     @swagger_auto_schema(
         tags=['Refuge Visits'],
-        operation_description="Elimina un visitant d'una visita",
+        operation_description="Elimina un visitant d'una visita"\
+        "\nEl format de la data ha de ser AAAA-MM-DD",
         responses={
             200: openapi.Response(
                 description="Visitant eliminat correctament",
@@ -339,8 +356,13 @@ class RefugeVisitDetailAPIView(APIView):
     def delete(self, request, refuge_id, visit_date):
         """Elimina un visitant d'una visita"""
         try:
-            # Obté l'UID del token
-            uid = request.user.uid
+            # Obtenir UID de l'usuari autenticat
+            uid = getattr(request, 'user_uid', None)
+            if not uid:
+                return Response({
+                    'error': 'No autenticat',
+                    'message': 'UID d\'usuari no trobat'
+                }, status=status.HTTP_401_UNAUTHORIZED)
             
             controller = RefugeVisitController()
             success, error = controller.delete_visit(refuge_id, visit_date, uid)
