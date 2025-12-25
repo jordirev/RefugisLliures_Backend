@@ -228,3 +228,47 @@ class DoubtController:
         except Exception as e:
             logger.error(f"Error eliminant resposta: {str(e)}")
             return False, f"Internal server error: {str(e)}"
+    
+    def delete_doubts_by_creator(self, creator_uid: str) -> Tuple[bool, Optional[str]]:
+        """
+        Elimina tots els dubtes creats per un usuari
+        
+        Args:
+            creator_uid: UID del creador
+            
+        Returns:
+            Tuple (èxit: bool, missatge d'error: Optional[str])
+        """
+        try:
+            success, error = self.doubt_dao.delete_doubts_by_creator(creator_uid)
+            if not success:
+                return False, error
+            
+            logger.info(f"Dubtes eliminats correctament per al creador {creator_uid}")
+            return True, None
+            
+        except Exception as e:
+            logger.error(f"Error eliminant dubtes del creador {creator_uid}: {str(e)}")
+            return False, f"Internal server error: {str(e)}"
+    
+    def delete_answers_by_creator(self, creator_uid: str) -> Tuple[bool, Optional[str]]:
+        """
+        Elimina totes les respostes creades per un usuari
+        
+        Args:
+            creator_uid: UID del creador
+            
+        Returns:
+            Tuple (èxit: bool, missatge d'error: Optional[str])
+        """
+        try:
+            success, error = self.doubt_dao.delete_answers_by_creator(creator_uid)
+            if not success:
+                return False, error
+            
+            logger.info(f"Respostes eliminades correctament per al creador {creator_uid}")
+            return True, None
+            
+        except Exception as e:
+            logger.error(f"Error eliminant respostes del creador {creator_uid}: {str(e)}")
+            return False, f"Internal server error: {str(e)}"

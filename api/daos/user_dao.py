@@ -465,15 +465,16 @@ class UserDAO:
             logger.error(f"Error incrementant comptador de refugis renovats per l'usuari {uid}: {str(e)}")
             return False
     
-    def increment_uploaded_photos(self, uid: str) -> bool:
+    def add_uploaded_photos_keys(self, uid: str, media_keys: List[str]) -> bool:
         """
-        Incrementa el comptador de fotos pujades per un usuari
+        Afegeix keys de fotos pujades a l'array uploaded_photos_keys d'un usuari
         
         Args:
             uid: UID de l'usuari
+            media_keys: Llista de keys de fotos a afegir
             
         Returns:
-            bool: True si s'ha incrementat correctament
+            bool: True si s'ha afegit correctament
         """
         try:
             db = self.firestore_service.get_db()
@@ -482,20 +483,29 @@ class UserDAO:
             # Comprova que l'usuari existeixi
             doc = doc_ref.get()
             if not doc.exists:
-                logger.warning(f"No es pot incrementar comptador, usuari no trobat amb UID: {uid}")
+                logger.warning(f"No es poden afegir keys, usuari no trobat amb UID: {uid}")
                 return False
             
-            # Incrementa el comptador
-            doc_ref.update({'num_uploaded_photos': Increment(1)})
+            # Obté l'array actual
+            user_data = doc.to_dict()
+            current_keys = user_data.get('uploaded_photos_keys', [])
+            if current_keys is None:
+                current_keys = []
+            
+            # Afegeix les noves keys
+            current_keys.extend(media_keys)
+            
+            # Actualitza l'array
+            doc_ref.update({'uploaded_photos_keys': current_keys})
             
             # Invalida cache de l'usuari
             cache_service.delete(cache_service.generate_key('user_detail', uid=uid))
             
-            logger.info(f"Comptador de fotos pujades incrementat per l'usuari {uid}")
+            logger.info(f"Keys de fotos pujades afegides per l'usuari {uid}: {media_keys}")
             return True
             
         except Exception as e:
-            logger.error(f"Error incrementant comptador de fotos pujades per l'usuari {uid}: {str(e)}")
+            logger.error(f"Error afegint keys de fotos pujades per l'usuari {uid}: {str(e)}")
             return False
         
     def increment_shared_experiences(self, uid: str) -> bool:
@@ -582,47 +592,47 @@ class UserDAO:
             logger.error(f"Error decrementant comptadors per l'usuari {uid}: {str(e)}")
             return False
     
-    def decrement_uploaded_photos(self, uid: str, count: int = 1) -> bool:
+    def remove_uploaded_photos_keys(self, uid: str, media_keys: List[str]) -> bool:
         """
-        Decrementa el comptador de fotos pujades per un usuari
+        Elimina keys de fotos pujades de l'array uploaded_photos_keys d'un usuari
         
         Args:
             uid: UID de l'usuari
-            count: Nombre de fotos a decrementar (per defecte 1)
+            media_keys: Llista de keys de fotos a eliminar
             
         Returns:
-            bool: True si s'ha decrementat correctament
+            bool: True si s'ha eliminat correctament
         """
         try:
             db = self.firestore_service.get_db()
             doc_ref = db.collection(self.COLLECTION_NAME).document(uid)
             
-            # Comprova que l'usuari existeixi i obté el valor actual
+            # Comprova que l'usuari existeixi i obté l'array actual
             doc = doc_ref.get()
             if not doc.exists:
-                logger.warning(f"No es pot decrementar comptador, usuari no trobat amb UID: {uid}")
+                logger.warning(f"No es poden eliminar keys, usuari no trobat amb UID: {uid}")
                 return False
             
-            # Obté el valor actual del comptador
+            # Obté l'array actual
             user_data = doc.to_dict()
-            current_value = user_data.get('num_uploaded_photos', 0)
+            current_keys = user_data.get('uploaded_photos_keys', [])
+            if current_keys is None:
+                current_keys = []
             
-            # Només decrementa si el valor actual és major que 0
-            if current_value > 0:
-                # Decrementa el comptador (Increment amb valor negatiu)
-                doc_ref.update({'num_uploaded_photos': Increment(-1*count)})
-                
-                # Invalida cache de l'usuari
-                cache_service.delete(cache_service.generate_key('user_detail', uid=uid))
-                
-                logger.info(f"Comptador de fotos pujades decrementat per l'usuari {uid} ({current_value} -> {current_value - count})")
-            else:
-                logger.warning(f"No es pot decrementar comptador de fotos pujades per l'usuari {uid}, valor actual és {current_value}")
+            # Elimina les keys especificades
+            updated_keys = [key for key in current_keys if key not in media_keys]
             
+            # Actualitza l'array
+            doc_ref.update({'uploaded_photos_keys': updated_keys})
+            
+            # Invalida cache de l'usuari
+            cache_service.delete(cache_service.generate_key('user_detail', uid=uid))
+            
+            logger.info(f"Keys de fotos pujades eliminades per l'usuari {uid}: {media_keys}")
             return True
             
         except Exception as e:
-            logger.error(f"Error decrementant comptador de fotos pujades per l'usuari {uid}: {str(e)}")
+            logger.error(f"Error eliminant keys de fotos pujades per l'usuari {uid}: {str(e)}")
             return False
     
     def decrement_renovated_refuges(self, uid: str) -> bool:

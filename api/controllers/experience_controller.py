@@ -288,3 +288,25 @@ class ExperienceController:
         except Exception as e:
             logger.error(f"Error pujant mitjans de l'experiència: {str(e)}")
             return None, str(e)
+    
+    def delete_experiences_by_creator(self, creator_uid: str) -> Tuple[bool, Optional[str]]:
+        """
+        Elimina totes les experiències creades per un usuari
+        
+        Args:
+            creator_uid: UID del creador
+            
+        Returns:
+            Tuple (èxit: bool, missatge d'error: Optional[str])
+        """
+        try:
+            success, error = self.experience_dao.delete_experiences_by_creator(creator_uid)
+            if not success:
+                return False, error
+            
+            logger.info(f"Experiències eliminades correctament per al creador {creator_uid}")
+            return True, None
+            
+        except Exception as e:
+            logger.error(f"Error eliminant experiències del creador {creator_uid}: {str(e)}")
+            return False, f"Internal server error: {str(e)}"

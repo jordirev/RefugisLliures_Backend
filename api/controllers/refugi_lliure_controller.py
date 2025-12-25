@@ -226,9 +226,9 @@ class RefugiLliureController:
                     self.media_service.delete_files([item['key'] for item in uploaded])
                     return None, "Error intern guardant les metadades a Firestore"
                 
-                # Incrementar el comptador de fotos pujades per l'usuari (només les pujades correctes)
-                for _ in uploaded:
-                    self.user_dao.increment_uploaded_photos(creator_uid)
+                # Afegir les keys de les fotos pujades a l'usuari
+                uploaded_keys = [item['key'] for item in uploaded]
+                self.user_dao.add_uploaded_photos_keys(creator_uid, uploaded_keys)
             
             return {
                 'uploaded': uploaded,
@@ -281,11 +281,11 @@ class RefugiLliureController:
 
                 return False, "Error deleting file from storage"
             
-            # Decrementar el comptador de fotos pujades per l'usuari
+            # Eliminar la key de l'array de fotos pujades per l'usuari
             # Obtenir creator_uid de les metadades
             if metadata_backup and 'creator_uid' in metadata_backup:
                 creator_uid = metadata_backup['creator_uid']
-                self.user_dao.decrement_uploaded_photos(creator_uid)
+                self.user_dao.remove_uploaded_photos_keys(creator_uid, [media_key])
             
             return True, None
             
@@ -348,17 +348,19 @@ class RefugiLliureController:
                 
                 return False, "Error deleting files from storage"
 
-            # Decrementar el comptador de fotos pujades per usuari que no han fallat (agrupat per creator_uid)
-            user_photo_counts = {}
+            # Eliminar les keys de l'array de fotos pujades per usuari que no han fallat (agrupat per creator_uid)
+            user_photo_keys = {}
             for metadata in metadata_backup_list:
                 if metadata['key'] not in failed_keys:
                     creator_uid = metadata.get('creator_uid')
                     if creator_uid:
-                        user_photo_counts[creator_uid] = user_photo_counts.get(creator_uid, 0) + 1
+                        if creator_uid not in user_photo_keys:
+                            user_photo_keys[creator_uid] = []
+                        user_photo_keys[creator_uid].append(metadata['key'])
             
-            # Decrementar amb count per cada usuari
-            for creator_uid, count in user_photo_counts.items():
-                self.user_dao.decrement_uploaded_photos(creator_uid, count)
+            # Eliminar keys per cada usuari
+            for creator_uid, keys in user_photo_keys.items():
+                self.user_dao.remove_uploaded_photos_keys(creator_uid, keys)
             
             logger.info(f"Eliminats correctament {len(metadata_backup_list)} mitjans del refugi {refugi_id}")
             return True, None

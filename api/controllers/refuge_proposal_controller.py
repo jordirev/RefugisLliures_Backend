@@ -153,3 +153,25 @@ class RefugeProposalController:
         except Exception as e:
             logger.error(f'Error in reject_proposal: {str(e)}')
             return False, f"Internal server error: {str(e)}"
+    
+    def anonymize_proposals_by_creator(self, creator_uid: str) -> Tuple[bool, Optional[str]]:
+        """
+        Anonimitza totes les proposals creades per un usuari
+        
+        Args:
+            creator_uid: UID del creador
+            
+        Returns:
+            Tuple (èxit: bool, missatge d'error: Optional[str])
+        """
+        try:
+            success, error = self.proposal_dao.anonymize_proposals_by_creator(creator_uid)
+            if not success:
+                return False, error
+            
+            logger.info(f"Proposals anonimitzades correctament per al creador {creator_uid}")
+            return True, None
+            
+        except Exception as e:
+            logger.error(f"Error anonimitzant proposals del creador {creator_uid}: {str(e)}")
+            return False, f"Internal server error: {str(e)}"

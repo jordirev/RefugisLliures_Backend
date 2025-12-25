@@ -165,7 +165,18 @@ class UserController:
     
     def delete_user(self, uid: str) -> tuple[bool, Optional[str]]:
         """
-        Elimina un usuari
+        Elimina un usuari i totes les seves dades associades seguint l'ordre específic:
+        1. Eliminar experiències
+        2. Eliminar dubtes
+        3. Eliminar respostes a dubtes
+        4. Anonimitzar proposals
+        5. Anonimitzar renovations
+        6. Eliminar participacions en renovations
+        7. Eliminar fotos penjades
+        8. Eliminar avatar
+        9. Eliminar de visitors dels refugis
+        10. Eliminar de refuge_visits
+        11. Eliminar usuari
         
         Args:
             uid: UID de l'usuari
@@ -177,11 +188,107 @@ class UserController:
             if not uid:
                 return False, UID_NOT_PROVIDED_ERROR
             
-            # Comprova que l'usuari existeixi
-            if not self.user_dao.user_exists(uid):
+            # Comprova que l'usuari existeixi i obté les seves dades
+            user = self.user_dao.get_user_by_uid(uid)
+            if not user:
                 return False, f"Usuari amb UID {uid} no trobat"
             
-            # Elimina de Firebase
+            # 1. Eliminar experiències
+            from ..controllers.experience_controller import ExperienceController
+            experience_controller = ExperienceController()
+            success, error = experience_controller.delete_experiences_by_creator(uid)
+            if not success:
+                return False, f"Error eliminant experiències: {error}"
+            logger.info(f"Experiències eliminades per a l'usuari {uid}")
+            
+            # 2. Eliminar dubtes
+            from ..controllers.doubt_controller import DoubtController
+            doubt_controller = DoubtController()
+            success, error = doubt_controller.delete_doubts_by_creator(uid)
+            if not success:
+                return False, f"Error eliminant dubtes: {error}"
+            logger.info(f"Dubtes eliminats per a l'usuari {uid}")
+            
+            # 3. Eliminar respostes a dubtes
+            success, error = doubt_controller.delete_answers_by_creator(uid)
+            if not success:
+                return False, f"Error eliminant respostes: {error}"
+            logger.info(f"Respostes eliminades per a l'usuari {uid}")
+            
+            # 4. Anonimitzar proposals
+            from ..controllers.refuge_proposal_controller import RefugeProposalController
+            proposal_controller = RefugeProposalController()
+            success, error = proposal_controller.anonymize_proposals_by_creator(uid)
+            if not success:
+                return False, f"Error anonimitzant proposals: {error}"
+            logger.info(f"Proposals anonimitzades per a l'usuari {uid}")
+            
+            # 5. Anonimitzar renovations
+            from ..controllers.renovation_controller import RenovationController
+            renovation_controller = RenovationController()
+            success, error = renovation_controller.anonymize_renovations_by_creator(uid)
+            if not success:
+                return False, f"Error anonimitzant renovations: {error}"
+            logger.info(f"Renovations anonimitzades per a l'usuari {uid}")
+            
+            # 6. Eliminar participacions en renovations
+            success, error = renovation_controller.remove_user_from_participations(uid)
+            if not success:
+                return False, f"Error eliminant participacions: {error}"
+            logger.info(f"Participacions eliminades per a l'usuari {uid}")
+            
+            # 7. Eliminar fotos penjades
+            if user.uploaded_photos_keys and len(user.uploaded_photos_keys) > 0:
+                # Agrupar keys per refugi
+                photos_by_refuge = {}
+                for key in user.uploaded_photos_keys:
+                    # Format: refugis-lliures/REFUGE_ID/filename
+                    parts = key.split('/')
+                    if len(parts) >= 3:
+                        refuge_id = parts[1]
+                        if refuge_id not in photos_by_refuge:
+                            photos_by_refuge[refuge_id] = []
+                        photos_by_refuge[refuge_id].append(key)
+                
+                # Eliminar fotos per refugi
+                from ..controllers.refugi_lliure_controller import RefugiLliureController
+                refugi_controller = RefugiLliureController()
+                for refuge_id, keys in photos_by_refuge.items():
+                    refuge = self.refugi_dao.get_by_id(refuge_id)
+                    if refuge:
+                        success, error = refugi_controller.delete_multiple_refugi_media(refuge_id, keys)
+                        if not success:
+                            logger.warning(f"Error eliminant fotos del refugi {refuge_id}: {error}")
+                            return False, f"Error eliminant fotos del refugi {refuge_id}: {error}"
+                    else:
+                        logger.warning(f"Refugi {refuge_id} no trobat per eliminar fotos")
+                logger.info(f"Fotos eliminades per a l'usuari {uid}")
+            
+            # 8. Eliminar avatar
+            if user.avatar_metadata:
+                success, error = self.delete_user_avatar(uid)
+                if not success:
+                    logger.warning(f"Error eliminant avatar: {error}")
+                    return False, f"Error eliminant avatar: {error}"
+                else:
+                    logger.info(f"Avatar eliminat per a l'usuari {uid}")
+            
+            # 9. Eliminar de visitors dels refugis
+            if user.visited_refuges and len(user.visited_refuges) > 0:
+                success, error = self.refugi_dao.remove_visitor_from_all_refuges(uid, user.visited_refuges)
+                if not success:
+                    return False, f"Error eliminant de refugis visitats: {error}"
+                logger.info(f"Eliminat de refugis visitats per a l'usuari {uid}")
+            
+            # 10. Eliminar de refuge_visits
+            from ..controllers.refuge_visit_controller import RefugeVisitController
+            visit_controller = RefugeVisitController()
+            success, error = visit_controller.remove_user_from_all_visits(uid)
+            if not success:
+                return False, f"Error eliminant de visites: {error}"
+            logger.info(f"Eliminat de visites per a l'usuari {uid}")
+            
+            # 11. Elimina de Firebase
             success = self.user_dao.delete_user(uid)
             if not success:
                 return False, "Error eliminant usuari de la base de dades"

@@ -352,3 +352,117 @@ class DoubtDAO:
             
         except Exception as e:
             logger.error(f"Error invalidant cache per al dubte {doubt_id}: {str(e)}")
+    
+    def delete_doubts_by_creator(self, creator_uid: str) -> Tuple[bool, Optional[str]]:
+        """
+        Elimina tots els dubtes creats per un usuari
+        
+        Args:
+            creator_uid: UID del creador
+            
+        Returns:
+            Tuple (èxit: bool, missatge d'error: Optional[str])
+        """
+        try:
+            db = self.firestore_service.get_db()
+            
+            # Obtenir tots els dubtes del creador
+            logger.log(23, f"Firestore QUERY: collection={self.COLLECTION_NAME} where creator_uid=={creator_uid}")
+            doubts_query = db.collection(self.COLLECTION_NAME).where('creator_uid', '==', creator_uid).stream()
+            
+            deleted_count = 0
+            refuge_ids = set()
+            
+            for doubt_doc in doubts_query:
+                doubt_data = doubt_doc.to_dict()
+                refuge_id = doubt_data.get('refuge_id')
+                if refuge_id:
+                    refuge_ids.add(refuge_id)
+                
+                # Eliminar totes les respostes del dubte
+                answers_ref = doubt_doc.reference.collection(self.ANSWERS_SUBCOLLECTION)
+                logger.log(23, f"Firestore READ: collection={self.COLLECTION_NAME}/{doubt_doc.id}/{self.ANSWERS_SUBCOLLECTION}")
+                answers_docs = answers_ref.stream()
+                
+                for answer_doc in answers_docs:
+                    logger.log(23, f"Firestore DELETE: collection={self.COLLECTION_NAME}/{doubt_doc.id}/{self.ANSWERS_SUBCOLLECTION} document={answer_doc.id}")
+                    answer_doc.reference.delete()
+                
+                # Eliminar el dubte
+                logger.log(23, f"Firestore DELETE: collection={self.COLLECTION_NAME} document={doubt_doc.id}")
+                doubt_doc.reference.delete()
+                deleted_count += 1
+                
+                # Invalida cache de detall
+                cache_service.delete_pattern(f"doubt_detail:doubt_id:{doubt_doc.id}")
+            
+            # Invalida cache de llistes per cada refugi afectat
+            for refuge_id in refuge_ids:
+                cache_service.delete_pattern(f"doubt_list:refuge_id:{refuge_id}")
+            
+            logger.info(f"{deleted_count} dubtes eliminats del creador {creator_uid}")
+            return True, None
+            
+        except Exception as e:
+            logger.error(f"Error eliminant dubtes del creador {creator_uid}: {str(e)}")
+            return False, str(e)
+    
+    def delete_answers_by_creator(self, creator_uid: str) -> Tuple[bool, Optional[str]]:
+        """
+        Elimina totes les respostes creades per un usuari utilitzant collection_group
+        
+        Args:
+            creator_uid: UID del creador
+            
+        Returns:
+            Tuple (èxit: bool, missatge d'error: Optional[str])
+        """
+        try:
+            db = self.firestore_service.get_db()
+            
+            # Utilitzar collection_group per obtenir totes les respostes de totes les subcollections
+            logger.log(23, f"Firestore COLLECTION_GROUP_QUERY: {self.ANSWERS_SUBCOLLECTION} where creator_uid=={creator_uid}")
+            answers_query = db.collection_group(self.ANSWERS_SUBCOLLECTION).where('creator_uid', '==', creator_uid).stream()
+            
+            deleted_count = 0
+            doubt_ids = set()
+            
+            for answer_doc in answers_query:
+                # Obtenir el doubt_id del path del document
+                # Path format: doubts/{doubt_id}/answers/{answer_id}
+                doubt_id = answer_doc.reference.parent.parent.id
+                doubt_ids.add(doubt_id)
+                
+                # Eliminar la resposta
+                logger.log(23, f"Firestore DELETE: answers document={answer_doc.id} from doubt={doubt_id}")
+                answer_doc.reference.delete()
+                deleted_count += 1
+            
+            # Actualitzar el comptador answers_count per cada dubte afectat
+            for doubt_id in doubt_ids:
+                doubt_ref = db.collection(self.COLLECTION_NAME).document(doubt_id)
+                logger.log(23, f"Firestore READ: collection={self.COLLECTION_NAME} document={doubt_id}")
+                doubt_doc = doubt_ref.get()
+                
+                if doubt_doc.exists:
+                    # Comptar respostes restants
+                    answers_ref = doubt_ref.collection(self.ANSWERS_SUBCOLLECTION)
+                    logger.log(23, f"Firestore READ: collection={self.COLLECTION_NAME}/{doubt_id}/{self.ANSWERS_SUBCOLLECTION}")
+                    remaining_answers = len(list(answers_ref.stream()))
+                    
+                    # Actualitzar comptador
+                    logger.log(23, f"Firestore UPDATE: collection={self.COLLECTION_NAME} document={doubt_id} (answers_count)")
+                    doubt_ref.update({'answers_count': remaining_answers})
+                    
+                    # Invalida cache
+                    cache_service.delete_pattern(f"doubt_detail:doubt_id:{doubt_id}")
+                    doubt_data = doubt_doc.to_dict()
+                    if doubt_data and 'refuge_id' in doubt_data:
+                        cache_service.delete_pattern(f"doubt_list:refuge_id:{doubt_data['refuge_id']}")
+            
+            logger.info(f"{deleted_count} respostes eliminades del creador {creator_uid}")
+            return True, None
+            
+        except Exception as e:
+            logger.error(f"Error eliminant respostes del creador {creator_uid}: {str(e)}")
+            return False, str(e)

@@ -308,3 +308,48 @@ class ExperienceDAO:
         except Exception as e:
             logger.error(f"Error eliminant media key de l'experiència {experience_id}: {str(e)}")
             return False, str(e)
+    
+    def delete_experiences_by_creator(self, creator_uid: str) -> Tuple[bool, Optional[str]]:
+        """
+        Elimina totes les experiències creades per un usuari
+        
+        Args:
+            creator_uid: UID del creador
+            
+        Returns:
+            Tuple (èxit: bool, missatge d'error: Optional[str])
+        """
+        try:
+            db = self.firestore_service.get_db()
+            
+            # Obtenir totes les experiències del creador
+            logger.log(23, f"Firestore QUERY: collection={self.COLLECTION_NAME} where creator_uid=={creator_uid}")
+            experiences_query = db.collection(self.COLLECTION_NAME).where('creator_uid', '==', creator_uid).stream()
+            
+            deleted_count = 0
+            refuge_ids = set()
+            
+            for exp_doc in experiences_query:
+                experience_data = exp_doc.to_dict()
+                refuge_id = experience_data.get('refuge_id')
+                if refuge_id:
+                    refuge_ids.add(refuge_id)
+                
+                # Eliminar document
+                logger.log(23, f"Firestore DELETE: collection={self.COLLECTION_NAME} document={exp_doc.id}")
+                exp_doc.reference.delete()
+                deleted_count += 1
+                
+                # Invalida cache de detall
+                cache_service.delete(cache_service.generate_key('experience_detail', experience_id=exp_doc.id))
+            
+            # Invalida cache de llistes per cada refugi afectat
+            for refuge_id in refuge_ids:
+                cache_service.delete_pattern(f"experience_list:refuge_id:{refuge_id}:*")
+            
+            logger.info(f"{deleted_count} experiències eliminades del creador {creator_uid}")
+            return True, None
+            
+        except Exception as e:
+            logger.error(f"Error eliminant experiències del creador {creator_uid}: {str(e)}")
+            return False, str(e)

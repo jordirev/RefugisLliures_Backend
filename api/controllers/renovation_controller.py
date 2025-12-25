@@ -301,3 +301,47 @@ class RenovationController:
         except Exception as e:
             logger.error(f"Error en get_renovations_by_refuge: {str(e)}")
             return False, [], f"Error intern: {str(e)}"
+    
+    def anonymize_renovations_by_creator(self, creator_uid: str) -> tuple[bool, Optional[str]]:
+        """
+        Anonimitza totes les renovations creades per un usuari
+        
+        Args:
+            creator_uid: UID del creador
+            
+        Returns:
+            Tuple (èxit: bool, missatge d'error: Optional[str])
+        """
+        try:
+            success, error = self.renovation_dao.anonymize_renovations_by_creator(creator_uid)
+            if not success:
+                return False, error
+            
+            logger.info(f"Renovations anonimitzades correctament per al creador {creator_uid}")
+            return True, None
+            
+        except Exception as e:
+            logger.error(f"Error anonimitzant renovations del creador {creator_uid}: {str(e)}")
+            return False, f"Error intern: {str(e)}"
+    
+    def remove_user_from_participations(self, uid: str) -> tuple[bool, Optional[str]]:
+        """
+        Elimina un usuari de participants_uids de totes les renovations
+        
+        Args:
+            uid: UID de l'usuari
+            
+        Returns:
+            Tuple (èxit: bool, missatge d'error: Optional[str])
+        """
+        try:
+            success, error = self.renovation_dao.remove_user_from_participations(uid)
+            if not success:
+                return False, error
+            
+            logger.info(f"Usuari {uid} eliminat de participacions correctament")
+            return True, None
+            
+        except Exception as e:
+            logger.error(f"Error eliminant usuari {uid} de participacions: {str(e)}")
+            return False, f"Error intern: {str(e)}"

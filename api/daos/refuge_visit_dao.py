@@ -458,3 +458,70 @@ class RefugeVisitDAO:
         """
         # Invalida totes les claus de llista que continguin aquest refuge_id
         cache_service.delete_pattern(f'refuge_visits_list:refuge_id={refuge_id}:*')
+    
+    def remove_user_from_all_visits(self, uid: str, user_visits: List[tuple[str, RefugeVisit]]) -> tuple[bool, Optional[str]]:
+        """
+        Elimina un usuari de visitors i decrementa total_visitors de totes les refuge_visits
+        
+        Args:
+            uid: UID de l'usuari
+            user_visits: Llista de tuples (visit_id, RefugeVisit) de l'usuari
+            
+        Returns:
+            Tuple (èxit: bool, missatge d'error: Optional[str])
+        """
+        try:
+            if not user_visits:
+                logger.info(f"Usuari {uid} no té visites registrades")
+                return True, None
+            
+            db = self.firestore_service.get_db()
+            updated_count = 0
+            
+            for visit_id, visit in user_visits:
+                try:
+                    doc_ref = db.collection(self.COLLECTION_NAME).document(visit_id)
+                    logger.log(23, f"Firestore READ: collection={self.COLLECTION_NAME} document={visit_id}")
+                    doc = doc_ref.get()
+                    
+                    if doc.exists:
+                        visit_data = doc.to_dict()
+                        visitors = visit_data.get('visitors', [])
+                        
+                        # Buscar i eliminar l'usuari de la llista de visitors
+                        new_visitors = []
+                        found = False
+                        for visitor in visitors:
+                            if isinstance(visitor, dict) and visitor.get('uid') == uid:
+                                found = True
+                                continue
+                            new_visitors.append(visitor)
+                        
+                        if found:
+                            # Actualitzar visitors i decrementar total_visitors
+                            new_total = visit_data.get('total_visitors', 0) - 1
+                            if new_total < 0:
+                                new_total = 0
+                            
+                            logger.log(23, f"Firestore UPDATE: collection={self.COLLECTION_NAME} document={visit_id} (remove visitor)")
+                            doc_ref.update({
+                                'visitors': new_visitors,
+                                'total_visitors': new_total
+                            })
+                            updated_count += 1
+                            
+                            # Invalida cache
+                            refuge_id = visit_data.get('refuge_id')
+                            self._invalidate_visit_cache(visit_id, refuge_id)
+                    else:
+                        logger.warning(f"Visita {visit_id} no trobada al eliminar usuari {uid}")
+                except Exception as e:
+                    logger.error(f"Error eliminant usuari {uid} de la visita {visit_id}: {str(e)}")
+                    # Continua amb les altres visites
+            
+            logger.info(f"Usuari {uid} eliminat de {updated_count} visites")
+            return True, None
+            
+        except Exception as e:
+            logger.error(f"Error eliminant usuari {uid} de visites: {str(e)}")
+            return False, str(e)

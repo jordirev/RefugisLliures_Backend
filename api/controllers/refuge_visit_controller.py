@@ -310,3 +310,31 @@ class RefugeVisitController:
         except Exception as e:
             logger.error(f"Error en process_yesterday_visits: {str(e)}")
             return False, {}, f"Error intern: {str(e)}"
+    
+    def remove_user_from_all_visits(self, uid: str) -> tuple[bool, Optional[str]]:
+        """
+        Elimina un usuari de visitors i decrementa total_visitors de totes les refuge_visits
+        
+        Args:
+            uid: UID de l'usuari
+            
+        Returns:
+            Tuple (èxit: bool, missatge d'error: Optional[str])
+        """
+        try:
+            # Obtenir totes les visites de l'usuari
+            success, user_visits, error = self.get_user_visits(uid)
+            if not success:
+                return False, error
+            
+            # Eliminar l'usuari de totes les visites
+            success, error = self.visit_dao.remove_user_from_all_visits(uid, user_visits)
+            if not success:
+                return False, error
+            
+            logger.info(f"Usuari {uid} eliminat de totes les visites correctament")
+            return True, None
+            
+        except Exception as e:
+            logger.error(f"Error eliminant usuari {uid} de visites: {str(e)}")
+            return False, f"Error intern: {str(e)}"

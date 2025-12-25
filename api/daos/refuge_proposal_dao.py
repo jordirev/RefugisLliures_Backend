@@ -389,7 +389,11 @@ class DeleteRefugeStrategy(ProposalApprovalStrategy):
     """Estratègia per eliminar un refugi"""
     
     def execute(self, proposal: RefugeProposal, db) -> Tuple[bool, Optional[str]]:
-        """Elimina un refugi existent"""
+        """
+        Elimina un refugi existent i totes les seves dades relacionades.
+        No s'elimina el refuge_id de la llista de visitats de cada usuari per estalviar escriptures de Firestore. 
+        (S'accepta certa inconsistencia en aquest cas)
+        """
         try:
             if not proposal.refuge_id:
                 return False, "refuge_id is required for delete action"
@@ -788,3 +792,41 @@ class RefugeProposalDAO:
         except Exception as e:
             logger.error(f'Error rejecting proposal {proposal_id}: {str(e)}')
             return False, f"Internal error: {str(e)}"
+    
+    def anonymize_proposals_by_creator(self, creator_uid: str) -> Tuple[bool, Optional[str]]:
+        """
+        Anonimitza totes les proposals creades per un usuari posant creator_uid a 'unknown'
+        
+        Args:
+            creator_uid: UID del creador
+            
+        Returns:
+            Tuple (èxit: bool, missatge d'error: Optional[str])
+        """
+        try:
+            db = firestore_service.get_db()
+            
+            # Obtenir totes les proposals del creador
+            logger.log(23, f"Firestore QUERY: collection={self.collection_name} where creator_uid=={creator_uid}")
+            proposals_query = db.collection(self.collection_name).where('creator_uid', '==', creator_uid).stream()
+            
+            anonymized_count = 0
+            
+            for proposal_doc in proposals_query:
+                # Actualitzar creator_uid a 'unknown'
+                logger.log(23, f"Firestore UPDATE: collection={self.collection_name} document={proposal_doc.id} (anonymize)")
+                proposal_doc.reference.update({'creator_uid': 'unknown'})
+                anonymized_count += 1
+                
+                # Invalida cache de detall
+                cache_service.delete_pattern(f'proposal_detail:proposal_id:{proposal_doc.id}:*')
+            
+            # Invalida cache de llistes
+            cache_service.delete_pattern('proposal_list:*')
+            
+            logger.info(f"{anonymized_count} proposals anonimitzades del creador {creator_uid}")
+            return True, None
+            
+        except Exception as e:
+            logger.error(f"Error anonimitzant proposals del creador {creator_uid}: {str(e)}")
+            return False, str(e)
