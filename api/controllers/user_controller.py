@@ -417,10 +417,9 @@ class UserController:
             )
             
             # Preparar metadades
-            from ..utils.timezone_utils import get_madrid_today
             media_metadata = {
                 'key': result['key'],
-                'uploaded_at': get_madrid_today().isoformat()
+                'uploaded_at': get_madrid_now().isoformat()
             }
             
             # Actualitzar metadades a Firestore

@@ -195,6 +195,7 @@ class RefugiMediaDeleteAPIView(APIView):
         tags=['Refuge Media'],
         operation_description=(
             "Elimina un mitjà específic d'un refugi utilitzant la seva key. "
+            "\n Si el mitjà és una imatge vinculada a una experiència, també s'eliminarà d'aquesta. "
             "\n\nRequereix autenticació i que l'usuari sigui el creador del mitjà o administrador."
         ),
         manual_parameters=[

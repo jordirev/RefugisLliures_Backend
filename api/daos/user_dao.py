@@ -7,6 +7,8 @@ from ..services.firestore_service import FirestoreService
 from ..services.cache_service import cache_service
 from ..mappers.user_mapper import UserMapper
 from ..models.user import User
+from google.cloud.firestore_v1.transforms import Increment
+
 
 logger = logging.getLogger(__name__)
 
@@ -442,7 +444,6 @@ class UserDAO:
         """
         try:
             db = self.firestore_service.get_db()
-            from google.cloud.firestore_v1.transforms import Increment
             doc_ref = db.collection(self.COLLECTION_NAME).document(uid)
             
             # Comprova que l'usuari existeixi i obté les dades per tenir l'email
@@ -476,7 +477,6 @@ class UserDAO:
         """
         try:
             db = self.firestore_service.get_db()
-            from google.cloud.firestore_v1.transforms import Increment
             doc_ref = db.collection(self.COLLECTION_NAME).document(uid)
             
             # Comprova que l'usuari existeixi
@@ -497,6 +497,90 @@ class UserDAO:
         except Exception as e:
             logger.error(f"Error incrementant comptador de fotos pujades per l'usuari {uid}: {str(e)}")
             return False
+        
+    def increment_shared_experiences(self, uid: str) -> bool:
+        """
+        Incrementa el comptador d'experiencies compartides.
+        
+        Args:
+            uid: UID de l'usuari
+
+        Returns:
+            bool: True si s'ha incrementat correctament
+        """
+        try:
+            db = self.firestore_service.get_db()
+            doc_ref = db.collection(self.COLLECTION_NAME).document(uid)
+            
+            # Comprova que l'usuari existeixi
+            doc = doc_ref.get()
+            if not doc.exists:
+                logger.warning(f"No es pot incrementar comptador, usuari no trobat amb UID: {uid}")
+                return False
+            
+            # Incrementa els comptadors
+            updates = {
+                'num_shared_experiences': Increment(1),
+            }
+            
+            doc_ref.update(updates)
+            
+            # Invalida cache de l'usuari
+            cache_service.delete(cache_service.generate_key('user_detail', uid=uid))
+            
+            logger.info(f"Comptadors de fotos pujades i experiencies incrementats per l'usuari {uid}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error incrementant comptadors per l'usuari {uid}: {str(e)}")
+            return False
+
+    def decrement_shared_experiences(self, uid: str) -> bool:
+        """
+        Decrementa el comptador d'experiencies compartides 
+
+        Args:
+            uid: UID de l'usuari
+            
+        Returns:
+            bool: True si s'ha decrementat correctament
+        """
+        try:
+            db = self.firestore_service.get_db()
+            doc_ref = db.collection(self.COLLECTION_NAME).document(uid)
+            
+            # Comprova que l'usuari existeixi i obté el valor actual
+            doc = doc_ref.get()
+            if not doc.exists:
+                logger.warning(f"No es pot decrementar comptadors, usuari no trobat amb UID: {uid}")
+                return False
+            
+            # Obté el valor actual dels comptadors
+            user_data = doc.to_dict()
+            current_experiences = user_data.get('num_shared_experiences', 0)
+            
+            # Prepara les actualitzacions
+            updates = {}
+            
+            # Només decrementa experiencies si el valor actual és major que 0
+            if current_experiences > 0:
+                updates['num_shared_experiences'] = Increment(-1)
+            
+            if updates:
+                doc_ref.update(updates)
+                
+                # Invalida cache de l'usuari
+                cache_service.delete(cache_service.generate_key('user_detail', uid=uid))
+                
+                logger.info(f"Comptadors de fotos pujades i experiencies decrementats per l'usuari {uid}")
+            else:
+                logger.warning(f"No es poden decrementar comptadors per l'usuari {uid}, valors actuals són insuficients")
+            
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error decrementant comptadors per l'usuari {uid}: {str(e)}")
+            return False
     
     def decrement_uploaded_photos(self, uid: str, count: int = 1) -> bool:
         """
@@ -511,7 +595,6 @@ class UserDAO:
         """
         try:
             db = self.firestore_service.get_db()
-            from google.cloud.firestore_v1.transforms import Increment
             doc_ref = db.collection(self.COLLECTION_NAME).document(uid)
             
             # Comprova que l'usuari existeixi i obté el valor actual
@@ -554,7 +637,6 @@ class UserDAO:
         """
         try:
             db = self.firestore_service.get_db()
-            from google.cloud.firestore_v1.transforms import Increment
             doc_ref = db.collection(self.COLLECTION_NAME).document(uid)
             
             # Comprova que l'usuari existeixi i obté el valor actual

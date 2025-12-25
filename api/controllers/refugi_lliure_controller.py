@@ -5,6 +5,7 @@ import logging
 from typing import Dict, Any, List, Optional, Tuple
 
 from api.models.media_metadata import RefugeMediaMetadata
+from api.utils.timezone_utils import get_madrid_now
 from ..daos.refugi_lliure_dao import RefugiLliureDAO
 from ..daos.user_dao import UserDAO
 from ..models.refugi_lliure import Refugi, RefugiCoordinates, RefugiSearchFilters
@@ -185,9 +186,8 @@ class RefugiLliureController:
                     )
                     
                     # Crear metadades del mitjà
-                    from ..utils.timezone_utils import get_madrid_today
                     if uploaded_at is None:
-                        uploaded_at = get_madrid_today().isoformat()
+                        uploaded_at = get_madrid_now().isoformat()
                     
                     # Utilitzar la key com a clau del diccionari
                     key = result['key']
@@ -226,8 +226,7 @@ class RefugiLliureController:
                     self.media_service.delete_files([item['key'] for item in uploaded])
                     return None, "Error intern guardant les metadades a Firestore"
                 
-                # Incrementar el comptador de fotos pujades per l'usuari
-                # Incrementem per cada foto pujada correctament
+                # Incrementar el comptador de fotos pujades per l'usuari (només les pujades correctes)
                 for _ in uploaded:
                     self.user_dao.increment_uploaded_photos(creator_uid)
             

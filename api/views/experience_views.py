@@ -227,7 +227,10 @@ class ExperienceDetailAPIView(APIView):
         operation_description=(
             "Actualitza una experiència existent. "
             "Només el creador pot editar la seva experiència. "
-            "Es pot modificar el comentari i afegir noves fotos."
+            "Es pot modificar el comentari i afegir noves fotos.\n "
+            "Permet afegir noves fotos a l'experiència existent."
+            " Aquestes s'afegiran també al refugi de l'experiència."
+            "\nPer eliminar fotos d'experiencies, utilitzar: DELETE /api/refuges/{id}/media/{key}/ amb la key del mitjà a eliminar."
             "\n\nRequereix autenticació i ser el creador de l'experiència."
         ),
         manual_parameters=[
@@ -275,6 +278,8 @@ class ExperienceDetailAPIView(APIView):
     def patch(self, request, refuge_id, experience_id):
         """
         Actualitza una experiència (comentari i/o fotos).
+        Permet afegir noves fotos a l'experiència existent. Aquestes s'afegiran també al refugi de l'experiència.
+        Per eliminar fotos d'experiencies, utilitzar: DELETE /api/refuges/{id}/media/{key}/ amb la key del mitjà a eliminar.
         """
         try:
             # Validar dades

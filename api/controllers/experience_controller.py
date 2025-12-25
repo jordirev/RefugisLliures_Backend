@@ -118,6 +118,10 @@ class ExperienceController:
                         logger.error(message)
                         return experience, upload_result, message
             
+            # Actualitzem el comptador d'experiencies compartides de l'usuari
+            self.user_dao.increment_shared_experiences(creator_uid)
+            
+            # Obtenir l'experiència creada amb totes les dades
             experience = self.experience_dao.get_experience_by_id(experience.id)
             return experience, upload_result, None
             
@@ -224,11 +228,17 @@ class ExperienceController:
                 except Exception as e:
                     logger.error(f"Error eliminant fitxers de l'experiència: {str(e)}")
                     return False, "Error deleting experience media"
+                
+            # Guardar dades necessàries abans d'eliminar
+            creator_uid = experience.creator_uid
             
             # Eliminar l'experiència de Firestore
             success, error = self.experience_dao.delete_experience(experience_id)
             if not success:
                 return False, error or "Error deleting experience"
+            
+            # Actualitzar el comptador d'experiencies compartides de l'usuari
+            self.user_dao.decrement_shared_experiences(creator_uid)
             
             return True, None
             

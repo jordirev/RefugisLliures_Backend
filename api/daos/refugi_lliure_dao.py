@@ -3,6 +3,7 @@ DAO per a la gestió de refugis amb Firestore
 """
 import logging
 from typing import List, Optional, Dict, Any, Tuple
+from firebase_admin import firestore
 from ..services import firestore_service, cache_service, r2_media_service
 from ..models.refugi_lliure import Refugi, RefugiCoordinates, RefugiSearchFilters
 from ..mappers.refugi_lliure_mapper import RefugiLliureMapper
@@ -206,7 +207,7 @@ class RefugiLliureDAO:
             Llista amb un sol refugi si es troba, llista buida si no
         """
         try:
-            query = db.collection(self.collection_name).where(filter=firestore_service.firestore.FieldFilter('name', '==', name))
+            query = db.collection(self.collection_name).where(filter=firestore.FieldFilter('name', '==', name))
             logger.log(23, f"Firestore QUERY: collection={self.collection_name} filters=name")
             docs = query.stream()
             results = [doc.to_dict() for doc in docs]
