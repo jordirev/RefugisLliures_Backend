@@ -194,6 +194,7 @@ class RenovationUpdateSerializer(serializers.Serializer, DateValidationMixin):
     )
     group_link = serializers.URLField(
         required=False,
+        allow_null=True,
         help_text="Enllaç al grup de coordinació (WhatsApp/Telegram)"
     )
     

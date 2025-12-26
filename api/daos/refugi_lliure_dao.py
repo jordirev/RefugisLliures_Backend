@@ -3,6 +3,7 @@ DAO per a la gestió de refugis amb Firestore
 """
 import logging
 from typing import List, Optional, Dict, Any, Tuple
+from firebase_admin import firestore
 from ..services import firestore_service, cache_service, r2_media_service
 from ..models.refugi_lliure import Refugi, RefugiCoordinates, RefugiSearchFilters
 from ..mappers.refugi_lliure_mapper import RefugiLliureMapper
@@ -206,7 +207,7 @@ class RefugiLliureDAO:
             Llista amb un sol refugi si es troba, llista buida si no
         """
         try:
-            query = db.collection(self.collection_name).where(filter=firestore_service.firestore.FieldFilter('name', '==', name))
+            query = db.collection(self.collection_name).where(filter=firestore.FieldFilter('name', '==', name))
             logger.log(23, f"Firestore QUERY: collection={self.collection_name} filters=name")
             docs = query.stream()
             results = [doc.to_dict() for doc in docs]
@@ -467,3 +468,149 @@ class RefugiLliureDAO:
         except Exception as e:
             logger.error(f'Error eliminant media_metadata del refugi {refugi_id}: {str(e)}')
             return False, None
+    
+    def delete_multiple_media_metadata(self, refugi_id: str, media_keys: List[str]) -> Tuple[bool, List[Dict[str, Any]]]:
+        """
+        Elimina múltiples media_metadata d'un refugi (bulk delete)
+        
+        Args:
+            refugi_id: ID del refugi
+            media_keys: Llista de keys dels mitjans a eliminar
+            
+        Returns:
+            bool: True si s'han eliminat correctament
+            List[Dict[str, Any]]: Llista de metadades eliminades amb 'key' i les dades de metadata
+        """
+        try:
+            db = firestore_service.get_db()
+            doc_ref = db.collection(self.collection_name).document(str(refugi_id))
+            logger.log(23, f"Firestore READ: collection={self.collection_name} document={refugi_id}")
+            doc = doc_ref.get()
+            
+            if not doc.exists:
+                logger.warning(f"No es pot eliminar media_metadata, refugi no trobat amb ID: {refugi_id}")
+                return False, []
+            
+            # Obtenir media_metadata actuals
+            current_metadata = doc.to_dict().get('media_metadata', {})
+            
+            # Guardar metadades eliminades i eliminar-les del diccionari
+            metadata_backup = []
+            keys_not_found = []
+            
+            for media_key in media_keys:
+                if media_key in current_metadata:
+                    # Guardar metadada amb la key
+                    backup_entry = current_metadata[media_key].copy()
+                    backup_entry['key'] = media_key
+                    metadata_backup.append(backup_entry)
+                    
+                    # Eliminar del diccionari
+                    del current_metadata[media_key]
+                else:
+                    keys_not_found.append(media_key)
+            
+            # Si no s'ha trobat cap key, retornar error
+            if len(metadata_backup) == 0:
+                logger.warning(f"No s'ha trobat cap media_key per eliminar del refugi {refugi_id}")
+                return False, []
+            
+            # Actualitzar document amb bulk update
+            logger.log(23, f"Firestore UPDATE: collection={self.collection_name} document={refugi_id} (bulk delete {len(metadata_backup)} media)")
+            doc_ref.update({'media_metadata': current_metadata})
+            
+            # Invalida cache del refugi
+            cache_service.delete(cache_service.generate_key('refugi_detail', refugi_id=refugi_id))
+            
+            if keys_not_found:
+                logger.warning(f"Algunes keys no s'han trobat al refugi {refugi_id}: {keys_not_found}")
+            
+            logger.log(23, f"Eliminats {len(metadata_backup)} media_metadata del refugi {refugi_id}")
+            return True, metadata_backup
+            
+        except Exception as e:
+            logger.error(f'Error eliminant múltiples media_metadata del refugi {refugi_id}: {str(e)}')
+            return False, []
+    
+    def update_refugi_visitors(self, refugi_id: str, visitors: List[str]) -> bool:
+        """
+        Actualitza la llista de visitors d'un refugi
+        
+        Args:
+            refugi_id: ID del refugi
+            visitors: Llista d'UIDs de visitants
+            
+        Returns:
+            bool: True si s'ha actualitzat correctament
+        """
+        try:
+            db = firestore_service.get_db()
+            doc_ref = db.collection(self.collection_name).document(str(refugi_id))
+            
+            logger.log(23, f"Firestore READ: collection={self.collection_name} document={refugi_id}")
+            doc = doc_ref.get()
+            
+            if not doc.exists:
+                logger.warning(f"No es pot actualitzar visitors, refugi no trobat amb ID: {refugi_id}")
+                return False
+            
+            # Actualitza la llista de visitors
+            logger.log(23, f"Firestore UPDATE: collection={self.collection_name} document={refugi_id}")
+            doc_ref.update({'visitors': visitors})
+            
+            # Invalida cache del refugi
+            cache_service.delete(cache_service.generate_key('refugi_detail', refugi_id=refugi_id))
+            
+            logger.info(f"Actualitzada llista de visitors del refugi {refugi_id}")
+            return True
+            
+        except Exception as e:
+            logger.error(f'Error actualitzant visitors del refugi {refugi_id}: {str(e)}')
+            return False
+    
+    def remove_visitor_from_all_refuges(self, uid: str, visited_refuges: List[str]) -> Tuple[bool, Optional[str]]:
+        """
+        Elimina un usuari de la llista de visitors de tots els refugis que ha visitat
+        
+        Args:
+            uid: UID de l'usuari
+            visited_refuges: Llista d'IDs dels refugis visitats per l'usuari
+            
+        Returns:
+            Tuple (èxit: bool, missatge d'error: Optional[str])
+        """
+        try:
+            if not visited_refuges:
+                logger.info(f"Usuari {uid} no té refugis visitats")
+                return True, None
+            
+            db = firestore_service.get_db()
+            removed_count = 0
+            
+            for refuge_id in visited_refuges:
+                try:
+                    doc_ref = db.collection(self.collection_name).document(str(refuge_id))
+                    logger.log(23, f"Firestore READ: collection={self.collection_name} document={refuge_id}")
+                    doc = doc_ref.get()
+                    
+                    if doc.exists:
+                        # Eliminar uid de visitors
+                        from google.cloud.firestore import ArrayRemove
+                        logger.log(23, f"Firestore UPDATE: collection={self.collection_name} document={refuge_id} (remove visitor)")
+                        doc_ref.update({'visitors': ArrayRemove([uid])})
+                        removed_count += 1
+                        
+                        # Invalida cache del refugi
+                        cache_service.delete(cache_service.generate_key('refugi_detail', refugi_id=refuge_id))
+                    else:
+                        logger.warning(f"Refugi {refuge_id} no trobat al eliminar visitor {uid}")
+                except Exception as e:
+                    logger.error(f"Error eliminant visitor {uid} del refugi {refuge_id}: {str(e)}")
+                    # Continua amb els altres refugis
+            
+            logger.info(f"Usuari {uid} eliminat de {removed_count} refugis")
+            return True, None
+            
+        except Exception as e:
+            logger.error(f"Error eliminant visitor {uid} de refugis: {str(e)}")
+            return False, str(e)

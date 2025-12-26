@@ -59,7 +59,7 @@ def generate_simple_geohash(lat: float, lng: float, precision: int = 5) -> str:
     return geohash
 
 
-def update_coords_refugis_create(db, refuge_id: str, refuge_data: Dict[str, Any]) -> None:
+def add_refuge_to_coords_refugis(db, refuge_id: str, refuge_data: Dict[str, Any]) -> None:
     """Afegeix un nou refugi a la col·lecció coords_refugis"""
     try:
         coords_ref = db.collection('coords_refugis').document('all_refugis_coords')
@@ -110,7 +110,7 @@ def update_coords_refugis_create(db, refuge_id: str, refuge_data: Dict[str, Any]
         raise
 
 
-def update_coords_refugis_update(db, refuge_id: str, update_data: Dict[str, Any]) -> None:
+def update_refuge_from_coords_refugis(db, refuge_id: str, update_data: Dict[str, Any]) -> None:
     """Actualitza les coordenades d'un refugi a coords_refugis si 'coord' o 'name' estan al payload"""
     try:
         # Només actualitzar si hi ha 'coord' o 'name' al payload
@@ -175,7 +175,7 @@ def update_coords_refugis_update(db, refuge_id: str, update_data: Dict[str, Any]
         raise
 
 
-def update_coords_refugis_delete(db, refuge_id: str) -> None:
+def delete_refuge_from_coords_refugis(db, refuge_id: str) -> None:
     """Elimina un refugi de la col·lecció coords_refugis"""
     try:
         coords_ref = db.collection('coords_refugis').document('all_refugis_coords')
@@ -207,7 +207,6 @@ def update_coords_refugis_delete(db, refuge_id: str) -> None:
     except Exception as e:
         logger.error(f"Error actualitzant coords_refugis per DELETE: {str(e)}")
         raise
-
 
 # ==================== ESTRATÈGIES PER A APROVACIÓ DE PROPOSTES ====================
 
@@ -287,7 +286,7 @@ class CreateRefugeStrategy(ProposalApprovalStrategy):
             new_refugi_ref.set(refugi_data)
             
             # Afegir a coords_refugis
-            update_coords_refugis_create(db, new_refugi_id, refugi_data)
+            add_refuge_to_coords_refugis(db, new_refugi_id, refugi_data)
             
             # Actualitzar el refuge_id a la proposta
             proposal_ref = db.collection('refuges_proposals').document(proposal.id)
@@ -370,7 +369,7 @@ class UpdateRefugeStrategy(ProposalApprovalStrategy):
             refugi_ref.update(update_data)
             
             # Actualitzar coords_refugis si cal (només si 'coord' o 'name' al payload)
-            update_coords_refugis_update(db, proposal.refuge_id, update_data)
+            update_refuge_from_coords_refugis(db, proposal.refuge_id, update_data)
             
             # Invalidar cache relacionada amb aquest refugi
             cache_service.delete(cache_service.generate_key('refugi_detail', refugi_id=proposal.refuge_id))
@@ -390,7 +389,11 @@ class DeleteRefugeStrategy(ProposalApprovalStrategy):
     """Estratègia per eliminar un refugi"""
     
     def execute(self, proposal: RefugeProposal, db) -> Tuple[bool, Optional[str]]:
-        """Elimina un refugi existent"""
+        """
+        Elimina un refugi existent i totes les seves dades relacionades.
+        No s'elimina el refuge_id de la llista de visitats de cada usuari per estalviar escriptures de Firestore. 
+        (S'accepta certa inconsistencia en aquest cas)
+        """
         try:
             if not proposal.refuge_id:
                 return False, "refuge_id is required for delete action"
@@ -403,12 +406,149 @@ class DeleteRefugeStrategy(ProposalApprovalStrategy):
             if not refugi_doc.exists:
                 return False, f"Refuge with ID {proposal.refuge_id} not found"
             
+            refugi_data = refugi_doc.to_dict()
+            
+            # ==================== PAS 1: REBUTJAR TOTES LES PROPOSALS PENDENTS ====================
+            logger.info(f"[DELETE REFUGE] Pas 1: Rebutjant proposals pendents per refugi {proposal.refuge_id}")
+            try:
+                from ..daos.refuge_proposal_dao import RefugeProposalDAO
+                proposal_dao = RefugeProposalDAO()
+                
+                # Obtenir totes les proposals pendents per aquest refugi
+                pending_proposals = proposal_dao.list_all(filters={'status': 'pending', 'refuge_id': proposal.refuge_id})
+                
+                for pending_proposal in pending_proposals:
+                    if pending_proposal.id != proposal.id:  # No rebutjar la proposta actual
+                        success, error = proposal_dao.reject(
+                            proposal_id=pending_proposal.id,
+                            reviewer_uid=None,
+                            reason="refuge has been deleted"
+                        )
+                        if success:
+                            logger.info(f"Proposta {pending_proposal.id} rebutjada automàticament")
+                        else:
+                            logger.warning(f"No s'ha pogut rebutjar la proposta {pending_proposal.id}: {error}")
+            except Exception as e:
+                logger.error(f"Error rebutjant proposals pendents: {str(e)}")
+                # Continuar amb l'eliminació encara que hi hagi errors
+            
+            # ==================== PAS 2: ELIMINAR TOTS ELS DUBTES ====================
+            logger.info(f"[DELETE REFUGE] Pas 2: Eliminant dubtes del refugi {proposal.refuge_id}")
+            try:
+                from ..controllers.doubt_controller import DoubtController
+                doubt_controller = DoubtController()
+                
+                # Obtenir tots els dubtes d'aquest refugi
+                doubts, error = doubt_controller.get_doubts_by_refuge(proposal.refuge_id)
+                if error:
+                    logger.error(f"Error obtenint dubtes: {error}")
+                    return False, f"Error getting doubts: {error}"
+                
+                if doubts:
+                    for doubt in doubts:
+                        # Passar el creator_uid del dubte per evitar problemes de permisos
+                        success, error = doubt_controller.delete_doubt(
+                            refuge_id=proposal.refuge_id,
+                            doubt_id=doubt.id,
+                            user_uid=doubt.creator_uid
+                        )
+                        if not success:
+                            logger.error(f"No s'ha pogut eliminar el dubte {doubt.id}: {error}")
+                            return False, f"Error deleting doubt {doubt.id}: {error}"
+                        logger.info(f"Dubte {doubt.id} eliminat correctament")
+            except Exception as e:
+                logger.error(f"Error eliminant dubtes: {str(e)}")
+                return False, f"Error deleting doubts: {str(e)}"
+            
+            # ==================== PAS 3: ELIMINAR TOTES LES EXPERIÈNCIES ====================
+            logger.info(f"[DELETE REFUGE] Pas 3: Eliminant experiències del refugi {proposal.refuge_id}")
+            try:
+                from ..controllers.experience_controller import ExperienceController
+                experience_controller = ExperienceController()
+                
+                # Obtenir totes les experiències d'aquest refugi
+                experiences, error = experience_controller.get_experiences_by_refuge(proposal.refuge_id)
+                if error:
+                    logger.error(f"Error obtenint experiències: {error}")
+                    return False, f"Error getting experiences: {error}"
+                
+                if experiences:
+                    for experience in experiences:
+                        success, error = experience_controller.delete_experience(
+                            experience_id=experience.id,
+                            refuge_id=proposal.refuge_id
+                        )
+                        if not success:
+                            logger.error(f"No s'ha pogut eliminar l'experiència {experience.id}: {error}")
+                            return False, f"Error deleting experience {experience.id}: {error}"
+                        logger.info(f"Experiència {experience.id} eliminada correctament")
+            except Exception as e:
+                logger.error(f"Error eliminant experiències: {str(e)}")
+                return False, f"Error deleting experiences: {str(e)}"
+            
+            # ==================== PAS 4: ELIMINAR TOTES LES FOTOS DEL REFUGI ====================
+            logger.info(f"[DELETE REFUGE] Pas 4: Eliminant fotos del refugi {proposal.refuge_id}")
+            try:
+                # Obtenir les keys de totes les imatges del refugi
+                media_metadata = refugi_data.get('media_metadata', {})
+                
+                if media_metadata:
+                    media_keys = list(media_metadata.keys())
+                    logger.info(f"Trobades {len(media_keys)} fotos per eliminar")
+                    
+                    from ..controllers.refugi_lliure_controller import RefugiLliureController
+                    refugi_controller = RefugiLliureController()
+                    
+                    success, error = refugi_controller.delete_multiple_refugi_media(proposal.refuge_id, media_keys)
+                    if not success:
+                        logger.error(f"Error eliminant fotos del refugi: {error}")
+                        return False, f"Error deleting media: {error}"
+                    logger.info(f"Totes les fotos del refugi {proposal.refuge_id} eliminades correctament")
+                else:
+                    logger.info(f"No hi ha fotos per eliminar del refugi {proposal.refuge_id}")
+            except Exception as e:
+                logger.error(f"Error eliminant fotos del refugi: {str(e)}")
+                return False, f"Error deleting media: {str(e)}"
+            
+            # ==================== PAS 5: ELIMINAR TOTES LES RENOVATIONS ====================
+            logger.info(f"[DELETE REFUGE] Pas 5: Eliminant renovations del refugi {proposal.refuge_id}")
+            try:
+                from ..controllers.renovation_controller import RenovationController
+                renovation_controller = RenovationController()
+                
+                # Obtenir totes les renovations d'aquest refugi
+                success_get, renovations, error = renovation_controller.get_renovations_by_refuge(
+                    refuge_id=proposal.refuge_id,
+                    active_only=False
+                )
+                if not success_get:
+                    logger.error(f"Error obtenint renovations: {error}")
+                    return False, f"Error getting renovations: {error}"
+                
+                if renovations:
+                    for renovation in renovations:
+                        # Passar el creator_uid de la renovation per evitar problemes de permisos
+                        success, error = renovation_controller.delete_renovation(
+                            renovation_id=renovation.id,
+                            user_uid=renovation.creator_uid
+                        )
+                        if not success:
+                            logger.error(f"No s'ha pogut eliminar la renovation {renovation.id}: {error}")
+                            return False, f"Error deleting renovation {renovation.id}: {error}"
+                        logger.info(f"Renovation {renovation.id} eliminada correctament")
+            except Exception as e:
+                logger.error(f"Error eliminant renovations: {str(e)}")
+                return False, f"Error deleting renovations: {str(e)}"
+            
+            # ==================== FINALMENT: ELIMINAR EL REFUGI ====================
+            logger.info(f"[DELETE REFUGE] Eliminant el refugi {proposal.refuge_id}")
+            
             # Eliminar el refugi
             logger.log(23, f"Firestore DELETE: collection=data_refugis_lliures document={proposal.refuge_id} (DELETE from proposal)")
             refugi_ref.delete()
             
             # Eliminar de coords_refugis
-            update_coords_refugis_delete(db, proposal.refuge_id)
+            delete_refuge_from_coords_refugis(db, proposal.refuge_id)
             
             # Invalidar cache relacionada amb aquest refugi
             cache_service.delete(cache_service.generate_key('refugi_detail', refugi_id=proposal.refuge_id))
@@ -416,7 +556,7 @@ class DeleteRefugeStrategy(ProposalApprovalStrategy):
             cache_service.delete_pattern('refugi_search:*')
             cache_service.delete_pattern('refugi_coords:*')
             
-            logger.info(f"Refugi {proposal.refuge_id} eliminat des de la proposta {proposal.id}")
+            logger.info(f"Refugi {proposal.refuge_id} i totes les seves dades relacionades eliminats correctament des de la proposta {proposal.id}")
             return True, None
             
         except Exception as e:
@@ -616,7 +756,7 @@ class RefugeProposalDAO:
             logger.error(f'Error approving proposal {proposal_id}: {str(e)}')
             return False, f"Internal error: {str(e)}"
     
-    def reject(self, proposal_id: str, reviewer_uid: str, reason: Optional[str] = None) -> Tuple[bool, Optional[str]]:
+    def reject(self, proposal_id: str, reviewer_uid: Optional[str], reason: Optional[str] = None) -> Tuple[bool, Optional[str]]:
         """Rebutja una proposta"""
         try:
             # Obtenir la proposta
@@ -652,3 +792,41 @@ class RefugeProposalDAO:
         except Exception as e:
             logger.error(f'Error rejecting proposal {proposal_id}: {str(e)}')
             return False, f"Internal error: {str(e)}"
+    
+    def anonymize_proposals_by_creator(self, creator_uid: str) -> Tuple[bool, Optional[str]]:
+        """
+        Anonimitza totes les proposals creades per un usuari posant creator_uid a 'unknown'
+        
+        Args:
+            creator_uid: UID del creador
+            
+        Returns:
+            Tuple (èxit: bool, missatge d'error: Optional[str])
+        """
+        try:
+            db = firestore_service.get_db()
+            
+            # Obtenir totes les proposals del creador
+            logger.log(23, f"Firestore QUERY: collection={self.collection_name} where creator_uid=={creator_uid}")
+            proposals_query = db.collection(self.collection_name).where('creator_uid', '==', creator_uid).stream()
+            
+            anonymized_count = 0
+            
+            for proposal_doc in proposals_query:
+                # Actualitzar creator_uid a 'unknown'
+                logger.log(23, f"Firestore UPDATE: collection={self.collection_name} document={proposal_doc.id} (anonymize)")
+                proposal_doc.reference.update({'creator_uid': 'unknown'})
+                anonymized_count += 1
+                
+                # Invalida cache de detall
+                cache_service.delete_pattern(f'proposal_detail:proposal_id:{proposal_doc.id}:*')
+            
+            # Invalida cache de llistes
+            cache_service.delete_pattern('proposal_list:*')
+            
+            logger.info(f"{anonymized_count} proposals anonimitzades del creador {creator_uid}")
+            return True, None
+            
+        except Exception as e:
+            logger.error(f"Error anonimitzant proposals del creador {creator_uid}: {str(e)}")
+            return False, str(e)

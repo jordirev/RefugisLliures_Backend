@@ -471,3 +471,99 @@ class RenovationDAO:
         except Exception as e:
             logger.error(f"Error eliminant participant de renovation {renovation_id}: {str(e)}")
             return False
+    
+    def anonymize_renovations_by_creator(self, creator_uid: str) -> tuple[bool, Optional[str]]:
+        """
+        Anonimitza totes les renovations creades per un usuari posant creator_uid a 'unknown'
+        
+        Args:
+            creator_uid: UID del creador
+            
+        Returns:
+            Tuple (èxit: bool, missatge d'error: Optional[str])
+        """
+        try:
+            db = self.firestore_service.get_db()
+            
+            # Obtenir totes les renovations del creador
+            logger.log(23, f"Firestore QUERY: collection={self.COLLECTION_NAME} where creator_uid=={creator_uid}")
+            renovations_query = db.collection(self.COLLECTION_NAME).where('creator_uid', '==', creator_uid).stream()
+            
+            anonymized_count = 0
+            refuge_ids = set()
+            
+            for renovation_doc in renovations_query:
+                renovation_data = renovation_doc.to_dict()
+                refuge_id = renovation_data.get('refuge_id')
+                if refuge_id:
+                    refuge_ids.add(refuge_id)
+                
+                # Actualitzar creator_uid a 'unknown' i group_link a None
+                logger.log(23, f"Firestore UPDATE: collection={self.COLLECTION_NAME} document={renovation_doc.id} (anonymize)")
+                renovation_doc.reference.update({
+                    'creator_uid': 'unknown',
+                    'group_link': None
+                })
+                anonymized_count += 1
+                
+                # Invalida cache de detall
+                cache_service.delete(cache_service.generate_key('renovation_detail', renovation_id=renovation_doc.id))
+            
+            # Invalida cache de llistes
+            cache_service.delete_pattern('renovation_list:*')
+            for refuge_id in refuge_ids:
+                cache_service.delete_pattern(f'renovation_refuge:{refuge_id}:*')
+            
+            logger.info(f"{anonymized_count} renovations anonimitzades del creador {creator_uid}")
+            return True, None
+            
+        except Exception as e:
+            logger.error(f"Error anonimitzant renovations del creador {creator_uid}: {str(e)}")
+            return False, str(e)
+    
+    def remove_user_from_participations(self, uid: str) -> tuple[bool, Optional[str]]:
+        """
+        Elimina un usuari de participants_uids de totes les renovations a les quals ha participat
+        
+        Args:
+            uid: UID de l'usuari
+            
+        Returns:
+            Tuple (èxit: bool, missatge d'error: Optional[str])
+        """
+        try:
+            db = self.firestore_service.get_db()
+            
+            # Utilitzar array_contains per obtenir renovations on l'usuari participa
+            logger.log(23, f"Firestore QUERY: collection={self.COLLECTION_NAME} where participants_uids array_contains {uid}")
+            renovations_query = db.collection(self.COLLECTION_NAME).where('participants_uids', 'array_contains', uid).stream()
+            
+            removed_count = 0
+            refuge_ids = set()
+            
+            for renovation_doc in renovations_query:
+                renovation_data = renovation_doc.to_dict()
+                refuge_id = renovation_data.get('refuge_id')
+                if refuge_id:
+                    refuge_ids.add(refuge_id)
+                
+                # Eliminar uid de participants_uids
+                from google.cloud.firestore import ArrayRemove
+                logger.log(23, f"Firestore UPDATE: collection={self.COLLECTION_NAME} document={renovation_doc.id} (remove participant)")
+                renovation_doc.reference.update({'participants_uids': ArrayRemove([uid])})
+                removed_count += 1
+                
+                # Invalida cache de detall
+                cache_service.delete(cache_service.generate_key('renovation_detail', renovation_id=renovation_doc.id))
+            
+            # Invalida cache de llistes
+            cache_service.delete_pattern('renovation_list:*')
+            for refuge_id in refuge_ids:
+                cache_service.delete_pattern(f'renovation_refuge:{refuge_id}:*')
+            
+            logger.info(f"Usuari {uid} eliminat de {removed_count} renovations")
+            return True, None
+            
+        except Exception as e:
+            logger.error(f"Error eliminant usuari {uid} de participacions: {str(e)}")
+            return False, str(e)

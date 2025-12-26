@@ -16,9 +16,9 @@ class User:
     email: str
     avatar_metadata: MediaMetadata = None  # Metadades amb URLs prefirmades (generades dinàmicament) {'key': str, 'url': str, 'uploaded_at': str}
     language: str = 'ca'
-    favourite_refuges: Optional[list] = None
-    visited_refuges: Optional[list] = None
-    num_uploaded_photos: int = 0
+    favourite_refuges: Optional[list] = None # Llista d'IDs de refugis preferits
+    visited_refuges: Optional[list] = None # Llista d'IDs de refugis visitats
+    uploaded_photos_keys: Optional[List[str]] = None # Llista de keys de fotos pujades
     num_shared_experiences: int = 0
     num_renovated_refuges: int = 0
     created_at: str = ''
@@ -51,7 +51,7 @@ class User:
             'language': self.language,
             'favourite_refuges': self.favourite_refuges,
             'visited_refuges': self.visited_refuges,
-            'num_uploaded_photos': self.num_uploaded_photos,
+            'uploaded_photos_keys': self.uploaded_photos_keys,
             'num_shared_experiences': self.num_shared_experiences,
             'num_renovated_refuges': self.num_renovated_refuges,
             'created_at': self.created_at
@@ -79,7 +79,7 @@ class User:
             language=data.get('language', 'ca'),
             favourite_refuges=data.get('favourite_refuges', []),
             visited_refuges=data.get('visited_refuges', []),
-            num_uploaded_photos=data.get('num_uploaded_photos', 0),
+            uploaded_photos_keys=data.get('uploaded_photos_keys', []),
             num_shared_experiences=data.get('num_shared_experiences', 0),
             num_renovated_refuges=data.get('num_renovated_refuges', 0),
             created_at=data.get('created_at', '')

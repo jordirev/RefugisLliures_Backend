@@ -33,7 +33,8 @@ class Renovation:
             raise ValueError("Data d'inici ha de ser anterior a data de finalització")
         if not self.description:
             raise ValueError("Descripció és requerida")
-        if not self.group_link:
+        # Permet group_link null només si l'usuari ha estat anonimitzat
+        if not self.group_link and self.creator_uid != 'unknown':
             raise ValueError("Enllaç de grup és requerit")
     
     def to_dict(self) -> dict:
@@ -62,7 +63,7 @@ class Renovation:
             fin_date=datetime.fromisoformat(data['fin_date']),
             description=data.get('description'),
             materials_needed=data.get('materials_needed'),
-            group_link=data['group_link'],
+            group_link=data.get('group_link'),  # Permet None
             participants_uids=data.get('participants_uids', []),
             expelled_uids=data.get('expelled_uids', [])
         )
