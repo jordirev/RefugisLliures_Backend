@@ -448,7 +448,6 @@ class DeleteRefugeStrategy(ProposalApprovalStrategy):
                     for doubt in doubts:
                         # Passar el creator_uid del dubte per evitar problemes de permisos
                         success, error = doubt_controller.delete_doubt(
-                            refuge_id=proposal.refuge_id,
                             doubt_id=doubt.id,
                             user_uid=doubt.creator_uid
                         )
@@ -474,10 +473,7 @@ class DeleteRefugeStrategy(ProposalApprovalStrategy):
                 
                 if experiences:
                     for experience in experiences:
-                        success, error = experience_controller.delete_experience(
-                            experience_id=experience.id,
-                            refuge_id=proposal.refuge_id
-                        )
+                        success, error = experience_controller.delete_experience(experience_id=experience.id)
                         if not success:
                             logger.error(f"No s'ha pogut eliminar l'experiència {experience.id}: {error}")
                             return False, f"Error deleting experience {experience.id}: {error}"

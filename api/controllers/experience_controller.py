@@ -193,7 +193,7 @@ class ExperienceController:
             logger.error(f"Error actualitzant experiència {experience_id}: {str(e)}")
             return None, None, f"Internal server error: {str(e)}"
     
-    def delete_experience(self, experience_id: str, refuge_id) -> Tuple[bool, Optional[str]]:
+    def delete_experience(self, experience_id: str) -> Tuple[bool, Optional[str]]:
         """
         Elimina una experiència i tots els seus mitjans
         
@@ -204,10 +204,6 @@ class ExperienceController:
             (True si s'ha eliminat correctament, missatge d'error o None)
         """
         try:
-            # Verificar que el refugi existeix
-            if not self.refugi_dao.refugi_exists(refuge_id):
-                return None, None, "Refuge not found"
-            
             # Obtenir l'experiència
             experience = self.experience_dao.get_experience_by_id(experience_id)
             if not experience:
@@ -217,7 +213,7 @@ class ExperienceController:
             if experience.media_keys and len(experience.media_keys) > 0:
                 try:
                     # Eliminar metadata del refugi
-                    success, error = self.refugi_controller.delete_multiple_refugi_media(refugi_id=refuge_id, media_keys=experience.media_keys)
+                    success, error = self.refugi_controller.delete_multiple_refugi_media(refugi_id=experience.refuge_id, media_keys=experience.media_keys)
 
                     # Si fallen algunes eliminacions de fitxers, no eliminar l'experiencia
                     if not success:

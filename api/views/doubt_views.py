@@ -38,7 +38,8 @@ logger = logging.getLogger(__name__)
 class DoubtListAPIView(APIView):
     """
     Gestiona la llista de dubtes d'un refugi.
-    GET + POST /api/refuges/{refuge_id}/doubts/
+    GET /api/doubts/?refuge_id={refuge_id}
+    POST /api/doubts/
     """
     permission_classes = [IsAuthenticated]
     
@@ -56,7 +57,7 @@ class DoubtListAPIView(APIView):
         manual_parameters=[
             openapi.Parameter(
                 'refuge_id',
-                openapi.IN_PATH,
+                openapi.IN_QUERY,
                 description="ID del refugi",
                 type=openapi.TYPE_STRING,
                 required=True
@@ -77,6 +78,12 @@ class DoubtListAPIView(APIView):
         Llista tots els dubtes d'un refugi amb totes les seves respostes.
         """
         try:
+            if not refuge_id:
+                return Response(
+                {'error': 'El refuge_id es requerit. El path per a cridar al endpoint és /api/doubts/?refuge_id=refuge_id'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
             doubts, error = self.controller.get_doubts_by_refuge(refuge_id)
             
             if error:
@@ -108,18 +115,9 @@ class DoubtListAPIView(APIView):
         tags=['Refuge Doubts'],
         operation_description=(
             "Crea un nou dubte per a un refugi. "
-            "El refuge_id s'extreu del path i el creator_uid del token d'autenticació."
+            "El refuge_id s'extreu del body i el creator_uid del token d'autenticació."
             "\n\nRequereix autenticació."
         ),
-        manual_parameters=[
-            openapi.Parameter(
-                'refuge_id',
-                openapi.IN_PATH,
-                description="ID del refugi",
-                type=openapi.TYPE_STRING,
-                required=True
-            ),
-        ],
         request_body=CreateDoubtSerializer,
         responses={
             201: openapi.Response(
@@ -132,7 +130,7 @@ class DoubtListAPIView(APIView):
             500: ERROR_500_INTERNAL_ERROR
         }
     )
-    def post(self, request, refuge_id):
+    def post(self, request):
         """
         Crea un nou dubte per a un refugi.
         """
@@ -155,7 +153,7 @@ class DoubtListAPIView(APIView):
             
             # Crear dubte
             doubt, error = self.controller.create_doubt(
-                refuge_id=refuge_id,
+                refuge_id=serializer.validated_data['refuge_id'],
                 creator_uid=creator_uid,
                 message=serializer.validated_data['message']
             )
@@ -189,7 +187,7 @@ class DoubtListAPIView(APIView):
 class DoubtDetailAPIView(APIView):
     """
     Gestiona l'eliminació d'un dubte.
-    DELETE /api/refuges/{refuge_id}/doubts/{doubt_id}/
+    DELETE /api/doubts/{doubt_id}/
     """
     permission_classes = [IsAuthenticated, IsDoubtCreator]
     
@@ -206,13 +204,6 @@ class DoubtDetailAPIView(APIView):
         ),
         manual_parameters=[
             openapi.Parameter(
-                'refuge_id',
-                openapi.IN_PATH,
-                description="ID del refugi",
-                type=openapi.TYPE_STRING,
-                required=True
-            ),
-            openapi.Parameter(
                 'doubt_id',
                 openapi.IN_PATH,
                 description="ID del dubte",
@@ -228,7 +219,7 @@ class DoubtDetailAPIView(APIView):
             500: ERROR_500_INTERNAL_ERROR
         }
     )
-    def delete(self, request, refuge_id, doubt_id):
+    def delete(self, request, doubt_id):
         """
         Elimina un dubte i totes les seves respostes.
         """
@@ -242,7 +233,7 @@ class DoubtDetailAPIView(APIView):
                 )
             
             # Eliminar dubte
-            success, error = self.controller.delete_doubt(refuge_id, doubt_id, user_uid)
+            success, error = self.controller.delete_doubt(doubt_id, user_uid)
             
             if error:
                 if "not found" in error.lower():
@@ -274,7 +265,7 @@ class DoubtDetailAPIView(APIView):
 class AnswerListAPIView(APIView):
     """
     Gestiona la creació de respostes a un dubte.
-    POST /api/refuges/{refuge_id}/doubts/{doubt_id}/answers/
+    POST /api/doubts/{doubt_id}/answers/
     """
     permission_classes = [IsAuthenticated]
     
@@ -291,13 +282,6 @@ class AnswerListAPIView(APIView):
             "\n\nRequereix autenticació."
         ),
         manual_parameters=[
-            openapi.Parameter(
-                'refuge_id',
-                openapi.IN_PATH,
-                description="ID del refugi",
-                type=openapi.TYPE_STRING,
-                required=True
-            ),
             openapi.Parameter(
                 'doubt_id',
                 openapi.IN_PATH,
@@ -318,7 +302,7 @@ class AnswerListAPIView(APIView):
             500: ERROR_500_INTERNAL_ERROR
         }
     )
-    def post(self, request, refuge_id, doubt_id):
+    def post(self, request, doubt_id):
         """
         Crea una nova resposta a un dubte.
         """
@@ -341,7 +325,6 @@ class AnswerListAPIView(APIView):
             
             # Crear resposta
             answer, error = self.controller.create_answer(
-                refuge_id=refuge_id,
                 doubt_id=doubt_id,
                 creator_uid=creator_uid,
                 message=serializer.validated_data['message'],
@@ -377,8 +360,8 @@ class AnswerListAPIView(APIView):
 class AnswerReplyAPIView(APIView):
     """
     Gestiona la creació de respostes a una resposta i l'eliminació de respostes.
-    POST /api/refuges/{refuge_id}/doubts/{doubt_id}/answers/{answer_id}/
-    DELETE /api/refuges/{refuge_id}/doubts/{doubt_id}/answers/{answer_id}/
+    POST /api/doubts/{doubt_id}/answers/{answer_id}/
+    DELETE /api/doubts/{doubt_id}/answers/{answer_id}/
     """
     
     def __init__(self, **kwargs):
@@ -406,13 +389,6 @@ class AnswerReplyAPIView(APIView):
         ),
         manual_parameters=[
             openapi.Parameter(
-                'refuge_id',
-                openapi.IN_PATH,
-                description="ID del refugi",
-                type=openapi.TYPE_STRING,
-                required=True
-            ),
-            openapi.Parameter(
                 'doubt_id',
                 openapi.IN_PATH,
                 description="ID del dubte",
@@ -439,7 +415,7 @@ class AnswerReplyAPIView(APIView):
             500: ERROR_500_INTERNAL_ERROR
         }
     )
-    def post(self, request, refuge_id, doubt_id, answer_id):
+    def post(self, request, doubt_id, answer_id):
         """
         Crea una nova resposta a una resposta d'un dubte.
         """
@@ -462,7 +438,6 @@ class AnswerReplyAPIView(APIView):
             
             # Crear resposta amb parent_answer_id
             answer, error = self.controller.create_answer(
-                refuge_id=refuge_id,
                 doubt_id=doubt_id,
                 creator_uid=creator_uid,
                 message=serializer.validated_data['message'],
@@ -505,13 +480,6 @@ class AnswerReplyAPIView(APIView):
         ),
         manual_parameters=[
             openapi.Parameter(
-                'refuge_id',
-                openapi.IN_PATH,
-                description="ID del refugi",
-                type=openapi.TYPE_STRING,
-                required=True
-            ),
-            openapi.Parameter(
                 'doubt_id',
                 openapi.IN_PATH,
                 description="ID del dubte",
@@ -534,7 +502,7 @@ class AnswerReplyAPIView(APIView):
             500: ERROR_500_INTERNAL_ERROR
         }
     )
-    def delete(self, request, refuge_id, doubt_id, answer_id):
+    def delete(self, request, doubt_id, answer_id):
         """
         Elimina una resposta.
         """
@@ -548,9 +516,7 @@ class AnswerReplyAPIView(APIView):
                 )
             
             # Eliminar resposta
-            success, error = self.controller.delete_answer(
-                refuge_id, doubt_id, answer_id, user_uid
-            )
+            success, error = self.controller.delete_answer(doubt_id, answer_id)
             
             if error:
                 if "not found" in error.lower():

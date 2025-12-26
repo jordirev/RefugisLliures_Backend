@@ -90,7 +90,6 @@ class DoubtController:
     
     def create_answer(
         self,
-        refuge_id: str,
         doubt_id: str,
         creator_uid: str,
         message: str,
@@ -100,7 +99,6 @@ class DoubtController:
         Crea una nova resposta per a un dubte
         
         Args:
-            refuge_id: ID del refugi (del path, per validació)
             doubt_id: ID del dubte
             creator_uid: UID de l'usuari creador
             message: Missatge de la resposta
@@ -114,10 +112,6 @@ class DoubtController:
             doubt = self.doubt_dao.get_doubt_by_id(doubt_id)
             if not doubt:
                 return None, "Doubt not found"
-            
-            # Verificar que el dubte pertany al refugi del path
-            if doubt.refuge_id != refuge_id:
-                return None, "Doubt does not belong to this refuge"
             
             # Si hi ha parent_answer_id, verificar que existeix
             if parent_answer_id:
@@ -147,7 +141,7 @@ class DoubtController:
             logger.error(f"Error creant resposta: {str(e)}")
             return None, f"Internal server error: {str(e)}"
     
-    def delete_doubt(self, refuge_id: str, doubt_id: str, user_uid: str) -> Tuple[bool, Optional[str]]:
+    def delete_doubt(self, doubt_id: str, user_uid: str) -> Tuple[bool, Optional[str]]:
         """
         Elimina un dubte i totes les seves respostes
         
@@ -165,12 +159,7 @@ class DoubtController:
             if not doubt:
                 return False, "Doubt not found"
             
-            # Verificar que el dubte pertany al refugi del path
-            if doubt.refuge_id != refuge_id:
-                return False, "Doubt does not belong to this refuge"
-            
-            # Verificar que l'usuari és el creador del dubte (això es fa al permís)
-            # Aquí només eliminem
+            # Eliminar el dubte i les seves respostes
             success = self.doubt_dao.delete_doubt(doubt_id)
             if not success:
                 return False, "Error deleting doubt"
@@ -184,19 +173,15 @@ class DoubtController:
     
     def delete_answer(
         self,
-        refuge_id: str,
         doubt_id: str,
         answer_id: str,
-        user_uid: str
     ) -> Tuple[bool, Optional[str]]:
         """
         Elimina una resposta
         
         Args:
-            refuge_id: ID del refugi (del path, per validació)
             doubt_id: ID del dubte
             answer_id: ID de la resposta
-            user_uid: UID de l'usuari que intenta eliminar
             
         Returns:
             (True si s'ha eliminat correctament, missatge d'error o None)
@@ -207,17 +192,12 @@ class DoubtController:
             if not doubt:
                 return False, "Doubt not found"
             
-            # Verificar que el dubte pertany al refugi del path
-            if doubt.refuge_id != refuge_id:
-                return False, "Doubt does not belong to this refuge"
-            
             # Verificar que la resposta existeix
             answer = self.doubt_dao.get_answer_by_id(doubt_id, answer_id)
             if not answer:
                 return False, "Answer not found"
             
-            # Verificar que l'usuari és el creador de la resposta (això es fa al permís)
-            # Aquí només eliminem
+            # Eliminar la resposta
             success = self.doubt_dao.delete_answer(doubt_id, answer_id)
             if not success:
                 return False, "Error deleting answer"

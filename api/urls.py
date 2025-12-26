@@ -65,14 +65,14 @@ urlpatterns = [
     path('refuges/<str:id>/media/<path:key>/', RefugiMediaDeleteAPIView.as_view(), name='refugi_media_delete'),  # DELETE /refuges/{id}/media/{key}/
     
     # Refuge experience endpoints
-    path('refuges/<str:refuge_id>/experiences/', ExperienceListAPIView.as_view(), name='experience_list'),  # GET + POST /refuges/{refuge_id}/experiences/
-    path('refuges/<str:refuge_id>/experiences/<str:experience_id>/', ExperienceDetailAPIView.as_view(), name='experience_detail'),  # PATCH + DELETE /refuges/{refuge_id}/experiences/{experience_id}/
+    path('experiences/', ExperienceListAPIView.as_view(), name='experience_list'),  # GET + POST /refuges/{refuge_id}/experiences/
+    path('experiences/<str:experience_id>/', ExperienceDetailAPIView.as_view(), name='experience_detail'),  # PATCH + DELETE /refuges/{refuge_id}/experiences/{experience_id}/
     
     # Refuge doubts endpoints
-    path('refuges/<str:refuge_id>/doubts/', DoubtListAPIView.as_view(), name='doubt_list'),  # GET + POST /refuges/{refuge_id}/doubts/
-    path('refuges/<str:refuge_id>/doubts/<str:doubt_id>/', DoubtDetailAPIView.as_view(), name='doubt_detail'),  # DELETE /refuges/{refuge_id}/doubts/{doubt_id}/
-    path('refuges/<str:refuge_id>/doubts/<str:doubt_id>/answers/', AnswerListAPIView.as_view(), name='answer_list'),  # POST /refuges/{refuge_id}/doubts/{doubt_id}/answers/
-    path('refuges/<str:refuge_id>/doubts/<str:doubt_id>/answers/<str:answer_id>/', AnswerReplyAPIView.as_view(), name='answer_reply'),  # POST + DELETE /refuges/{refuge_id}/doubts/{doubt_id}/answers/{answer_id}/
+    path('doubts/', DoubtListAPIView.as_view(), name='doubt_list'),  # GET + POST /refuges/{refuge_id}/doubts/
+    path('doubts/<str:doubt_id>/', DoubtDetailAPIView.as_view(), name='doubt_detail'),  # DELETE /refuges/{refuge_id}/doubts/{doubt_id}/
+    path('doubts/<str:doubt_id>/answers/', AnswerListAPIView.as_view(), name='answer_list'),  # POST /refuges/{refuge_id}/doubts/{doubt_id}/answers/
+    path('doubts/<str:doubt_id>/answers/<str:answer_id>/', AnswerReplyAPIView.as_view(), name='answer_reply'),  # POST + DELETE /refuges/{refuge_id}/doubts/{doubt_id}/answers/{answer_id}/
     
     # Users endpoints
     path('users/', UsersCollectionAPIView.as_view(), name='users_collection'),  # POST /users/ (crear)

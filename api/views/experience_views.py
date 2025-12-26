@@ -25,7 +25,8 @@ logger = logging.getLogger(__name__)
 class ExperienceListAPIView(APIView):
     """
     Gestiona la llista d'experiències d'un refugi.
-    GET + POST /api/refuges/{refuge_id}/experiences/
+    GET /api/experiences/?refuge_id={refuge_id}
+    POST /api/experiences/
     """
     permission_classes = [IsAuthenticated]
     parser_classes = [MultiPartParser, FormParser]
@@ -44,7 +45,7 @@ class ExperienceListAPIView(APIView):
         manual_parameters=[
             openapi.Parameter(
                 'refuge_id',
-                openapi.IN_PATH,
+                openapi.IN_QUERY,
                 description="ID del refugi",
                 type=openapi.TYPE_STRING,
                 required=True
@@ -65,6 +66,12 @@ class ExperienceListAPIView(APIView):
         Llista totes les experiències d'un refugi amb URLs prefirmades per a les imatges.
         """
         try:
+            if not refuge_id:
+                return Response(
+                    {'error': 'El refuge_id és requerit. El path és /api/experiences/?refuge_id=refuge_id'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
             experiences, error = self.controller.get_experiences_by_refuge(refuge_id)
             
             if error:
@@ -100,13 +107,6 @@ class ExperienceListAPIView(APIView):
         ),
         manual_parameters=[
             openapi.Parameter(
-                'refuge_id',
-                openapi.IN_PATH,
-                description="ID del refugi",
-                type=openapi.TYPE_STRING,
-                required=True
-            ),
-            openapi.Parameter(
                 'comment',
                 openapi.IN_FORM,
                 description="Comentari de l'experiència",
@@ -132,7 +132,7 @@ class ExperienceListAPIView(APIView):
             500: openapi.Response(description="Error intern del servidor")
         }
     )
-    def post(self, request, refuge_id):
+    def post(self, request):
         """
         Crea una nova experiència per a un refugi.
         """
@@ -158,7 +158,7 @@ class ExperienceListAPIView(APIView):
             
             # Crear l'experiència
             result, uploaded_result, error = self.controller.create_experience(
-                refuge_id=refuge_id,
+                refuge_id=serializer.validated_data['refuge_id'],
                 creator_uid=creator_uid,
                 comment=serializer.validated_data['comment'],
                 files=files if files else None
@@ -213,7 +213,7 @@ class ExperienceListAPIView(APIView):
 class ExperienceDetailAPIView(APIView):
     """
     Gestiona una experiència específica.
-    PATCH + DELETE /api/refuges/{refuge_id}/experiences/{experience_id}/
+    PATCH + DELETE /api/experiences/{experience_id}/
     """
     permission_classes = [IsAuthenticated, IsExperienceCreator]
     parser_classes = [MultiPartParser, FormParser]
@@ -234,13 +234,6 @@ class ExperienceDetailAPIView(APIView):
             "\n\nRequereix autenticació i ser el creador de l'experiència."
         ),
         manual_parameters=[
-            openapi.Parameter(
-                'refuge_id',
-                openapi.IN_PATH,
-                description="ID del refugi",
-                type=openapi.TYPE_STRING,
-                required=True
-            ),
             openapi.Parameter(
                 'experience_id',
                 openapi.IN_PATH,
@@ -275,7 +268,7 @@ class ExperienceDetailAPIView(APIView):
             500: openapi.Response(description="Error intern del servidor")
         }
     )
-    def patch(self, request, refuge_id, experience_id):
+    def patch(self, request, experience_id):
         """
         Actualitza una experiència (comentari i/o fotos).
         Permet afegir noves fotos a l'experiència existent. Aquestes s'afegiran també al refugi de l'experiència.
@@ -346,13 +339,6 @@ class ExperienceDetailAPIView(APIView):
         ),
         manual_parameters=[
             openapi.Parameter(
-                'refuge_id',
-                openapi.IN_PATH,
-                description="ID del refugi",
-                type=openapi.TYPE_STRING,
-                required=True
-            ),
-            openapi.Parameter(
                 'experience_id',
                 openapi.IN_PATH,
                 description="ID de l'experiència",
@@ -368,12 +354,12 @@ class ExperienceDetailAPIView(APIView):
             500: openapi.Response(description="Error intern del servidor")
         }
     )
-    def delete(self, request, refuge_id, experience_id):
+    def delete(self, request, experience_id):
         """
         Elimina una experiència i tots els seus mitjans.
         """
         try:
-            success, error = self.controller.delete_experience(experience_id, refuge_id)
+            success, error = self.controller.delete_experience(experience_id)
             
             if error:
                 if "not found" in error.lower():
