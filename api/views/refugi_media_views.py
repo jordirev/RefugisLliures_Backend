@@ -40,6 +40,7 @@ class RefugiMediaAPIView(APIView):
         self.controller = RefugiLliureController()
     
     @swagger_auto_schema(
+        tags=['Refuge Media'],
         operation_description=(
             "Obté la llista de tots els mitjans (imatges i vídeos) d'un refugi amb URLs prefirmades. "
             "\n\nRequereix autenticació."
@@ -96,6 +97,7 @@ class RefugiMediaAPIView(APIView):
             )
     
     @swagger_auto_schema(
+        tags=['Refuge Media'],
         operation_description=(
             "Puja una o més imatges/vídeos per a un refugi específic. "
             "Els fitxers es guarden a R2 en la carpeta refugis-lliures/{refuge_id}/. "
@@ -190,8 +192,10 @@ class RefugiMediaDeleteAPIView(APIView):
         self.controller = RefugiLliureController()
     
     @swagger_auto_schema(
+        tags=['Refuge Media'],
         operation_description=(
             "Elimina un mitjà específic d'un refugi utilitzant la seva key. "
+            "\n Si el mitjà és una imatge vinculada a una experiència, també s'eliminarà d'aquesta. "
             "\n\nRequereix autenticació i que l'usuari sigui el creador del mitjà o administrador."
         ),
         manual_parameters=[

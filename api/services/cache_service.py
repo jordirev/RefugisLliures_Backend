@@ -17,17 +17,52 @@ class CacheService:
     
     _instance = None
     
+    # Cache timeouts per defecte (en segons)
+    CACHE_TIMEOUTS = {
+        # Refugis
+        'refugi_detail': 600,      # 10 minuts
+        'refugi_list': 600,        # 10 minuts
+        'refugi_search': 600,      # 10 minuts
+        'refugi_coords': 3600,     # 1 hora
+        
+        # Usuaris
+        'user_detail': 600,        # 10 minuts
+        
+        # Renovations
+        'renovation_detail': 600,  # 10 minuts
+        'renovation_list': 600,    # 10 minuts
+        
+        # Experiences
+        'experience_detail': 600,  # 10 minuts
+        'experience_list': 600,    # 10 minuts
+        
+        # Proposals
+        'proposal_detail': 600,    # 10 minuts
+        'proposal_list': 600,      # 10 minuts
+        
+        # Visits
+        'refuge_visit_detail': 600,  # 10 minuts
+        'refuge_visits_list': 600,   # 10 minuts
+        
+        # Doubts
+        'doubt_detail': 600,       # 10 minuts
+        'doubt_list': 600,         # 10 minuts
+    }
+    
     def __new__(cls):
         if cls._instance is None:
             cls._instance = super(CacheService, cls).__new__(cls)
         return cls._instance
     
     def __init__(self):
-        self.default_timeout = getattr(settings, 'CACHE_TIMEOUTS', {})
+        # Permet override des de settings si existeix
+        from django.conf import settings
+        custom_timeouts = getattr(settings, 'CACHE_TIMEOUTS', {})
+        self.timeouts = {**self.CACHE_TIMEOUTS, **custom_timeouts}
     
     def get_timeout(self, key_type: str) -> int:
         """Obté el timeout específic per un tipus de clau"""
-        return self.default_timeout.get(key_type, 300)
+        return self.timeouts.get(key_type, 600)  # 10 minuts per defecte
     
     def generate_key(self, prefix: str, **kwargs) -> str:
         """

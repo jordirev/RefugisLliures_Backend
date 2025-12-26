@@ -263,6 +263,26 @@ ERROR_404_USER_OR_REFUGI = openapi.Response(
     }
 )
 
+ERROR_404_DOUBT_NOT_FOUND = openapi.Response(
+    description="Dubte no trobat",
+    schema=ERROR_SCHEMA_SIMPLE,
+    examples={
+        "application/json": {
+            "error": "Dubte no trobat"
+        }
+    }
+)
+
+ERROR_404_ANSWER_NOT_FOUND = openapi.Response(
+    description="Resposta no trobada",
+    schema=ERROR_SCHEMA_SIMPLE,
+    examples={
+        "application/json": {
+            "error": "Resposta no trobada"
+        }
+    }
+)
+
 ERROR_409_USER_EXISTS = openapi.Response(
     description="L'usuari ja existeix",
     schema=ERROR_SCHEMA_SIMPLE,

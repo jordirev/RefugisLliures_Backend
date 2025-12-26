@@ -21,6 +21,12 @@ from .renovation_serializer import (
     RenovationCreateSerializer,
     RenovationUpdateSerializer,
 )
+from .doubt_serializer import (
+    DoubtSerializer,
+    AnswerSerializer,
+    CreateDoubtSerializer,
+    CreateAnswerSerializer,
+)
 
 __all__ = [
     'UserSerializer', 
@@ -39,4 +45,8 @@ __all__ = [
     'RenovationSerializer',
     'RenovationCreateSerializer',
     'RenovationUpdateSerializer',
+    'DoubtSerializer',
+    'AnswerSerializer',
+    'CreateDoubtSerializer',
+    'CreateAnswerSerializer',
 ]

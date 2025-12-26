@@ -7,6 +7,8 @@ from ..services.firestore_service import FirestoreService
 from ..services.cache_service import cache_service
 from ..mappers.user_mapper import UserMapper
 from ..models.user import User
+from google.cloud.firestore_v1.transforms import Increment
+
 
 logger = logging.getLogger(__name__)
 
@@ -442,7 +444,6 @@ class UserDAO:
         """
         try:
             db = self.firestore_service.get_db()
-            from google.cloud.firestore_v1.transforms import Increment
             doc_ref = db.collection(self.COLLECTION_NAME).document(uid)
             
             # Comprova que l'usuari existeixi i obté les dades per tenir l'email
@@ -464,19 +465,61 @@ class UserDAO:
             logger.error(f"Error incrementant comptador de refugis renovats per l'usuari {uid}: {str(e)}")
             return False
     
-    def increment_uploaded_photos(self, uid: str) -> bool:
+    def add_uploaded_photos_keys(self, uid: str, media_keys: List[str]) -> bool:
         """
-        Incrementa el comptador de fotos pujades per un usuari
+        Afegeix keys de fotos pujades a l'array uploaded_photos_keys d'un usuari
         
         Args:
             uid: UID de l'usuari
+            media_keys: Llista de keys de fotos a afegir
             
+        Returns:
+            bool: True si s'ha afegit correctament
+        """
+        try:
+            db = self.firestore_service.get_db()
+            doc_ref = db.collection(self.COLLECTION_NAME).document(uid)
+            
+            # Comprova que l'usuari existeixi
+            doc = doc_ref.get()
+            if not doc.exists:
+                logger.warning(f"No es poden afegir keys, usuari no trobat amb UID: {uid}")
+                return False
+            
+            # Obté l'array actual
+            user_data = doc.to_dict()
+            current_keys = user_data.get('uploaded_photos_keys', [])
+            if current_keys is None:
+                current_keys = []
+            
+            # Afegeix les noves keys
+            current_keys.extend(media_keys)
+            
+            # Actualitza l'array
+            doc_ref.update({'uploaded_photos_keys': current_keys})
+            
+            # Invalida cache de l'usuari
+            cache_service.delete(cache_service.generate_key('user_detail', uid=uid))
+            
+            logger.info(f"Keys de fotos pujades afegides per l'usuari {uid}: {media_keys}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error afegint keys de fotos pujades per l'usuari {uid}: {str(e)}")
+            return False
+        
+    def increment_shared_experiences(self, uid: str) -> bool:
+        """
+        Incrementa el comptador d'experiencies compartides.
+        
+        Args:
+            uid: UID de l'usuari
+
         Returns:
             bool: True si s'ha incrementat correctament
         """
         try:
             db = self.firestore_service.get_db()
-            from google.cloud.firestore_v1.transforms import Increment
             doc_ref = db.collection(self.COLLECTION_NAME).document(uid)
             
             # Comprova que l'usuari existeixi
@@ -485,23 +528,27 @@ class UserDAO:
                 logger.warning(f"No es pot incrementar comptador, usuari no trobat amb UID: {uid}")
                 return False
             
-            # Incrementa el comptador
-            doc_ref.update({'num_uploaded_photos': Increment(1)})
+            # Incrementa els comptadors
+            updates = {
+                'num_shared_experiences': Increment(1),
+            }
+            
+            doc_ref.update(updates)
             
             # Invalida cache de l'usuari
             cache_service.delete(cache_service.generate_key('user_detail', uid=uid))
             
-            logger.info(f"Comptador de fotos pujades incrementat per l'usuari {uid}")
+            logger.info(f"Comptadors de fotos pujades i experiencies incrementats per l'usuari {uid}")
             return True
             
         except Exception as e:
-            logger.error(f"Error incrementant comptador de fotos pujades per l'usuari {uid}: {str(e)}")
+            logger.error(f"Error incrementant comptadors per l'usuari {uid}: {str(e)}")
             return False
-    
-    def decrement_uploaded_photos(self, uid: str) -> bool:
+
+    def decrement_shared_experiences(self, uid: str) -> bool:
         """
-        Decrementa el comptador de fotos pujades per un usuari
-        
+        Decrementa el comptador d'experiencies compartides 
+
         Args:
             uid: UID de l'usuari
             
@@ -510,35 +557,82 @@ class UserDAO:
         """
         try:
             db = self.firestore_service.get_db()
-            from google.cloud.firestore_v1.transforms import Increment
             doc_ref = db.collection(self.COLLECTION_NAME).document(uid)
             
             # Comprova que l'usuari existeixi i obté el valor actual
             doc = doc_ref.get()
             if not doc.exists:
-                logger.warning(f"No es pot decrementar comptador, usuari no trobat amb UID: {uid}")
+                logger.warning(f"No es pot decrementar comptadors, usuari no trobat amb UID: {uid}")
                 return False
             
-            # Obté el valor actual del comptador
+            # Obté el valor actual dels comptadors
             user_data = doc.to_dict()
-            current_value = user_data.get('num_uploaded_photos', 0)
+            current_experiences = user_data.get('num_shared_experiences', 0)
             
-            # Només decrementa si el valor actual és major que 0
-            if current_value > 0:
-                # Decrementa el comptador (Increment amb valor negatiu)
-                doc_ref.update({'num_uploaded_photos': Increment(-1)})
+            # Prepara les actualitzacions
+            updates = {}
+            
+            # Només decrementa experiencies si el valor actual és major que 0
+            if current_experiences > 0:
+                updates['num_shared_experiences'] = Increment(-1)
+            
+            if updates:
+                doc_ref.update(updates)
                 
                 # Invalida cache de l'usuari
                 cache_service.delete(cache_service.generate_key('user_detail', uid=uid))
                 
-                logger.info(f"Comptador de fotos pujades decrementat per l'usuari {uid} ({current_value} -> {current_value - 1})")
+                logger.info(f"Comptadors de fotos pujades i experiencies decrementats per l'usuari {uid}")
             else:
-                logger.warning(f"No es pot decrementar comptador de fotos pujades per l'usuari {uid}, valor actual és {current_value}")
+                logger.warning(f"No es poden decrementar comptadors per l'usuari {uid}, valors actuals són insuficients")
             
             return True
             
         except Exception as e:
-            logger.error(f"Error decrementant comptador de fotos pujades per l'usuari {uid}: {str(e)}")
+            logger.error(f"Error decrementant comptadors per l'usuari {uid}: {str(e)}")
+            return False
+    
+    def remove_uploaded_photos_keys(self, uid: str, media_keys: List[str]) -> bool:
+        """
+        Elimina keys de fotos pujades de l'array uploaded_photos_keys d'un usuari
+        
+        Args:
+            uid: UID de l'usuari
+            media_keys: Llista de keys de fotos a eliminar
+            
+        Returns:
+            bool: True si s'ha eliminat correctament
+        """
+        try:
+            db = self.firestore_service.get_db()
+            doc_ref = db.collection(self.COLLECTION_NAME).document(uid)
+            
+            # Comprova que l'usuari existeixi i obté l'array actual
+            doc = doc_ref.get()
+            if not doc.exists:
+                logger.warning(f"No es poden eliminar keys, usuari no trobat amb UID: {uid}")
+                return False
+            
+            # Obté l'array actual
+            user_data = doc.to_dict()
+            current_keys = user_data.get('uploaded_photos_keys', [])
+            if current_keys is None:
+                current_keys = []
+            
+            # Elimina les keys especificades
+            updated_keys = [key for key in current_keys if key not in media_keys]
+            
+            # Actualitza l'array
+            doc_ref.update({'uploaded_photos_keys': updated_keys})
+            
+            # Invalida cache de l'usuari
+            cache_service.delete(cache_service.generate_key('user_detail', uid=uid))
+            
+            logger.info(f"Keys de fotos pujades eliminades per l'usuari {uid}: {media_keys}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error eliminant keys de fotos pujades per l'usuari {uid}: {str(e)}")
             return False
     
     def decrement_renovated_refuges(self, uid: str) -> bool:
@@ -553,7 +647,6 @@ class UserDAO:
         """
         try:
             db = self.firestore_service.get_db()
-            from google.cloud.firestore_v1.transforms import Increment
             doc_ref = db.collection(self.COLLECTION_NAME).document(uid)
             
             # Comprova que l'usuari existeixi i obté el valor actual

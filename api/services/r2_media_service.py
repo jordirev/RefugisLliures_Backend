@@ -93,7 +93,8 @@ class RefugiMediaStrategy(MediaPathStrategy):
             key=key,
             url=url,
             creator_uid=key_dict.get('creator_uid', ''),
-            uploaded_at=key_dict.get('uploaded_at', '')
+            uploaded_at=key_dict.get('uploaded_at', ''),
+            experience_id=key_dict.get('experience_id', None)
         )
 
 

@@ -14,7 +14,7 @@ from ..serializers.renovation_serializer import (
     RenovationCreateSerializer,
     RenovationUpdateSerializer
 )
-from ..permissions import IsCreator
+from ..permissions import IsRenovationCreator
 from ..utils.swagger_examples import (
     EXAMPLE_RENOVATIONS_LIST,
     EXAMPLE_RENOVATION_1,
@@ -183,11 +183,11 @@ class RenovationAPIView(APIView):
         """
         Retorna els permisos segons el mètode HTTP:
         - GET: només IsAuthenticated
-        - PATCH/DELETE: IsAuthenticated + IsCreator
+        - PATCH/DELETE: IsAuthenticated + IsRenovationCreator
         """
         if self.request.method == 'GET':
             return [IsAuthenticated()]
-        return [IsAuthenticated(), IsCreator()]
+        return [IsAuthenticated(), IsRenovationCreator()]
     
     @swagger_auto_schema(
         operation_description="Obté una renovation específica",
