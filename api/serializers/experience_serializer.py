@@ -18,7 +18,6 @@ class ExperienceCreateSerializer(serializers.Serializer):
 
 class ExperienceUpdateSerializer(serializers.Serializer):
     """Serializer per actualitzar una experiència (PATCH)"""
-    refuge_id = serializers.CharField(required=True, allow_blank=False, max_length=100)
     comment = serializers.CharField(required=False, allow_blank=False, max_length=2000)
     files = serializers.ListField(
         child=serializers.FileField(),

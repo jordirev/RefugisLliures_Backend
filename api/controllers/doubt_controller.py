@@ -141,14 +141,12 @@ class DoubtController:
             logger.error(f"Error creant resposta: {str(e)}")
             return None, f"Internal server error: {str(e)}"
     
-    def delete_doubt(self, doubt_id: str, user_uid: str) -> Tuple[bool, Optional[str]]:
+    def delete_doubt(self, doubt_id: str) -> Tuple[bool, Optional[str]]:
         """
         Elimina un dubte i totes les seves respostes
         
         Args:
-            refuge_id: ID del refugi (del path, per validació)
             doubt_id: ID del dubte
-            user_uid: UID de l'usuari que intenta eliminar
             
         Returns:
             (True si s'ha eliminat correctament, missatge d'error o None)

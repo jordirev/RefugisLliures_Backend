@@ -39,7 +39,6 @@ class ExperienceListAPIView(APIView):
         tags=['Refuge Experiences'],
         operation_description=(
             "Obté la llista d'experiències d'un refugi ordenades per data de modificació descendent. "
-            "Les dates es mostren en format DD/MM/YYYY."
             "\n\nRequereix autenticació."
         ),
         manual_parameters=[
@@ -61,11 +60,12 @@ class ExperienceListAPIView(APIView):
             500: openapi.Response(description="Error intern del servidor")
         }
     )
-    def get(self, request, refuge_id):
+    def get(self, request):
         """
         Llista totes les experiències d'un refugi amb URLs prefirmades per a les imatges.
         """
         try:
+            refuge_id = request.query_params.get('refuge_id')
             if not refuge_id:
                 return Response(
                     {'error': 'El refuge_id és requerit. El path és /api/experiences/?refuge_id=refuge_id'},
@@ -106,6 +106,13 @@ class ExperienceListAPIView(APIView):
             "\n\nRequereix autenticació."
         ),
         manual_parameters=[
+            openapi.Parameter(
+                'refuge_id',
+                openapi.IN_FORM,
+                description="ID del refugi",
+                type=openapi.TYPE_STRING,
+                required=True
+            ),
             openapi.Parameter(
                 'comment',
                 openapi.IN_FORM,

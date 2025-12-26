@@ -73,11 +73,12 @@ class DoubtListAPIView(APIView):
             500: ERROR_500_INTERNAL_ERROR
         }
     )
-    def get(self, request, refuge_id):
+    def get(self, request):
         """
         Llista tots els dubtes d'un refugi amb totes les seves respostes.
         """
         try:
+            refuge_id = request.query_params.get('refuge_id')
             if not refuge_id:
                 return Response(
                 {'error': 'El refuge_id es requerit. El path per a cridar al endpoint és /api/doubts/?refuge_id=refuge_id'},
@@ -233,7 +234,7 @@ class DoubtDetailAPIView(APIView):
                 )
             
             # Eliminar dubte
-            success, error = self.controller.delete_doubt(doubt_id, user_uid)
+            success, error = self.controller.delete_doubt(doubt_id)
             
             if error:
                 if "not found" in error.lower():

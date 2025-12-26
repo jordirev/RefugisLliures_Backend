@@ -32,5 +32,4 @@ class CreateDoubtSerializer(serializers.Serializer):
 
 class CreateAnswerSerializer(serializers.Serializer):
     """Serializer per crear una resposta (POST)"""
-    refuge_id = serializers.CharField(required=True, allow_blank=False, max_length=100)
     message = serializers.CharField(required=True, allow_blank=False, max_length=2000)

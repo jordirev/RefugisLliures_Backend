@@ -447,10 +447,7 @@ class DeleteRefugeStrategy(ProposalApprovalStrategy):
                 if doubts:
                     for doubt in doubts:
                         # Passar el creator_uid del dubte per evitar problemes de permisos
-                        success, error = doubt_controller.delete_doubt(
-                            doubt_id=doubt.id,
-                            user_uid=doubt.creator_uid
-                        )
+                        success, error = doubt_controller.delete_doubt(doubt_id=doubt.id)
                         if not success:
                             logger.error(f"No s'ha pogut eliminar el dubte {doubt.id}: {error}")
                             return False, f"Error deleting doubt {doubt.id}: {error}"
