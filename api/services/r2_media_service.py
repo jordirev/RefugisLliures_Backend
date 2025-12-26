@@ -11,9 +11,9 @@ from datetime import datetime
 from botocore.exceptions import ClientError
 from ..r2_config import get_r2_client, R2_BUCKET_NAME, R2_ENDPOINT
 from ..models.media_metadata import MediaMetadata, RefugeMediaMetadata
+from ..services.cache_service import CacheService
 
 logger = logging.getLogger(__name__)
-
 
 class MediaPathStrategy(ABC):
     """
@@ -85,6 +85,10 @@ class RefugiMediaStrategy(MediaPathStrategy):
         Returns:
             Objecte MediaMetadata amb URL prefirmada
         """
+        # Calculem el expriation en funció del TTL a Cache
+        cache_service = CacheService()
+        expiration = cache_service.get_timeout('refugi_detail')
+
         key = next(iter(metadata_dict)) if metadata_dict else ''
         key_dict = metadata_dict[key] if key else {}
         url = service.generate_presigned_url(key, expiration) if key else ''
@@ -135,6 +139,10 @@ class UserAvatarStrategy(MediaPathStrategy):
         Returns:
             Objecte MediaMetadata amb URL prefirmada
         """
+        # Calculem el expriation en funció del TTL a Cache
+        cache_service = CacheService()
+        expiration = cache_service.get_timeout('user_detail')
+        
         key = metadata_dict.get('key', '')
         url = service.generate_presigned_url(key, expiration) if key else ''
         

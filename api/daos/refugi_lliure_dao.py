@@ -52,54 +52,55 @@ class RefugiLliureDAO:
             raise
     
     def search_refugis(self, filters: RefugiSearchFilters) -> Dict[str, Any]:
-        """Cercar refugis amb filtres optimitzats per índexs composats i cache
+        """Cercar refugis amb filtres optimitzats per índexs composats i cache amb estratègia ID caching
         
         Returns:
             Dict amb 'results' (List[Refugi] o List[Dict] segons filtres) i 'has_filters' (bool)
         """
-        # Genera clau de cache basada en filtres
-        cache_key = cache_service.generate_key(
-            'refugi_search',
-            **filters.to_dict()
-        )
+        # Check if any filters are applied (except limit)
+        has_filters = self._has_active_filters(filters)
         
-        # Intenta obtenir de cache
-        cached_data = cache_service.get(cache_key)
-        if cached_data is not None:
-            # Convertir a models si té filtres
-            if cached_data['has_filters']:
-                return {
-                    'results': self.mapper.firestore_list_to_models(cached_data['results']),
-                    'has_filters': True
-                }
-            return cached_data
+        if not has_filters:
+            # No filters applied - use coordinate collection for efficiency (sense ID caching)
+            results = self._get_coordinates_as_refugi_list()
+            return {'results': results, 'has_filters': False}
+        
+        # Filters applied - usar estratègia ID caching
+        cache_key = cache_service.generate_key('refugi_search', **filters.to_dict())
         
         try:
-            db = firestore_service.get_db()
+            # Funció per obtenir TOTES les dades completes d'una des de Firestore
+            def fetch_all():
+                db = firestore_service.get_db()
+                return self._build_optimized_query(db, filters)
             
-            # Check if any filters are applied (except limit)
-            has_filters = self._has_active_filters(filters)
+            # Funció per obtenir un refugi individual per ID
+            def fetch_single(refugi_id: str):
+                db = firestore_service.get_db()
+                doc_ref = db.collection(self.collection_name).document(str(refugi_id))
+                logger.log(23, f"Firestore READ: collection={self.collection_name} document={refugi_id}")
+                doc = doc_ref.get()
+                return doc.to_dict() if doc.exists else None
             
-            if not has_filters:
-                # No filters applied - use coordinate collection for efficiency
-                results = self._get_coordinates_as_refugi_list()
-                data = {'results': results, 'has_filters': False}
-            else:
-                # Filters applied - build optimized query
-                results_data = self._build_optimized_query(db, filters)
-                data = {'results': results_data, 'has_filters': True}
+            # Funció per extreure l'ID d'un refugi
+            def get_id(refugi_data: Dict[str, Any]) -> str:
+                return refugi_data['id']
             
-            # Guarda a cache (raw data)
-            timeout = cache_service.get_timeout('refugi_search')
-            cache_service.set(cache_key, data, timeout)
+            # Usar estratègia ID caching del cache_service
+            results_data = cache_service.get_or_fetch_list(
+                list_cache_key=cache_key,
+                detail_key_prefix='refugi_detail',
+                fetch_all_fn=fetch_all,
+                fetch_single_fn=fetch_single,
+                get_id_fn=get_id,
+                list_timeout=cache_service.get_timeout('refugi_search'),
+                detail_timeout=cache_service.get_timeout('refugi_detail')
+            )
             
-            # Retornar amb models si té filtres
-            if data['has_filters']:
-                return {
-                    'results': self.mapper.firestore_list_to_models(data['results']),
-                    'has_filters': True
-                }
-            return data
+            # Convertir a models
+            results = self.mapper.firestore_list_to_models(results_data)
+            
+            return {'results': results, 'has_filters': True}
             
         except Exception as e:
             logger.error(f'Error searching refugis: {str(e)}')
