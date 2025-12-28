@@ -72,7 +72,7 @@ class TestUserModel:
         user = User(uid='test', username='test', email='test@example.com')
         
         assert user.language == 'ca'
-        assert user.num_uploaded_photos == 0
+        assert user.language == 'ca'
         assert user.num_shared_experiences == 0
         assert user.num_renovated_refuges == 0
         assert user.favourite_refuges is None

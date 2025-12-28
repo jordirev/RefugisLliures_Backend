@@ -43,6 +43,7 @@ class RefugeVisitsAPIView(APIView):
                                 type=openapi.TYPE_OBJECT,
                                 properties={
                                     'date': openapi.Schema(type=openapi.TYPE_STRING, example="2025-07-18"),
+                                    'refuge_id':openapi.Schema(type=openapi.TYPE_STRING, example="refuge123"),
                                     'total_visitors': openapi.Schema(type=openapi.TYPE_INTEGER, example=12),
                                     'is_visitor': openapi.Schema(type=openapi.TYPE_BOOLEAN, example=True),
                                     'num_visitors': openapi.Schema(type=openapi.TYPE_INTEGER, example=2)
@@ -183,6 +184,7 @@ class RefugeVisitDetailAPIView(APIView):
                             type=openapi.TYPE_OBJECT,
                             properties={
                                 'date': openapi.Schema(type=openapi.TYPE_STRING),
+                                'refuge_id':openapi.Schema(type=openapi.TYPE_STRING),
                                 'total_visitors': openapi.Schema(type=openapi.TYPE_INTEGER),
                                 'is_visitor': openapi.Schema(type=openapi.TYPE_BOOLEAN),
                                 'num_visitors': openapi.Schema(type=openapi.TYPE_INTEGER)
@@ -266,6 +268,7 @@ class RefugeVisitDetailAPIView(APIView):
                             type=openapi.TYPE_OBJECT,
                             properties={
                                 'date': openapi.Schema(type=openapi.TYPE_STRING),
+                                'refuge_id':openapi.Schema(type=openapi.TYPE_STRING),
                                 'total_visitors': openapi.Schema(type=openapi.TYPE_INTEGER),
                                 'is_visitor': openapi.Schema(type=openapi.TYPE_BOOLEAN),
                                 'num_visitors': openapi.Schema(type=openapi.TYPE_INTEGER)

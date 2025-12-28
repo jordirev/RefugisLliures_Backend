@@ -1,6 +1,15 @@
 """
 Fixtures i configuració compartida per als tests amb pytest
 """
+# IMPORTANT: Configurar variables d'entorn ABANS de qualsevol import de mòduls de l'API
+# Això és necessari perquè alguns mòduls llegeixen les variables a nivell de mòdul
+import os
+os.environ['TESTING'] = 'true'
+os.environ['R2_ACCESS_KEY_ID'] = 'test_access_key'
+os.environ['R2_SECRET_ACCESS_KEY'] = 'test_secret_key'
+os.environ['R2_ENDPOINT'] = 'https://test.r2.cloudflarestorage.com'
+os.environ['R2_BUCKET_NAME'] = 'test-bucket'
+
 import pytest
 from unittest.mock import Mock, MagicMock, patch
 from api.models.user import User
@@ -18,14 +27,10 @@ DEPARTMENT = 'Ariège'
 def setup_test_environment():
     """
     Configuració global que s'executa una vegada al principi de tots els tests.
-    Assegura que Firebase no s'inicialitza durant els tests.
+    Les variables d'entorn ja estan configurades a l'inici del mòdul.
     """
-    import os
-    os.environ['TESTING'] = 'true'
     yield
-    # Cleanup
-    if 'TESTING' in os.environ:
-        del os.environ['TESTING']
+    # No fem cleanup de les variables d'entorn ja que altres tests podrien necessitar-les
 
 
 # ============= FIXTURES D'USUARIS =============

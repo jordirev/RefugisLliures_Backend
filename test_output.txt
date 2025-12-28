@@ -1,0 +1,80 @@
+============================= test session starts =============================
+platform win32 -- Python 3.13.2, pytest-7.4.3, pluggy-1.6.0 -- C:\Users\jordi\AppData\Local\Programs\Python\Python313\python.exe
+cachedir: .pytest_cache
+django: version: 5.1.12, settings: refugis_lliures.settings (from ini)
+rootdir: C:\Users\jordi\Desktop\UNI\TFG\Backend\RefugisLliures_Backend
+configfile: pytest.ini
+plugins: Faker-20.1.0, cov-4.1.0, django-4.7.0, mock-3.12.0
+collecting ... collected 22 items
+
+api/tests/refugi_lliure/test_views.py::TestRefugiViews::test_get_refugi_detail_with_auth_includes_visitors PASSED [  4%]
+api/tests/refugi_lliure/test_views.py::TestRefugiViews::test_get_refugis_collection_with_auth_includes_visitors FAILED [  9%]
+api/tests/refugi_lliure/test_views.py::TestRefugiViews::test_health_check_success PASSED [ 13%]
+api/tests/refugi_lliure/test_views.py::TestRefugiViews::test_health_check_unhealthy PASSED [ 18%]
+api/tests/refugi_lliure/test_views.py::TestRefugiViews::test_health_check_success_invalid_serializer PASSED [ 22%]
+api/tests/refugi_lliure/test_views.py::TestRefugiViews::test_health_check_unhealthy_invalid_serializer PASSED [ 27%]
+api/tests/refugi_lliure/test_views.py::TestRefugiViews::test_health_check_exception PASSED [ 31%]
+api/tests/refugi_lliure/test_views.py::TestRefugiViews::test_get_refugi_detail_success PASSED [ 36%]
+api/tests/refugi_lliure/test_views.py::TestRefugiViews::test_get_refugi_detail_not_found PASSED [ 40%]
+api/tests/refugi_lliure/test_views.py::TestRefugiViews::test_get_refugi_detail_without_auth_no_visitors PASSED [ 45%]
+api/tests/refugi_lliure/test_views.py::TestRefugiViews::test_get_refugis_collection_no_filters FAILED [ 50%]
+api/tests/refugi_lliure/test_views.py::TestRefugiViews::test_get_refugis_collection_with_filters FAILED [ 54%]
+api/tests/refugi_lliure/test_views.py::TestRefugiViews::test_get_refugis_collection_without_auth_no_visitors FAILED [ 59%]
+api/tests/refugi_lliure/test_views.py::TestRefugiViews::test_get_refugis_collection_invalid_filters PASSED [ 63%]
+api/tests/refugi_lliure/test_views.py::TestRefugiViews::test_get_refugis_collection_server_error PASSED [ 68%]
+api/tests/refugi_lliure/test_views.py::TestRefugiViews::test_get_refugis_collection_exception PASSED [ 72%]
+api/tests/refugi_lliure/test_views.py::TestRefugiViews::test_get_refugis_collection_invalid_serializer FAILED [ 77%]
+api/tests/refugi_lliure/test_views.py::TestRefugiViews::test_get_refugi_detail_controller_error PASSED [ 81%]
+api/tests/refugi_lliure/test_views.py::TestRefugiViews::test_get_refugi_detail_exception PASSED [ 86%]
+api/tests/refugi_lliure/test_views.py::TestRefugiViews::test_get_refuge_renovations_success PASSED [ 90%]
+api/tests/refugi_lliure/test_views.py::TestRefugiViews::test_get_refuge_renovations_error PASSED [ 95%]
+api/tests/refugi_lliure/test_views.py::TestRefugiViews::test_get_refuge_renovations_exception PASSED [100%]
+
+================================== FAILURES ===================================
+___ TestRefugiViews.test_get_refugis_collection_with_auth_includes_visitors ___
+api\tests\refugi_lliure\test_views.py:365: in test_get_refugis_collection_with_auth_includes_visitors
+    assert response.status_code == status.HTTP_200_OK
+E   assert 500 == 200
+E    +  where 500 = <Response status_code=500, "text/html; charset=utf-8">.status_code
+E    +  and   200 = status.HTTP_200_OK
+---------------------------- Captured stderr call -----------------------------
+2025-12-28 23:10:40,410 [ERROR] api.views.refugi_lliure_views: Error processing refugis request: "Got KeyError when attempting to get a value for field `coord` on serializer `RefugiSerializer`.\nThe serializer field might be named incorrectly and not match any attribute or key on the `dict` instance.\nOriginal exception text was: 'coord'."
+___________ TestRefugiViews.test_get_refugis_collection_no_filters ____________
+api\tests\refugi_lliure\test_views.py:288: in test_get_refugis_collection_no_filters
+    assert response.status_code == status.HTTP_200_OK
+E   assert 500 == 200
+E    +  where 500 = <Response status_code=500, "text/html; charset=utf-8">.status_code
+E    +  and   200 = status.HTTP_200_OK
+---------------------------- Captured stderr call -----------------------------
+2025-12-28 23:10:40,656 [ERROR] api.views.refugi_lliure_views: Error processing refugis request: "Got KeyError when attempting to get a value for field `coord` on serializer `RefugiSerializer`.\nThe serializer field might be named incorrectly and not match any attribute or key on the `dict` instance.\nOriginal exception text was: 'coord'."
+__________ TestRefugiViews.test_get_refugis_collection_with_filters ___________
+api\tests\refugi_lliure\test_views.py:311: in test_get_refugis_collection_with_filters
+    assert response.status_code == status.HTTP_200_OK
+E   assert 500 == 200
+E    +  where 500 = <Response status_code=500, "text/html; charset=utf-8">.status_code
+E    +  and   200 = status.HTTP_200_OK
+---------------------------- Captured stderr call -----------------------------
+2025-12-28 23:10:40,669 [ERROR] api.views.refugi_lliure_views: Error processing refugis request: "Got KeyError when attempting to get a value for field `coord` on serializer `RefugiSerializer`.\nThe serializer field might be named incorrectly and not match any attribute or key on the `dict` instance.\nOriginal exception text was: 'coord'."
+____ TestRefugiViews.test_get_refugis_collection_without_auth_no_visitors _____
+api\tests\refugi_lliure\test_views.py:333: in test_get_refugis_collection_without_auth_no_visitors
+    assert response.status_code == status.HTTP_200_OK
+E   assert 500 == 200
+E    +  where 500 = <Response status_code=500, "text/html; charset=utf-8">.status_code
+E    +  and   200 = status.HTTP_200_OK
+---------------------------- Captured stderr call -----------------------------
+2025-12-28 23:10:40,718 [ERROR] api.views.refugi_lliure_views: Error processing refugis request: "Got KeyError when attempting to get a value for field `coord` on serializer `RefugiSerializer`.\nThe serializer field might be named incorrectly and not match any attribute or key on the `dict` instance.\nOriginal exception text was: 'coord'."
+_______ TestRefugiViews.test_get_refugis_collection_invalid_serializer ________
+api\tests\refugi_lliure\test_views.py:433: in test_get_refugis_collection_invalid_serializer
+    assert response.status_code == http_status.HTTP_200_OK
+E   assert 500 == 200
+E    +  where 500 = <Response status_code=500, "text/html; charset=utf-8">.status_code
+E    +  and   200 = http_status.HTTP_200_OK
+---------------------------- Captured stderr call -----------------------------
+2025-12-28 23:10:40,734 [ERROR] api.views.refugi_lliure_views: Error processing refugis request: "Got KeyError when attempting to get a value for field `count` on serializer `RefugiSearchResponseSerializer`.\nThe serializer field might be named incorrectly and not match any attribute or key on the `dict` instance.\nOriginal exception text was: 'count'."
+=========================== short test summary info ===========================
+FAILED api/tests/refugi_lliure/test_views.py::TestRefugiViews::test_get_refugis_collection_with_auth_includes_visitors
+FAILED api/tests/refugi_lliure/test_views.py::TestRefugiViews::test_get_refugis_collection_no_filters
+FAILED api/tests/refugi_lliure/test_views.py::TestRefugiViews::test_get_refugis_collection_with_filters
+FAILED api/tests/refugi_lliure/test_views.py::TestRefugiViews::test_get_refugis_collection_without_auth_no_visitors
+FAILED api/tests/refugi_lliure/test_views.py::TestRefugiViews::test_get_refugis_collection_invalid_serializer
+======================== 5 failed, 17 passed in 1.89s =========================

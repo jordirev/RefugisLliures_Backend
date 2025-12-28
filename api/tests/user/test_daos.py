@@ -731,9 +731,10 @@ class TestUserDAO:
         
         assert result == []
     
+    @patch('api.daos.user_dao.Increment')
     @patch('api.daos.user_dao.FirestoreService')
     @patch('api.daos.user_dao.cache_service')
-    def test_increment_renovated_refuges_success(self, mock_cache, mock_firestore_service):
+    def test_increment_renovated_refuges_success(self, mock_cache, mock_firestore_service, mock_increment):
         """Test increment comptador exitós"""
         mock_db = MagicMock()
         mock_firestore_instance = mock_firestore_service.return_value
@@ -790,9 +791,10 @@ class TestUserDAO:
         
         assert result is False
     
+    @patch('api.daos.user_dao.Increment')
     @patch('api.daos.user_dao.FirestoreService')
     @patch('api.daos.user_dao.cache_service')
-    def test_decrement_renovated_refuges_success(self, mock_cache, mock_firestore_service):
+    def test_decrement_renovated_refuges_success(self, mock_cache, mock_firestore_service, mock_increment):
         """Test decrement comptador exitós"""
         mock_db = MagicMock()
         mock_firestore_instance = mock_firestore_service.return_value
@@ -800,6 +802,7 @@ class TestUserDAO:
         
         mock_doc_snapshot = MagicMock()
         mock_doc_snapshot.exists = True
+        mock_doc_snapshot.to_dict.return_value = {'num_renovated_refuges': 5}
         
         mock_doc_ref = MagicMock()
         mock_doc_ref.get.return_value = mock_doc_snapshot

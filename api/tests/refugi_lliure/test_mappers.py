@@ -106,7 +106,7 @@ class TestRefugiMapper:
         assert response['count'] == 1
     
     def test_format_search_response_with_visitors(self, refugi_mapper):
-        """Test formatació de resposta amb visitants inclosos"""
+        """Test formatació de resposta amb visitants inclosos - ara els visitants sempre s'inclouen"""
         refugis = [
             Refugi(
                 id='test_001',
@@ -117,34 +117,35 @@ class TestRefugiMapper:
             )
         ]
         
-        response = refugi_mapper.format_search_response(refugis, include_visitors=True)
+        response = refugi_mapper.format_search_response(refugis)
         
         assert 'count' in response
         assert 'results' in response
         assert response['count'] == 1
-        # Verificar que els visitants estan presents
+        # Verificar que els visitants estan presents (ara sempre s'inclouen)
         assert 'visitors' in response['results'][0]
         assert len(response['results'][0]['visitors']) == 3
     
-    def test_format_search_response_without_visitors(self, refugi_mapper):
-        """Test formatació de resposta sense visitants"""
+    def test_format_search_response_empty_visitors(self, refugi_mapper):
+        """Test formatació de resposta amb llista de visitants buida"""
         refugis = [
             Refugi(
                 id='test_001',
                 name='Test 1',
                 coord=Coordinates(1.5, 42.5),
                 info_comp=InfoComplementaria(),
-                visitors=['uid_001', 'uid_002', 'uid_003']
+                visitors=[]  # Llista buida de visitants
             )
         ]
         
-        response = refugi_mapper.format_search_response(refugis, include_visitors=False)
+        response = refugi_mapper.format_search_response(refugis)
         
         assert 'count' in response
         assert 'results' in response
         assert response['count'] == 1
-        # Verificar que els visitants NO estan presents
-        assert 'visitors' not in response['results'][0]
+        # Verificar que la clau visitors existeix però buida
+        assert 'visitors' in response['results'][0]
+        assert len(response['results'][0]['visitors']) == 0
     
     def test_format_search_response_from_raw_data(self, refugi_mapper):
         """Test formatació de resposta des de dades raw"""

@@ -176,7 +176,7 @@ class TestRefugiViews:
         request = factory.get('/refuges/refugi_001/')
         
         view = RefugiLliureDetailAPIView.as_view()
-        response = view(request, refuge_id='refugi_001')
+        response = view(request, id='refugi_001')
         
         assert response.status_code == status.HTTP_200_OK
         assert 'id' in response.data
@@ -191,7 +191,7 @@ class TestRefugiViews:
         request = factory.get('/refuges/nonexistent/')
         
         view = RefugiLliureDetailAPIView.as_view()
-        response = view(request, refuge_id='nonexistent')
+        response = view(request, id='nonexistent')
         
         assert response.status_code == status.HTTP_404_NOT_FOUND
         assert 'error' in response.data
@@ -202,9 +202,9 @@ class TestRefugiViews:
         # Configurar el mock per retornar refugi sense visitants quan include_visitors=False
         mock_controller = mock_controller_class.return_value
         
-        def get_refugi_side_effect(refuge_id, include_visitors=False):
+        def get_refugi_side_effect(refuge_id, is_authenticated=False):
             refugi_copy = Refugi.from_dict(sample_refugi.to_dict())
-            if not include_visitors:
+            if not is_authenticated:
                 refugi_copy.visitors = []
             else:
                 refugi_copy.visitors = ['uid_001', 'uid_002', 'uid_003']
@@ -217,14 +217,14 @@ class TestRefugiViews:
         # No afegir autenticació - usuari anònim
         
         view = RefugiLliureDetailAPIView.as_view()
-        response = view(request, refuge_id='refugi_001')
+        response = view(request, id='refugi_001')
         
         assert response.status_code == status.HTTP_200_OK
         assert 'id' in response.data
         # Verificar que els visitants NO estan en la resposta o estan buits
         assert response.data.get('visitors', []) == []
-        # Verificar que el controller es va cridar amb include_visitors=False
-        mock_controller.get_refugi_by_id.assert_called_once_with('refugi_001', include_visitors=False)
+        # Verificar que el controller es va cridar amb is_authenticated=False
+        mock_controller.get_refugi_by_id.assert_called_once_with('refugi_001', is_authenticated=False)
     
     @patch('api.views.refugi_lliure_views.RefugiLliureController')
     def test_get_refugi_detail_with_auth_includes_visitors(self, mock_controller_class, sample_refugi, db):
@@ -235,9 +235,9 @@ class TestRefugiViews:
         # Configurar el mock per retornar refugi amb visitants quan include_visitors=True
         mock_controller = mock_controller_class.return_value
         
-        def get_refugi_side_effect(refuge_id, include_visitors=False):
+        def get_refugi_side_effect(refuge_id, is_authenticated=False):
             refugi_copy = Refugi.from_dict(sample_refugi.to_dict())
-            if not include_visitors:
+            if not is_authenticated:
                 refugi_copy.visitors = []
             else:
                 refugi_copy.visitors = ['uid_001', 'uid_002', 'uid_003']
@@ -253,7 +253,7 @@ class TestRefugiViews:
         force_authenticate(request, user=user)
         
         view = RefugiLliureDetailAPIView.as_view()
-        response = view(request, refuge_id='refugi_001')
+        response = view(request, id='refugi_001')
         
         assert response.status_code == status.HTTP_200_OK
         assert 'id' in response.data
@@ -261,8 +261,8 @@ class TestRefugiViews:
         assert 'visitors' in response.data
         assert len(response.data['visitors']) == 3
         assert response.data['visitors'] == ['uid_001', 'uid_002', 'uid_003']
-        # Verificar que el controller es va cridar amb include_visitors=True
-        mock_controller.get_refugi_by_id.assert_called_once_with('refugi_001', include_visitors=True)
+        # Verificar que el controller es va cridar amb is_authenticated=True
+        mock_controller.get_refugi_by_id.assert_called_once_with('refugi_001', is_authenticated=True)
     
     @patch('api.views.refugi_lliure_views.RefugiLliureController')
     def test_get_refugis_collection_no_filters(self, mock_controller_class):
@@ -272,8 +272,8 @@ class TestRefugiViews:
             {
                 'count': 2,
                 'results': [
-                    {'id': 'ref_001', 'name': 'Test 1'},
-                    {'id': 'ref_002', 'name': 'Test 2'}
+                    {'id': 'ref_001', 'name': 'Test 1', 'coord': {'long': 1.5, 'lat': 42.5}, 'info_comp': {}},
+                    {'id': 'ref_002', 'name': 'Test 2', 'coord': {'long': 1.6, 'lat': 42.6}, 'info_comp': {}}
                 ]
             },
             None
@@ -296,7 +296,7 @@ class TestRefugiViews:
         mock_controller.search_refugis.return_value = (
             {
                 'count': 1,
-                'results': [{'id': 'ref_001', 'name': 'Test 1'}],
+                'results': [{'id': 'ref_001', 'name': 'Test 1', 'coord': {'long': 1.5, 'lat': 42.5}, 'info_comp': {}}],
                 'filters': {'region': 'Pirineus'}
             },
             None
@@ -318,7 +318,7 @@ class TestRefugiViews:
         mock_controller.search_refugis.return_value = (
             {
                 'count': 1,
-                'results': [{'id': 'ref_001', 'name': 'Test 1', 'visitors': []}],
+                'results': [{'id': 'ref_001', 'name': 'Test 1', 'visitors': [], 'coord': {'long': 1.5, 'lat': 42.5}, 'info_comp': {}}],
             },
             None
         )
@@ -332,10 +332,10 @@ class TestRefugiViews:
         
         assert response.status_code == status.HTTP_200_OK
         assert response.data['count'] == 1
-        # Verificar que search_refugis es va cridar amb include_visitors=False
+        # Verificar que search_refugis es va cridar amb is_authenticated=False
         mock_controller.search_refugis.assert_called_once()
         call_args = mock_controller.search_refugis.call_args
-        assert call_args[1]['include_visitors'] == False
+        assert call_args[1]['is_authenticated'] == False
     
     @patch('api.views.refugi_lliure_views.RefugiLliureController')
     def test_get_refugis_collection_with_auth_includes_visitors(self, mock_controller_class, db):
@@ -347,7 +347,7 @@ class TestRefugiViews:
         mock_controller.search_refugis.return_value = (
             {
                 'count': 1,
-                'results': [{'id': 'ref_001', 'name': 'Test 1', 'visitors': ['uid_001', 'uid_002']}],
+                'results': [{'id': 'ref_001', 'name': 'Test 1', 'visitors': ['uid_001', 'uid_002'], 'coord': {'long': 1.5, 'lat': 42.5}, 'info_comp': {}}],
             },
             None
         )
@@ -364,10 +364,10 @@ class TestRefugiViews:
         
         assert response.status_code == status.HTTP_200_OK
         assert response.data['count'] == 1
-        # Verificar que search_refugis es va cridar amb include_visitors=True
+        # Verificar que search_refugis es va cridar amb is_authenticated=True
         mock_controller.search_refugis.assert_called_once()
         call_args = mock_controller.search_refugis.call_args
-        assert call_args[1]['include_visitors'] == True
+        assert call_args[1]['is_authenticated'] == True
     
     @patch('api.views.refugi_lliure_views.RefugiLliureController')
     def test_get_refugis_collection_invalid_filters(self, mock_controller_class):
@@ -420,7 +420,7 @@ class TestRefugiViews:
         mock_controller = mock_controller_class.return_value
         # Retornem un dict sense alguns camps obligatoris
         mock_controller.search_refugis.return_value = (
-            {'invalid': 'data'},
+            {'invalid': 'data', 'has_filters': False},
             None
         )
         
@@ -444,7 +444,7 @@ class TestRefugiViews:
         request = factory.get('/refuges/refugi_001/')
         
         view = RefugiLliureDetailAPIView.as_view()
-        response = view(request, refuge_id='refugi_001')
+        response = view(request, id='refugi_001')
         
         assert response.status_code == http_status.HTTP_500_INTERNAL_SERVER_ERROR
         assert 'error' in response.data
@@ -459,7 +459,7 @@ class TestRefugiViews:
         request = factory.get('/refuges/refugi_001/')
         
         view = RefugiLliureDetailAPIView.as_view()
-        response = view(request, refuge_id='refugi_001')
+        response = view(request, id='refugi_001')
         
         assert response.status_code == http_status.HTTP_500_INTERNAL_SERVER_ERROR
         assert 'error' in response.data
@@ -476,7 +476,7 @@ class TestRefugiViews:
         view = RefugeRenovationsAPIView.as_view()
         view.cls.authentication_classes = []
         view.cls.permission_classes = []
-        response = view(request, refuge_id='refugi_001')
+        response = view(request, id='refugi_001')
         
         assert response.status_code == http_status.HTTP_200_OK
         assert isinstance(response.data, list)
@@ -493,7 +493,7 @@ class TestRefugiViews:
         view = RefugeRenovationsAPIView.as_view()
         view.cls.authentication_classes = []
         view.cls.permission_classes = []
-        response = view(request, refuge_id='refugi_001')
+        response = view(request, id='refugi_001')
         
         assert response.status_code == http_status.HTTP_500_INTERNAL_SERVER_ERROR
         assert 'error' in response.data
@@ -510,7 +510,7 @@ class TestRefugiViews:
         view = RefugeRenovationsAPIView.as_view()
         view.cls.authentication_classes = []
         view.cls.permission_classes = []
-        response = view(request, refuge_id='refugi_001')
+        response = view(request, id='refugi_001')
         
         assert response.status_code == http_status.HTTP_500_INTERNAL_SERVER_ERROR
         assert 'error' in response.data

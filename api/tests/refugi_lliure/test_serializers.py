@@ -177,21 +177,21 @@ class TestRefugiSerializers:
         
         assert not serializer.is_valid()
     
-    def test_refugi_search_filters_serializer_amenities(self):
-        """Test filtres amb amenitats"""
+    def test_refugi_search_filters_serializer_type_filter(self):
+        """Test filtres amb tipus de refugi"""
         data = {
-            'cheminee': 1,
-            'eau': 1,
-            'matelas': 1
+            'type': 'orri,emergence'
         }
         serializer = RefugiSearchFiltersSerializer(data=data)
         
         assert serializer.is_valid()
+        # Verifica que la llista de tipus es parseja correctament
+        assert len(serializer.validated_data['type']) == 2
     
-    def test_refugi_search_filters_serializer_invalid_amenity_value(self):
-        """Test filtres amb valor d'amenitat invàlid"""
+    def test_refugi_search_filters_serializer_invalid_type(self):
+        """Test filtres amb tipus invàlid"""
         data = {
-            'cheminee': 2  # Ha de ser 0 o 1
+            'type': 'tipus_inventat'
         }
         serializer = RefugiSearchFiltersSerializer(data=data)
         
