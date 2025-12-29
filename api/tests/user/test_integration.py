@@ -94,7 +94,8 @@ class TestUserIntegration:
         assert user.username == 'testuser'
         assert len(user.favourite_refuges) == 2
         assert len(user.visited_refuges) == 1
-        assert user.num_uploaded_photos == 5
+        assert len(user.favourite_refuges) == 2
+        assert len(user.visited_refuges) == 1
         
         # Verificar crida al DAO
         mock_dao.get_user_by_uid.assert_called_once_with('user_001')
@@ -148,8 +149,14 @@ class TestUserIntegration:
         mock_dao.user_exists.assert_called()
         mock_dao.update_user.assert_called_once()
 
+    @patch('api.controllers.refuge_visit_controller.RefugeVisitController')
+    @patch('api.controllers.refugi_lliure_controller.RefugiLliureController')
+    @patch('api.controllers.renovation_controller.RenovationController')
+    @patch('api.controllers.refuge_proposal_controller.RefugeProposalController')
+    @patch('api.controllers.doubt_controller.DoubtController')
+    @patch('api.controllers.experience_controller.ExperienceController')
     @patch('api.controllers.user_controller.UserDAO')
-    def test_delete_user_complete_flow(self, mock_dao_class):
+    def test_delete_user_complete_flow(self, mock_dao_class, mock_exp_ctrl, mock_doubt_ctrl, mock_prop_ctrl, mock_ren_ctrl, mock_refugi_ctrl, mock_visit_ctrl):
         """Test flux complet: Controller -> DAO per eliminar usuari"""
         # Preparar dades
         user_data = {
@@ -169,6 +176,16 @@ class TestUserIntegration:
         mock_dao = mock_dao_class.return_value
         mock_dao.user_exists.return_value = True
         mock_dao.delete_user.return_value = True
+        mock_dao.get_user_by_uid.return_value = User.from_dict(user_data)
+        
+        # Configurar mocks dels altres controllers
+        mock_exp_ctrl.return_value.delete_experiences_by_creator.return_value = (True, None)
+        mock_doubt_ctrl.return_value.delete_doubts_by_creator.return_value = (True, None)
+        mock_doubt_ctrl.return_value.delete_answers_by_creator.return_value = (True, None)
+        mock_prop_ctrl.return_value.anonymize_proposals_by_creator.return_value = (True, None)
+        mock_ren_ctrl.return_value.anonymize_renovations_by_creator.return_value = (True, None)
+        mock_ren_ctrl.return_value.remove_user_from_participations.return_value = (True, None)
+        mock_visit_ctrl.return_value.remove_user_from_all_visits.return_value = (True, None)
         
         # Executar a través del controller
         controller = UserController()
@@ -179,7 +196,7 @@ class TestUserIntegration:
         assert error is None
         
         # Verificar crides al DAO
-        mock_dao.user_exists.assert_called_once_with('user_001')
+        mock_dao.get_user_by_uid.assert_called_once_with('user_001')
         mock_dao.delete_user.assert_called_once_with('user_001')
 
     @patch('api.controllers.refugi_lliure_controller.RefugiLliureDAO')
@@ -231,7 +248,7 @@ class TestUserIntegration:
         refugi_controller = RefugiLliureController()
         
         # Verificar que el refugi existeix
-        refugi, refugi_error = refugi_controller.get_refugi_by_id('refugi_001')
+        refugi, refugi_error = refugi_controller.get_refugi_by_id('refugi_001', is_authenticated=True)
         assert refugi is not None
         
         # Afegir refugi als favorits

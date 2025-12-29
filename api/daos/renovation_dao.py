@@ -567,3 +567,50 @@ class RenovationDAO:
         except Exception as e:
             logger.error(f"Error eliminant usuari {uid} de participacions: {str(e)}")
             return False, str(e)
+    
+    def remove_user_from_expelled(self, uid: str) -> tuple[bool, Optional[str]]:
+        """
+        Elimina un usuari de expelled_uids de totes les renovations a les quals ha estat expulsat
+        
+        Args:
+            uid: UID de l'usuari
+            
+        Returns:
+            Tuple (èxit: bool, missatge d'error: Optional[str])
+        """
+        try:
+            db = self.firestore_service.get_db()
+            
+            # Utilitzar array_contains per obtenir renovations on l'usuari participa
+            logger.log(23, f"Firestore QUERY: collection={self.COLLECTION_NAME} where expelled_uids array_contains {uid}")
+            renovations_query = db.collection(self.COLLECTION_NAME).where('expelled_uids', 'array_contains', uid).stream()
+        
+            removed_count = 0
+            refuge_ids = set()
+            
+            for renovation_doc in renovations_query:
+                renovation_data = renovation_doc.to_dict()
+                refuge_id = renovation_data.get('refuge_id')
+                if refuge_id:
+                    refuge_ids.add(refuge_id)
+                
+                # Eliminar uid de expelled_uids
+                from google.cloud.firestore import ArrayRemove
+                logger.log(23, f"Firestore UPDATE: collection={self.COLLECTION_NAME} document={renovation_doc.id} (remove expelled)")
+                renovation_doc.reference.update({'expelled_uids': ArrayRemove([uid])})
+                removed_count += 1
+                
+                # Invalida cache de detall
+                cache_service.delete(cache_service.generate_key('renovation_detail', renovation_id=renovation_doc.id))
+            
+            # Invalida cache de llistes
+            cache_service.delete_pattern('renovation_list:*')
+            for refuge_id in refuge_ids:
+                cache_service.delete_pattern(f'renovation_refuge:{refuge_id}:*')
+            
+            logger.info(f"Usuari {uid} eliminat de {removed_count} renovations")
+            return True, None
+            
+        except Exception as e:
+            logger.error(f"Error eliminant usuari {uid} de expelled_uids: {str(e)}")
+            return False, str(e)

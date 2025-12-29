@@ -202,12 +202,28 @@ class TestUserController:
         assert user is None
         assert 'ja està en ús' in error
     
+    @patch('api.controllers.refuge_visit_controller.RefugeVisitController')
+    @patch('api.controllers.refugi_lliure_controller.RefugiLliureController')
+    @patch('api.controllers.renovation_controller.RenovationController')
+    @patch('api.controllers.refuge_proposal_controller.RefugeProposalController')
+    @patch('api.controllers.doubt_controller.DoubtController')
+    @patch('api.controllers.experience_controller.ExperienceController')
     @patch('api.controllers.user_controller.UserDAO')
-    def test_delete_user_success(self, mock_dao_class):
+    def test_delete_user_success(self, mock_dao_class, mock_exp_ctrl, mock_doubt_ctrl, mock_prop_ctrl, mock_ren_ctrl, mock_refugi_ctrl, mock_visit_ctrl):
         """Test eliminació d'usuari exitosa"""
         mock_dao = mock_dao_class.return_value
         mock_dao.user_exists.return_value = True
         mock_dao.delete_user.return_value = True
+        mock_dao.get_user_by_uid.return_value = Mock(uploaded_photos_keys=[], avatar_metadata=None, visited_refuges=[])
+        
+        # Configurar mocks dels altres controllers
+        mock_exp_ctrl.return_value.delete_experiences_by_creator.return_value = (True, None)
+        mock_doubt_ctrl.return_value.delete_doubts_by_creator.return_value = (True, None)
+        mock_doubt_ctrl.return_value.delete_answers_by_creator.return_value = (True, None)
+        mock_prop_ctrl.return_value.anonymize_proposals_by_creator.return_value = (True, None)
+        mock_ren_ctrl.return_value.anonymize_renovations_by_creator.return_value = (True, None)
+        mock_ren_ctrl.return_value.remove_user_from_participations.return_value = (True, None)
+        mock_visit_ctrl.return_value.remove_user_from_all_visits.return_value = (True, None)
         
         controller = UserController()
         success, error = controller.delete_user('test_uid')
@@ -219,7 +235,8 @@ class TestUserController:
     def test_delete_user_not_found(self, mock_dao_class):
         """Test eliminació d'usuari no existent"""
         mock_dao = mock_dao_class.return_value
-        mock_dao.user_exists.return_value = False
+        # get_user_by_uid retorna None si no existeix
+        mock_dao.get_user_by_uid.return_value = None
         
         controller = UserController()
         success, error = controller.delete_user('nonexistent_uid')
@@ -395,12 +412,28 @@ class TestUserController:
         assert success is False
         assert 'no proporcionat' in error
     
+    @patch('api.controllers.refuge_visit_controller.RefugeVisitController')
+    @patch('api.controllers.refugi_lliure_controller.RefugiLliureController')
+    @patch('api.controllers.renovation_controller.RenovationController')
+    @patch('api.controllers.refuge_proposal_controller.RefugeProposalController')
+    @patch('api.controllers.doubt_controller.DoubtController')
+    @patch('api.controllers.experience_controller.ExperienceController')
     @patch('api.controllers.user_controller.UserDAO')
-    def test_delete_user_dao_returns_false(self, mock_dao_class):
+    def test_delete_user_dao_returns_false(self, mock_dao_class, mock_exp_ctrl, mock_doubt_ctrl, mock_prop_ctrl, mock_ren_ctrl, mock_refugi_ctrl, mock_visit_ctrl):
         """Test quan el DAO retorna False en l'eliminació"""
         mock_dao = mock_dao_class.return_value
         mock_dao.user_exists.return_value = True
         mock_dao.delete_user.return_value = False
+        mock_dao.get_user_by_uid.return_value = Mock(uploaded_photos_keys=[], avatar_metadata=None, visited_refuges=[])
+        
+        # Configurar mocks dels altres controllers
+        mock_exp_ctrl.return_value.delete_experiences_by_creator.return_value = (True, None)
+        mock_doubt_ctrl.return_value.delete_doubts_by_creator.return_value = (True, None)
+        mock_doubt_ctrl.return_value.delete_answers_by_creator.return_value = (True, None)
+        mock_prop_ctrl.return_value.anonymize_proposals_by_creator.return_value = (True, None)
+        mock_ren_ctrl.return_value.anonymize_renovations_by_creator.return_value = (True, None)
+        mock_ren_ctrl.return_value.remove_user_from_participations.return_value = (True, None)
+        mock_visit_ctrl.return_value.remove_user_from_all_visits.return_value = (True, None)
         
         controller = UserController()
         success, error = controller.delete_user('test_uid')
@@ -412,7 +445,8 @@ class TestUserController:
     def test_delete_user_exception(self, mock_dao_class):
         """Test excepció durant l'eliminació"""
         mock_dao = mock_dao_class.return_value
-        mock_dao.user_exists.side_effect = Exception("Delete error")
+        # get_user_by_uid es crida primer
+        mock_dao.get_user_by_uid.side_effect = Exception("Delete error")
         
         controller = UserController()
         success, error = controller.delete_user('test_uid')

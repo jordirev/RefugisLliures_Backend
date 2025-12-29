@@ -9,7 +9,7 @@ from typing import List, Optional, Dict, BinaryIO
 from urllib.parse import urlparse, unquote
 from datetime import datetime
 from botocore.exceptions import ClientError
-from ..r2_config import get_r2_client, R2_BUCKET_NAME, R2_ENDPOINT
+from ..r2_config import get_r2_client, get_r2_bucket_name, get_r2_endpoint
 from ..models.media_metadata import MediaMetadata, RefugeMediaMetadata
 
 logger = logging.getLogger(__name__)
@@ -160,8 +160,8 @@ class R2MediaService:
         """
         self.strategy = strategy
         self.client = get_r2_client()
-        self.bucket_name = R2_BUCKET_NAME
-        self.endpoint = R2_ENDPOINT
+        self.bucket_name = get_r2_bucket_name()
+        self.endpoint = get_r2_endpoint()
     
     def upload_file(
         self, 

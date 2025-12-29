@@ -424,9 +424,21 @@ EXAMPLE_REFUGI_MEDIA_LIST = {
 }
 
 EXAMPLE_REFUGI_MEDIA_UPLOAD_RESPONSE = {
-    'message': 'Mitjans pujats correctament',
-    'uploaded_count': 2,
-    'media': [
+    'uploaded': [
+        {
+            'key': 'refugis-lliures/refugi_colomers/photo3.jpg',
+            'url': 'https://r2-bucket.example.com/refugis-lliures/refugi_colomers/photo3.jpg?presigned=true',
+            'creator_uid': 'uid_123abc',
+            'uploaded_at': '2025-12-09T14:45:00Z'
+        },
+        {
+            'key': 'refugis-lliures/refugi_colomers/video1.mp4',
+            'url': 'https://r2-bucket.example.com/refugis-lliures/refugi_colomers/video1.mp4?presigned=true',
+            'creator_uid': 'uid_123abc',
+            'uploaded_at': '2025-12-09T14:46:00Z'
+        }
+    ],
+    'falied': [
         {
             'key': 'refugis-lliures/refugi_colomers/photo3.jpg',
             'url': 'https://r2-bucket.example.com/refugis-lliures/refugi_colomers/photo3.jpg?presigned=true',

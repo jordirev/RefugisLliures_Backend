@@ -127,7 +127,7 @@ class ExperienceController:
             
         except Exception as e:
             logger.error(f"Error creant experiència: {str(e)}")
-            return None, f"Internal server error: {str(e)}"
+            return None, None, f"Internal server error: {str(e)}"
     
     def update_experience(
         self,

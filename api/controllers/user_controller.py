@@ -4,7 +4,7 @@ Controller per a la gestió d'usuaris
 import logging
 from typing import List, Optional, Dict, Any, Tuple
 
-from api.models.media_metadata import MediaMetadata
+from api.models.media_metadata import MediaMetadata, RefugeMediaMetadata
 from ..daos.user_dao import UserDAO
 from ..daos.refugi_lliure_dao import RefugiLliureDAO
 from ..models.user import User
@@ -236,6 +236,12 @@ class UserController:
             if not success:
                 return False, f"Error eliminant participacions: {error}"
             logger.info(f"Participacions eliminades per a l'usuari {uid}")
+
+            # 6.1 Eliminar user en renovations on ha sigut expulsat
+            success, error = renovation_controller.remove_user_from_expelled(uid)
+            if not success:
+                return False, f"Error eliminant expelleds: {error}"
+            logger.info(f"Expelleds eliminats per a l'usuari {uid}")
             
             # 7. Eliminar fotos penjades
             if user.uploaded_photos_keys and len(user.uploaded_photos_keys) > 0:
@@ -402,6 +408,21 @@ class UserController:
                 return False, None, f"Usuari amb UID {uid} no trobat"
             
             refugis_info = self.user_dao.get_refugis_info(uid, list_type)
+
+            #generem les metadades de la primera foto del refugi si existeix
+            for refuge in refugis_info:
+                media_metadata_dict = refuge.get('media_metadata')
+
+                # Obtenim la kety de la primera imatge i generem la URL pre-signada
+                if media_metadata_dict:
+                    first_media_key = next(iter(media_metadata_dict))
+                    media_service = r2_media_service.get_refugi_media_service()
+                    first_media_url = media_service.generate_presigned_url(first_media_key)
+                    refuge['images_metadata'] = RefugeMediaMetadata(first_media_key, first_media_url).to_dict()
+                    del refuge['media_metadata']
+                else:
+                    refuge['media_metadata'] = None
+            
             return True, refugis_info, None
             
         except Exception as e:

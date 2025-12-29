@@ -354,7 +354,7 @@ class TestRenovationViews:
     # ===== NOUS TESTS PER COBRIR EXCEPCIONS I CASOS NO COBERTS =====
     
     @patch('api.views.renovation_views.RenovationController')
-    @patch('api.permissions.IsCreator.has_permission')
+    @patch('api.permissions.IsRenovationCreator.has_permission')
     def test_get_renovation_real_permissions(self, mock_has_perm, mock_controller_class, sample_renovation):
         """Test GET /renovations/ amb permisos reals per cobrir get_permissions"""
         mock_has_perm.return_value = True
