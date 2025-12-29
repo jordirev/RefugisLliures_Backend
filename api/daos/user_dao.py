@@ -417,7 +417,8 @@ class UserDAO:
                         'name': refugi_data.get('name', ''),
                         'region': refugi_data.get('region', ''),
                         'places': refugi_data.get('places', 0),
-                        'coord': refugi_data.get('coord', {})
+                        'coord': refugi_data.get('coord', {}),
+                        'media_metadata': refugi_data.get('media_metadata', {}),
                     }
                     refugis_info.append(refugi_info)
             
