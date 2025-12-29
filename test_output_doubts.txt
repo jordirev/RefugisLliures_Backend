@@ -1,0 +1,84 @@
+============================= test session starts =============================
+platform win32 -- Python 3.13.2, pytest-7.4.3, pluggy-1.6.0 -- C:\Users\jordi\AppData\Local\Programs\Python\Python313\python.exe
+cachedir: .pytest_cache
+django: version: 5.1.12, settings: refugis_lliures.settings (from ini)
+rootdir: C:\Users\jordi\Desktop\UNI\TFG\Backend\RefugisLliures_Backend
+configfile: pytest.ini
+plugins: Faker-20.1.0, cov-4.1.0, django-4.7.0, mock-3.12.0
+collecting ... collected 12 items
+
+api/tests/doubts/test_daos.py::TestDoubtDAO::test_create_doubt_success FAILED [  8%]
+api/tests/doubts/test_daos.py::TestDoubtDAO::test_get_doubt_by_id_found FAILED [ 16%]
+api/tests/doubts/test_daos.py::TestDoubtDAO::test_get_doubts_by_refuge_id FAILED [ 25%]
+api/tests/doubts/test_daos.py::TestDoubtDAO::test_create_answer_success FAILED [ 33%]
+api/tests/doubts/test_daos.py::TestDoubtDAO::test_delete_doubt_success FAILED [ 41%]
+api/tests/doubts/test_models.py::TestDoubtModels::test_create_doubt PASSED [ 50%]
+api/tests/doubts/test_models.py::TestDoubtModels::test_doubt_validation PASSED [ 58%]
+api/tests/doubts/test_models.py::TestDoubtModels::test_doubt_to_dict PASSED [ 66%]
+api/tests/doubts/test_models.py::TestDoubtModels::test_doubt_from_dict PASSED [ 75%]
+api/tests/doubts/test_models.py::TestDoubtModels::test_create_answer PASSED [ 83%]
+api/tests/doubts/test_models.py::TestDoubtModels::test_answer_to_dict PASSED [ 91%]
+api/tests/doubts/test_models.py::TestDoubtModels::test_answer_from_dict PASSED [100%]
+
+================================== FAILURES ===================================
+___________________ TestDoubtDAO.test_create_doubt_success ____________________
+api\tests\doubts\test_daos.py:37: in test_create_doubt_success
+    assert result.id == "doubt_123"
+E   AssertionError: assert 'O2UN6gvy4sfDhgUUPVLe' == 'doubt_123'
+E     - doubt_123
+E     + O2UN6gvy4sfDhgUUPVLe
+---------------------------- Captured stderr call -----------------------------
+2025-12-29 00:06:27,179 [FIRESTORE] api.services.firestore_service: FirestoreService.get_db called
+2025-12-29 00:06:27,226 [FIRESTORE] api.services.firestore_service: Firebase credentials loaded from file: C:\Users\jordi\Desktop\UNI\TFG\Backend\RefugisLliures_Backend\env/firebase-service-account-dev.json
+2025-12-29 00:06:27,226 [FIRESTORE] api.services.firestore_service: Firebase initialized successfully
+2025-12-29 00:06:27,226 [DAO] api.daos.doubt_dao: Firestore WRITE: collection=doubts document=O2UN6gvy4sfDhgUUPVLe
+___________________ TestDoubtDAO.test_get_doubt_by_id_found ___________________
+api\tests\doubts\test_daos.py:62: in test_get_doubt_by_id_found
+    assert result is not None
+E   assert None is not None
+---------------------------- Captured stderr call -----------------------------
+2025-12-29 00:06:27,843 [FIRESTORE] api.services.firestore_service: FirestoreService.get_db called
+2025-12-29 00:06:27,843 [FIRESTORE] api.services.firestore_service: Returning existing Firestore client
+2025-12-29 00:06:27,843 [DAO] api.daos.doubt_dao: Firestore READ: collection=doubts document=doubt_123
+2025-12-29 00:06:27,917 [WARNING] api.daos.doubt_dao: Dubte no trobat amb ID: doubt_123
+__________________ TestDoubtDAO.test_get_doubts_by_refuge_id __________________
+api\tests\doubts\test_daos.py:97: in test_get_doubts_by_refuge_id
+    assert len(result) == 1
+E   AssertionError: assert 3 == 1
+E    +  where 3 = len([Doubt(id='SxphSlzLjwN3KjVJdNpd', refuge_id='ref_1', creator_uid='user_1', message='Test', created_at='2024-01-01', answers_count=0, answers=[Answer(id='ans_1', creator_uid='user_2', message='Reply', created_at='2024-01-02', parent_answer_id=None)]), Doubt(id='O2UN6gvy4sfDhgUUPVLe', refuge_id='ref_1', creator_uid='user_1', message='Test', created_at='2024-01-01', answers_count=0, answers=[Answer(id='ans_1', creator_uid='user_2', message='Reply', created_at='2024-01-02', parent_answer_id=None)]), Doubt(id='7ebi42uhVIKos1XXP46v', refuge_id='ref_1', creator_uid='user_1', message='Test', created_at='2024-01-01', answers_count=0, answers=[Answer(id='ans_1', creator_uid='user_2', message='Reply', created_at='2024-01-02', parent_answer_id=None)])])
+---------------------------- Captured stderr call -----------------------------
+2025-12-29 00:06:27,924 [FIRESTORE] api.services.firestore_service: FirestoreService.get_db called
+2025-12-29 00:06:27,924 [FIRESTORE] api.services.firestore_service: Returning existing Firestore client
+2025-12-29 00:06:27,924 [DAO] api.daos.doubt_dao: Firestore READ: collection=doubts where refuge_id==ref_1
+___________________ TestDoubtDAO.test_create_answer_success ___________________
+api\tests\doubts\test_daos.py:125: in test_create_answer_success
+    assert result is not None
+E   assert None is not None
+---------------------------- Captured stderr call -----------------------------
+2025-12-29 00:06:28,001 [FIRESTORE] api.services.firestore_service: FirestoreService.get_db called
+2025-12-29 00:06:28,001 [FIRESTORE] api.services.firestore_service: Returning existing Firestore client
+2025-12-29 00:06:28,001 [DAO] api.daos.doubt_dao: Firestore WRITE: collection=doubts/doubt_1/answers document=O8gueHNDASi72ICi8KJb
+2025-12-29 00:06:28,097 [DAO] api.daos.doubt_dao: Firestore UPDATE: collection=doubts document=doubt_1 increment answers_count
+2025-12-29 00:06:28,185 [ERROR] api.daos.doubt_dao: Error creant resposta per al dubte doubt_1: 404 No document to update: projects/refugislliures-b3669/databases/(default)/documents/doubts/doubt_1
+___________________ TestDoubtDAO.test_delete_doubt_success ____________________
+C:\Users\jordi\AppData\Local\Programs\Python\Python313\Lib\unittest\mock.py:946: in assert_called
+    raise AssertionError(msg)
+E   AssertionError: Expected 'delete' to have been called.
+
+During handling of the above exception, another exception occurred:
+api\tests\doubts\test_daos.py:150: in test_delete_doubt_success
+    mock_answer_doc.reference.delete.assert_called()
+E   AssertionError: Expected 'delete' to have been called.
+---------------------------- Captured stderr call -----------------------------
+2025-12-29 00:06:28,196 [FIRESTORE] api.services.firestore_service: FirestoreService.get_db called
+2025-12-29 00:06:28,196 [FIRESTORE] api.services.firestore_service: Returning existing Firestore client
+2025-12-29 00:06:28,196 [DAO] api.daos.doubt_dao: Firestore READ: collection=doubts/doubt_1/answers
+2025-12-29 00:06:28,264 [DAO] api.daos.doubt_dao: Firestore DELETE: collection=doubts/doubt_1/answers document=O8gueHNDASi72ICi8KJb
+2025-12-29 00:06:28,358 [DAO] api.daos.doubt_dao: Firestore DELETE: collection=doubts document=doubt_1
+=========================== short test summary info ===========================
+FAILED api/tests/doubts/test_daos.py::TestDoubtDAO::test_create_doubt_success
+FAILED api/tests/doubts/test_daos.py::TestDoubtDAO::test_get_doubt_by_id_found
+FAILED api/tests/doubts/test_daos.py::TestDoubtDAO::test_get_doubts_by_refuge_id
+FAILED api/tests/doubts/test_daos.py::TestDoubtDAO::test_create_answer_success
+FAILED api/tests/doubts/test_daos.py::TestDoubtDAO::test_delete_doubt_success
+=================== 5 failed, 7 passed, 1 warning in 1.43s ====================

@@ -76,7 +76,7 @@ class TestRefugiLliureIntegration:
         
         # Executar vista
         view = RefugiLliureDetailAPIView.as_view()
-        response = view(request, refuge_id='refugi_001')
+        response = view(request, id='refugi_001')
         
         # Verificar resposta
         assert response.status_code == status.HTTP_200_OK
@@ -160,7 +160,7 @@ class TestRefugiLliureIntegration:
         
         # Executar vista
         view = RefugiLliureDetailAPIView.as_view()
-        response = view(request, refuge_id='refugi_999')
+        response = view(request, id='refugi_999')
         
         # Verificar resposta d'error
         assert response.status_code == status.HTTP_404_NOT_FOUND
@@ -201,7 +201,7 @@ class TestRefugiLliureIntegration:
         
         try:
             view = RefugeRenovationsAPIView.as_view()
-            response = view(request, refuge_id='refugi_001')
+            response = view(request, id='refugi_001')
             
             # Verificar resposta
             assert response.status_code == status.HTTP_200_OK
@@ -280,7 +280,7 @@ class TestRefugiLliureIntegration:
         
         # Executar vista
         view = RefugiLliureDetailAPIView.as_view()
-        response = view(request, refuge_id='refugi_minimal')
+        response = view(request, id='refugi_minimal')
         
         # Verificar resposta
         assert response.status_code == status.HTTP_200_OK

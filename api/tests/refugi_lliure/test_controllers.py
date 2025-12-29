@@ -49,7 +49,7 @@ class TestRefugiController:
         mock_dao_class.return_value = mock_dao_instance
         
         controller = RefugiLliureController()
-        refugi, error = controller.get_refugi_by_id('refugi_001')
+        refugi, error = controller.get_refugi_by_id('refugi_001', is_authenticated=True)
         
         assert refugi is not None
         assert error is None
@@ -60,8 +60,8 @@ class TestRefugiController:
         mock_dao_instance.get_by_id.assert_called_once_with('refugi_001')
     
     @patch('api.controllers.refugi_lliure_controller.RefugiLliureDAO')
-    def test_get_refugi_by_id_with_visitors(self, mock_dao_class, sample_refugi):
-        """Test obtenció de refugi per ID amb visitants inclosos"""
+    def test_get_refugi_by_id_authenticated_includes_visitors(self, mock_dao_class, sample_refugi):
+        """Test obtenció de refugi per ID amb usuari autenticat - inclou visitants"""
         sample_refugi.visitors = ['uid_001', 'uid_002', 'uid_003']
         
         mock_dao_instance = MagicMock()
@@ -69,7 +69,7 @@ class TestRefugiController:
         mock_dao_class.return_value = mock_dao_instance
         
         controller = RefugiLliureController()
-        refugi, error = controller.get_refugi_by_id('refugi_001', include_visitors=True)
+        refugi, error = controller.get_refugi_by_id('refugi_001', is_authenticated=True)
         
         assert refugi is not None
         assert error is None
@@ -77,22 +77,25 @@ class TestRefugiController:
         assert refugi.visitors == ['uid_001', 'uid_002', 'uid_003']
     
     @patch('api.controllers.refugi_lliure_controller.RefugiLliureDAO')
-    def test_get_refugi_by_id_without_visitors(self, mock_dao_class, sample_refugi):
-        """Test obtenció de refugi per ID sense visitants"""
+    def test_get_refugi_by_id_unauthenticated_excludes_visitors(self, mock_dao_class, sample_refugi):
+        """Test obtenció de refugi per ID sense autenticació - exclou visitants"""
         sample_refugi.visitors = ['uid_001', 'uid_002', 'uid_003']
+        sample_refugi.images_metadata = [{'key': 'test'}]
         
         mock_dao_instance = MagicMock()
         mock_dao_instance.get_by_id.return_value = sample_refugi
         mock_dao_class.return_value = mock_dao_instance
         
         controller = RefugiLliureController()
-        refugi, error = controller.get_refugi_by_id('refugi_001', include_visitors=False)
+        refugi, error = controller.get_refugi_by_id('refugi_001', is_authenticated=False)
         
         assert refugi is not None
         assert error is None
         # Verificar que els visitants estan buits
         assert len(refugi.visitors) == 0
         assert refugi.visitors == []
+        # Verificar que les images_metadata estan buides
+        assert refugi.images_metadata == []
     
     @patch('api.controllers.refugi_lliure_controller.RefugiLliureDAO')
     def test_get_refugi_by_id_not_found(self, mock_dao_class):
@@ -101,7 +104,7 @@ class TestRefugiController:
         mock_dao.get_by_id.return_value = None
         
         controller = RefugiLliureController()
-        refugi, error = controller.get_refugi_by_id('nonexistent')
+        refugi, error = controller.get_refugi_by_id('nonexistent', is_authenticated=True)
         
         assert refugi is None
         assert error is not None
@@ -120,7 +123,7 @@ class TestRefugiController:
         }
         
         controller = RefugiLliureController()
-        result, error = controller.search_refugis({})
+        result, error = controller.search_refugis({}, is_authenticated=True)
         
         assert result is not None
         assert error is None
@@ -138,15 +141,15 @@ class TestRefugiController:
         
         controller = RefugiLliureController()
         query_params = {'region': 'Pirineus'}
-        result, error = controller.search_refugis(query_params)
+        result, error = controller.search_refugis(query_params, is_authenticated=True)
         
         assert result is not None
         assert error is None
         assert result['count'] == len(multiple_refugis_data)
     
     @patch('api.controllers.refugi_lliure_controller.RefugiLliureDAO')
-    def test_search_refugis_with_visitors_included(self, mock_dao_class, multiple_refugis_data):
-        """Test cerca amb filtres i visitants inclosos"""
+    def test_search_refugis_authenticated_includes_visitors(self, mock_dao_class, multiple_refugis_data):
+        """Test cerca amb filtres i usuari autenticat - inclou visitants"""
         mock_dao = mock_dao_class.return_value
         mock_refugis = [Refugi.from_dict(d) for d in multiple_refugis_data]
         # Afegir visitants als refugis
@@ -160,7 +163,7 @@ class TestRefugiController:
         
         controller = RefugiLliureController()
         query_params = {'region': 'Pirineus'}
-        result, error = controller.search_refugis(query_params, include_visitors=True)
+        result, error = controller.search_refugis(query_params, is_authenticated=True)
         
         assert result is not None
         assert error is None
@@ -169,13 +172,14 @@ class TestRefugiController:
         assert all(len(refugi['visitors']) == 2 for refugi in result['results'])
     
     @patch('api.controllers.refugi_lliure_controller.RefugiLliureDAO')
-    def test_search_refugis_without_visitors(self, mock_dao_class, multiple_refugis_data):
-        """Test cerca amb filtres però sense visitants"""
+    def test_search_refugis_unauthenticated_excludes_visitors(self, mock_dao_class, multiple_refugis_data):
+        """Test cerca amb filtres però sense autenticació - exclou visitants"""
         mock_dao = mock_dao_class.return_value
         mock_refugis = [Refugi.from_dict(d) for d in multiple_refugis_data]
         # Afegir visitants als refugis
         for refugi in mock_refugis:
             refugi.visitors = ['uid_001', 'uid_002']
+            refugi.images_metadata = [{'key': 'test'}]
         
         mock_dao.search_refugis.return_value = {
             'results': mock_refugis,
@@ -184,7 +188,7 @@ class TestRefugiController:
         
         controller = RefugiLliureController()
         query_params = {'region': 'Pirineus'}
-        result, error = controller.search_refugis(query_params, include_visitors=False)
+        result, error = controller.search_refugis(query_params, is_authenticated=False)
         
         assert result is not None
         assert error is None
@@ -232,7 +236,7 @@ class TestRefugiController:
         mock_dao.get_by_id.side_effect = Exception('Database error')
         
         controller = RefugiLliureController()
-        refugi, error = controller.get_refugi_by_id('refugi_001')
+        refugi, error = controller.get_refugi_by_id('refugi_001', is_authenticated=True)
         
         assert refugi is None
         assert error is not None
@@ -245,11 +249,117 @@ class TestRefugiController:
         mock_dao.search_refugis.side_effect = Exception('Search error')
         
         controller = RefugiLliureController()
-        result, error = controller.search_refugis({})
+        result, error = controller.search_refugis({}, is_authenticated=True)
         
         assert result is None
         assert error is not None
         assert 'Internal server error' in error
+
+
+    @patch('api.controllers.refugi_lliure_controller.r2_media_service.get_refugi_media_service')
+    @patch('api.controllers.refugi_lliure_controller.RefugiLliureDAO')
+    def test_get_refugi_media_success(self, mock_dao_class, mock_get_service):
+        """Test obtenció de mitjans d'un refugi exitosa"""
+        mock_dao = mock_dao_class.return_value
+        mock_r2_service = mock_get_service.return_value
+        
+        mock_dao.get_media_metadata.return_value = [
+            {'key': 'key1', 'url': 'url1', 'uploaded_at': '2024-01-01'},
+            {'key': 'key2', 'url': 'url2', 'uploaded_at': '2024-01-02'}
+        ]
+        
+        # Mock generació URL prefirmada - NO s'utilitza en aquest mètode segons el codi actual
+        # mock_r2_service.generate_presigned_url.side_effect = lambda key, exp: f"presigned_{key}"
+        
+        controller = RefugiLliureController()
+        media_list, error = controller.get_refugi_media('refugi_123', 3600)
+        
+        assert error is None
+        assert len(media_list) == 2
+        assert any(m['key'] == 'key1' and m['url'] == 'url1' for m in media_list)
+        assert any(m['key'] == 'key2' and m['url'] == 'url2' for m in media_list)
+
+    @patch('api.controllers.refugi_lliure_controller.r2_media_service.get_refugi_media_service')
+    @patch('api.controllers.refugi_lliure_controller.RefugiLliureDAO')
+    def test_get_refugi_media_not_found(self, mock_dao_class, mock_get_service):
+        """Test obtenció de mitjans de refugi no existent"""
+        mock_dao = mock_dao_class.return_value
+        mock_dao.get_media_metadata.return_value = None
+        
+        controller = RefugiLliureController()
+        media_list, error = controller.get_refugi_media('nonexistent', 3600)
+        
+        assert media_list is None
+        assert "not found" in error.lower()
+
+    @patch('api.controllers.refugi_lliure_controller.UserDAO')
+    @patch('api.controllers.refugi_lliure_controller.r2_media_service.get_refugi_media_service')
+    @patch('api.controllers.refugi_lliure_controller.RefugiLliureDAO')
+    def test_upload_refugi_media_success(self, mock_dao_class, mock_get_service, mock_user_dao_class):
+        """Test pujada de mitjans exitosa"""
+        mock_dao = mock_dao_class.return_value
+        mock_r2_service = mock_get_service.return_value
+        mock_user_dao = mock_user_dao_class.return_value
+        
+        # Mock refugi existent
+        mock_dao.get_by_id.return_value = MagicMock()
+        
+        # Mock pujada R2
+        mock_r2_service.upload_file.return_value = {'key': "path/to/file.jpg"}
+        mock_r2_service.generate_presigned_url.return_value = "http://presigned"
+        
+        # Mock generació objecte metadata
+        mock_metadata_obj = MagicMock()
+        mock_metadata_obj.to_dict.return_value = {'key': "path/to/file.jpg", 'url': "http://presigned"}
+        mock_r2_service.generate_media_metadata_from_dict.return_value = mock_metadata_obj
+        
+        # Mock actualització metadades
+        mock_dao.add_media_metadata.return_value = True
+        
+        # Mock increment usuari
+        mock_user_dao.increment_uploaded_photos.return_value = True
+        
+        controller = RefugiLliureController()
+        files = [MagicMock(name='file1.jpg')]
+        result, error = controller.upload_refugi_media('refugi_123', files, 'user_123')
+        
+        assert error is None
+        assert len(result['uploaded']) == 1
+        assert result['uploaded'][0]['key'] == "path/to/file.jpg"
+        mock_r2_service.upload_file.assert_called()
+        mock_dao.add_media_metadata.assert_called()
+
+    @patch('api.daos.experience_dao.ExperienceDAO')
+    @patch('api.controllers.refugi_lliure_controller.r2_media_service.get_refugi_media_service')
+    @patch('api.controllers.refugi_lliure_controller.RefugiLliureDAO')
+    def test_delete_refugi_media_success(self, mock_dao_class, mock_get_service, mock_exp_dao_class):
+        """Test eliminació de mitjà exitosa"""
+        mock_dao = mock_dao_class.return_value
+        mock_r2_service = mock_get_service.return_value
+        
+        # Mock refugi amb metadades
+        refugi_mock = MagicMock()
+        refugi_mock.media_metadata = {
+            'key1': {'key': 'key1', 'creator_uid': 'user_123'}
+        }
+        mock_dao.get_by_id.return_value = refugi_mock
+        
+        # Mock eliminació R2
+        mock_r2_service.delete_file.return_value = True
+        
+        # Mock eliminació metadades (retorna success, backup)
+        mock_dao.delete_media_metadata.return_value = (True, {'key': 'key1', 'creator_uid': 'user_123'})
+        
+        # Mock actualització metadades (per si de cas, tot i que delete usa delete_media_metadata)
+        mock_dao.update_media_metadata.return_value = True
+        
+        controller = RefugiLliureController()
+        success, error = controller.delete_refugi_media('refugi_123', 'key1')
+        
+        assert success is True
+        assert error is None
+        mock_r2_service.delete_file.assert_called_with('key1')
+        mock_dao.delete_media_metadata.assert_called()
 
 
 # ==================== TESTS DE VIEWS ====================

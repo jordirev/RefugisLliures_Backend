@@ -1,7 +1,8 @@
 """
 Permisos personalitzats per a l'API
 """
-from venv import logger
+import logging
+logger = logging.getLogger(__name__)
 from rest_framework import permissions
 from .services import firestore_service
 

@@ -277,7 +277,7 @@ class RefugiLliureController:
                 if experience_id:
                     from ..daos.experience_dao import ExperienceDAO
                     experience_dao = ExperienceDAO()
-                    experience_dao.add_media_key(experience_id, media_key)
+                    experience_dao.add_media_keys_to_experience(experience_id, [media_key])
 
                 return False, "Error deleting file from storage"
             
@@ -342,7 +342,7 @@ class RefugiLliureController:
                 restore_dict = {}
                 for metadata in metadata_backup_list:
                     if metadata['key'] in failed_keys:
-                        restore_dict[key] = metadata
+                        restore_dict[metadata['key']] = metadata
                 
                 self.refugi_dao.add_media_metadata(refugi_id, restore_dict)
                 

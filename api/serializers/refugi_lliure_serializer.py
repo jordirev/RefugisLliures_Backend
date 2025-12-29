@@ -181,6 +181,12 @@ class UserRefugiInfoSerializer(serializers.Serializer):
     coord = CoordinatesSerializer(
         help_text="Coordenades del refugi"
     )
+    images_metadata = RefugeMediaMetadataSerializer(
+        many=False,
+        required=False,
+        allow_null=True,
+        help_text="Metadades de la imatge principal del refugi"
+    )
 
 class UserRefugiInfoResponseSerializer(serializers.Serializer):
     """Serializer per a resposta de llistar refugis preferits o visitats"""

@@ -345,3 +345,25 @@ class RenovationController:
         except Exception as e:
             logger.error(f"Error eliminant usuari {uid} de participacions: {str(e)}")
             return False, f"Error intern: {str(e)}"
+        
+    def remove_user_from_expelled(self, uid: str) -> tuple[bool, Optional[str]]:
+        """
+        Elimina un usuari de expelled_uids de totes les renovations
+        
+        Args:
+            uid: UID de l'usuari
+            
+        Returns:
+            Tuple (èxit: bool, missatge d'error: Optional[str])
+        """
+        try:
+            success, error = self.renovation_dao.remove_user_from_expelled(uid)
+            if not success:
+                return False, error
+            
+            logger.info(f"Usuari {uid} eliminat de expelled correctament")
+            return True, None
+            
+        except Exception as e:
+            logger.error(f"Error eliminant usuari {uid} de expelled: {str(e)}")
+            return False, f"Error intern: {str(e)}"
