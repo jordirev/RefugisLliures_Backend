@@ -6,6 +6,7 @@ from typing import List, Optional, Dict, Any, Tuple
 from ..services.firestore_service import FirestoreService
 from ..services.cache_service import cache_service
 from ..mappers.user_mapper import UserMapper
+from ..mappers.refugi_lliure_mapper import RefugiLliureMapper
 from ..models.user import User
 from google.cloud.firestore_v1.transforms import Increment
 
@@ -21,6 +22,7 @@ class UserDAO:
         """Inicialitza el DAO amb la connexió a Firestore"""
         self.firestore_service = FirestoreService()
         self.mapper = UserMapper()
+        self.refugi_mapper = RefugiLliureMapper()
     
     def create_user(self, user_data: Dict[str, Any], uid: str) -> Optional[User]:
         """
@@ -270,7 +272,7 @@ class UserDAO:
             
         Returns:
             bool: True si s'ha afegit correctament
-            Optional[List[str]]: Llista actualitzada després d'afegir el refugi, o None si hi ha error
+            Optional[List[str]]: Llista actualitzada de les ids dels refugis després d'afegir el refugi, o None si hi ha error
         """
         try:
             # Primer obté l'usuari actual per veure si ja té el refugi a la llista
@@ -427,7 +429,7 @@ class UserDAO:
             cache_service.set(cache_key, refugis_info, timeout)
             
             logger.log(23, f"Informació de refugis de {list_name} obtinguda per l'usuari {uid}")
-            return refugis_info
+            return self.refugi_mapper.firestore_list_to_refugi_info_representations(refugis_info)
             
         except Exception as e:
             logger.error(f"Error obtenint informació de refugis de {list_name} per l'usuari {uid}: {str(e)}")

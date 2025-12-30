@@ -408,21 +408,6 @@ class UserController:
                 return False, None, f"Usuari amb UID {uid} no trobat"
             
             refugis_info = self.user_dao.get_refugis_info(uid, list_type)
-
-            #generem les metadades de la primera foto del refugi si existeix
-            for refuge in refugis_info:
-                media_metadata_dict = refuge.get('media_metadata')
-
-                # Obtenim la kety de la primera imatge i generem la URL pre-signada
-                if media_metadata_dict:
-                    first_media_key = next(iter(media_metadata_dict))
-                    media_service = r2_media_service.get_refugi_media_service()
-                    first_media_url = media_service.generate_presigned_url(first_media_key)
-                    refuge['images_metadata'] = [RefugeMediaMetadata(first_media_key, first_media_url).to_dict()]
-                    del refuge['media_metadata']
-                else:
-                    refuge['images_metadata'] = None
-            
             return True, refugis_info, None
             
         except Exception as e:
