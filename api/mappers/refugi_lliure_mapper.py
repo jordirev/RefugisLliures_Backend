@@ -2,6 +2,9 @@
 Mapper per a la conversió entre dades de Firestore i models de refugi
 """
 from typing import List, Dict, Any, Optional
+
+from api.models.media_metadata import RefugeMediaMetadata
+from api.services import r2_media_service
 from ..models.refugi_lliure import Refugi, RefugiCoordinates, Coordinates
 
 class RefugiLliureMapper:
@@ -31,6 +34,30 @@ class RefugiLliureMapper:
         return [RefugiLliureMapper.model_to_firestore(refugi) for refugi in refugis]
     
 
+    # Mappers per als objectes RefugiInfo dels favorits i visitats
+    @staticmethod
+    def firestore_to_refugi_info_representation(data: Dict[str, Any]) -> Refugi:
+        """Tornem el diccionari a mostrar a la resposta de l'API amb les URLs pre-signades de la primera foto del refugi"""
+        
+        media_metadata_dict = data.get('media_metadata')
+
+        # Obtenim la key de la primera imatge i generem la URL pre-signada
+        if media_metadata_dict:
+            first_media_key = next(iter(media_metadata_dict))
+            media_service = r2_media_service.get_refugi_media_service()
+            first_media_url = media_service.generate_presigned_url(first_media_key)
+            data['images_metadata'] = [RefugeMediaMetadata(first_media_key, first_media_url).to_dict()]
+            del data['media_metadata']
+        else:
+            data['images_metadata'] = None
+
+        return data
+
+    @staticmethod
+    def firestore_list_to_refugi_info_representations(data_list: List[Dict[str, Any]]) -> List[Refugi]:
+        """Converteix llista de dades de Firestore a llista de models"""
+        return [RefugiLliureMapper.firestore_to_refugi_info_representation(data) for data in data_list]
+    
     
     @staticmethod
     def format_search_response(refugis: List[Refugi]) -> Dict[str, Any]:
