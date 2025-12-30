@@ -8,6 +8,7 @@ from api.models.media_metadata import MediaMetadata, RefugeMediaMetadata
 from ..daos.user_dao import UserDAO
 from ..daos.refugi_lliure_dao import RefugiLliureDAO
 from ..models.user import User
+from ..mappers.refugi_lliure_mapper import RefugiLliureMapper
 from ..utils.timezone_utils import get_madrid_now
 from ..services import r2_media_service
 
@@ -22,6 +23,7 @@ class UserController:
         """Inicialitza el controller"""
         self.user_dao = UserDAO()
         self.refugi_dao = RefugiLliureDAO()
+        self.refugi_mapper = RefugiLliureMapper()
         self.avatar_service = r2_media_service.get_user_avatar_service()
     
     def create_user(self, user_data: Dict[str, Any], uid: str) -> tuple[bool, Optional[User], Optional[str]]:
@@ -314,7 +316,7 @@ class UserController:
         list_type: str, 
         operation: str,
         operation_name: str
-    ) -> tuple[bool, Optional[List[Dict[str, Any]]], Optional[str]]:
+    ) -> tuple[bool, Optional[Dict[str, Any]], Optional[str]]:
         """
         Mètode plantilla per gestionar refugis en llistes (preferits/visitats)
         
@@ -326,7 +328,7 @@ class UserController:
             operation_name: Nom de l'operació per als missatges d'error i logs
             
         Returns:
-            tuple: (success, list_refugis_info, error_message)
+            tuple: (success, new_refuge_info, error_message)
         """
         try:
             # Validacions comunes
@@ -339,15 +341,16 @@ class UserController:
             if not self.user_dao.user_exists(uid):
                 return False, None, f"Usuari amb UID {uid} no trobat"
             
-            if not self.refugi_dao.refugi_exists(refuge_id):
+            refuge_data = self.refugi_dao.get_by_id(refuge_id)
+            if not refuge_data:
                 return False, None, f"Refugi amb ID {refuge_id} no trobat"
             
             # Operació sobre la llista de l'usuari
             if operation == 'add':
-                success, list_refugis = self.user_dao.add_refugi_to_list(uid, refuge_id, list_type)
+                success = self.user_dao.add_refugi_to_list(uid, refuge_id, list_type)
                 error_msg = f"Error afegint refugi als {operation_name}"
             else:  # remove
-                success, list_refugis = self.user_dao.remove_refugi_from_list(uid, refuge_id, list_type)
+                success = self.user_dao.remove_refugi_from_list(uid, refuge_id, list_type)
                 error_msg = f"Error eliminant refugi dels {operation_name}"
             
             if not success:
@@ -355,14 +358,16 @@ class UserController:
             
             # Hook: operació específica al refugi (només per visitats)
             self._update_refugi_visitor_list(uid, refuge_id, list_type, operation)
-            
-            # Obté la informació actualitzada
-            refugis_info = self.user_dao.get_refugis_info(uid, list_type, refugis_ids=list_refugis)
+
+            # Obté la informació del refugi afegit per a la resposta
+            refuge_info_data = None
+            if operation == 'add':
+                refuge_info_data = self.refugi_mapper.dict_to_refugi_info_representation(refuge_data.to_dict())
             
             action = "afegit" if operation == 'add' else "eliminat"
             preposition = "als" if operation == 'add' else "dels"
             logger.info(f"Refugi {refuge_id} {action} {preposition} {operation_name} de l'usuari {uid}")
-            return True, refugis_info, None
+            return True, refuge_info_data, None
             
         except Exception as e:
             method_name = f"{operation}_refugi_{list_type.split('_')[1][:-1]}"
@@ -416,7 +421,7 @@ class UserController:
             return False, None, f"Error intern: {str(e)}"
     
     # Mètodes públics per preferits
-    def add_refugi_preferit(self, uid: str, refuge_id: str) -> tuple[bool, Optional[List[Dict[str, Any]]], Optional[str]]:
+    def add_refugi_preferit(self, uid: str, refuge_id: str) -> tuple[bool, Optional[Dict[str, Any]], Optional[str]]:
         """
         Afegeix un refugi als preferits de l'usuari
         
@@ -425,11 +430,11 @@ class UserController:
             refuge_id: ID del refugi a afegir
             
         Returns:
-            tuple: (success, list_refugis_info, error_message)
+            tuple: (success, refuge_info_added, error_message)
         """
         return self._manage_refugi_list(uid, refuge_id, 'favourite_refuges', 'add', 'preferits')
     
-    def remove_refugi_preferit(self, uid: str, refuge_id: str) -> tuple[bool, Optional[List[Dict[str, Any]]], Optional[str]]:
+    def remove_refugi_preferit(self, uid: str, refuge_id: str) -> tuple[bool, Optional[str]]:
         """
         Elimina un refugi dels preferits de l'usuari
         
@@ -438,9 +443,10 @@ class UserController:
             refuge_id: ID del refugi a eliminar
             
         Returns:
-            tuple: (success, list_refugis_info, error_message)
+            tuple: (success, error_message)
         """
-        return self._manage_refugi_list(uid, refuge_id, 'favourite_refuges', 'remove', 'preferits')
+        success, refugi_info, error = self._manage_refugi_list(uid, refuge_id, 'favourite_refuges', 'remove', 'preferits')
+        return success, error
     
     def get_refugis_preferits_info(self, uid: str) -> tuple[bool, Optional[List[Dict[str, Any]]], Optional[str]]:
         """
@@ -455,7 +461,7 @@ class UserController:
         return self._get_refugis_info_by_type(uid, 'favourite_refuges')
     
     # Mètodes públics per visitats
-    def add_refugi_visitat(self, uid: str, refuge_id: str) -> tuple[bool, Optional[List[Dict[str, Any]]], Optional[str]]:
+    def add_refugi_visitat(self, uid: str, refuge_id: str) -> tuple[bool, Optional[Dict[str, Any]], Optional[str]]:
         """
         Afegeix un refugi als visitats de l'usuari i actualitza la llista de visitants del refugi
         
@@ -464,11 +470,11 @@ class UserController:
             refuge_id: ID del refugi a afegir
             
         Returns:
-            tuple: (success, list_refugis_info, error_message)
+            tuple: (success, refuge_info_added, error_message)
         """
         return self._manage_refugi_list(uid, refuge_id, 'visited_refuges', 'add', 'visitats')
     
-    def remove_refugi_visitat(self, uid: str, refuge_id: str) -> tuple[bool, Optional[List[Dict[str, Any]]], Optional[str]]:
+    def remove_refugi_visitat(self, uid: str, refuge_id: str) -> tuple[bool, Optional[str]]:
         """
         Elimina un refugi dels visitats de l'usuari i actualitza la llista de visitants del refugi
         
@@ -477,9 +483,10 @@ class UserController:
             refuge_id: ID del refugi a eliminar
             
         Returns:
-            tuple: (success, list_refugis_info, error_message)
+            tuple: (success, error_message)
         """
-        return self._manage_refugi_list(uid, refuge_id, 'visited_refuges', 'remove', 'visitats')
+        success, refuge_info, error = self._manage_refugi_list(uid, refuge_id, 'visited_refuges', 'remove', 'visitats')
+        return success, error
     
     def get_refugis_visitats_info(self, uid: str) -> tuple[bool, Optional[List[Dict[str, Any]]], Optional[str]]:
         """

@@ -22,10 +22,12 @@ from ..serializers.user_serializer import (
 )
 from ..serializers.refugi_lliure_serializer import (
     UserRefugiInfoResponseSerializer,
+    UserRefugiInfoSerializer,
 )
 from ..serializers.renovation_serializer import RenovationSerializer
 from ..permissions import IsSameUser
 from ..utils.swagger_examples import (
+    EXAMPLE_REFUGI_INFO_COLOMERS,
     EXAMPLE_USER_BASIC,
     EXAMPLE_USER_WITH_DATA,
     EXAMPLE_USER_UPDATED,
@@ -350,9 +352,9 @@ class UserFavouriteRefugesAPIView(APIView):
         responses={
             200: openapi.Response(
                 description='Refugi afegit als preferits',
-                schema=UserRefugiInfoResponseSerializer,
+                schema=UserRefugiInfoSerializer,
                 examples={
-                    'application/json': EXAMPLE_USER_REFUGI_INFO_RESPONSE_3
+                    'application/json': EXAMPLE_REFUGI_INFO_COLOMERS
                 }
             ),
             400: ERROR_400_INVALID_DATA,
@@ -374,17 +376,15 @@ class UserFavouriteRefugesAPIView(APIView):
             
             controller = UserController()
             refuge_id = serializer.validated_data['refuge_id']
-            success, refugis_info, error_message = controller.add_refugi_preferit(uid, refuge_id)
+            success, refugi_info, error_message = controller.add_refugi_preferit(uid, refuge_id)
             
             if not success:
                 status_code = status.HTTP_404_NOT_FOUND if 'no trobat' in error_message else status.HTTP_400_BAD_REQUEST
                 return Response({
                     'error': error_message
                 }, status=status_code)
-            
-            # Retorna la llista actualitzada amb la informació dels refugis
-            data = {'count': len(refugis_info), 'results': refugis_info}
-            response_serializer = UserRefugiInfoResponseSerializer(data)
+
+            response_serializer = UserRefugiInfoSerializer(refugi_info)
             return Response(response_serializer.data, status=status.HTTP_200_OK)
             
         except Exception as e:
@@ -413,13 +413,7 @@ class UserFavouriteRefugesDetailAPIView(APIView):
         tags=['User Favourite Refuges'],
         operation_description="Elimina un refugi dels preferits de l'usuari. Requereix autenticació amb token JWT de Firebase i ser el mateix usuari.",
         responses={
-            200: openapi.Response(
-                description='Refugi eliminat dels preferits',
-                schema=UserRefugiInfoResponseSerializer,
-                examples={
-                    'application/json': EXAMPLE_USER_REFUGI_INFO_RESPONSE_1
-                }
-            ),
+            204: SUCCESS_204_NO_CONTENT,
             401: ERROR_401_UNAUTHORIZED,
             403: ERROR_403_FORBIDDEN,
             404: ERROR_404_USER_NOT_FOUND
@@ -429,7 +423,7 @@ class UserFavouriteRefugesDetailAPIView(APIView):
         """Elimina un refugi dels preferits de l'usuari"""
         try:
             controller = UserController()
-            success, refugis_info, error_message = controller.remove_refugi_preferit(uid, refuge_id)
+            success, error_message = controller.remove_refugi_preferit(uid, refuge_id)
             
             if not success:
                 status_code = status.HTTP_404_NOT_FOUND if 'no trobat' in error_message else status.HTTP_400_BAD_REQUEST
@@ -437,10 +431,7 @@ class UserFavouriteRefugesDetailAPIView(APIView):
                     'error': error_message
                 }, status=status_code)
             
-            # Retorna la llista actualitzada amb la informació dels refugis
-            data = {'count': len(refugis_info), 'results': refugis_info}
-            serializer = UserRefugiInfoResponseSerializer(data)
-            return Response(serializer.data, status=status.HTTP_200_OK)
+            return Response(status=status.HTTP_204_NO_CONTENT)
             
         except Exception as e:
             logger.error(f"Error en delete_refugi_preferit: {str(e)}")
@@ -518,9 +509,9 @@ class UserVisitedRefugesAPIView(APIView):
         responses={
             200: openapi.Response(
                 description='Refugi afegit als visitats',
-                schema=UserRefugiInfoResponseSerializer,
+                schema=UserRefugiInfoSerializer,
                 examples={
-                    'application/json': EXAMPLE_USER_VISITED_REFUGI_INFO_RESPONSE_3
+                    'application/json': EXAMPLE_REFUGI_INFO_COLOMERS
                 }
             ),
             400: ERROR_400_INVALID_DATA,
@@ -542,7 +533,7 @@ class UserVisitedRefugesAPIView(APIView):
             
             controller = UserController()
             refuge_id = serializer.validated_data['refuge_id']
-            success, refugis_info, error_message = controller.add_refugi_visitat(uid, refuge_id)
+            success, refugi_info, error_message = controller.add_refugi_visitat(uid, refuge_id)
             
             if not success:
                 status_code = status.HTTP_404_NOT_FOUND if 'no trobat' in error_message else status.HTTP_400_BAD_REQUEST
@@ -550,9 +541,7 @@ class UserVisitedRefugesAPIView(APIView):
                     'error': error_message
                 }, status=status_code)
             
-            # Retorna la llista actualitzada amb la informació dels refugis
-            data = {'count': len(refugis_info), 'results': refugis_info}
-            response_serializer = UserRefugiInfoResponseSerializer(data)
+            response_serializer = UserRefugiInfoSerializer(refugi_info)
             return Response(response_serializer.data, status=status.HTTP_200_OK)
             
         except Exception as e:
@@ -581,13 +570,7 @@ class UserVisitedRefugesDetailAPIView(APIView):
         tags=['User Visited Refuges'],
         operation_description="Elimina un refugi dels visitats de l'usuari. Requereix autenticació amb token JWT de Firebase i ser el mateix usuari.",
         responses={
-            200: openapi.Response(
-                description='Refugi eliminat dels visitats',
-                schema=UserRefugiInfoResponseSerializer,
-                examples={
-                    'application/json': EXAMPLE_USER_REFUGI_INFO_RESPONSE_1
-                }
-            ),
+            204: SUCCESS_204_NO_CONTENT,
             401: ERROR_401_UNAUTHORIZED,
             403: ERROR_403_FORBIDDEN,
             404: ERROR_404_USER_NOT_FOUND
@@ -597,7 +580,7 @@ class UserVisitedRefugesDetailAPIView(APIView):
         """Elimina un refugi dels visitats de l'usuari"""
         try:
             controller = UserController()
-            success, refugis_info, error_message = controller.remove_refugi_visitat(uid, refuge_id)
+            success, error_message = controller.remove_refugi_visitat(uid, refuge_id)
             
             if not success:
                 status_code = status.HTTP_404_NOT_FOUND if 'no trobat' in error_message else status.HTTP_400_BAD_REQUEST
@@ -605,10 +588,7 @@ class UserVisitedRefugesDetailAPIView(APIView):
                     'error': error_message
                 }, status=status_code)
             
-            # Retorna la llista actualitzada amb la informació dels refugis
-            data = {'count': len(refugis_info), 'results': refugis_info}
-            serializer = UserRefugiInfoResponseSerializer(data)
-            return Response(serializer.data, status=status.HTTP_200_OK)
+            return Response(status=status.HTTP_204_NO_CONTENT)
             
         except Exception as e:
             logger.error(f"Error en delete_refugi_visitat: {str(e)}")
