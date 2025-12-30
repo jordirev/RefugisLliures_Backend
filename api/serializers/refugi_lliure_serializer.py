@@ -182,7 +182,7 @@ class UserRefugiInfoSerializer(serializers.Serializer):
         help_text="Coordenades del refugi"
     )
     images_metadata = RefugeMediaMetadataSerializer(
-        many=False,
+        many=True,
         required=False,
         allow_null=True,
         help_text="Metadades de la imatge principal del refugi"
