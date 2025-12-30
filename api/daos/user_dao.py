@@ -261,7 +261,7 @@ class UserDAO:
             logger.error(f"Error comprovant si existeix usuari amb UID {uid}: {str(e)}")
             return False
     
-    def add_refugi_to_list(self, uid: str, refugi_id: str, list_name: str) -> tuple[bool, Optional[List[str]]]:
+    def add_refugi_to_list(self, uid: str, refugi_id: str, list_name: str) -> bool:
         """
         Afegeix un refugi a una llista de l'usuari (favourite_refuges o visited_refuges)
         
@@ -272,7 +272,6 @@ class UserDAO:
             
         Returns:
             bool: True si s'ha afegit correctament
-            Optional[List[str]]: Llista actualitzada de les ids dels refugis després d'afegir el refugi, o None si hi ha error
         """
         try:
             # Primer obté l'usuari actual per veure si ja té el refugi a la llista
@@ -281,34 +280,22 @@ class UserDAO:
                 logger.warning(f"No es pot afegir refugi, usuari no trobat amb UID: {uid}")
                 return (False, None)
             
-            # Obté la llista actual
-            current_list = getattr(user, list_name, [])
-            if current_list is None:
-                current_list = []
-            
-            # Comprova si ja està a la llista
-            if refugi_id in current_list:
-                logger.info(f"Refugi {refugi_id} ja està a {list_name} de l'usuari {uid}")
-                return (True, current_list)
-            
-            # Afegeix el refugi a la llista
-            current_list.append(refugi_id)
-            
+            from google.cloud.firestore import ArrayUnion
             # Actualitza a Firestore
             db = self.firestore_service.get_db()
             doc_ref = db.collection(self.COLLECTION_NAME).document(uid)
-            doc_ref.update({list_name: current_list})
+            doc_ref.update({list_name: ArrayUnion([refugi_id])})
             
             # Invalida cache de l'usuari i de la info dels refugis
             cache_service.delete(cache_service.generate_key('user_detail', uid=uid))
             cache_service.delete(cache_service.generate_key('user_refugis_info', uid=uid, list_name=list_name))
-            
+
             logger.log(23, f"Refugi {refugi_id} afegit a {list_name} de l'usuari {uid}")
-            return (True, current_list)
+            return True
             
         except Exception as e:
             logger.error(f"Error afegint refugi {refugi_id} a {list_name} de l'usuari {uid}: {str(e)}")
-            return (False, None)
+            return False
     
     def remove_refugi_from_list(self, uid: str, refugi_id: str, list_name: str) -> tuple[bool, Optional[List[str]]]:
         """
@@ -413,23 +400,14 @@ class UserDAO:
                         cache_service.set(refugi_cache_key, refugi_data, timeout)
                 
                 if refugi_data:
-                    # Extreu només els camps necessaris
-                    refugi_info = {
-                        'id': refugi_id,
-                        'name': refugi_data.get('name', ''),
-                        'region': refugi_data.get('region', ''),
-                        'places': refugi_data.get('places', 0),
-                        'coord': refugi_data.get('coord', {}),
-                        'media_metadata': refugi_data.get('media_metadata', {}),
-                    }
-                    refugis_info.append(refugi_info)
+                    refugis_info.append(refugi_data)
             
             # Guarda a cache
             timeout = cache_service.get_timeout('user_detail')
             cache_service.set(cache_key, refugis_info, timeout)
             
             logger.log(23, f"Informació de refugis de {list_name} obtinguda per l'usuari {uid}")
-            return self.refugi_mapper.firestore_list_to_refugi_info_representations(refugis_info)
+            return self.refugi_mapper.dict_list_to_refugi_info_representations(refugis_info)
             
         except Exception as e:
             logger.error(f"Error obtenint informació de refugis de {list_name} per l'usuari {uid}: {str(e)}")
