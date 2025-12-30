@@ -418,10 +418,10 @@ class UserController:
                     first_media_key = next(iter(media_metadata_dict))
                     media_service = r2_media_service.get_refugi_media_service()
                     first_media_url = media_service.generate_presigned_url(first_media_key)
-                    refuge['images_metadata'] = RefugeMediaMetadata(first_media_key, first_media_url).to_dict()
+                    refuge['images_metadata'] = [RefugeMediaMetadata(first_media_key, first_media_url).to_dict()]
                     del refuge['media_metadata']
                 else:
-                    refuge['media_metadata'] = None
+                    refuge['images_metadata'] = None
             
             return True, refugis_info, None
             
