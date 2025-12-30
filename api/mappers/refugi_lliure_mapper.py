@@ -36,27 +36,44 @@ class RefugiLliureMapper:
 
     # Mappers per als objectes RefugiInfo dels favorits i visitats
     @staticmethod
-    def firestore_to_refugi_info_representation(data: Dict[str, Any]) -> Refugi:
+    def dict_to_refugi_info_representation(data: Dict[str, Any]) -> Refugi:
         """Tornem el diccionari a mostrar a la resposta de l'API amb les URLs pre-signades de la primera foto del refugi"""
-        
-        media_metadata_dict = data.get('media_metadata')
+        # Extreu només els camps necessaris
+        images_metadata = data.get('images_metadata', None)
+        data = {
+            'id': data.get('id', ''),
+            'name': data.get('name', ''),
+            'region': data.get('region', ''),
+            'places': data.get('places', 0),
+            'coord': data.get('coord', {}),
+            'media_metadata': data.get('media_metadata', {}),
+            'images_metadata': images_metadata
+        }
 
-        # Obtenim la key de la primera imatge i generem la URL pre-signada
-        if media_metadata_dict:
-            first_media_key = next(iter(media_metadata_dict))
-            media_service = r2_media_service.get_refugi_media_service()
-            first_media_url = media_service.generate_presigned_url(first_media_key)
-            data['images_metadata'] = [RefugeMediaMetadata(first_media_key, first_media_url).to_dict()]
+        # Si ja tenim images_metadata, no cal generar la URL pre-signada
+        if images_metadata:
+            # Només mostrem la primera imatge
+            data['images_metadata'] = [data['images_metadata'][0]]
             del data['media_metadata']
+            
         else:
-            data['images_metadata'] = None
+            # Obtenim la key de la primera imatge i generem la URL pre-signada
+            media_metadata_dict = data.get('media_metadata')
+            if media_metadata_dict:
+                first_media_key = next(iter(media_metadata_dict))
+                media_service = r2_media_service.get_refugi_media_service()
+                first_media_url = media_service.generate_presigned_url(first_media_key)
+                data['images_metadata'] = [RefugeMediaMetadata(first_media_key, first_media_url).to_dict()]
+                del data['media_metadata']
+            else:
+                data['images_metadata'] = None
 
         return data
 
     @staticmethod
-    def firestore_list_to_refugi_info_representations(data_list: List[Dict[str, Any]]) -> List[Refugi]:
+    def dict_list_to_refugi_info_representations(data_list: List[Dict[str, Any]]) -> List[Refugi]:
         """Converteix llista de dades de Firestore a llista de models"""
-        return [RefugiLliureMapper.firestore_to_refugi_info_representation(data) for data in data_list]
+        return [RefugiLliureMapper.dict_to_refugi_info_representation(data) for data in data_list]
     
     
     @staticmethod
