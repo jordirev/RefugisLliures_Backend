@@ -32,7 +32,7 @@ class TestUserDAOExtended:
         mock_doc.exists = True
         mock_doc.id = 'u1'
         mock_doc.to_dict.return_value = {
-            'uid': 'u1', 'email': 'test@test.com', 'username': 'test'
+            'uid': 'u1', 'username': 'test'
         }
         mock_db.collection.return_value.document.return_value.get.return_value = mock_doc
         
@@ -55,33 +55,6 @@ class TestUserDAOExtended:
         assert res is None
 
     @patch('api.daos.user_dao.FirestoreService')
-    def test_get_user_by_email_success(self, mock_firestore_class):
-        """Test get_user_by_email èxit"""
-        mock_db = MagicMock()
-        mock_firestore_class.return_value.get_db.return_value = mock_db
-        mock_doc = MagicMock()
-        mock_doc.id = 'u1'
-        mock_doc.to_dict.return_value = {
-            'uid': 'u1', 'email': 'test@test.com', 'username': 'test'
-        }
-        mock_db.collection.return_value.where.return_value.limit.return_value.get.return_value = [mock_doc]
-        
-        dao = UserDAO()
-        res = dao.get_user_by_email("test@test.com")
-        assert res.uid == 'u1'
-
-    @patch('api.daos.user_dao.FirestoreService')
-    def test_get_user_by_email_exception(self, mock_firestore_class):
-        """Test excepció a get_user_by_email"""
-        mock_db = MagicMock()
-        mock_firestore_class.return_value.get_db.return_value = mock_db
-        mock_db.collection.side_effect = Exception("DB Error")
-        
-        dao = UserDAO()
-        res = dao.get_user_by_email("test@test.com")
-        assert res is None
-
-    @patch('api.daos.user_dao.FirestoreService')
     @patch('api.daos.user_dao.cache_service')
     def test_update_user_success(self, mock_cache, mock_firestore_class):
         """Test update_user èxit"""
@@ -92,7 +65,7 @@ class TestUserDAOExtended:
         mock_db.collection.return_value.document.return_value.get.return_value = mock_doc
         
         dao = UserDAO()
-        assert dao.update_user("u1", {'email': 'new@test.com'}) is True
+        assert dao.update_user("u1", {'username': 'newname'}) is True
         mock_db.collection.return_value.document.return_value.update.assert_called()
         mock_cache.delete.assert_called()
 
@@ -122,7 +95,7 @@ class TestUserDAOExtended:
         mock_firestore_class.return_value.get_db.return_value = mock_db
         mock_doc = MagicMock()
         mock_doc.exists = True
-        mock_doc.to_dict.return_value = {'email': 'test@test.com'}
+        mock_doc.to_dict.return_value = {}
         mock_db.collection.return_value.document.return_value.get.return_value = mock_doc
         
         dao = UserDAO()
@@ -643,37 +616,6 @@ class TestUserDAOExtended:
         
         dao = UserDAO()
         assert dao.get_user_by_uid("u1") is None
-
-    @patch('api.daos.user_dao.FirestoreService')
-    def test_get_user_by_email_not_found(self, mock_firestore_class):
-        """Test get_user_by_email no trobat"""
-        mock_db = MagicMock()
-        mock_firestore_class.return_value.get_db.return_value = mock_db
-        mock_db.collection.return_value.where.return_value.limit.return_value.get.return_value = []
-        
-        dao = UserDAO()
-        assert dao.get_user_by_email("test@test.com") is None
-
-    @patch('api.daos.user_dao.FirestoreService')
-    @patch('api.daos.user_dao.cache_service')
-    def test_user_exists_by_email(self, mock_cache, mock_firestore_class):
-        """Test user_exists_by_email"""
-        mock_cache.get.return_value = None
-        mock_db = MagicMock()
-        mock_firestore_class.return_value.get_db.return_value = mock_db
-        
-        # Exists
-        mock_db.collection.return_value.where.return_value.limit.return_value.get.return_value = [MagicMock()]
-        dao = UserDAO()
-        assert dao.user_exists_by_email("test@test.com") is True
-        
-        # Not exists
-        mock_db.collection.return_value.where.return_value.limit.return_value.get.return_value = []
-        assert dao.user_exists_by_email("other@test.com") is False
-        
-        # Exception
-        mock_db.collection.side_effect = Exception("Error")
-        assert dao.user_exists_by_email("error@test.com") is False
 
     @patch('api.daos.user_dao.FirestoreService')
     @patch('api.daos.user_dao.cache_service')

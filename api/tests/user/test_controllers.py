@@ -73,7 +73,6 @@ class TestUserController:
         # Configurar mocks
         mock_dao = mock_dao_class.return_value
         mock_dao.get_user_by_uid.return_value = None  # No existeix
-        mock_dao.user_exists_by_email.return_value = False  # Email no en ús
         mock_dao.create_user.return_value = sample_user
         
         # Executar
@@ -98,20 +97,6 @@ class TestUserController:
         assert success is False
         assert user is None
         assert 'ja existeix' in error
-    
-    @patch('api.controllers.user_controller.UserDAO')
-    def test_create_user_duplicate_email(self, mock_dao_class, sample_user_data):
-        """Test creació d'usuari amb email duplicat"""
-        mock_dao = mock_dao_class.return_value
-        mock_dao.get_user_by_uid.return_value = None
-        mock_dao.user_exists_by_email.return_value = True  # Email en ús
-        
-        controller = UserController()
-        success, user, error = controller.create_user(sample_user_data, 'test_uid')
-        
-        assert success is False
-        assert user is None
-        assert 'ja està en ús' in error
     
     @patch('api.controllers.user_controller.UserDAO')
     def test_get_user_by_uid_success(self, mock_dao_class, sample_user):
@@ -154,7 +139,6 @@ class TestUserController:
         """Test actualització d'usuari exitosa"""
         mock_dao = mock_dao_class.return_value
         mock_dao.user_exists.return_value = True
-        mock_dao.user_exists_by_email.return_value = False
         mock_dao.update_user.return_value = True
         mock_dao.get_user_by_uid.return_value = sample_user
         
@@ -282,55 +266,6 @@ class TestUserController:
         
         controller = UserController()
         success, user, error = controller.get_user_by_uid('test_uid')
-        
-        assert success is False
-        assert user is None
-        assert 'Error intern' in error
-    
-    @patch('api.controllers.user_controller.UserDAO')
-    def test_get_user_by_email_success(self, mock_dao_class, sample_user):
-        """Test obtenció d'usuari per email exitosa"""
-        mock_dao = mock_dao_class.return_value
-        mock_dao.get_user_by_email.return_value = sample_user
-        
-        controller = UserController()
-        success, user, error = controller.get_user_by_email('test@example.com')
-        
-        assert success is True
-        assert user is not None
-        assert error is None
-    
-    @patch('api.controllers.user_controller.UserDAO')
-    def test_get_user_by_email_not_found(self, mock_dao_class):
-        """Test obtenció d'usuari per email no trobat"""
-        mock_dao = mock_dao_class.return_value
-        mock_dao.get_user_by_email.return_value = None
-        
-        controller = UserController()
-        success, user, error = controller.get_user_by_email('test@example.com')
-        
-        assert success is False
-        assert user is None
-        assert 'no trobat' in error
-    
-    @patch('api.controllers.user_controller.UserDAO')
-    def test_get_user_by_email_empty_email(self, mock_dao_class):
-        """Test obtenció d'usuari amb email buit"""
-        controller = UserController()
-        success, user, error = controller.get_user_by_email('')
-        
-        assert success is False
-        assert user is None
-        assert 'no proporcionat' in error
-    
-    @patch('api.controllers.user_controller.UserDAO')
-    def test_get_user_by_email_exception(self, mock_dao_class):
-        """Test excepció durant l'obtenció per email"""
-        mock_dao = mock_dao_class.return_value
-        mock_dao.get_user_by_email.side_effect = Exception("Query error")
-        
-        controller = UserController()
-        success, user, error = controller.get_user_by_email('test@example.com')
         
         assert success is False
         assert user is None

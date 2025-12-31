@@ -13,7 +13,6 @@ class User:
     """Model per representar un usuari"""
     uid: str
     username: str
-    email: str
     avatar_metadata: MediaMetadata = None  # Metadades amb URLs prefirmades (generades dinàmicament) {'key': str, 'url': str, 'uploaded_at': str}
     language: str = 'ca'
     favourite_refuges: Optional[list] = None # Llista d'IDs de refugis preferits
@@ -27,10 +26,6 @@ class User:
         """Validacions després de la inicialització"""
         if not self.uid:
             raise ValueError("UID és requerit")
-        if not self.email:
-            raise ValueError("Email és requerit")
-        if '@' not in self.email:
-            raise ValueError("Format d'email invàlid")
     
     def to_dict(self) -> dict:
         """Converteix l'usuari a diccionari"""
@@ -45,7 +40,6 @@ class User:
         return {
             'uid': self.uid,
             'username': self.username,
-            'email': self.email,
             'media_metadata': media_metadata,
             'avatar_metadata': self.avatar_metadata.to_dict() if self.avatar_metadata else None,
             'language': self.language,
@@ -74,7 +68,6 @@ class User:
         return cls(
             uid=data.get('uid', ''),
             username=data.get('username', ''),
-            email=data.get('email', ''),
             avatar_metadata= avatar_metadata,
             language=data.get('language', 'ca'),
             favourite_refuges=data.get('favourite_refuges', []),
@@ -87,7 +80,7 @@ class User:
     
     def __str__(self) -> str:
         """Representació textual de l'usuari"""
-        return f"User(uid={self.uid}, username={self.username}, email={self.email})"
+        return f"User(uid={self.uid}, username={self.username})"
     
     def __repr__(self) -> str:
         """Representació detallada de l'usuari"""

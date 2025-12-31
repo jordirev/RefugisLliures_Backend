@@ -101,7 +101,6 @@ ERROR_400_INVALID_DATA = openapi.Response(
         "application/json": {
             "error": "Dades invàlides",
             "details": {
-                "email": ["Aquest camp és obligatori."],
                 "language": ["Idioma no vàlid. Opcions vàlides: ca, es, en, fr"]
             }
         }

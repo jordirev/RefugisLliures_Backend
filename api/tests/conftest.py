@@ -19,7 +19,6 @@ from api.utils.timezone_utils import get_madrid_now
 
 # ============= CONFIGURACIÓ GLOBAL =============
 
-EMAIL = 'test@example.com'
 DEPARTMENT = 'Ariège'
 
 
@@ -41,7 +40,6 @@ def sample_user_data():
     return {
         'uid': 'test_uid_12345',
         'username': 'testuser',
-        'email': EMAIL,
         'avatar': 'https://example.com/avatar.jpg',
         'language': 'ca',
         'favourite_refuges': [],
@@ -66,21 +64,18 @@ def multiple_users_data():
         {
             'uid': 'uid_001',
             'username': 'user1',
-            'email': 'user1@example.com',
             'language': 'ca',
             'created_at': get_madrid_now().isoformat()
         },
         {
             'uid': 'uid_002',
             'username': 'user2',
-            'email': 'user2@example.com',
             'language': 'es',
             'created_at': get_madrid_now().isoformat()
         },
         {
             'uid': 'uid_003',
             'username': 'user3',
-            'email': 'user3@example.com',
             'language': 'en',
             'created_at': get_madrid_now().isoformat()
         }
@@ -91,10 +86,8 @@ def multiple_users_data():
 def invalid_user_data():
     """Dades d'usuari invàlides per tests"""
     return [
-        {'uid': '', 'email': EMAIL},  # UID buit
-        {'uid': 'test_uid', 'email': ''},  # Email buit
-        {'uid': 'test_uid', 'email': 'invalid_email'},  # Email sense @
-        {'uid': 'test_uid', 'email': EMAIL, 'language': 'invalid_lang'}  # Idioma invàlid
+        {'uid': ''},  # UID buit
+        {'uid': 'test_uid', 'language': 'invalid_lang'}  # Idioma invàlid
     ]
 
 
@@ -362,7 +355,7 @@ def mock_authenticated_request():
         
         # Afegeix els atributs que el middleware de Firebase afegeix
         request.user_uid = uid
-        request.firebase_user = {'uid': uid, 'email': f'{uid}@example.com'}
+        request.firebase_user = {'uid': uid}
         
         # Mock de l'usuari autenticat de DRF
         request.user = MagicMock()
@@ -425,30 +418,6 @@ def refugi_mapper():
 # ============= FIXTURES DE VALIDACIÓ =============
 
 @pytest.fixture
-def valid_emails():
-    """Llista d'emails vàlids per tests"""
-    return [
-        EMAIL,
-        'user.name@domain.co.uk',
-        'first.last+tag@example.com',
-        'test_user@test-domain.com'
-    ]
-
-
-@pytest.fixture
-def invalid_emails():
-    """Llista d'emails invàlids per tests"""
-    return [
-        'invalid_email',
-        '@example.com',
-        'test@',
-        'test @example.com',
-        '',
-        None
-    ]
-
-
-@pytest.fixture
 def valid_languages():
     """Llista d'idiomes vàlids"""
     return ['ca', 'es', 'en', 'fr']
@@ -467,7 +436,6 @@ def assert_user_equals():
     """Helper per comparar usuaris"""
     def _assert_equals(user1, user2):
         assert user1.uid == user2.uid
-        assert user1.email == user2.email
         assert user1.username == user2.username
         assert user1.language == user2.language
     return _assert_equals

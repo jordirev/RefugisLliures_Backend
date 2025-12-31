@@ -47,16 +47,11 @@ class UserMapper:
         Returns:
             tuple: (és_vàlid, missatge_error)
         """
-        required_fields = ['uid', 'email']
+        required_fields = ['uid']
         
         for field in required_fields:
             if not firebase_data.get(field):
                 return False, f"Camp requerit '{field}' no trobat o buit"
-        
-        # Validació bàsica d'email
-        email = firebase_data.get('email')
-        if '@' not in email:
-            return False, "Format d'email invàlid"
         
         # Validació d'idioma
         language = firebase_data.get('language', 'ca')
@@ -78,9 +73,6 @@ class UserMapper:
             Dict: Diccionari netejat
         """
         cleaned_data = firebase_data.copy()
-        
-        if 'email' in cleaned_data and isinstance(cleaned_data['email'], str):
-            cleaned_data['email'] = cleaned_data['email'].lower().strip()
         
         if 'username' in cleaned_data and isinstance(cleaned_data['username'], str):
             cleaned_data['username'] = cleaned_data['username'].strip()
