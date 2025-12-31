@@ -12,7 +12,7 @@ class DateValidationMixin:
     @staticmethod
     def validate_dates(ini_date, fin_date):
         """
-        Valida que la data d'inici sigui anterior a la de finalització
+        Valida que la data d'inici sigui anterior o igual a la de finalització
         
         Args:
             ini_date: Data d'inici
@@ -21,7 +21,7 @@ class DateValidationMixin:
         Raises:
             serializers.ValidationError: Si les dates no són vàlides
         """
-        if ini_date >= fin_date:
+        if ini_date > fin_date:
             raise serializers.ValidationError({
                 'fin_date': "La data de finalització ha de ser posterior a la data d'inici"
             })
