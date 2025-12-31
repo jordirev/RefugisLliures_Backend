@@ -78,10 +78,8 @@ class UsersCollectionAPIView(APIView):
         operation_description="Crea un nou usuari. \nRequereix autenticació amb token JWT de Firebase.",
         request_body=openapi.Schema(
             type=openapi.TYPE_OBJECT,
-            required=['email'],
             properties={
                 'username': openapi.Schema(type=openapi.TYPE_STRING, description="Nom d'usuari"),
-                'email': openapi.Schema(type=openapi.TYPE_STRING, format='email', description="Adreça de correu electrònic"),
                 'avatar': openapi.Schema(type=openapi.TYPE_STRING, format='uri', description="URL de l'avatar de l'usuari"),
                 'language': openapi.Schema(type=openapi.TYPE_STRING, description="Idioma preferit (ca, es, en, fr)", default='ca')
             },
@@ -201,7 +199,6 @@ class UserDetailAPIView(APIView):
             type=openapi.TYPE_OBJECT,
             properties={
                 'username': openapi.Schema(type=openapi.TYPE_STRING, description="Nom d'usuari"),
-                'email': openapi.Schema(type=openapi.TYPE_STRING, format='email', description="Adreça de correu electrònic"),
                 'avatar': openapi.Schema(type=openapi.TYPE_STRING, format='uri', description="URL de l'avatar de l'usuari"),
                 'language': openapi.Schema(type=openapi.TYPE_STRING, description="Idioma preferit (ca, es, en, fr)")
             },
