@@ -53,7 +53,6 @@ def decoded_token():
     """Token decodificat de mostra"""
     return {
         'uid': 'test_uid_12345',
-        'email': 'test@example.com',
         'email_verified': True,
         'name': 'Test User'
     }
@@ -64,7 +63,6 @@ def mock_firebase_user():
     """Mock d'usuari Firebase"""
     user = Mock()
     user.uid = 'test_uid_12345'
-    user.email = 'test@example.com'
     user.is_authenticated = True
     user.is_anonymous = False
     return user
@@ -277,7 +275,6 @@ class TestFirebaseAuthentication:
         assert result is not None
         user, token = result
         assert user.uid == 'test_uid_12345'
-        assert user.email == 'test@example.com'
         assert user.is_authenticated is True
         assert user.is_anonymous is False
         assert token == decoded_token
@@ -327,7 +324,6 @@ class TestFirebaseAuthentication:
         assert result is not None
         user, token = result
         assert user.uid == 'test_uid_12345'
-        assert user.email == 'test@example.com'
         assert user.is_authenticated is True
         assert token == decoded_token
         mock_verify.assert_called_once_with(valid_token)

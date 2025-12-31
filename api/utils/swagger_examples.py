@@ -7,7 +7,6 @@ Exemples reutilitzables per a la documentació Swagger/OpenAPI
 EXAMPLE_USER_BASIC = {
     'uid': 'uid_123abc',
     'username': 'joan_muntanyenc',
-    'email': 'joan@example.com',
     'avatar': 'https://example.com/avatar.jpg',
     'language': 'ca',
     'favourite_refuges': [],
@@ -21,7 +20,6 @@ EXAMPLE_USER_BASIC = {
 EXAMPLE_USER_WITH_DATA = {
     'uid': 'uid_456def',
     'username': 'joan_muntanyenc',
-    'email': 'joan@example.com',
     'avatar': 'https://example.com/avatar.jpg',
     'language': 'ca',
     'favourite_refuges': ['refugi_1', 'refugi_2'],
@@ -35,7 +33,6 @@ EXAMPLE_USER_WITH_DATA = {
 EXAMPLE_USER_UPDATED = {
     'uid': 'uid_789ghi',
     'username': 'joan_muntanyenc_updated',
-    'email': 'joan_updated@example.com',
     'avatar': 'https://example.com/new_avatar.jpg',
     'language': 'es',
     'favourite_refuges': ['refugi_1', 'refugi_2'],
@@ -272,7 +269,6 @@ EXAMPLE_RENOVATION_PARTICIPANT_REMOVED = {
 
 EXAMPLE_USER_CREATE_REQUEST = {
     'username': 'joan_muntanyenc',
-    'email': 'joan@example.com',
     'avatar': 'https://example.com/avatar.jpg',
     'language': 'ca'
 }

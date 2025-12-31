@@ -28,7 +28,6 @@ class FirebaseAuthentication(authentication.BaseAuthentication):
             user_claims = getattr(request, 'user_claims', {})
             user = type('FirebaseUser', (), {
                 'uid': request.user_uid,
-                'email': request.firebase_user.get('email'),
                 'is_authenticated': True,
                 'is_anonymous': False,
                 'claims': user_claims,
@@ -53,7 +52,6 @@ class FirebaseAuthentication(authentication.BaseAuthentication):
             # Crea un objecte d'usuari amb la informació del token
             user = type('FirebaseUser', (), {
                 'uid': decoded_token.get('uid'),
-                'email': decoded_token.get('email'),
                 'is_authenticated': True,
                 'is_anonymous': False,
                 'claims': decoded_token,

@@ -5,7 +5,6 @@ from rest_framework import serializers
 from ..models.user import User
 
 USERNAME_HELPER_TEXT = "Nom d'usuari"
-EMAIL_HELPER_TEXT = "Adreça de correu electrònic"
 URL_AVATAR_HELPER_TEXT = "URL de l'avatar de l'usuari"
 LANGUAGE_HELPER_TEXT = "Idioma preferit de l'usuari (codi ISO 639-1, ex: 'ca', 'es', 'en', 'fr')"
 
@@ -13,15 +12,6 @@ class UserValidatorMixin:
     """Mixin amb validadors comuns per a usuaris"""
     
     VALID_LANGUAGES = ['ca', 'es', 'en', 'fr']
-    
-    @staticmethod
-    def validate_email_field(value, required=True):
-        """Validador reutilitzable per a email"""
-        if not value or not value.strip():
-            if required:
-                raise serializers.ValidationError("Email és requerit")
-            return value
-        return value.strip().lower()
     
     @staticmethod
     def validate_username_field(value, required=False):
@@ -72,9 +62,6 @@ class UserSerializer(UserValidatorMixin, serializers.Serializer):
         required=False, 
         help_text=USERNAME_HELPER_TEXT
     )
-    email = serializers.EmailField(
-        help_text=EMAIL_HELPER_TEXT
-    )    
     avatar_metadata = MediaMetadataSerializer(
         required=False,
         allow_null=True,
@@ -116,9 +103,6 @@ class UserSerializer(UserValidatorMixin, serializers.Serializer):
     def validate_uid(self, value):
         return self.validate_uid_field(value)
     
-    def validate_email(self, value):
-        return self.validate_email_field(value, required=True)
-    
     def validate_username(self, value):
         return self.validate_username_field(value, required=False)
     
@@ -141,7 +125,6 @@ class UserSerializer(UserValidatorMixin, serializers.Serializer):
     def update(self, instance, validated_data):
         """Actualitza una instància d'usuari"""
         instance.username = validated_data.get('username', instance.username)
-        instance.email = validated_data.get('email', instance.email)
         instance.avatar = validated_data.get('avatar', instance.avatar)
         return instance
 
@@ -150,12 +133,8 @@ class UserCreateSerializer(UserValidatorMixin, serializers.Serializer):
 
     username = serializers.CharField(max_length=255, allow_blank=True, required=False, 
                                    help_text=USERNAME_HELPER_TEXT)
-    email = serializers.EmailField(help_text=EMAIL_HELPER_TEXT)
     language = serializers.CharField(default='ca', max_length=5, required=False,
                                 help_text=LANGUAGE_HELPER_TEXT)
-    
-    def validate_email(self, value):
-        return self.validate_email_field(value, required=True)
     
     def validate_username(self, value):
         return self.validate_username_field(value, required=False)
@@ -168,12 +147,8 @@ class UserUpdateSerializer(UserValidatorMixin, serializers.Serializer):
     
     username = serializers.CharField(max_length=255, allow_blank=True, required=False, 
                                    help_text=USERNAME_HELPER_TEXT)
-    email = serializers.EmailField(required=False, help_text=EMAIL_HELPER_TEXT)
     language = serializers.CharField(default='ca', max_length=5, required=False,
                                 help_text=LANGUAGE_HELPER_TEXT)
-    
-    def validate_email(self, value):
-        return self.validate_email_field(value, required=False)
     
     def validate_username(self, value):
         return self.validate_username_field(value, required=False)

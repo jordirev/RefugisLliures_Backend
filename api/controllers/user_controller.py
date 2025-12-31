@@ -43,11 +43,6 @@ class UserController:
             if existing_user:
                 return False, None, f"Usuari amb UID {uid} ja existeix"
             
-            # Comprova si l'email ja està en ús
-            email_exists = self.user_dao.user_exists_by_email(user_data['email'])
-            if email_exists:
-                return False, None, f"Email {user_data['email']} ja està en ús"
-            
             # Afegeix el UID a les dades de l'usuari
             user_data['uid'] = uid
 
@@ -90,30 +85,6 @@ class UserController:
             logger.error(f"Error en get_user_by_uid: {str(e)}")
             return False, None, f"Error intern: {str(e)}"
     
-    def get_user_by_email(self, email: str) -> tuple[bool, Optional[User], Optional[str]]:
-        """
-        Obté un usuari per email
-        
-        Args:
-            email: Email de l'usuari
-            
-        Returns:
-            tuple: (success, user_object, error_message)
-        """
-        try:
-            if not email:
-                return False, None, "Email no proporcionat"
-            
-            user = self.user_dao.get_user_by_email(email.lower().strip())
-            if not user:
-                return False, None, f"Usuari amb email {email} no trobat"
-            
-            return True, user, None
-            
-        except Exception as e:
-            logger.error(f"Error en get_user_by_email: {str(e)}")
-            return False, None, f"Error intern: {str(e)}"
-    
     def update_user(self, uid: str, user_data: Dict[str, Any]) -> tuple[bool, Optional[User], Optional[str]]:
         """
         Actualitza les dades d'un usuari
@@ -135,20 +106,6 @@ class UserController:
         
             if not user_data:
                 return False, None, "No s'han proporcionat dades per actualitzar"
-
-            # Si s'envia un email a actualitzar, comprova que no estigui en ús per un altre usuari
-            if 'email' in user_data and user_data.get('email'):
-                # Normalitza l'email abans de la cerca
-                email_normalized = user_data['email'].lower().strip()
-                # Comprova si l'email existeix
-                email_exists = self.user_dao.user_exists_by_email(email_normalized)
-                if email_exists:
-                    # Si existeix, obté l'usuari per veure si és el mateix
-                    existing_user = self.user_dao.get_user_by_email(email_normalized)
-                    if existing_user and existing_user.uid != uid:
-                        return False, None, f"Email {user_data['email']} ja està en ús"
-                # Re-escriu l'email normalitzat al payload per consistència
-                user_data['email'] = email_normalized
             
             # Actualitza a Firebase
             success = self.user_dao.update_user(uid, user_data)
