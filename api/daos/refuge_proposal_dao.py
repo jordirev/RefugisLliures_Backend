@@ -294,7 +294,6 @@ class CreateRefugeStrategy(ProposalApprovalStrategy):
             proposal_ref.update({'refuge_id': new_refugi_id})
             
             # Invalidar cache de llistes de refugis
-            cache_service.delete_pattern('refugi_list:*')
             cache_service.delete_pattern('refugi_search:*')
             cache_service.delete_pattern('refugi_coords:*')
             
@@ -373,9 +372,10 @@ class UpdateRefugeStrategy(ProposalApprovalStrategy):
             
             # Invalidar cache relacionada amb aquest refugi
             cache_service.delete(cache_service.generate_key('refugi_detail', refugi_id=proposal.refuge_id))
-            cache_service.delete_pattern('refugi_list:*')
-            cache_service.delete_pattern('refugi_search:*')
-            cache_service.delete_pattern('refugi_coords:*')
+            # NO invalidem refugi_search perquè les IDs no canvien (només update)
+            # Només invalidem refugi_coords si 'coord' o 'name' estan al payload
+            if 'coord' in update_data or 'name' in update_data:
+                cache_service.delete_pattern('refugi_coords:*')
             
             logger.info(f"Refugi {proposal.refuge_id} actualitzat des de la proposta {proposal.id}")
             return True, None
@@ -545,7 +545,6 @@ class DeleteRefugeStrategy(ProposalApprovalStrategy):
             
             # Invalidar cache relacionada amb aquest refugi
             cache_service.delete(cache_service.generate_key('refugi_detail', refugi_id=proposal.refuge_id))
-            cache_service.delete_pattern('refugi_list:*')
             cache_service.delete_pattern('refugi_search:*')
             cache_service.delete_pattern('refugi_coords:*')
             
@@ -645,7 +644,7 @@ class RefugeProposalDAO:
             return None
     
     def list_all(self, filters: Optional[Dict[str, Any]] = None) -> List[RefugeProposal]:
-        """Llista totes les propostes amb filtres opcionals amb cache
+        """Llista totes les propostes amb filtres opcionals amb cache i ID caching
         
         Args:
             filters: Diccionari amb filtres opcionals:
@@ -663,42 +662,60 @@ class RefugeProposalDAO:
             creator_uid=filters.get('creator_uid', 'all')
         )
         
-        cached_data = cache_service.get(cache_key)
-        if cached_data is not None:
-            return self.mapper.firestore_list_to_models(cached_data)
-        
         try:
-            db = firestore_service.get_db()
-            query = db.collection(self.collection_name)
-            
-            # Construir la query amb els filtres
-            filters_applied = []
+            # Funció per obtenir TOTES les dades completes d'una des de Firestore
+            def fetch_all():
+                db = firestore_service.get_db()
+                query = db.collection(self.collection_name)
+                
+                # Construir la query amb els filtres
+                filters_applied = []
 
-            if filters.get('status'):
-                query = query.where('status', '==', filters['status'])
-                filters_applied.append(f"status={filters['status']}")
+                if filters.get('status'):
+                    query = query.where('status', '==', filters['status'])
+                    filters_applied.append(f"status={filters['status']}")
+                
+                if filters.get('refuge_id'):
+                    query = query.where('refuge_id', '==', filters['refuge_id'])
+                    filters_applied.append(f"refuge_id={filters['refuge_id']}")
+                
+                if filters.get('creator_uid'):
+                    query = query.where('creator_uid', '==', filters['creator_uid'])
+                    filters_applied.append(f"creator_uid={filters['creator_uid']}")
+                
+                if not filters_applied:
+                    logger.log(23, f"Firestore READ: collection={self.collection_name} (all proposals)")
+                else:
+                    logger.log(23, f"Firestore READ: collection={self.collection_name} with filters: {', '.join(filters_applied)}")
+                
+                # Ordenar per data de creació (més recents primer)
+                query = query.order_by('created_at', direction=firestore.Query.DESCENDING)
+                
+                docs = query.stream()
+                return [doc.to_dict() for doc in docs]
             
-            if filters.get('refuge_id'):
-                query = query.where('refuge_id', '==', filters['refuge_id'])
-                filters_applied.append(f"refuge_id={filters['refuge_id']}")
+            # Funció per obtenir una proposta individual per ID
+            def fetch_single(proposal_id: str):
+                db = firestore_service.get_db()
+                doc_ref = db.collection(self.collection_name).document(proposal_id)
+                logger.log(23, f"Firestore READ: collection={self.collection_name} document={proposal_id}")
+                doc = doc_ref.get()
+                return doc.to_dict() if doc.exists else None
             
-            if filters.get('creator_uid'):
-                query = query.where('creator_uid', '==', filters['creator_uid'])
-                filters_applied.append(f"creator_uid={filters['creator_uid']}")
+            # Funció per extreure l'ID d'una proposta
+            def get_id(proposal_data: Dict[str, Any]) -> str:
+                return proposal_data['id']
             
-            if not filters_applied:
-                logger.log(23, f"Firestore READ: collection={self.collection_name} (all proposals)")
-            else:
-                logger.log(23, f"Firestore READ: collection={self.collection_name} with filters: {', '.join(filters_applied)}")
-            
-            # Ordenar per data de creació (més recents primer)
-            query = query.order_by('created_at', direction=firestore.Query.DESCENDING)
-            
-            docs = query.stream()
-            proposals_data = [doc.to_dict() for doc in docs]
-            
-            timeout = cache_service.get_timeout('proposal_list')
-            cache_service.set(cache_key, proposals_data, timeout)
+            # Usar estratègia ID caching del cache_service
+            proposals_data = cache_service.get_or_fetch_list(
+                list_cache_key=cache_key,
+                detail_key_prefix='proposal_detail',
+                fetch_all_fn=fetch_all,
+                fetch_single_fn=fetch_single,
+                get_id_fn=get_id,
+                list_timeout=cache_service.get_timeout('proposal_list'),
+                detail_timeout=cache_service.get_timeout('proposal_detail')
+            )
             
             return self.mapper.firestore_list_to_models(proposals_data)
             
@@ -739,9 +756,8 @@ class RefugeProposalDAO:
                 'reviewed_at': get_madrid_now().isoformat()
             })
             
-            # Invalidar cache
+            # Invalidar cache (només detail, la list no canvia en updates)
             cache_service.delete_pattern(f'proposal_detail:proposal_id:{proposal_id}:*')
-            cache_service.delete_pattern('proposal_list:*')
             
             return True, None
             
@@ -776,9 +792,8 @@ class RefugeProposalDAO:
             logger.log(23, f"Firestore UPDATE: collection={self.collection_name} document={proposal_id} (REJECT)")
             proposal_ref.update(update_data)
             
-            # Invalidar cache
+            # Invalidar cache (només detail, la list no canvia en updates)
             cache_service.delete_pattern(f'proposal_detail:proposal_id:{proposal_id}:*')
-            cache_service.delete_pattern('proposal_list:*')
             
             return True, None
             
@@ -814,8 +829,7 @@ class RefugeProposalDAO:
                 # Invalida cache de detall
                 cache_service.delete_pattern(f'proposal_detail:proposal_id:{proposal_doc.id}:*')
             
-            # Invalida cache de llistes
-            cache_service.delete_pattern('proposal_list:*')
+            # NO invalidem proposal_list perquè les IDs no canvien (només update)
             
             logger.info(f"{anonymized_count} proposals anonimitzades del creador {creator_uid}")
             return True, None

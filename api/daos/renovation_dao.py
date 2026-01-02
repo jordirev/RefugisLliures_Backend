@@ -110,7 +110,7 @@ class RenovationDAO:
     
     def get_all_renovations(self) -> List[Renovation]:
         """
-        Obté totes les renovations actives (fin_date >= data actual en zona horaria Madrid)
+        Obté totes les renovations actives (fin_date >= data actual en zona horaria Madrid) amb ID caching
         Filtra directament a Firestore per optimitzar la consulta
         
         Returns:
@@ -120,31 +120,52 @@ class RenovationDAO:
         madrid_today = get_madrid_today()
         cache_key = cache_service.generate_key('renovation_list', list_type='active', date=madrid_today.isoformat())
         
-        # Intenta obtenir de cache
-        cached_data = cache_service.get(cache_key)
-        if cached_data is not None:
-            return self.mapper.firestore_list_to_models(cached_data)
-        
         try:
-            db = self.firestore_service.get_db()
-            madrid_today_str = madrid_today.isoformat()
+            # Funció per obtenir TOTES les dades completes d'una des de Firestore
+            def fetch_all():
+                db = self.firestore_service.get_db()
+                madrid_today_str = madrid_today.isoformat()
+                
+                # Filtrar directament a Firestore per obtenir només renovations actives
+                logger.log(23, f"Firestore READ: collection={self.COLLECTION_NAME} where fin_date>={madrid_today_str}")
+                query = db.collection(self.COLLECTION_NAME)\
+                            .where('fin_date', '>=', madrid_today_str)\
+                            .order_by('ini_date')
+                docs = query.stream()
+                
+                renovations_data = []
+                for doc in docs:
+                    renovation_data = doc.to_dict()
+                    renovation_data['id'] = doc.id
+                    renovations_data.append(renovation_data)
+                return renovations_data
             
-            # Filtrar directament a Firestore per obtenir només renovations actives
-            logger.log(23, f"Firestore READ: collection={self.COLLECTION_NAME} where fin_date>={madrid_today_str}")
-            query = db.collection(self.COLLECTION_NAME)\
-                        .where('fin_date', '>=', madrid_today_str)\
-                        .order_by('ini_date')
-            docs = query.stream()
+            # Funció per obtenir una renovation individual per ID
+            def fetch_single(renovation_id: str):
+                db = self.firestore_service.get_db()
+                doc_ref = db.collection(self.COLLECTION_NAME).document(renovation_id)
+                logger.log(23, f"Firestore READ: collection={self.COLLECTION_NAME} document={renovation_id}")
+                doc = doc_ref.get()
+                if doc.exists:
+                    renovation_data = doc.to_dict()
+                    renovation_data['id'] = doc.id
+                    return renovation_data
+                return None
             
-            renovations_data = []
-            for doc in docs:
-                renovation_data = doc.to_dict()
-                renovation_data['id'] = doc.id
-                renovations_data.append(renovation_data)
+            # Funció per extreure l'ID d'una renovation
+            def get_id(renovation_data: Dict[str, Any]) -> str:
+                return renovation_data['id']
             
-            # Guarda a cache amb timeout més curt (les dades canvien cada dia)
-            timeout = cache_service.get_timeout('renovation_list')
-            cache_service.set(cache_key, renovations_data, timeout)
+            # Usar estratègia ID caching del cache_service
+            renovations_data = cache_service.get_or_fetch_list(
+                list_cache_key=cache_key,
+                detail_key_prefix='renovation_detail',
+                fetch_all_fn=fetch_all,
+                fetch_single_fn=fetch_single,
+                get_id_fn=get_id,
+                list_timeout=cache_service.get_timeout('renovation_list'),
+                detail_timeout=cache_service.get_timeout('renovation_detail')
+            )
             
             logger.log(23, f"Trobades {len(renovations_data)} renovations actives")
             return self.mapper.firestore_list_to_models(renovations_data)
@@ -193,9 +214,8 @@ class RenovationDAO:
             # Actualitza només els camps proporcionats
             doc_ref.update(update_data)
             
-            # Invalida cache
+            # Invalida cache (només detail, la list no canvia en updates)
             cache_service.delete(cache_service.generate_key('renovation_detail', renovation_id=renovation_id))
-            cache_service.delete_pattern('renovation_list:*')
             if refuge_id:
                 cache_service.delete_pattern(f'renovation_refuge:{refuge_id}:*')
             
@@ -401,9 +421,8 @@ class RenovationDAO:
             participants.append(participant_uid)
             doc_ref.update({'participants_uids': participants})
             
-            # Invalida cache de la renovation
+            # Invalida cache de la renovation (només detail, la list no canvia en updates)
             cache_service.delete(cache_service.generate_key('renovation_detail', renovation_id=renovation_id))
-            cache_service.delete_pattern('renovation_list:*')
             if refuge_id:
                 cache_service.delete_pattern(f'renovation_refuge:{refuge_id}:*')
             
@@ -459,9 +478,8 @@ class RenovationDAO:
             
             doc_ref.update(update_data)
             
-            # Invalida cache de la renovation
+            # Invalida cache de la renovation (només detail, la list no canvia en updates)
             cache_service.delete(cache_service.generate_key('renovation_detail', renovation_id=renovation_id))
-            cache_service.delete_pattern('renovation_list:*')
             if refuge_id:
                 cache_service.delete_pattern(f'renovation_refuge:{refuge_id}:*')
             
@@ -471,6 +489,62 @@ class RenovationDAO:
         except Exception as e:
             logger.error(f"Error eliminant participant de renovation {renovation_id}: {str(e)}")
             return False
+        
+    def delete_current_renovations_by_creator(self, creator_uid: str) -> tuple[bool, Optional[Dict[str, int]], Optional[str]]:
+        """
+        Elimina totes les renovations actuals (fin_date >= data actual en zona horaria Madrid) creades per un usuari
+        
+        Args:
+            creator_uid: UID del creador
+            
+        Returns:
+            Tuple (èxit: bool, diccionari de participants: Optional[Dict[str, int]],  missatge d'error: Optional[str])
+            El diccionari conté uid del participant com a clau i nombre d'aparicions com a valor
+        """
+        try:
+            db = self.firestore_service.get_db()
+            madrid_today_str = get_madrid_today().isoformat()
+            
+            # Obtenir totes les renovations actuals del creador
+            logger.log(23, f"Firestore QUERY: collection={self.COLLECTION_NAME} where creator_uid=={creator_uid} AND fin_date>={madrid_today_str}")
+            renovations_query = db.collection(self.COLLECTION_NAME)\
+                .where('creator_uid', '==', creator_uid)\
+                .where('fin_date', '>=', madrid_today_str).stream()
+            
+            deleted_count = 0
+            refuge_ids = set()
+            participants_count: Dict[str, int] = {}
+            
+            for renovation_doc in renovations_query:
+                renovation_data = renovation_doc.to_dict()
+                refuge_id = renovation_data.get('refuge_id')
+                if refuge_id:
+                    refuge_ids.add(refuge_id)
+                
+                # Recopilar participants
+                participants_uids = renovation_data.get('participants_uids', [])
+                for participant_uid in participants_uids:
+                    participants_count[participant_uid] = participants_count.get(participant_uid, 0) + 1
+                
+                # Eliminar la renovation
+                logger.log(23, f"Firestore DELETE: collection={self.COLLECTION_NAME} document={renovation_doc.id} (delete current)")
+                renovation_doc.reference.delete()
+                deleted_count += 1
+                
+                # Invalida cache de detall
+                cache_service.delete(cache_service.generate_key('renovation_detail', renovation_id=renovation_doc.id))
+            
+            # Invalida cache de llistes
+            cache_service.delete_pattern('renovation_list:*')
+            for refuge_id in refuge_ids:
+                cache_service.delete_pattern(f'renovation_refuge:{refuge_id}:*')
+            
+            logger.info(f"{deleted_count} renovations actuals eliminades del creador {creator_uid}")
+            return True, participants_count, None
+            
+        except Exception as e:
+            logger.error(f"Error eliminant renovations actuals del creador {creator_uid}: {str(e)}")
+            return False, None, str(e)
     
     def anonymize_renovations_by_creator(self, creator_uid: str) -> tuple[bool, Optional[str]]:
         """
@@ -510,7 +584,6 @@ class RenovationDAO:
                 cache_service.delete(cache_service.generate_key('renovation_detail', renovation_id=renovation_doc.id))
             
             # Invalida cache de llistes
-            cache_service.delete_pattern('renovation_list:*')
             for refuge_id in refuge_ids:
                 cache_service.delete_pattern(f'renovation_refuge:{refuge_id}:*')
             
@@ -556,8 +629,8 @@ class RenovationDAO:
                 # Invalida cache de detall
                 cache_service.delete(cache_service.generate_key('renovation_detail', renovation_id=renovation_doc.id))
             
-            # Invalida cache de llistes
-            cache_service.delete_pattern('renovation_list:*')
+            # NO invalidem renovation_list perquè les IDs no canvien (només update)
+            # Invalida cache de refuge específics
             for refuge_id in refuge_ids:
                 cache_service.delete_pattern(f'renovation_refuge:{refuge_id}:*')
             

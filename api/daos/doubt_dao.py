@@ -99,7 +99,7 @@ class DoubtDAO:
     
     def get_doubts_by_refuge_id(self, refuge_id: str) -> List[Doubt]:
         """
-        Obté tots els dubtes d'un refugi amb totes les seves respostes
+        Obté tots els dubtes d'un refugi amb totes les seves respostes amb ID caching
         
         Args:
             refuge_id: ID del refugi
@@ -110,48 +110,70 @@ class DoubtDAO:
         # Genera clau de cache
         cache_key = cache_service.generate_key('doubt_list', refuge_id=refuge_id)
         
-        # Intenta obtenir de cache
-        cached_data = cache_service.get(cache_key)
-        if cached_data is not None:
+        try:
+            # Funció per obtenir TOTES les dades completes (amb respostes) d'una des de Firestore
+            def fetch_all():
+                db = self.firestore_service.get_db()
+                
+                # Obtenir tots els dubtes del refugi ordenats per created_at descendent
+                doubts_ref = db.collection(self.COLLECTION_NAME).where('refuge_id', '==', refuge_id).order_by('created_at', direction='DESCENDING')
+                logger.log(23, f"Firestore READ: collection={self.COLLECTION_NAME} where refuge_id=={refuge_id}")
+                doubts_docs = doubts_ref.stream()
+                
+                doubts_data = []
+                for doubt_doc in doubts_docs:
+                    doubt_data = doubt_doc.to_dict()
+                    doubt_data['id'] = doubt_doc.id
+                    
+                    # Obtenir totes les respostes del dubte ordenades per created_at ascendent
+                    answers = self._get_answers_by_doubt_id(doubt_doc.id)
+                    
+                    # Preparar dades amb respostes
+                    doubt_data['answers'] = [answer.to_dict() for answer in answers]
+                    doubts_data.append(doubt_data)
+                
+                return doubts_data
+            
+            # Funció per obtenir un dubte individual (amb respostes) per ID
+            def fetch_single(doubt_id: str):
+                db = self.firestore_service.get_db()
+                doc_ref = db.collection(self.COLLECTION_NAME).document(doubt_id)
+                logger.log(23, f"Firestore READ: collection={self.COLLECTION_NAME} document={doubt_id}")
+                doc = doc_ref.get()
+                
+                if not doc.exists:
+                    return None
+                
+                doubt_data = doc.to_dict()
+                doubt_data['id'] = doc.id
+                
+                # Obtenir totes les respostes del dubte
+                answers = self._get_answers_by_doubt_id(doubt_id)
+                doubt_data['answers'] = [answer.to_dict() for answer in answers]
+                return doubt_data
+            
+            # Funció per extreure l'ID d'un dubte
+            def get_id(doubt_data: Dict[str, Any]) -> str:
+                return doubt_data['id']
+            
+            # Usar estratègia ID caching del cache_service
+            doubts_data = cache_service.get_or_fetch_list(
+                list_cache_key=cache_key,
+                detail_key_prefix='doubt_detail',
+                fetch_all_fn=fetch_all,
+                fetch_single_fn=fetch_single,
+                get_id_fn=get_id,
+                list_timeout=cache_service.get_timeout('doubt_list'),
+                detail_timeout=cache_service.get_timeout('doubt_detail')
+            )
+            
             # Convertir dades de cache a models
             doubts = []
-            for doubt_data in cached_data:
+            for doubt_data in doubts_data:
                 answers_data = doubt_data.pop('answers', [])
                 answers = self.answer_mapper.firestore_list_to_models(answers_data)
                 doubt = self.doubt_mapper.firestore_to_model(doubt_data, answers)
                 doubts.append(doubt)
-            return doubts
-        
-        try:
-            db = self.firestore_service.get_db()
-            
-            # Obtenir tots els dubtes del refugi ordenats per created_at descendent
-            doubts_ref = db.collection(self.COLLECTION_NAME).where('refuge_id', '==', refuge_id).order_by('created_at', direction='DESCENDING')
-            logger.log(23, f"Firestore READ: collection={self.COLLECTION_NAME} where refuge_id=={refuge_id}")
-            doubts_docs = doubts_ref.stream()
-            
-            doubts = []
-            doubts_for_cache = []
-            
-            for doubt_doc in doubts_docs:
-                doubt_data = doubt_doc.to_dict()
-                doubt_data['id'] = doubt_doc.id
-                
-                # Obtenir totes les respostes del dubte ordenades per created_at ascendent
-                answers = self._get_answers_by_doubt_id(doubt_doc.id)
-                
-                # Crear model Doubt amb les seves respostes
-                doubt = self.doubt_mapper.firestore_to_model(doubt_data, answers)
-                doubts.append(doubt)
-                
-                # Preparar dades per cache
-                doubt_cache_data = doubt_data.copy()
-                doubt_cache_data['answers'] = [answer.to_dict() for answer in answers]
-                doubts_for_cache.append(doubt_cache_data)
-            
-            # Guarda a cache
-            timeout = cache_service.get_timeout('doubt_list')
-            cache_service.set(cache_key, doubts_for_cache, timeout)
             
             logger.info(f"Obtinguts {len(doubts)} dubtes per al refugi {refuge_id}")
             return doubts
@@ -220,8 +242,8 @@ class DoubtDAO:
             
             logger.info(f"Resposta creada amb ID: {doc_ref.id} per al dubte {doubt_id}")
             
-            # Invalida cache
-            self._invalidate_doubt_cache(doubt_id)
+            # Invalida cache (només detail, la list no canvia en updates)
+            self._invalidate_doubt_detail_cache(doubt_id)
             
             # Retornar la instància del model
             return self.answer_mapper.firestore_to_model(answer_data)
@@ -286,8 +308,8 @@ class DoubtDAO:
             
             logger.info(f"Resposta eliminada amb ID: {answer_id}")
             
-            # Invalida cache
-            self._invalidate_doubt_cache(doubt_id)
+            # Invalida cache (només detail, la list no canvia en updates)
+            self._invalidate_doubt_detail_cache(doubt_id)
             
             return True
             
@@ -333,22 +355,31 @@ class DoubtDAO:
             logger.error(f"Error eliminant dubte amb ID {doubt_id}: {str(e)}")
             return False
     
+    def _invalidate_doubt_detail_cache(self, doubt_id: str):
+        """
+        Invalida només la cache de detall d'un dubte específic
+        
+        Args:
+            doubt_id: ID del dubte
+        """
+        cache_service.delete_pattern(f"doubt_detail:doubt_id:{doubt_id}")
+    
     def _invalidate_doubt_cache(self, doubt_id: str):
         """
-        Invalida la cache relacionada amb un dubte
+        Invalida la cache relacionada amb un dubte (detail + list)
         
         Args:
             doubt_id: ID del dubte
         """
         try:
+            # Invalida cache del dubte específic
+            self._invalidate_doubt_detail_cache(doubt_id)
+            
             # Obtenir el dubte per saber el refuge_id
             doubt = self.get_doubt_by_id(doubt_id)
             if doubt:
                 # Invalida cache de la llista de dubtes del refugi
                 cache_service.delete_pattern(f"doubt_list:refuge_id:{doubt.refuge_id}")
-            
-            # Invalida cache del dubte específic
-            cache_service.delete_pattern(f"doubt_detail:doubt_id:{doubt_id}")
             
         except Exception as e:
             logger.error(f"Error invalidant cache per al dubte {doubt_id}: {str(e)}")
@@ -454,11 +485,8 @@ class DoubtDAO:
                     logger.log(23, f"Firestore UPDATE: collection={self.COLLECTION_NAME} document={doubt_id} (answers_count)")
                     doubt_ref.update({'answers_count': remaining_answers})
                     
-                    # Invalida cache
-                    cache_service.delete_pattern(f"doubt_detail:doubt_id:{doubt_id}")
-                    doubt_data = doubt_doc.to_dict()
-                    if doubt_data and 'refuge_id' in doubt_data:
-                        cache_service.delete_pattern(f"doubt_list:refuge_id:{doubt_data['refuge_id']}")
+                    # Invalida cache (només detail, la list no canvia en updates)
+                    self._invalidate_doubt_detail_cache(doubt_id)
             
             logger.info(f"{deleted_count} respostes eliminades del creador {creator_uid}")
             return True, None
