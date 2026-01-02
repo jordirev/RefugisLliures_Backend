@@ -38,6 +38,7 @@ class RefugeVisitDAO:
             
             logger.log(23, f"Firestore CREATE: collection={self.COLLECTION_NAME}")
             doc_ref = db.collection(self.COLLECTION_NAME).document()
+            data['id'] = doc_ref.id
             doc_ref.set(data)
             
             # Invalida cache de llista
@@ -159,7 +160,12 @@ class RefugeVisitDAO:
                 ).order_by('date')
                 
                 docs = query.get()
-                return [doc.to_dict() for doc in docs]
+                visits_data = []
+                for doc in docs:
+                    visit_data = doc.to_dict()
+                    visit_data['id'] = doc.id
+                    visits_data.append(visit_data)
+                return visits_data
             
             # Funció per obtenir una visita individual per ID
             def fetch_single(visit_id: str):
@@ -167,7 +173,11 @@ class RefugeVisitDAO:
                 doc_ref = db.collection(self.COLLECTION_NAME).document(visit_id)
                 logger.log(23, f"Firestore READ: collection={self.COLLECTION_NAME} document={visit_id}")
                 doc = doc_ref.get()
-                return doc.to_dict() if doc.exists else None
+                if doc.exists:
+                    visit_data = doc.to_dict()
+                    visit_data['id'] = doc.id
+                    return visit_data
+                return None
             
             # Funció per extreure l'ID d'una visita
             def get_id(visit_data: Dict[str, Any]) -> str:

@@ -80,7 +80,11 @@ class RefugiLliureDAO:
                 doc_ref = db.collection(self.collection_name).document(str(refugi_id))
                 logger.log(23, f"Firestore READ: collection={self.collection_name} document={refugi_id}")
                 doc = doc_ref.get()
-                return doc.to_dict() if doc.exists else None
+                if doc.exists:
+                    data = doc.to_dict()
+                    data['id'] = doc.id
+                    return data
+                return None
             
             # Funció per extreure l'ID d'un refugi
             def get_id(refugi_data: Dict[str, Any]) -> str:

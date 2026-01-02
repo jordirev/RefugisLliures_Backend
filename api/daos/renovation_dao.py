@@ -164,7 +164,8 @@ class RenovationDAO:
                 fetch_single_fn=fetch_single,
                 get_id_fn=get_id,
                 list_timeout=cache_service.get_timeout('renovation_list'),
-                detail_timeout=cache_service.get_timeout('renovation_detail')
+                detail_timeout=cache_service.get_timeout('renovation_detail'),
+                id_param_name='renovation_id'
             )
             
             logger.log(23, f"Trobades {len(renovations_data)} renovations actives")

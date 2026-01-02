@@ -21,6 +21,24 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+def _docs_to_dict_with_id(docs) -> List[Dict[str, Any]]:
+    """
+    Converteix documents de Firestore a diccionaris afegint l'ID del document
+    
+    Args:
+        docs: Iterador de documents de Firestore
+        
+    Returns:
+        Llista de diccionaris amb les dades dels documents i el camp 'id'
+    """
+    results = []
+    for doc in docs:
+        data = doc.to_dict()
+        data['id'] = doc.id
+        results.append(data)
+    return results
+
+
 class RefugiSearchStrategy(ABC):
     """Interfície base per a les estratègies de cerca de refugis"""
     
@@ -58,7 +76,7 @@ class TypeConditionStrategy(RefugiSearchStrategy):
         
         logger.log(23, f"Firestore QUERY: collection={collection_name} filters=type (manual condition)")
         docs = query.stream()
-        results = [doc.to_dict() for doc in docs]
+        results = _docs_to_dict_with_id(docs)
         
         # Filtrar manualment per condition: només refugis amb condition vàlid i dins dels filtres
         filtered = []
@@ -90,7 +108,7 @@ class TypeConditionPlacesStrategy(RefugiSearchStrategy):
         
         logger.log(23, f"Firestore QUERY: collection={collection_name} filters=type+condition+places")
         docs = query.stream()
-        results = [doc.to_dict() for doc in docs]
+        results = _docs_to_dict_with_id(docs)
         
         # Filtrar manualment per excloure refugis amb condition null o inexistent
         # i assegurar que el valor de condition està dins dels filtres sol·licitats
@@ -123,7 +141,7 @@ class TypeConditionAltitudeStrategy(RefugiSearchStrategy):
         
         logger.log(23, f"Firestore QUERY: collection={collection_name} filters=type+condition+altitude")
         docs = query.stream()
-        results = [doc.to_dict() for doc in docs]
+        results = _docs_to_dict_with_id(docs)
         
         # Filtrar manualment per excloure refugis amb condition null o inexistent
         # i assegurar que el valor de condition està dins dels filtres sol·licitats
@@ -159,7 +177,7 @@ class TypeConditionPlacesAltitudeStrategy(RefugiSearchStrategy):
         
         logger.log(23, f"Firestore QUERY: collection={collection_name} filters=type+condition+places (manual altitude)")
         docs = query.stream()
-        results = [doc.to_dict() for doc in docs]
+        results = _docs_to_dict_with_id(docs)
         
         # Filtrar manualment per excloure refugis amb condition null o inexistent
         # i assegurar que el valor de condition està dins dels filtres sol·licitats
@@ -207,7 +225,7 @@ class TypePlacesStrategy(RefugiSearchStrategy):
         
         logger.log(23, f"Firestore QUERY: collection={collection_name} filters=type+places")
         docs = query.stream()
-        return [doc.to_dict() for doc in docs]
+        return _docs_to_dict_with_id(docs)
     
     def get_strategy_name(self) -> str:
         return "TypePlacesStrategy"
@@ -229,7 +247,7 @@ class TypeAltitudeStrategy(RefugiSearchStrategy):
         
         logger.log(23, f"Firestore QUERY: collection={collection_name} filters=type+altitude")
         docs = query.stream()
-        return [doc.to_dict() for doc in docs]
+        return _docs_to_dict_with_id(docs)
     
     def get_strategy_name(self) -> str:
         return "TypeAltitudeStrategy"
@@ -251,7 +269,7 @@ class ConditionPlacesStrategy(RefugiSearchStrategy):
         
         logger.log(23, f"Firestore QUERY: collection={collection_name} filters=condition+places")
         docs = query.stream()
-        results = [doc.to_dict() for doc in docs]
+        results = _docs_to_dict_with_id(docs)
         
         # Filtrar manualment per excloure refugis amb condition null o inexistent
         return [r for r in results if 'condition' in r and r['condition'] is not None]
@@ -276,7 +294,7 @@ class ConditionAltitudeStrategy(RefugiSearchStrategy):
         
         logger.log(23, f"Firestore QUERY: collection={collection_name} filters=condition+altitude")
         docs = query.stream()
-        results = [doc.to_dict() for doc in docs]
+        results = _docs_to_dict_with_id(docs)
         
         # Filtrar manualment per excloure refugis amb condition null o inexistent
         return [r for r in results if 'condition' in r and r['condition'] is not None]
@@ -304,7 +322,7 @@ class TypePlacesAltitudeStrategy(RefugiSearchStrategy):
         
         logger.log(23, f"Firestore QUERY: collection={collection_name} filters=type+places (manual altitude)")
         docs = query.stream()
-        results = [doc.to_dict() for doc in docs]
+        results = _docs_to_dict_with_id(docs)
         
         # Filtre manual per altitude
         if filters.altitude_min is not None or filters.altitude_max is not None:
@@ -343,7 +361,7 @@ class ConditionPlacesAltitudeStrategy(RefugiSearchStrategy):
         
         logger.log(23, f"Firestore QUERY: collection={collection_name} filters=condition+places (manual altitude)")
         docs = query.stream()
-        results = [doc.to_dict() for doc in docs]
+        results = _docs_to_dict_with_id(docs)
         
         # Filtrar manualment per excloure refugis amb condition null o inexistent
         results = [r for r in results if 'condition' in r and r['condition'] is not None]
@@ -383,7 +401,7 @@ class PlacesAltitudeStrategy(RefugiSearchStrategy):
         
         logger.log(23, f"Firestore QUERY: collection={collection_name} filters=places (manual altitude)")
         docs = query.stream()
-        results = [doc.to_dict() for doc in docs]
+        results = _docs_to_dict_with_id(docs)
         
         # Filtre manual per altitude
         if filters.altitude_min is not None or filters.altitude_max is not None:
@@ -414,7 +432,7 @@ class TypeOnlyStrategy(RefugiSearchStrategy):
         
         logger.log(23, f"Firestore QUERY: collection={collection_name} filters=type")
         docs = query.stream()
-        return [doc.to_dict() for doc in docs]
+        return _docs_to_dict_with_id(docs)
     
     def get_strategy_name(self) -> str:
         return "TypeOnlyStrategy"
@@ -429,7 +447,7 @@ class ConditionOnlyStrategy(RefugiSearchStrategy):
         
         logger.log(23, f"Firestore QUERY: collection={collection_name} filters=condition")
         docs = query.stream()
-        results = [doc.to_dict() for doc in docs]
+        results = _docs_to_dict_with_id(docs)
         
         # Filtrar manualment per excloure refugis amb condition null o inexistent
         return [r for r in results if 'condition' in r and r['condition'] is not None]
@@ -451,7 +469,7 @@ class PlacesOnlyStrategy(RefugiSearchStrategy):
         
         logger.log(23, f"Firestore QUERY: collection={collection_name} filters=places")
         docs = query.stream()
-        return [doc.to_dict() for doc in docs]
+        return _docs_to_dict_with_id(docs)
     
     def get_strategy_name(self) -> str:
         return "PlacesOnlyStrategy"
@@ -470,7 +488,7 @@ class AltitudeOnlyStrategy(RefugiSearchStrategy):
         
         logger.log(23, f"Firestore QUERY: collection={collection_name} filters=altitude")
         docs = query.stream()
-        return [doc.to_dict() for doc in docs]
+        return _docs_to_dict_with_id(docs)
     
     def get_strategy_name(self) -> str:
         return "AltitudeOnlyStrategy"
@@ -563,3 +581,4 @@ class SearchStrategySelector:
         
         # No hauria d'arribar aquí si _has_active_filters funciona correctament
         raise ValueError("No s'ha pogut determinar cap estratègia per als filtres proporcionats")
+

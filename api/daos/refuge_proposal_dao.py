@@ -692,7 +692,12 @@ class RefugeProposalDAO:
                 query = query.order_by('created_at', direction=firestore.Query.DESCENDING)
                 
                 docs = query.stream()
-                return [doc.to_dict() for doc in docs]
+                results = []
+                for doc in docs:
+                    data = doc.to_dict()
+                    data['id'] = doc.id
+                    results.append(data)
+                return results
             
             # Funció per obtenir una proposta individual per ID
             def fetch_single(proposal_id: str):
@@ -700,7 +705,11 @@ class RefugeProposalDAO:
                 doc_ref = db.collection(self.collection_name).document(proposal_id)
                 logger.log(23, f"Firestore READ: collection={self.collection_name} document={proposal_id}")
                 doc = doc_ref.get()
-                return doc.to_dict() if doc.exists else None
+                if doc.exists:
+                    data = doc.to_dict()
+                    data['id'] = doc.id
+                    return data
+                return None
             
             # Funció per extreure l'ID d'una proposta
             def get_id(proposal_data: Dict[str, Any]) -> str:
