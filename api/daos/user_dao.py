@@ -534,12 +534,13 @@ class UserDAO:
             logger.error(f"Error eliminant keys de fotos pujades per l'usuari {uid}: {str(e)}")
             return False
     
-    def decrement_renovated_refuges(self, uid: str) -> bool:
+    def decrement_renovated_refuges(self, uid: str, count: int = 1) -> bool:
         """
         Decrementa el comptador de refugis renovats per un usuari
         
         Args:
             uid: UID de l'usuari
+            count: Quantitat a decrementar (per defecte 1)
             
         Returns:
             bool: True si s'ha decrementat correctament
@@ -561,12 +562,12 @@ class UserDAO:
             # Només decrementa si el valor actual és major que 0
             if current_value > 0:
                 # Decrementa el comptador (increment amb valor negatiu)
-                doc_ref.update({'num_renovated_refuges': Increment(-1)})
+                doc_ref.update({'num_renovated_refuges': Increment(-1*count)})
                 
                 # Invalida cache de l'usuari
                 cache_service.delete(cache_service.generate_key('user_detail', uid=uid))
                 
-                logger.info(f"Comptador de refugis renovats decrementat per l'usuari {uid} ({current_value} -> {current_value - 1})")
+                logger.info(f"Comptador de refugis renovats decrementat per l'usuari {uid} ({current_value} -> {current_value - count})")
             else:
                 logger.warning(f"No es pot decrementar comptador de refugis renovats per l'usuari {uid}, valor actual és {current_value}")
             

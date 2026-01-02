@@ -300,7 +300,35 @@ class RenovationController:
             
         except Exception as e:
             logger.error(f"Error en get_renovations_by_refuge: {str(e)}")
-            return False, [], f"Error intern: {str(e)}"
+            return False, [], f"Error intern: {str(e)}"  
+
+    def delete_current_renovations_by_creator(self, creator_uid: str) -> tuple[bool, Optional[str]]:
+        """
+        Elimina totes les renovations actuals (fin_date >= data actual en zona horaria Madrid) creades per un usuari
+        
+        Args:
+            creator_uid: UID del creador
+            
+        Returns:
+            Tuple (èxit: bool, missatge d'error: Optional[str])
+        """
+        try:
+            # Eliminem les current renovations
+            success, participants, error = self.renovation_dao.delete_current_renovations_by_creator(creator_uid)
+            if not success:
+                return False, error
+            
+            # Decrementem el comptador de refugis renovats dels participants
+            if participants:
+                for participant_uid, count in participants.items():
+                    self.user_dao.decrement_renovated_refuges(participant_uid, count=count)
+            
+            logger.info(f"Renovations actuals eliminades correctament per al creador {creator_uid}")
+            return True, None
+            
+        except Exception as e:
+            logger.error(f"Error eliminant renovations actuals del creador {creator_uid}: {str(e)}")
+            return False, f"Error intern: {str(e)}"
     
     def anonymize_renovations_by_creator(self, creator_uid: str) -> tuple[bool, Optional[str]]:
         """

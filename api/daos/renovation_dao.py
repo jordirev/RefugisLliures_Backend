@@ -471,6 +471,62 @@ class RenovationDAO:
         except Exception as e:
             logger.error(f"Error eliminant participant de renovation {renovation_id}: {str(e)}")
             return False
+        
+    def delete_current_renovations_by_creator(self, creator_uid: str) -> tuple[bool, Optional[Dict[str, int]], Optional[str]]:
+        """
+        Elimina totes les renovations actuals (fin_date >= data actual en zona horaria Madrid) creades per un usuari
+        
+        Args:
+            creator_uid: UID del creador
+            
+        Returns:
+            Tuple (èxit: bool, diccionari de participants: Optional[Dict[str, int]],  missatge d'error: Optional[str])
+            El diccionari conté uid del participant com a clau i nombre d'aparicions com a valor
+        """
+        try:
+            db = self.firestore_service.get_db()
+            madrid_today_str = get_madrid_today().isoformat()
+            
+            # Obtenir totes les renovations actuals del creador
+            logger.log(23, f"Firestore QUERY: collection={self.COLLECTION_NAME} where creator_uid=={creator_uid} AND fin_date>={madrid_today_str}")
+            renovations_query = db.collection(self.COLLECTION_NAME)\
+                .where('creator_uid', '==', creator_uid)\
+                .where('fin_date', '>=', madrid_today_str).stream()
+            
+            deleted_count = 0
+            refuge_ids = set()
+            participants_count: Dict[str, int] = {}
+            
+            for renovation_doc in renovations_query:
+                renovation_data = renovation_doc.to_dict()
+                refuge_id = renovation_data.get('refuge_id')
+                if refuge_id:
+                    refuge_ids.add(refuge_id)
+                
+                # Recopilar participants
+                participants_uids = renovation_data.get('participants_uids', [])
+                for participant_uid in participants_uids:
+                    participants_count[participant_uid] = participants_count.get(participant_uid, 0) + 1
+                
+                # Eliminar la renovation
+                logger.log(23, f"Firestore DELETE: collection={self.COLLECTION_NAME} document={renovation_doc.id} (delete current)")
+                renovation_doc.reference.delete()
+                deleted_count += 1
+                
+                # Invalida cache de detall
+                cache_service.delete(cache_service.generate_key('renovation_detail', renovation_id=renovation_doc.id))
+            
+            # Invalida cache de llistes
+            cache_service.delete_pattern('renovation_list:*')
+            for refuge_id in refuge_ids:
+                cache_service.delete_pattern(f'renovation_refuge:{refuge_id}:*')
+            
+            logger.info(f"{deleted_count} renovations actuals eliminades del creador {creator_uid}")
+            return True, participants_count, None
+            
+        except Exception as e:
+            logger.error(f"Error eliminant renovations actuals del creador {creator_uid}: {str(e)}")
+            return False, None, str(e)
     
     def anonymize_renovations_by_creator(self, creator_uid: str) -> tuple[bool, Optional[str]]:
         """
