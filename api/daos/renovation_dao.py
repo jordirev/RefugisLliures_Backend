@@ -268,7 +268,7 @@ class RenovationDAO:
     
     def get_renovations_by_refuge(self, refuge_id: str, active_only: bool = False) -> List[Renovation]:
         """
-        Obté les renovations d'un refugi
+        Obté les renovations d'un refugi amb ID caching
         
         Args:
             refuge_id: ID del refugi
@@ -281,39 +281,61 @@ class RenovationDAO:
         active_str = 'active' if active_only else 'all'
         cache_key = cache_service.generate_key('renovation_refuge', refuge_id=refuge_id, active=active_str)
         
-        # Intenta obtenir de cache
-        cached_data = cache_service.get(cache_key)
-        if cached_data is not None:
-            return self.mapper.firestore_list_to_models(cached_data)
-        
         try:
-            db = self.firestore_service.get_db()
-            query = db.collection(self.COLLECTION_NAME)
-            
-            if active_only:
-                # Obtenir renovations que encara no han començat o estan en curs (zona horaria Madrid)
-                madrid_today_str = get_madrid_today().isoformat()
-                query = query\
-                    .where('refuge_id', '==', refuge_id)\
-                    .where('fin_date', '>=', madrid_today_str)\
-                    .order_by('ini_date')
-            else:
-                query = query\
-                    .where('refuge_id', '==', refuge_id)\
-                    .order_by('ini_date')
+            # Funció per obtenir TOTES les dades completes d'una des de Firestore
+            def fetch_all():
+                db = self.firestore_service.get_db()
+                query = db.collection(self.COLLECTION_NAME)
+                
+                if active_only:
+                    # Obtenir renovations que encara no han començat o estan en curs (zona horaria Madrid)
+                    madrid_today_str = get_madrid_today().isoformat()
+                    query = query\
+                        .where('refuge_id', '==', refuge_id)\
+                        .where('fin_date', '>=', madrid_today_str)\
+                        .order_by('ini_date')
+                else:
+                    query = query\
+                        .where('refuge_id', '==', refuge_id)\
+                        .order_by('ini_date')
 
-            logger.log(23, f"Firestore READ: collection={self.COLLECTION_NAME} where refuge_id={refuge_id}")
-            docs = query.stream()
+                logger.log(23, f"Firestore READ: collection={self.COLLECTION_NAME} where refuge_id={refuge_id}")
+                docs = query.stream()
+                
+                renovations_data = []
+                for doc in docs:
+                    renovation_data = doc.to_dict()
+                    renovation_data['id'] = doc.id
+                    renovations_data.append(renovation_data)
+                return renovations_data
             
-            renovations_data = []
-            for doc in docs:
-                renovation_data = doc.to_dict()
-                renovation_data['id'] = doc.id
-                renovations_data.append(renovation_data)
+            # Funció per obtenir una renovation individual per ID
+            def fetch_single(renovation_id: str):
+                db = self.firestore_service.get_db()
+                doc_ref = db.collection(self.COLLECTION_NAME).document(renovation_id)
+                logger.log(23, f"Firestore READ: collection={self.COLLECTION_NAME} document={renovation_id}")
+                doc = doc_ref.get()
+                if doc.exists:
+                    renovation_data = doc.to_dict()
+                    renovation_data['id'] = doc.id
+                    return renovation_data
+                return None
             
-            # Guarda a cache
-            timeout = cache_service.get_timeout('renovation_list')
-            cache_service.set(cache_key, renovations_data, timeout)
+            # Funció per extreure l'ID d'una renovation
+            def get_id(renovation_data: Dict[str, Any]) -> str:
+                return renovation_data['id']
+            
+            # Usar estratègia ID caching del cache_service
+            renovations_data = cache_service.get_or_fetch_list(
+                list_cache_key=cache_key,
+                detail_key_prefix='renovation_detail',
+                fetch_all_fn=fetch_all,
+                fetch_single_fn=fetch_single,
+                get_id_fn=get_id,
+                list_timeout=cache_service.get_timeout('renovation_list'),
+                detail_timeout=cache_service.get_timeout('renovation_detail'),
+                id_param_name='renovation_id'
+            )
             
             logger.log(23, f"Trobades {len(renovations_data)} renovations per refugi {refuge_id}")
             return self.mapper.firestore_list_to_models(renovations_data)
@@ -423,8 +445,6 @@ class RenovationDAO:
             
             # Invalida cache de la renovation (només detail, la list no canvia en updates)
             cache_service.delete(cache_service.generate_key('renovation_detail', renovation_id=renovation_id))
-            if refuge_id:
-                cache_service.delete_pattern(f'renovation_refuge:{refuge_id}:*')
             
             logger.info(f"Participant {participant_uid} afegit a renovation {renovation_id}")
             return True, None
@@ -480,8 +500,6 @@ class RenovationDAO:
             
             # Invalida cache de la renovation (només detail, la list no canvia en updates)
             cache_service.delete(cache_service.generate_key('renovation_detail', renovation_id=renovation_id))
-            if refuge_id:
-                cache_service.delete_pattern(f'renovation_refuge:{refuge_id}:*')
             
             logger.info(f"Participant {participant_uid} eliminat de renovation {renovation_id}")
             return True

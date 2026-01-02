@@ -181,7 +181,8 @@ class RefugeVisitDAO:
                 fetch_single_fn=fetch_single,
                 get_id_fn=get_id,
                 list_timeout=cache_service.get_timeout('refuge_visits_list'),
-                detail_timeout=cache_service.get_timeout('refuge_visit_detail')
+                detail_timeout=cache_service.get_timeout('refuge_visit_detail'),
+                id_param_name='visit_id'
             )
             
             visits = [self.mapper.firebase_to_model(visit_data) for visit_data in visits_data]

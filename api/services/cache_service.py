@@ -205,7 +205,8 @@ class CacheService:
         fetch_single_fn: Callable[[str], Optional[Dict[str, Any]]],
         get_id_fn: Callable[[Dict[str, Any]], str],
         list_timeout: Optional[int] = None,
-        detail_timeout: Optional[int] = None
+        detail_timeout: Optional[int] = None,
+        id_param_name: str = 'id'
     ) -> List[Dict[str, Any]]:
         """
         Implementa l'estratègia ID caching per llistes:
@@ -223,6 +224,7 @@ class CacheService:
             get_id_fn: Funció per extreure l'ID d'un element de dades
             list_timeout: Timeout per la llista d'IDs
             detail_timeout: Timeout per cada detall
+            id_param_name: Nom del paràmetre per la clau de detall (ex: 'renovation_id', 'experience_id')
             
         Returns:
             Llista de diccionaris amb les dades completes
@@ -243,7 +245,7 @@ class CacheService:
             actual_detail_timeout = detail_timeout or self.get_timeout(detail_key_prefix)
             for item_data in all_data:
                 item_id = get_id_fn(item_data)
-                detail_cache_key = self.generate_key(detail_key_prefix, id=item_id)
+                detail_cache_key = self.generate_key(detail_key_prefix, **{id_param_name: item_id})
                 self.set(detail_cache_key, item_data, actual_detail_timeout)
             
             return all_data
@@ -253,7 +255,7 @@ class CacheService:
         actual_detail_timeout = detail_timeout or self.get_timeout(detail_key_prefix)
         
         for item_id in cached_ids:
-            detail_cache_key = self.generate_key(detail_key_prefix, id=item_id)
+            detail_cache_key = self.generate_key(detail_key_prefix, **{id_param_name: item_id})
             cached_detail = self.get(detail_cache_key)
             
             if cached_detail is not None:

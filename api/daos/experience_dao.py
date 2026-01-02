@@ -149,7 +149,8 @@ class ExperienceDAO:
                 fetch_single_fn=fetch_single,
                 get_id_fn=get_id,
                 list_timeout=cache_service.get_timeout('experience_list'),
-                detail_timeout=cache_service.get_timeout('experience_detail')
+                detail_timeout=cache_service.get_timeout('experience_detail'),
+                id_param_name='experience_id'
             )
             
             logger.log(23, f"Trobades {len(experiences_data)} experiències per al refugi {refuge_id}")

@@ -164,7 +164,8 @@ class DoubtDAO:
                 fetch_single_fn=fetch_single,
                 get_id_fn=get_id,
                 list_timeout=cache_service.get_timeout('doubt_list'),
-                detail_timeout=cache_service.get_timeout('doubt_detail')
+                detail_timeout=cache_service.get_timeout('doubt_detail'),
+                id_param_name='doubt_id'
             )
             
             # Convertir dades de cache a models

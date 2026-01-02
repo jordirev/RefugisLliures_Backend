@@ -714,7 +714,8 @@ class RefugeProposalDAO:
                 fetch_single_fn=fetch_single,
                 get_id_fn=get_id,
                 list_timeout=cache_service.get_timeout('proposal_list'),
-                detail_timeout=cache_service.get_timeout('proposal_detail')
+                detail_timeout=cache_service.get_timeout('proposal_detail'),
+                id_param_name='proposal_id'
             )
             
             return self.mapper.firestore_list_to_models(proposals_data)

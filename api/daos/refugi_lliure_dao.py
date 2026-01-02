@@ -94,7 +94,8 @@ class RefugiLliureDAO:
                 fetch_single_fn=fetch_single,
                 get_id_fn=get_id,
                 list_timeout=cache_service.get_timeout('refugi_search'),
-                detail_timeout=cache_service.get_timeout('refugi_detail')
+                detail_timeout=cache_service.get_timeout('refugi_detail'),
+                id_param_name='refugi_id'
             )
             
             # Convertir a models
