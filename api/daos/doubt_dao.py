@@ -363,7 +363,7 @@ class DoubtDAO:
         Args:
             doubt_id: ID del dubte
         """
-        cache_service.delete_pattern(f"doubt_detail:doubt_id:{doubt_id}")
+        cache_service.delete(cache_service.generate_key('doubt_detail', doubt_id=doubt_id))
     
     def _invalidate_doubt_cache(self, doubt_id: str):
         """
@@ -426,7 +426,7 @@ class DoubtDAO:
                 deleted_count += 1
                 
                 # Invalida cache de detall
-                cache_service.delete_pattern(f"doubt_detail:doubt_id:{doubt_doc.id}")
+                cache_service.delete(cache_service.generate_key('doubt_detail', doubt_id=doubt_doc.id))
             
             # Invalida cache de llistes per cada refugi afectat
             for refuge_id in refuge_ids:

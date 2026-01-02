@@ -69,12 +69,20 @@ class CacheService:
             **kwargs: Paràmetres que identifiquen únicament l'objecte
             
         Returns:
-            Clau de cache generada
+            Clau de cache generada (ex: 'refugi_detail:refugi_id:123')
         """
         # Ordena els paràmetres per consistència
-        params_str = json.dumps(kwargs, sort_keys=True)
-        params_hash = hashlib.md5(params_str.encode()).hexdigest()
-        return f"{prefix}:{params_hash}"
+        if not kwargs:
+            return prefix
+        
+        # Construeix la clau concatenant parelles clau:valor ordenades
+        sorted_params = sorted(kwargs.items())
+        parts = [prefix]
+        for key, value in sorted_params:
+            # Converteix el valor a string per assegurar consistència
+            parts.append(f"{key}:{value}")
+        
+        return ":".join(parts)
     
     def get(self, key: str) -> Optional[Any]:
         """

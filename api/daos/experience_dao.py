@@ -44,7 +44,7 @@ class ExperienceDAO:
             logger.info(f"Experiència creada amb ID: {doc_ref.id}")
             
             # Invalida cache de llistes d'experiències d'aquest refugi
-            cache_service.delete_pattern(f"experience_list:refuge_id:{experience_data['refuge_id']}:*")
+            cache_service.delete_pattern(f"experience_list:refuge_id:{experience_data['refuge_id']}")
             
             # Retornar la instància del model
             return self.mapper.firestore_to_model(experience_data)
@@ -235,7 +235,7 @@ class ExperienceDAO:
             # Invalida cache
             cache_service.delete(cache_service.generate_key('experience_detail', experience_id=experience_id))
             if experience_data and 'refuge_id' in experience_data:
-                cache_service.delete_pattern(f"experience_list:refuge_id:{experience_data['refuge_id']}:*")
+                cache_service.delete_pattern(f"experience_list:refuge_id:{experience_data['refuge_id']}")
             
             return True, None
             
@@ -356,7 +356,7 @@ class ExperienceDAO:
             
             # Invalida cache de llistes per cada refugi afectat
             for refuge_id in refuge_ids:
-                cache_service.delete_pattern(f"experience_list:refuge_id:{refuge_id}:*")
+                cache_service.delete_pattern(f"experience_list:refuge_id:{refuge_id}")
             
             logger.info(f"{deleted_count} experiències eliminades del creador {creator_uid}")
             return True, None

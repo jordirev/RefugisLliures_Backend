@@ -55,9 +55,9 @@ class RenovationDAO:
 
             logger.info(f"Renovation creada amb ID: {doc_ref.id}")
 
-            # Invalida cache de llistes
-            cache_service.delete_pattern('renovation_list:*')
-            cache_service.delete_pattern(f"renovation_refuge:{renovation_data['refuge_id']}:*")
+            # Invalida cache de llistes (totes les variants de renovation_list i del refugi)
+            cache_service.delete_pattern('renovation_list:')
+            cache_service.delete_pattern(f"renovation_refuge:")
 
             # Retornar la instància del model (usar les dades normalitzades)
             return self.mapper.firestore_to_model(renovation_data)
@@ -216,8 +216,6 @@ class RenovationDAO:
             
             # Invalida cache (només detail, la list no canvia en updates)
             cache_service.delete(cache_service.generate_key('renovation_detail', renovation_id=renovation_id))
-            if refuge_id:
-                cache_service.delete_pattern(f'renovation_refuge:{refuge_id}:*')
             
             logger.info(f"Renovation actualitzada: {renovation_id}")
             return True
@@ -255,9 +253,8 @@ class RenovationDAO:
             
             # Invalida cache
             cache_service.delete(cache_service.generate_key('renovation_detail', renovation_id=renovation_id))
-            cache_service.delete_pattern('renovation_list:*')
-            if refuge_id:
-                cache_service.delete_pattern(f'renovation_refuge:{refuge_id}:*')
+            cache_service.delete_pattern('renovation_list:')
+            cache_service.delete_pattern('renovation_refuge:')
             
             logger.info(f"Renovation eliminada: {renovation_id}")
             return True, creator_uid_from_data, participants
@@ -553,9 +550,8 @@ class RenovationDAO:
                 cache_service.delete(cache_service.generate_key('renovation_detail', renovation_id=renovation_doc.id))
             
             # Invalida cache de llistes
-            cache_service.delete_pattern('renovation_list:*')
-            for refuge_id in refuge_ids:
-                cache_service.delete_pattern(f'renovation_refuge:{refuge_id}:*')
+            cache_service.delete_pattern('renovation_list:')
+            cache_service.delete_pattern('renovation_refuge:')
             
             logger.info(f"{deleted_count} renovations actuals eliminades del creador {creator_uid}")
             return True, participants_count, None
@@ -601,9 +597,7 @@ class RenovationDAO:
                 # Invalida cache de detall
                 cache_service.delete(cache_service.generate_key('renovation_detail', renovation_id=renovation_doc.id))
             
-            # Invalida cache de llistes
-            for refuge_id in refuge_ids:
-                cache_service.delete_pattern(f'renovation_refuge:{refuge_id}:*')
+            # NO invalidem llistes perquè és un update (IDs no canvien)
             
             logger.info(f"{anonymized_count} renovations anonimitzades del creador {creator_uid}")
             return True, None
@@ -647,10 +641,7 @@ class RenovationDAO:
                 # Invalida cache de detall
                 cache_service.delete(cache_service.generate_key('renovation_detail', renovation_id=renovation_doc.id))
             
-            # NO invalidem renovation_list perquè les IDs no canvien (només update)
-            # Invalida cache de refuge específics
-            for refuge_id in refuge_ids:
-                cache_service.delete_pattern(f'renovation_refuge:{refuge_id}:*')
+            # NO invalidem llistes perquè és un update (IDs no canvien)
             
             logger.info(f"Usuari {uid} eliminat de {removed_count} renovations")
             return True, None
@@ -694,10 +685,7 @@ class RenovationDAO:
                 # Invalida cache de detall
                 cache_service.delete(cache_service.generate_key('renovation_detail', renovation_id=renovation_doc.id))
             
-            # Invalida cache de llistes
-            cache_service.delete_pattern('renovation_list:*')
-            for refuge_id in refuge_ids:
-                cache_service.delete_pattern(f'renovation_refuge:{refuge_id}:*')
+            # NO invalidem llistes perquè és un update (IDs no canvien)
             
             logger.info(f"Usuari {uid} eliminat de {removed_count} renovations")
             return True, None
