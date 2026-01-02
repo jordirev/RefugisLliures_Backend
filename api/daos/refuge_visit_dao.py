@@ -136,7 +136,7 @@ class RefugeVisitDAO:
     
     def get_visits_by_refuge(self, refuge_id: str, from_date: date) -> List[RefugeVisit]:
         """
-        Obté totes les visites futures d'un refugi (ordenades per data ascendent) amb cache
+        Obté totes les visites futures d'un refugi (ordenades per data ascendent) amb cache i ID caching
         
         Args:
             refuge_id: ID del refugi
@@ -147,32 +147,44 @@ class RefugeVisitDAO:
         """
         cache_key = cache_service.generate_key('refuge_visits_list', refuge_id=refuge_id, from_date=from_date.isoformat())
         
-        # Intenta obtenir de cache
-        cached_data = cache_service.get(cache_key)
-        if cached_data is not None:
-            return [self.mapper.firebase_to_model(visit_data) for visit_data in cached_data]
-        
         try:
-            db = self.firestore_service.get_db()
-            logger.log(23, f"Firestore QUERY: collection={self.COLLECTION_NAME} filter=refuge_id=={refuge_id} AND date>={from_date.isoformat()} order_by=date ASC")
-            query = db.collection(self.COLLECTION_NAME).where(
-                filter=firestore.FieldFilter('refuge_id', '==', refuge_id)
-            ).where(
-                filter=firestore.FieldFilter('date', '>=', from_date.isoformat())
-            ).order_by('date')
+            # Funció per obtenir TOTES les dades completes d'una des de Firestore
+            def fetch_all():
+                db = self.firestore_service.get_db()
+                logger.log(23, f"Firestore QUERY: collection={self.COLLECTION_NAME} filter=refuge_id=={refuge_id} AND date>={from_date.isoformat()} order_by=date ASC")
+                query = db.collection(self.COLLECTION_NAME).where(
+                    filter=firestore.FieldFilter('refuge_id', '==', refuge_id)
+                ).where(
+                    filter=firestore.FieldFilter('date', '>=', from_date.isoformat())
+                ).order_by('date')
+                
+                docs = query.get()
+                return [doc.to_dict() for doc in docs]
             
-            docs = query.get()
-            visits = []
-            visits_data = []
+            # Funció per obtenir una visita individual per ID
+            def fetch_single(visit_id: str):
+                db = self.firestore_service.get_db()
+                doc_ref = db.collection(self.COLLECTION_NAME).document(visit_id)
+                logger.log(23, f"Firestore READ: collection={self.COLLECTION_NAME} document={visit_id}")
+                doc = doc_ref.get()
+                return doc.to_dict() if doc.exists else None
             
-            for doc in docs:
-                visit_data = doc.to_dict()
-                visits.append(self.mapper.firebase_to_model(visit_data))
-                visits_data.append(visit_data)
+            # Funció per extreure l'ID d'una visita
+            def get_id(visit_data: Dict[str, Any]) -> str:
+                return visit_data['id']
             
-            # Guarda a cache
-            timeout = cache_service.get_timeout('refuge_visits_list')
-            cache_service.set(cache_key, visits_data, timeout)
+            # Usar estratègia ID caching del cache_service
+            visits_data = cache_service.get_or_fetch_list(
+                list_cache_key=cache_key,
+                detail_key_prefix='refuge_visit_detail',
+                fetch_all_fn=fetch_all,
+                fetch_single_fn=fetch_single,
+                get_id_fn=get_id,
+                list_timeout=cache_service.get_timeout('refuge_visits_list'),
+                detail_timeout=cache_service.get_timeout('refuge_visit_detail')
+            )
+            
+            visits = [self.mapper.firebase_to_model(visit_data) for visit_data in visits_data]
             
             logger.info(f"Obtingudes {len(visits)} visites per al refugi {refuge_id}")
             return visits
@@ -253,9 +265,8 @@ class RefugeVisitDAO:
                 'total_visitors': data.get('total_visitors', 0)
             })
             
-            # Invalida cache
-            refuge_id = data.get('refuge_id')
-            self._invalidate_visit_cache(visit_id, refuge_id)
+            # Invalida cache (només detail, la list no canvia en updates)
+            self._invalidate_visit_detail_cache(visit_id)
             
             logger.info(f"Visitant afegit a la visita {visit_id}")
             return True
@@ -293,9 +304,8 @@ class RefugeVisitDAO:
                 'total_visitors': data.get('total_visitors', 0)
             })
             
-            # Invalida cache
-            refuge_id = data.get('refuge_id')
-            self._invalidate_visit_cache(visit_id, refuge_id)
+            # Invalida cache (només detail, la list no canvia en updates)
+            self._invalidate_visit_detail_cache(visit_id)
             
             logger.info(f"Visita actualitzada: {visit_id}")
             return True
@@ -353,8 +363,8 @@ class RefugeVisitDAO:
                 'total_visitors': total_visitors
             })
             
-            # Invalida cache
-            self._invalidate_visit_cache(visit_id, visit_data.get('refuge_id'))
+            # Invalida cache (només detail, la list no canvia en updates)
+            self._invalidate_visit_detail_cache(visit_id)
             
             logger.info(f"Visitant eliminat de la visita {visit_id}")
             return True
@@ -433,21 +443,14 @@ class RefugeVisitDAO:
             logger.error(f"Error eliminant visita {visit_id}: {str(e)}")
             return False
     
-    def _invalidate_visit_cache(self, visit_id: str, refuge_id: Optional[str] = None):
+    def _invalidate_visit_detail_cache(self, visit_id: str):
         """
-        Invalida la cache d'una visita
+        Invalida la cache de detall d'una visita específica
         
         Args:
             visit_id: ID de la visita
-            refuge_id: ID del refugi (opcional, per invalidar cache de llista)
         """
-        # Invalida cache del detall
-        cache_key = cache_service.generate_key('refuge_visit_detail', visit_id=visit_id)
-        cache_service.delete(cache_key)
-        
-        # Invalida cache de llista si tenim el refuge_id
-        if refuge_id:
-            self._invalidate_list_cache(refuge_id)
+        cache_service.delete(cache_service.generate_key('refuge_visit_detail', visit_id=visit_id))
     
     def _invalidate_list_cache(self, refuge_id: str):
         """
@@ -458,6 +461,18 @@ class RefugeVisitDAO:
         """
         # Invalida totes les claus de llista que continguin aquest refuge_id
         cache_service.delete_pattern(f'refuge_visits_list:refuge_id={refuge_id}:*')
+    
+    def _invalidate_visit_cache(self, visit_id: str, refuge_id: Optional[str] = None):
+        """
+        Invalida la cache d'una visita específica i opcionalment la llista associada
+        
+        Args:
+            visit_id: ID de la visita
+            refuge_id: ID del refugi (opcional, per invalidar la llista)
+        """
+        self._invalidate_visit_detail_cache(visit_id)
+        if refuge_id:
+            self._invalidate_list_cache(refuge_id)
     
     def remove_user_from_all_visits(self, uid: str, user_visits: List[tuple[str, RefugeVisit]]) -> tuple[bool, Optional[str]]:
         """
@@ -510,9 +525,8 @@ class RefugeVisitDAO:
                             })
                             updated_count += 1
                             
-                            # Invalida cache
-                            refuge_id = visit_data.get('refuge_id')
-                            self._invalidate_visit_cache(visit_id, refuge_id)
+                            # Invalida cache (només detail, la list no canvia en updates)
+                            self._invalidate_visit_detail_cache(visit_id)
                     else:
                         logger.warning(f"Visita {visit_id} no trobada al eliminar usuari {uid}")
                 except Exception as e:

@@ -97,7 +97,7 @@ class ExperienceDAO:
     
     def get_experiences_by_refuge_id(self, refuge_id: str) -> List[Experience]:
         """
-        Obté totes les experiències d'un refugi ordenades per modified_at descendent
+        Obté totes les experiències d'un refugi ordenades per modified_at descendent amb ID caching
         
         Args:
             refuge_id: ID del refugi
@@ -108,30 +108,49 @@ class ExperienceDAO:
         # Genera clau de cache
         cache_key = cache_service.generate_key('experience_list', refuge_id=refuge_id)
         
-        # Intenta obtenir de cache
-        cached_data = cache_service.get(cache_key)
-        if cached_data is not None:
-            return self.mapper.firestore_list_to_models(cached_data)
-        
         try:
-            db = self.firestore_service.get_db()
+            # Funció per obtenir TOTES les dades completes d'una des de Firestore
+            def fetch_all():
+                db = self.firestore_service.get_db()
+                logger.log(23, f"Firestore READ: collection={self.COLLECTION_NAME} where refuge_id={refuge_id} order_by modified_at desc")
+                query = db.collection(self.COLLECTION_NAME)\
+                            .where('refuge_id', '==', refuge_id)\
+                            .order_by('modified_at', direction='DESCENDING')
+                docs = query.stream()
+                
+                experiences_data = []
+                for doc in docs:
+                    experience_data = doc.to_dict()
+                    experience_data['id'] = doc.id
+                    experiences_data.append(experience_data)
+                return experiences_data
             
-            # Filtrar per refuge_id i ordenar per modified_at descendent
-            logger.log(23, f"Firestore READ: collection={self.COLLECTION_NAME} where refuge_id={refuge_id} order_by modified_at desc")
-            query = db.collection(self.COLLECTION_NAME)\
-                        .where('refuge_id', '==', refuge_id)\
-                        .order_by('modified_at', direction='DESCENDING')
-            docs = query.stream()
+            # Funció per obtenir una experiència individual per ID
+            def fetch_single(experience_id: str):
+                db = self.firestore_service.get_db()
+                doc_ref = db.collection(self.COLLECTION_NAME).document(experience_id)
+                logger.log(23, f"Firestore READ: collection={self.COLLECTION_NAME} document={experience_id}")
+                doc = doc_ref.get()
+                if doc.exists:
+                    experience_data = doc.to_dict()
+                    experience_data['id'] = doc.id
+                    return experience_data
+                return None
             
-            experiences_data = []
-            for doc in docs:
-                experience_data = doc.to_dict()
-                experience_data['id'] = doc.id
-                experiences_data.append(experience_data)
+            # Funció per extreure l'ID d'una experiència
+            def get_id(experience_data: Dict[str, Any]) -> str:
+                return experience_data['id']
             
-            # Guarda a cache
-            timeout = cache_service.get_timeout('experience_list')
-            cache_service.set(cache_key, experiences_data, timeout)
+            # Usar estratègia ID caching del cache_service
+            experiences_data = cache_service.get_or_fetch_list(
+                list_cache_key=cache_key,
+                detail_key_prefix='experience_detail',
+                fetch_all_fn=fetch_all,
+                fetch_single_fn=fetch_single,
+                get_id_fn=get_id,
+                list_timeout=cache_service.get_timeout('experience_list'),
+                detail_timeout=cache_service.get_timeout('experience_detail')
+            )
             
             logger.log(23, f"Trobades {len(experiences_data)} experiències per al refugi {refuge_id}")
             return self.mapper.firestore_list_to_models(experiences_data)
@@ -175,11 +194,8 @@ class ExperienceDAO:
 
             logger.info(f"Experiència {experience_id} actualitzada correctament")
             
-            # Invalida cache
+            # Invalida cache (només detail, la list no canvia en updates)
             cache_service.delete(cache_service.generate_key('experience_detail', experience_id=experience_id))
-            experience_data = doc.to_dict()
-            if experience_data and 'refuge_id' in experience_data:
-                cache_service.delete_pattern(f"experience_list:refuge_id:{experience_data['refuge_id']}:*")
 
             return True, None
             
@@ -255,11 +271,8 @@ class ExperienceDAO:
             
             logger.info(f"Media keys afegides a l'experiència {experience_id}")
             
-            # Invalida cache
+            # Invalida cache (només detail, la list no canvia en updates)
             cache_service.delete(cache_service.generate_key('experience_detail', experience_id=experience_id))
-            experience_data = doc.to_dict()
-            if experience_data and 'refuge_id' in experience_data:
-                cache_service.delete_pattern(f"experience_list:refuge_id:{experience_data['refuge_id']}:*")
             
             return True, None
             
@@ -297,11 +310,8 @@ class ExperienceDAO:
             
             logger.info(f"Media key {media_key} eliminada de l'experiència {experience_id}")
             
-            # Invalida cache
+            # Invalida cache (només detail, la list no canvia en updates)
             cache_service.delete(cache_service.generate_key('experience_detail', experience_id=experience_id))
-            experience_data = doc.to_dict()
-            if experience_data and 'refuge_id' in experience_data:
-                cache_service.delete_pattern(f"experience_list:refuge_id:{experience_data['refuge_id']}:*")
             
             return True, None
             
