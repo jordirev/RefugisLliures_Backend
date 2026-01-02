@@ -129,8 +129,10 @@ class UserController:
         2. Eliminar dubtes
         3. Eliminar respostes a dubtes
         4. Anonimitzar proposals
-        5. Anonimitzar renovations
-        6. Eliminar participacions en renovations
+        5. Eliminar renovations actuals
+        6. Anonimitzar renovations
+        6.1 Eliminar participacions en renovations
+        6.2 Eliminar user en renovations on ha sigut expulsat
         7. Eliminar fotos penjades
         8. Eliminar avatar
         9. Eliminar de visitors dels refugis
@@ -181,8 +183,16 @@ class UserController:
             if not success:
                 return False, f"Error anonimitzant proposals: {error}"
             logger.info(f"Proposals anonimitzades per a l'usuari {uid}")
+
+            # 5. Eliminar renovations actuals
+            from ..controllers.renovation_controller import RenovationController
+            renovation_controller = RenovationController()
+            success, error = renovation_controller.delete_current_renovations_by_creator(uid)
+            if not success:
+                return False, f"Error eliminant renovations actuals: {error}"
+            logger.info(f"Renovations actuals eliminades per a l'usuari {uid}")
             
-            # 5. Anonimitzar renovations
+            # 6. Anonimitzar renovations
             from ..controllers.renovation_controller import RenovationController
             renovation_controller = RenovationController()
             success, error = renovation_controller.anonymize_renovations_by_creator(uid)
@@ -190,13 +200,13 @@ class UserController:
                 return False, f"Error anonimitzant renovations: {error}"
             logger.info(f"Renovations anonimitzades per a l'usuari {uid}")
             
-            # 6. Eliminar participacions en renovations
+            # 6.1 Eliminar participacions en renovations
             success, error = renovation_controller.remove_user_from_participations(uid)
             if not success:
                 return False, f"Error eliminant participacions: {error}"
             logger.info(f"Participacions eliminades per a l'usuari {uid}")
 
-            # 6.1 Eliminar user en renovations on ha sigut expulsat
+            # 6.2 Eliminar user en renovations on ha sigut expulsat
             success, error = renovation_controller.remove_user_from_expelled(uid)
             if not success:
                 return False, f"Error eliminant expelleds: {error}"
