@@ -543,7 +543,17 @@ class TestUserDAO:
         dao = UserDAO()
         result = dao.get_refugis_info('test_uid', 'favourite_refuges')
         
-        assert result == cached_data
+        # El mapper transforma les dades afegint camps per defecte
+        expected = [{
+            'id': 'refugi_123',
+            'name': 'Test Refugi',
+            'region': '',
+            'places': 0,
+            'coord': {},
+            'media_metadata': {},
+            'images_metadata': None
+        }]
+        assert result == expected
     
     @patch('api.daos.user_dao.UserDAO.get_user_by_uid')
     @patch('api.daos.user_dao.cache_service')
@@ -1290,9 +1300,18 @@ class TestUserDAOExtended:
         """Test get_refugis_info casos límit"""
         dao = UserDAO()
         
-        # Cache hit
+        # Cache hit - el mapper transforma les dades afegint camps per defecte
         mock_cache.get.return_value = [{'id': 'r1'}]
-        assert dao.get_refugis_info("u1", "favourite_refuges") == [{'id': 'r1'}]
+        expected = [{
+            'id': 'r1',
+            'name': '',
+            'region': '',
+            'places': 0,
+            'coord': {},
+            'media_metadata': {},
+            'images_metadata': None
+        }]
+        assert dao.get_refugis_info("u1", "favourite_refuges") == expected
         
         # Empty list
         mock_cache.get.return_value = None
