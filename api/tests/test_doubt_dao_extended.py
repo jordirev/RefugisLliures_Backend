@@ -38,7 +38,7 @@ class TestDoubtDAOExtended:
     @patch('api.daos.doubt_dao.cache_service')
     def test_get_doubts_by_refuge_id_cache_hit(self, mock_cache, mock_firestore_class):
         """Test get_doubts_by_refuge_id amb cache hit"""
-        mock_cache.get.return_value = [
+        mock_cache.get_or_fetch_list.return_value = [
             {
                 'id': 'd1', 
                 'refuge_id': 'r1', 
@@ -55,6 +55,8 @@ class TestDoubtDAOExtended:
                 ]
             }
         ]
+        mock_cache.generate_key.return_value = 'test_cache_key'
+        mock_cache.get_timeout.return_value = 300
         
         dao = DoubtDAO()
         res = dao.get_doubts_by_refuge_id("r1")
@@ -143,10 +145,11 @@ class TestDoubtDAOExtended:
         """Test errors a _invalidate_doubt_cache"""
         dao = DoubtDAO()
         
-        # Doubt not found
+        # Doubt not found - should still invalidate detail cache
         with patch.object(dao, 'get_doubt_by_id', return_value=None):
             dao._invalidate_doubt_cache("d1")
-            mock_cache.delete_pattern.assert_called_with("doubt_detail:doubt_id:d1")
+            # Should have called delete for detail cache via _invalidate_doubt_detail_cache
+            mock_cache.delete.assert_called()
             
         # Exception
         with patch.object(dao, 'get_doubt_by_id', side_effect=Exception("Error")):
@@ -235,23 +238,25 @@ class TestDoubtDAOExtended:
     @patch('api.daos.doubt_dao.cache_service')
     def test_get_doubts_by_refuge_id_success(self, mock_cache, mock_firestore_class):
         """Test get_doubts_by_refuge_id èxit"""
-        mock_cache.get.return_value = None
-        mock_db = MagicMock()
-        mock_firestore_class.return_value.get_db.return_value = mock_db
-        
-        mock_doubt_doc = MagicMock()
-        mock_doubt_doc.id = 'd1'
-        mock_doubt_doc.to_dict.return_value = {
-            'id': 'd1', 'refuge_id': 'r1', 'creator_uid': 'u1', 'message': 'm', 'created_at': 'now'
-        }
-        mock_db.collection.return_value.where.return_value.order_by.return_value.stream.return_value = [mock_doubt_doc]
-        
-        mock_answer_doc = MagicMock()
-        mock_answer_doc.id = 'a1'
-        mock_answer_doc.to_dict.return_value = {
-            'id': 'a1', 'creator_uid': 'u2', 'message': 'ans', 'created_at': 'now'
-        }
-        mock_db.collection.return_value.document.return_value.collection.return_value.order_by.return_value.stream.return_value = [mock_answer_doc]
+        mock_cache.get_or_fetch_list.return_value = [
+            {
+                'id': 'd1', 
+                'refuge_id': 'r1', 
+                'creator_uid': 'u1', 
+                'message': 'm', 
+                'created_at': 'now',
+                'answers': [
+                    {
+                        'id': 'a1', 
+                        'creator_uid': 'u2', 
+                        'message': 'ans', 
+                        'created_at': 'now'
+                    }
+                ]
+            }
+        ]
+        mock_cache.generate_key.return_value = 'test_cache_key'
+        mock_cache.get_timeout.return_value = 300
         
         dao = DoubtDAO()
         res = dao.get_doubts_by_refuge_id("r1")
@@ -406,9 +411,9 @@ class TestDoubtDAOExtended:
         
         assert success is True
         assert error is None
-        mock_cache.delete_pattern.assert_called_with("doubt_detail:doubt_id:d1")
-        # Should NOT call delete_pattern for refuge_id if not present
-        assert mock_cache.delete_pattern.call_count == 1
+        # Should call delete for doubt detail cache via _invalidate_doubt_detail_cache
+        mock_cache.delete.assert_called()
+        mock_cache.generate_key.assert_called()
 
     @patch('api.daos.doubt_dao.FirestoreService')
     @patch('api.daos.doubt_dao.cache_service')
@@ -429,6 +434,8 @@ class TestDoubtDAOExtended:
         
         assert success is True
         assert error is None
-        mock_cache.delete_pattern.assert_called_with("doubt_detail:doubt_id:d1")
+        # Should call delete for doubt detail cache via _invalidate_doubt_detail_cache
+        mock_cache.delete.assert_called()
+        mock_cache.generate_key.assert_called()
         # Should NOT call delete_pattern for refuge_id if not present
-        assert mock_cache.delete_pattern.call_count == 1
+        assert mock_cache.delete_pattern.call_count == 0

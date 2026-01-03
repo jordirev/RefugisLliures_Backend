@@ -80,29 +80,24 @@ class TestDoubtDAO:
 
     def test_get_doubts_by_refuge_id(self, dao, mock_db, mock_cache):
         """Test obtenció de dubtes per refugi"""
-        mock_cache.get.return_value = None
+        mock_cache.get_or_fetch_list.return_value = [
+            {
+                'id': 'doubt_1',
+                'refuge_id': 'ref_1',
+                'creator_uid': 'user_1',
+                'message': 'Test',
+                'created_at': '2024-01-01',
+                'answers': [{'id': 'ans_1', 'creator_uid': 'user_2', 'message': 'Reply', 'created_at': '2024-01-02'}]
+            }
+        ]
+        mock_cache.generate_key.return_value = 'test_cache_key'
+        mock_cache.get_timeout.return_value = 300
         
-        # Mock dubtes
-        mock_doubt_doc = MagicMock()
-        mock_doubt_doc.id = "doubt_1"
-        mock_doubt_doc.to_dict.return_value = {
-            'refuge_id': 'ref_1',
-            'creator_uid': 'user_1',
-            'message': 'Test',
-            'created_at': '2024-01-01'
-        }
-        mock_db.collection.return_value.where.return_value.order_by.return_value.stream.return_value = [mock_doubt_doc]
+        result = dao.get_doubts_by_refuge_id("ref_1")
         
-        # Mock respostes (subcollection)
-        # Això és complicat de mockejar perquè _get_answers_by_doubt_id fa la seva pròpia query
-        # Mockejarem _get_answers_by_doubt_id
-        with patch.object(dao, '_get_answers_by_doubt_id', return_value=[Answer(id="ans_1", creator_uid="user_2", message="Reply", created_at="2024-01-02")]) as mock_get_answers:
-            result = dao.get_doubts_by_refuge_id("ref_1")
-            
-            assert len(result) == 1
-            assert result[0].id == "doubt_1"
-            assert len(result[0].answers) == 1
-            mock_cache.set.assert_called()
+        assert len(result) == 1
+        assert result[0].id == "doubt_1"
+        assert len(result[0].answers) == 1
 
     def test_create_answer_success(self, dao, mock_db, mock_cache, mock_increment):
         """Test creació de resposta exitosa"""

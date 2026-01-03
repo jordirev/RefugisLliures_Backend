@@ -159,24 +159,9 @@ class TestRenovationDAO:
         """Test obtenció de totes les renovations actives"""
         mock_today = date.today()
         mock_get_today.return_value = mock_today
-        mock_cache.get.return_value = None
         mock_cache.generate_key.return_value = 'test_cache_key'
         mock_cache.get_timeout.return_value = 300
-        
-        mock_db = MagicMock()
-        mock_firestore_instance = mock_firestore_service.return_value
-        mock_firestore_instance.get_db.return_value = mock_db
-        
-        mock_doc = MagicMock()
-        mock_doc.id = sample_renovation_data['id']
-        mock_doc.to_dict.return_value = sample_renovation_data
-        
-        mock_query = MagicMock()
-        mock_query.stream.return_value = [mock_doc]
-        
-        mock_collection = MagicMock()
-        mock_collection.where.return_value.order_by.return_value = mock_query
-        mock_db.collection.return_value = mock_collection
+        mock_cache.get_or_fetch_list.return_value = [sample_renovation_data]
         
         dao = RenovationDAO()
         result = dao.get_all_renovations()
@@ -524,7 +509,7 @@ class TestRenovationDAO:
         """Test obtenció de renovations des de cache"""
         mock_today = date.today()
         mock_get_today.return_value = mock_today
-        mock_cache.get.return_value = [sample_renovation_data]
+        mock_cache.get_or_fetch_list.return_value = [sample_renovation_data]
         mock_cache.generate_key.return_value = 'test_cache_key'
         
         dao = RenovationDAO()
@@ -604,28 +589,9 @@ class TestRenovationDAO:
     @patch('api.daos.renovation_dao.cache_service')
     def test_get_renovations_by_refuge_all(self, mock_cache, mock_firestore_service, sample_renovation_data):
         """Test obtenció de totes les renovations d'un refugi"""
-        mock_cache.get.return_value = None
         mock_cache.generate_key.return_value = 'test_cache_key'
         mock_cache.get_timeout.return_value = 300
-        
-        mock_db = MagicMock()
-        mock_firestore_instance = mock_firestore_service.return_value
-        mock_firestore_instance.get_db.return_value = mock_db
-        
-        mock_doc = MagicMock()
-        mock_doc.id = sample_renovation_data['id']
-        mock_doc.to_dict.return_value = sample_renovation_data
-        
-        mock_query = MagicMock()
-        mock_query.stream.return_value = [mock_doc]
-        
-        # Mock per al chain: collection().where().order_by()
-        mock_where = MagicMock()
-        mock_where.order_by.return_value = mock_query
-        
-        mock_collection = MagicMock()
-        mock_collection.where.return_value = mock_where
-        mock_db.collection.return_value = mock_collection
+        mock_cache.get_or_fetch_list.return_value = [sample_renovation_data]
         
         dao = RenovationDAO()
         result = dao.get_renovations_by_refuge('test_refuge_id', active_only=False)
@@ -641,24 +607,9 @@ class TestRenovationDAO:
         """Test obtenció només de renovations actives d'un refugi"""
         mock_today = date.today()
         mock_get_today.return_value = mock_today
-        mock_cache.get.return_value = None
         mock_cache.generate_key.return_value = 'test_cache_key'
         mock_cache.get_timeout.return_value = 300
-        
-        mock_db = MagicMock()
-        mock_firestore_instance = mock_firestore_service.return_value
-        mock_firestore_instance.get_db.return_value = mock_db
-        
-        mock_doc = MagicMock()
-        mock_doc.id = sample_renovation_data['id']
-        mock_doc.to_dict.return_value = sample_renovation_data
-        
-        mock_query = MagicMock()
-        mock_query.stream.return_value = [mock_doc]
-        
-        mock_collection = MagicMock()
-        mock_collection.where.return_value.where.return_value.order_by.return_value = mock_query
-        mock_db.collection.return_value = mock_collection
+        mock_cache.get_or_fetch_list.return_value = [sample_renovation_data]
         
         dao = RenovationDAO()
         result = dao.get_renovations_by_refuge('test_refuge_id', active_only=True)
@@ -670,7 +621,7 @@ class TestRenovationDAO:
     @patch('api.daos.renovation_dao.cache_service')
     def test_get_renovations_by_refuge_from_cache(self, mock_cache, mock_firestore_service, sample_renovation_data):
         """Test obtenció de renovations per refugi des de cache"""
-        mock_cache.get.return_value = [sample_renovation_data]
+        mock_cache.get_or_fetch_list.return_value = [sample_renovation_data]
         mock_cache.generate_key.return_value = 'test_cache_key'
         
         dao = RenovationDAO()

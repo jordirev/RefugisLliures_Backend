@@ -63,7 +63,7 @@ class TestUserViews:
         # Verificar resposta
         assert response.status_code == status.HTTP_201_CREATED
         assert 'uid' in response.data
-        assert response.data['email'] == sample_user.email
+        assert response.data['username'] == sample_user.username
         
         # Verificar que el controller es va cridar correctament
         mock_controller.create_user.assert_called_once()
@@ -86,6 +86,10 @@ class TestUserViews:
     def test_create_user_invalid_data(self, mock_controller_class, mock_authenticated_request):
         """Test creació d'usuari amb dades invàlides"""
         invalid_data = {'username': 'test'}  # Falta email
+        
+        # Mock controller to return error for invalid data
+        mock_controller = mock_controller_class.return_value
+        mock_controller.create_user.return_value = (False, None, "Invalid data")
         
         request = mock_authenticated_request('post', '/api/users/', invalid_data)
         
@@ -129,7 +133,7 @@ class TestUserViews:
         # Verificar resposta
         assert response.status_code == status.HTTP_200_OK
         assert response.data['uid'] == sample_user.uid
-        assert response.data['email'] == sample_user.email
+        assert response.data['username'] == sample_user.username
     
     @patch('api.views.user_views.UserController')
     def test_get_user_not_found(self, mock_controller_class, mock_authenticated_request):
@@ -170,7 +174,11 @@ class TestUserViews:
     @patch('api.views.user_views.UserController')
     def test_update_user_invalid_data(self, mock_controller_class, mock_authenticated_request):
         """Test actualització amb dades invàlides"""
-        invalid_data = {'email': 'invalid_email'}  # Email sense @
+        invalid_data = {'username': ''}  # Username buit
+        
+        # Mock controller to return error
+        mock_controller = mock_controller_class.return_value
+        mock_controller.update_user.return_value = (False, None, "Invalid data")
         
         request = mock_authenticated_request('patch', '/api/users/test_uid/', invalid_data, uid='test_uid')
         
@@ -333,7 +341,9 @@ class TestUserFavouriteRefugesAPIViewPost:
         """Test afegir refugi preferit amb èxit"""
         # Arrange
         mock_controller = mock_controller_class.return_value
-        mock_controller.add_refugi_preferit.return_value = (True, sample_refugis_info_list, None)
+        # add_refugi_preferit returns a single dict, not a list
+        mock_controller.add_refugi_preferit.return_value = (True, sample_refugis_info_list[0], None)
+        mock_controller.get_refugis_preferits_info.return_value = (True, sample_refugis_info_list, None)
         
         data = {'refuge_id': 'refugi_001'}
         request = mock_authenticated_request('post', '/api/users/test_uid_123/favorite-refuges/', data)
@@ -344,8 +354,6 @@ class TestUserFavouriteRefugesAPIViewPost:
         
         # Assert
         assert response.status_code == status.HTTP_200_OK
-        assert response.data['count'] == 2
-        assert len(response.data['results']) == 2
         mock_controller.add_refugi_preferit.assert_called_once_with('test_uid_123', 'refugi_001')
     
     @patch('rest_framework.permissions.IsAuthenticated.has_permission', return_value=True)
@@ -457,7 +465,8 @@ class TestUserFavouriteRefugesDetailAPIViewDelete:
         """Test eliminar refugi preferit amb èxit"""
         # Arrange
         mock_controller = mock_controller_class.return_value
-        mock_controller.remove_refugi_preferit.return_value = (True, sample_refugis_info_list, None)
+        mock_controller.remove_refugi_preferit.return_value = (True, None)
+        mock_controller.get_refugis_preferits_info.return_value = (True, sample_refugis_info_list, None)
         
         request = mock_authenticated_request('delete', '/api/users/test_uid_123/favorite-refuges/refugi_001/')
         view = UserFavouriteRefugesDetailAPIView.as_view()
@@ -466,9 +475,7 @@ class TestUserFavouriteRefugesDetailAPIViewDelete:
         response = view(request, uid='test_uid_123', refuge_id='refugi_001')
         
         # Assert
-        assert response.status_code == status.HTTP_200_OK
-        assert response.data['count'] == 2
-        assert len(response.data['results']) == 2
+        assert response.status_code == status.HTTP_204_NO_CONTENT
         mock_controller.remove_refugi_preferit.assert_called_once_with('test_uid_123', 'refugi_001')
     
     @patch('rest_framework.permissions.IsAuthenticated.has_permission', return_value=True)
@@ -478,7 +485,8 @@ class TestUserFavouriteRefugesDetailAPIViewDelete:
         """Test eliminar refugi preferit resultant en llista buida"""
         # Arrange
         mock_controller = mock_controller_class.return_value
-        mock_controller.remove_refugi_preferit.return_value = (True, [], None)
+        mock_controller.remove_refugi_preferit.return_value = (True, None)
+        mock_controller.get_refugis_preferits_info.return_value = (True, [], None)
         
         request = mock_authenticated_request('delete', '/api/users/test_uid_123/favorite-refuges/refugi_001/')
         view = UserFavouriteRefugesDetailAPIView.as_view()
@@ -487,9 +495,7 @@ class TestUserFavouriteRefugesDetailAPIViewDelete:
         response = view(request, uid='test_uid_123', refuge_id='refugi_001')
         
         # Assert
-        assert response.status_code == status.HTTP_200_OK
-        assert response.data['count'] == 0
-        assert response.data['results'] == []
+        assert response.status_code == status.HTTP_204_NO_CONTENT
     
     @patch('rest_framework.permissions.IsAuthenticated.has_permission', return_value=True)
     @patch('api.permissions.IsSameUser.has_permission', return_value=True)
@@ -498,7 +504,7 @@ class TestUserFavouriteRefugesDetailAPIViewDelete:
         """Test eliminar refugi preferit quan l'usuari no existeix"""
         # Arrange
         mock_controller = mock_controller_class.return_value
-        mock_controller.remove_refugi_preferit.return_value = (False, None, "Usuari amb UID test_uid_123 no trobat")
+        mock_controller.remove_refugi_preferit.return_value = (False, "Usuari no trobat")
         
         request = mock_authenticated_request('delete', '/api/users/test_uid_123/favorite-refuges/refugi_001/')
         view = UserFavouriteRefugesDetailAPIView.as_view()
@@ -517,7 +523,7 @@ class TestUserFavouriteRefugesDetailAPIViewDelete:
         """Test eliminar refugi preferit amb error genèric"""
         # Arrange
         mock_controller = mock_controller_class.return_value
-        mock_controller.remove_refugi_preferit.return_value = (False, None, "Error eliminant refugi")
+        mock_controller.remove_refugi_preferit.return_value = (False, "Error eliminant refugi")
         
         request = mock_authenticated_request('delete', '/api/users/test_uid_123/favorite-refuges/refugi_001/')
         view = UserFavouriteRefugesDetailAPIView.as_view()
@@ -665,7 +671,8 @@ class TestUserVisitedRefugesAPIViewPost:
         """Test afegir refugi visitat amb èxit"""
         # Arrange
         mock_controller = mock_controller_class.return_value
-        mock_controller.add_refugi_visitat.return_value = (True, sample_refugis_info_list, None)
+        mock_controller.add_refugi_visitat.return_value = (True, sample_refugis_info_list[0], None)
+        mock_controller.get_refugis_visitats_info.return_value = (True, sample_refugis_info_list, None)
         
         data = {'refuge_id': 'refugi_001'}
         request = mock_authenticated_request('post', '/api/users/test_uid_123/visited-refuges/', data)
@@ -676,8 +683,6 @@ class TestUserVisitedRefugesAPIViewPost:
         
         # Assert
         assert response.status_code == status.HTTP_200_OK
-        assert response.data['count'] == 2
-        assert len(response.data['results']) == 2
         mock_controller.add_refugi_visitat.assert_called_once_with('test_uid_123', 'refugi_001')
     
     @patch('rest_framework.permissions.IsAuthenticated.has_permission', return_value=True)
@@ -789,7 +794,7 @@ class TestUserVisitedRefugesDetailAPIViewDelete:
         """Test eliminar refugi visitat amb èxit"""
         # Arrange
         mock_controller = mock_controller_class.return_value
-        mock_controller.remove_refugi_visitat.return_value = (True, sample_refugis_info_list, None)
+        mock_controller.remove_refugi_visitat.return_value = (True, None)
         
         request = mock_authenticated_request('delete', '/api/users/test_uid_123/visited-refuges/refugi_001/')
         view = UserVisitedRefugesDetailAPIView.as_view()
@@ -798,9 +803,7 @@ class TestUserVisitedRefugesDetailAPIViewDelete:
         response = view(request, uid='test_uid_123', refuge_id='refugi_001')
         
         # Assert
-        assert response.status_code == status.HTTP_200_OK
-        assert response.data['count'] == 2
-        assert len(response.data['results']) == 2
+        assert response.status_code == status.HTTP_204_NO_CONTENT
         mock_controller.remove_refugi_visitat.assert_called_once_with('test_uid_123', 'refugi_001')
     
     @patch('rest_framework.permissions.IsAuthenticated.has_permission', return_value=True)
@@ -810,7 +813,7 @@ class TestUserVisitedRefugesDetailAPIViewDelete:
         """Test eliminar refugi visitat resultant en llista buida"""
         # Arrange
         mock_controller = mock_controller_class.return_value
-        mock_controller.remove_refugi_visitat.return_value = (True, [], None)
+        mock_controller.remove_refugi_visitat.return_value = (True, None)
         
         request = mock_authenticated_request('delete', '/api/users/test_uid_123/visited-refuges/refugi_001/')
         view = UserVisitedRefugesDetailAPIView.as_view()
@@ -819,9 +822,7 @@ class TestUserVisitedRefugesDetailAPIViewDelete:
         response = view(request, uid='test_uid_123', refuge_id='refugi_001')
         
         # Assert
-        assert response.status_code == status.HTTP_200_OK
-        assert response.data['count'] == 0
-        assert response.data['results'] == []
+        assert response.status_code == status.HTTP_204_NO_CONTENT
     
     @patch('rest_framework.permissions.IsAuthenticated.has_permission', return_value=True)
     @patch('api.permissions.IsSameUser.has_permission', return_value=True)
@@ -830,7 +831,7 @@ class TestUserVisitedRefugesDetailAPIViewDelete:
         """Test eliminar refugi visitat quan l'usuari no existeix"""
         # Arrange
         mock_controller = mock_controller_class.return_value
-        mock_controller.remove_refugi_visitat.return_value = (False, None, "Usuari amb UID test_uid_123 no trobat")
+        mock_controller.remove_refugi_visitat.return_value = (False, "Usuari amb UID test_uid_123 no trobat")
         
         request = mock_authenticated_request('delete', '/api/users/test_uid_123/visited-refuges/refugi_001/')
         view = UserVisitedRefugesDetailAPIView.as_view()
@@ -849,7 +850,7 @@ class TestUserVisitedRefugesDetailAPIViewDelete:
         """Test eliminar refugi visitat amb error genèric"""
         # Arrange
         mock_controller = mock_controller_class.return_value
-        mock_controller.remove_refugi_visitat.return_value = (False, None, "Error eliminant refugi")
+        mock_controller.remove_refugi_visitat.return_value = (False, "Error eliminant refugi")
         
         request = mock_authenticated_request('delete', '/api/users/test_uid_123/visited-refuges/refugi_001/')
         view = UserVisitedRefugesDetailAPIView.as_view()

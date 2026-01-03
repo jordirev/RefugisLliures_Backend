@@ -50,7 +50,7 @@ class TestRefugeProposalDAO:
             assert result is not None
             assert result.id == "prop_123"
             mock_doc_ref.set.assert_called()
-            mock_cache.delete_pattern.assert_called_with('proposal_list:*')
+            mock_cache.delete_pattern.assert_called_with('proposal_list:')
 
     def test_get_by_id_found(self, dao, mock_db, mock_cache):
         """Test obtenció de proposta existent"""

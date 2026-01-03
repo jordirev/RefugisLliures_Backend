@@ -22,27 +22,13 @@ class TestUserSerializers:
         serializer = UserSerializer(data=sample_user_data)
         
         assert serializer.is_valid()
-        assert serializer.validated_data['email'] == sample_user_data['email'].lower()
+        assert serializer.validated_data['username'] == sample_user_data['username']
     
-    def test_user_serializer_invalid_email(self):
-        """Test serialització amb email invàlid"""
-        data = {
-            'uid': 'test_uid',
-            'username': 'test',
-            'email': 'invalid_email',
-            'language': 'ca'
-        }
-        serializer = UserSerializer(data=data)
-        
-        assert not serializer.is_valid()
-        assert 'email' in serializer.errors
-    
-    def test_user_serializer_short_username(self):
+    def test_user_serializer_invalid_username(self):
         """Test serialització amb username massa curt"""
         data = {
             'uid': 'test_uid',
-            'username': 'a',  # Només 1 caràcter
-            'email': 'test@example.com',
+            'username': 'a',
             'language': 'ca'
         }
         serializer = UserSerializer(data=data)
@@ -50,12 +36,23 @@ class TestUserSerializers:
         assert not serializer.is_valid()
         assert 'username' in serializer.errors
     
+    def test_user_serializer_empty_username(self):
+        """Test serialització amb username buit"""
+        data = {
+            'uid': 'test_uid',
+            'username': '',
+            'language': 'ca'
+        }
+        serializer = UserSerializer(data=data)
+        
+        # Username can be empty, so it should be valid
+        assert serializer.is_valid()
+    
     def test_user_serializer_invalid_language(self):
         """Test serialització amb language invàlid"""
         data = {
             'uid': 'test_uid',
             'username': 'test',
-            'email': 'test@example.com',
             'language': 'invalid_lang'
         }
         serializer = UserSerializer(data=data)
@@ -67,25 +64,23 @@ class TestUserSerializers:
         """Test UserCreateSerializer amb dades vàlides"""
         data = {
             'username': 'newuser',
-            'email': 'newuser@example.com',
             'language': 'ca'
         }
         serializer = UserCreateSerializer(data=data)
         
         assert serializer.is_valid()
-        assert serializer.validated_data['email'] == 'newuser@example.com'
+        assert serializer.validated_data['username'] == 'newuser'
     
-    def test_user_create_serializer_email_normalization(self):
-        """Test normalització d'email (lowercase i trim)"""
+    def test_user_create_serializer_username_normalization(self):
+        """Test normalització d'username (trim)"""
         data = {
-            'username': 'test',
-            'email': '  TEST@EXAMPLE.COM  ',
+            'username': '  testuser  ',
             'language': 'ca'
         }
         serializer = UserCreateSerializer(data=data)
         
         assert serializer.is_valid()
-        assert serializer.validated_data['email'] == 'test@example.com'
+        assert serializer.validated_data['username'] == 'testuser'
     
     def test_user_update_serializer_partial_update(self):
         """Test UserUpdateSerializer amb actualització parcial"""
@@ -109,23 +104,22 @@ class TestUserSerializers:
         """Test actualització de múltiples camps"""
         data = {
             'username': 'updated',
-            'email': 'updated@example.com',
             'language': 'es'
         }
         serializer = UserUpdateSerializer(data=data)
         
         assert serializer.is_valid()
-        assert len(serializer.validated_data) == 3
+        assert len(serializer.validated_data) == 2
     
-    def test_validator_mixin_email_field(self):
-        """Test validador d'email del mixin"""
-        # Email vàlid
-        email = UserValidatorMixin.validate_email_field('test@example.com', required=True)
-        assert email == 'test@example.com'
+    def test_validator_mixin_uid_field(self):
+        """Test validador d'uid del mixin"""
+        # UID vàlid
+        uid = UserValidatorMixin.validate_uid_field('test_uid_123')
+        assert uid == 'test_uid_123'
         
-        # Email buit amb required=True
+        # UID buit
         with pytest.raises(ValidationError):
-            UserValidatorMixin.validate_email_field('', required=True)
+            UserValidatorMixin.validate_uid_field('')
     
     def test_validator_mixin_username_field(self):
         """Test validador de username del mixin"""

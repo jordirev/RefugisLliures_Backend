@@ -143,12 +143,11 @@ class TestRefugeVisitDAOExtended:
     def test_get_visits_by_refuge_success(self, mock_cache, mock_firestore_service):
         """Test get_visits_by_refuge èxit"""
         dao = RefugeVisitDAO()
-        mock_db = mock_firestore_service.return_value.get_db.return_value
-        mock_cache.get.return_value = None
-        
-        mock_doc = MagicMock()
-        mock_doc.to_dict.return_value = {'refuge_id': 'r1', 'date': '2024-01-01'}
-        mock_db.collection.return_value.where.return_value.where.return_value.order_by.return_value.get.return_value = [mock_doc]
+        mock_cache.get_or_fetch_list.return_value = [
+            {'id': 'v1', 'refuge_id': 'r1', 'date': '2024-01-01'}
+        ]
+        mock_cache.generate_key.return_value = 'test_cache_key'
+        mock_cache.get_timeout.return_value = 300
         
         results = dao.get_visits_by_refuge("r1", date.today())
         assert len(results) == 1

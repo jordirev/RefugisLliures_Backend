@@ -17,7 +17,7 @@ class TestUserMapper:
         
         assert isinstance(user, User)
         assert user.uid == sample_user_data['uid']
-        assert user.email == sample_user_data['email']
+        assert user.username == sample_user_data['username']
     
     def test_model_to_firebase(self, sample_user, user_mapper):
         """Test conversió de model a Firebase"""
@@ -25,7 +25,7 @@ class TestUserMapper:
         
         assert isinstance(firebase_data, dict)
         assert firebase_data['uid'] == sample_user.uid
-        assert firebase_data['email'] == sample_user.email
+        assert firebase_data['username'] == sample_user.username
     
     def test_validate_firebase_data_valid(self, sample_user_data, user_mapper):
         """Test validació de dades vàlides de Firebase"""
@@ -42,25 +42,25 @@ class TestUserMapper:
         assert is_valid is False
         assert 'uid' in error
     
-    def test_validate_firebase_data_missing_email(self, user_mapper):
-        """Test validació sense email"""
+    def test_validate_firebase_data_missing_username(self, user_mapper):
+        """Test validació sense username"""
         data = {'uid': 'test_uid'}
         is_valid, error = user_mapper.validate_firebase_data(data)
         
-        assert is_valid is False
-        assert 'email' in error
+        # Username is optional, so this should be valid
+        assert is_valid is True
     
-    def test_validate_firebase_data_invalid_email(self, user_mapper):
-        """Test validació amb email invàlid"""
-        data = {'uid': 'test_uid', 'email': 'invalid_email'}
+    def test_validate_firebase_data_invalid_uid(self, user_mapper):
+        """Test validació amb uid invàlid (buit)"""
+        data = {'uid': '', 'username': 'test'}
         is_valid, error = user_mapper.validate_firebase_data(data)
         
         assert is_valid is False
-        assert 'email' in error.lower()
+        assert 'uid' in error.lower()
     
     def test_validate_firebase_data_invalid_language(self, user_mapper):
         """Test validació amb language invàlid"""
-        data = {'uid': 'test_uid', 'email': 'test@example.com', 'language': 'invalid'}
+        data = {'uid': 'test_uid', 'username': 'test', 'language': 'invalid'}
         is_valid, error = user_mapper.validate_firebase_data(data)
         
         assert is_valid is False
@@ -70,13 +70,11 @@ class TestUserMapper:
         """Test neteja de dades de Firebase"""
         data = {
             'uid': 'test_uid',
-            'email': '  TEST@EXAMPLE.COM  ',
             'username': '  testuser  ',
             'language': '  CA  '
         }
         cleaned = user_mapper.clean_firebase_data(data)
         
-        assert cleaned['email'] == 'test@example.com'
         assert cleaned['username'] == 'testuser'
         assert cleaned['language'] == 'ca'
     

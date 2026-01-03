@@ -191,6 +191,8 @@ class TestIndividualStrategies:
         mock_db = MagicMock()
         mock_doc = MagicMock()
         mock_doc.to_dict.return_value = return_data
+        # Set doc.id to match the id in return_data
+        mock_doc.id = return_data.get('id', '001')
         
         mock_query = MagicMock()
         mock_query.stream.return_value = [mock_doc]
@@ -244,8 +246,10 @@ class TestIndividualStrategies:
         mock_db = MagicMock()
         mock_doc1 = MagicMock()
         mock_doc1.to_dict.return_value = refugi_data_1
+        mock_doc1.id = '001'
         mock_doc2 = MagicMock()
         mock_doc2.to_dict.return_value = refugi_data_2
+        mock_doc2.id = '002'
         
         mock_query = MagicMock()
         mock_query.stream.return_value = [mock_doc1, mock_doc2]
@@ -321,8 +325,10 @@ class TestIndividualStrategies:
         mock_db = MagicMock()
         mock_doc1 = MagicMock()
         mock_doc1.to_dict.return_value = refugi_data_1
+        mock_doc1.id = '001'
         mock_doc2 = MagicMock()
         mock_doc2.to_dict.return_value = refugi_data_2
+        mock_doc2.id = '002'
         
         mock_query = MagicMock()
         mock_query.stream.return_value = [mock_doc1, mock_doc2]
@@ -410,8 +416,10 @@ class TestIndividualStrategies:
         mock_db = MagicMock()
         mock_doc1 = MagicMock()
         mock_doc1.to_dict.return_value = refugi_data_1
+        mock_doc1.id = '001'
         mock_doc2 = MagicMock()
         mock_doc2.to_dict.return_value = refugi_data_2
+        mock_doc2.id = '002'
         
         mock_query = MagicMock()
         mock_query.stream.return_value = [mock_doc1, mock_doc2]
@@ -462,6 +470,7 @@ class TestIndividualStrategies:
         for data in [refugi_data_1, refugi_data_2, refugi_data_3]:
             mock_doc = MagicMock()
             mock_doc.to_dict.return_value = data
+            mock_doc.id = data['id']
             mock_docs.append(mock_doc)
         
         mock_query = MagicMock()
@@ -494,8 +503,6 @@ class TestRefugiLliureDAOWithStrategies:
     @patch('api.daos.refugi_lliure_dao.cache_service')
     def test_search_by_name(self, mock_cache, mock_firestore):
         """Test cerca per nom"""
-        mock_cache.get.return_value = None
-        
         refugi_data = {
             'id': '001',
             'name': 'Cabane de Bastan',
@@ -506,18 +513,9 @@ class TestRefugiLliureDAOWithStrategies:
             'info_comp': {}
         }
         
-        mock_db = MagicMock()
-        mock_firestore.get_db.return_value = mock_db
-        
-        mock_doc = MagicMock()
-        mock_doc.to_dict.return_value = refugi_data
-        
-        mock_query = MagicMock()
-        mock_query.stream.return_value = [mock_doc]
-        
-        mock_collection = MagicMock()
-        mock_collection.where.return_value = mock_query
-        mock_db.collection.return_value = mock_collection
+        mock_cache.get_or_fetch_list.return_value = [refugi_data]
+        mock_cache.generate_key.return_value = 'test_cache_key'
+        mock_cache.get_timeout.return_value = 300
         
         dao = RefugiLliureDAO()
         filters = RefugiSearchFilters()
@@ -533,8 +531,6 @@ class TestRefugiLliureDAOWithStrategies:
     @patch('api.daos.refugi_lliure_dao.cache_service')
     def test_search_with_type_and_places(self, mock_cache, mock_firestore):
         """Test cerca amb type i places"""
-        mock_cache.get.return_value = None
-        
         refugi_data = {
             'id': '001',
             'name': 'Test Refugi',
@@ -545,19 +541,9 @@ class TestRefugiLliureDAOWithStrategies:
             'info_comp': {}
         }
         
-        mock_db = MagicMock()
-        mock_firestore.get_db.return_value = mock_db
-        
-        mock_doc = MagicMock()
-        mock_doc.to_dict.return_value = refugi_data
-        
-        mock_query = MagicMock()
-        mock_query.stream.return_value = [mock_doc]
-        mock_query.where.return_value = mock_query
-        
-        mock_collection = MagicMock()
-        mock_collection.where.return_value = mock_query
-        mock_db.collection.return_value = mock_collection
+        mock_cache.get_or_fetch_list.return_value = [refugi_data]
+        mock_cache.generate_key.return_value = 'test_cache_key'
+        mock_cache.get_timeout.return_value = 300
         
         dao = RefugiLliureDAO()
         filters = RefugiSearchFilters()
@@ -705,6 +691,7 @@ class TestRefugiLliureDAOWithStrategies:
         refugi_data = {'id': '001', 'name': 'Test', 'type': 'Cabane', 'places': 10}
         mock_doc = MagicMock()
         mock_doc.to_dict.return_value = refugi_data
+        mock_doc.id = '001'
         
         mock_query = MagicMock()
         mock_query.stream.return_value = [mock_doc]
@@ -883,6 +870,7 @@ class TestEdgeCasesAndExceptions:
         for data in [refugi_data_1, refugi_data_2]:
             mock_doc = MagicMock()
             mock_doc.to_dict.return_value = data
+            mock_doc.id = data['id']
             mock_docs.append(mock_doc)
         
         mock_query = MagicMock()
@@ -916,6 +904,7 @@ class TestEdgeCasesAndExceptions:
         for data in [refugi_data_1, refugi_data_2, refugi_data_3]:
             mock_doc = MagicMock()
             mock_doc.to_dict.return_value = data
+            mock_doc.id = data['id']
             mock_docs.append(mock_doc)
         
         mock_query = MagicMock()
@@ -949,6 +938,7 @@ class TestEdgeCasesAndExceptions:
         for data in [refugi_data_1, refugi_data_2]:
             mock_doc = MagicMock()
             mock_doc.to_dict.return_value = data
+            mock_doc.id = data['id']
             mock_docs.append(mock_doc)
         
         mock_query = MagicMock()
@@ -999,7 +989,8 @@ class TestEdgeCasesAndExceptions:
     def test_search_exception_propagates(self, mock_cache, mock_firestore):
         """Test que les excepcions es propaguen correctament"""
         mock_cache.get.return_value = None
-        mock_firestore.get_db.side_effect = Exception("Firestore connection failed")
+        # Mock get_or_fetch_list to raise the exception
+        mock_cache.get_or_fetch_list.side_effect = Exception("Firestore connection failed")
         
         dao = RefugiLliureDAO()
         filters = RefugiSearchFilters()

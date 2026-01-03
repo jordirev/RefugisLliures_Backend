@@ -54,7 +54,6 @@ class TestUserIntegration:
         assert user is not None
         assert user.uid == 'user_001'
         assert user.username == 'testuser'
-        assert user.email == 'test@example.com'
         
         # Verificar crides al DAO
         mock_dao.get_user_by_uid.assert_called_once_with('user_001')
@@ -183,8 +182,10 @@ class TestUserIntegration:
         mock_doubt_ctrl.return_value.delete_doubts_by_creator.return_value = (True, None)
         mock_doubt_ctrl.return_value.delete_answers_by_creator.return_value = (True, None)
         mock_prop_ctrl.return_value.anonymize_proposals_by_creator.return_value = (True, None)
+        mock_ren_ctrl.return_value.delete_current_renovations_by_creator.return_value = (True, None)
         mock_ren_ctrl.return_value.anonymize_renovations_by_creator.return_value = (True, None)
         mock_ren_ctrl.return_value.remove_user_from_participations.return_value = (True, None)
+        mock_ren_ctrl.return_value.remove_user_from_expelled.return_value = (True, None)
         mock_visit_ctrl.return_value.remove_user_from_all_visits.return_value = (True, None)
         
         # Executar a través del controller

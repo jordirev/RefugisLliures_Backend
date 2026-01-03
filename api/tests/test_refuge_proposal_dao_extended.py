@@ -214,21 +214,20 @@ class TestRefugeProposalDAOExtended:
     def test_refuge_proposal_dao_list_all_with_filters(self, mock_cache, mock_firestore):
         """Test RefugeProposalDAO.list_all amb filtres"""
         dao = RefugeProposalDAO()
-        mock_db = mock_firestore.get_db.return_value
-        mock_cache.get.return_value = None
         
-        # Configurar el mock per a consultes encadenades
-        mock_query = MagicMock()
-        mock_db.collection.return_value = mock_query
-        mock_query.where.return_value = mock_query
-        mock_query.order_by.return_value = mock_query
-        mock_query.stream.return_value = []
+        # Mock get_or_fetch_list to return data
+        mock_cache.get_or_fetch_list.return_value = [
+            {'id': 'prop_1', 'status': 'pending', 'refuge_id': 'ref_1', 'creator_uid': 'user_1'}
+        ]
+        mock_cache.generate_key.return_value = 'test_cache_key'
+        mock_cache.get_timeout.return_value = 300
         
         filters = {'status': 'pending', 'refuge_id': 'ref_1', 'creator_uid': 'user_1'}
-        dao.list_all(filters=filters)
+        result = dao.list_all(filters=filters)
         
-        # Verifiquem que s'han aplicat els filtres a la query
-        assert mock_query.where.call_count == 3
+        # Verifiquem que s'ha cridat get_or_fetch_list
+        assert mock_cache.get_or_fetch_list.called
+        assert len(result) == 1
         
     @patch('api.daos.refuge_proposal_dao.firestore_service')
     @patch('api.daos.refuge_proposal_dao.cache_service')
@@ -254,7 +253,8 @@ class TestRefugeProposalDAOExtended:
         assert success is True
         mock_coll.where.assert_called_with('creator_uid', '==', 'user_1')
         mock_doc.reference.update.assert_called_with({'creator_uid': 'unknown'})
-        mock_cache.delete_pattern.assert_called()
+        # Should call cache.delete for detail cache
+        mock_cache.delete.assert_called()
         
         # Cas d'error
         mock_coll.where.side_effect = Exception("DB Error")

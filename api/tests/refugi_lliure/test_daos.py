@@ -158,21 +158,9 @@ class TestRefugiDAO:
     @patch('api.daos.refugi_lliure_dao.cache_service')
     def test_search_refugis_with_name_filter(self, mock_cache, mock_firestore, sample_refugi_data):
         """Test cerca de refugis amb filtre de nom"""
-        mock_cache.get.return_value = None
-        
-        mock_db = MagicMock()
-        mock_firestore.get_db.return_value = mock_db
-        
-        mock_doc = MagicMock()
-        mock_doc.id = 'refugi_001'
-        mock_doc.to_dict.return_value = sample_refugi_data
-        
-        mock_query = MagicMock()
-        mock_query.stream.return_value = [mock_doc]
-        
-        mock_collection = MagicMock()
-        mock_collection.where.return_value = mock_query
-        mock_db.collection.return_value = mock_collection
+        mock_cache.get_or_fetch_list.return_value = [sample_refugi_data]
+        mock_cache.generate_key.return_value = 'test_cache_key'
+        mock_cache.get_timeout.return_value = 300
         
         dao = RefugiLliureDAO()
         filters = RefugiSearchFilters(name='Refugi Test')

@@ -23,10 +23,12 @@ class TestRefugiLliureDAOExtended:
     @patch('api.daos.refugi_lliure_dao.cache_service')
     def test_search_refugis_exception(self, mock_cache, mock_firestore):
         """Test excepció a search_refugis"""
-        mock_cache.get.return_value = None
-        mock_firestore.get_db.side_effect = Exception("Search Error")
+        # Mock get_or_fetch_list to raise an exception
+        mock_cache.get_or_fetch_list.side_effect = Exception("Search Error")
+        mock_cache.generate_key.return_value = 'test_cache_key'
         dao = RefugiLliureDAO()
-        filters = RefugiSearchFilters()
+        # Use filters to trigger the path that uses get_or_fetch_list
+        filters = RefugiSearchFilters(name="test")
         with pytest.raises(Exception, match="Search Error"):
             dao.search_refugis(filters)
 
