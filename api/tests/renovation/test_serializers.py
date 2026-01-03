@@ -206,3 +206,77 @@ class TestRenovationSerializers:
         serializer = RenovationUpdateSerializer(data=data)
         
         assert serializer.is_valid(), serializer.errors
+
+    # ===== TESTS ADICIONALS PER MILLORAR COVERAGE =====
+
+    def test_renovation_serializer_create_method(self, minimal_renovation_data):
+        """Test del mètode create del RenovationSerializer"""
+        # Dades per a validated_data (simulant que ja inclouen id i creator_uid)
+        validated_data = {
+            'id': 'test_renovation_id',
+            'creator_uid': 'test_creator',
+            'refuge_id': 'test_refuge',
+            'ini_date': minimal_renovation_data['ini_date'],
+            'fin_date': minimal_renovation_data['fin_date'],
+            'description': 'Test renovation',
+            'group_link': 'https://t.me/test'
+        }
+        serializer = RenovationSerializer()
+        
+        # Cridar create directament amb les dades
+        instance = serializer.create(validated_data)
+        
+        assert isinstance(instance, Renovation)
+        assert instance.refuge_id == 'test_refuge'
+        assert instance.description == 'Test renovation'
+
+    def test_renovation_serializer_update_method(self, sample_renovation):
+        """Test del mètode update del RenovationSerializer"""
+        update_data = {
+            'description': 'Updated description',
+            'materials_needed': 'New materials',
+            'creator_uid': 'should_be_ignored',  # Should be removed
+            'refuge_id': 'should_also_be_ignored'  # Should be removed
+        }
+        serializer = RenovationSerializer()
+        
+        updated = serializer.update(sample_renovation, update_data)
+        
+        assert updated.description == 'Updated description'
+        assert updated.materials_needed == 'New materials'
+        # creator_uid i refuge_id no han de canviar
+        assert updated.creator_uid == sample_renovation.creator_uid
+
+    def test_renovation_serializer_update_partial(self, sample_renovation):
+        """Test del mètode update amb actualització parcial"""
+        original_ini_date = sample_renovation.ini_date
+        update_data = {
+            'group_link': 'https://wa.me/updated'
+        }
+        serializer = RenovationSerializer()
+        
+        updated = serializer.update(sample_renovation, update_data)
+        
+        assert updated.group_link == 'https://wa.me/updated'
+        assert updated.ini_date == original_ini_date  # No ha de canviar
+
+    def test_renovation_serializer_to_representation_non_renovation(self):
+        """Test to_representation amb una instància que NO és Renovation"""
+        today = date.today()
+        # Crear un diccionari (no una instància de Renovation)
+        dict_data = {
+            'id': 'test_id',
+            'creator_uid': 'test_creator',
+            'refuge_id': 'test_refuge',
+            'ini_date': (today + timedelta(days=1)).isoformat(),
+            'fin_date': (today + timedelta(days=5)).isoformat(),
+            'description': 'Test',
+            'group_link': 'https://t.me/test'
+        }
+        serializer = RenovationSerializer(data=dict_data)
+        serializer.is_valid()
+        
+        # to_representation amb un dict invoca el super()
+        result = serializer.to_representation(dict_data)
+        
+        assert 'id' in result

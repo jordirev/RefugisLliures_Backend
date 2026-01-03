@@ -627,3 +627,197 @@ class TestRenovationController:
         assert renovations == []
         assert 'Error intern' in error
         assert 'Query error' in error
+
+    # ===== TESTS ADICIONALS PER MILLORAR COVERAGE =====
+
+    @patch('api.controllers.renovation_controller.RenovationDAO')
+    def test_add_participant_already_participant(self, mock_dao_class, sample_renovation):
+        """Test afegir participant que ja és participant"""
+        mock_dao = mock_dao_class.return_value
+        mock_dao.get_renovation_by_id.return_value = sample_renovation
+        mock_dao.add_participant.return_value = (False, 'already_participant')
+        
+        controller = RenovationController()
+        success, renovation, error = controller.add_participant('test_id', 'new_participant')
+        
+        assert success is False
+        assert renovation is None
+        assert 'ja és participant' in error.lower()
+
+    @patch('api.controllers.renovation_controller.RenovationDAO')
+    def test_add_participant_not_found_from_dao(self, mock_dao_class, sample_renovation):
+        """Test afegir participant quan DAO retorna not_found"""
+        mock_dao = mock_dao_class.return_value
+        mock_dao.get_renovation_by_id.return_value = sample_renovation
+        mock_dao.add_participant.return_value = (False, 'not_found')
+        
+        controller = RenovationController()
+        success, renovation, error = controller.add_participant('test_id', 'new_participant')
+        
+        assert success is False
+        assert renovation is None
+        assert 'no trobada' in error.lower()
+
+    @patch('api.controllers.renovation_controller.UserDAO')
+    @patch('api.controllers.renovation_controller.RenovationDAO')
+    def test_delete_current_renovations_by_creator_success(self, mock_dao_class, mock_user_dao_class):
+        """Test eliminació de renovations actuals per creador amb èxit"""
+        mock_dao = mock_dao_class.return_value
+        mock_dao.delete_current_renovations_by_creator.return_value = (True, {'user1': 2, 'user2': 1}, None)
+        
+        mock_user_dao = mock_user_dao_class.return_value
+        
+        controller = RenovationController()
+        success, error = controller.delete_current_renovations_by_creator('creator_uid')
+        
+        assert success is True
+        assert error is None
+        assert mock_user_dao.decrement_renovated_refuges.call_count == 2
+
+    @patch('api.controllers.renovation_controller.RenovationDAO')
+    def test_delete_current_renovations_by_creator_failure(self, mock_dao_class):
+        """Test eliminació de renovations actuals per creador amb error del DAO"""
+        mock_dao = mock_dao_class.return_value
+        mock_dao.delete_current_renovations_by_creator.return_value = (False, None, "Error al DAO")
+        
+        controller = RenovationController()
+        success, error = controller.delete_current_renovations_by_creator('creator_uid')
+        
+        assert success is False
+        assert error == "Error al DAO"
+
+    @patch('api.controllers.renovation_controller.RenovationDAO')
+    def test_delete_current_renovations_by_creator_exception(self, mock_dao_class):
+        """Test excepció durant l'eliminació de renovations actuals per creador"""
+        mock_dao = mock_dao_class.return_value
+        mock_dao.delete_current_renovations_by_creator.side_effect = Exception("Database error")
+        
+        controller = RenovationController()
+        success, error = controller.delete_current_renovations_by_creator('creator_uid')
+        
+        assert success is False
+        assert 'Error intern' in error
+
+    @patch('api.controllers.renovation_controller.RenovationDAO')
+    def test_anonymize_renovations_by_creator_success(self, mock_dao_class):
+        """Test anonimització de renovations per creador amb èxit"""
+        mock_dao = mock_dao_class.return_value
+        mock_dao.anonymize_renovations_by_creator.return_value = (True, None)
+        
+        controller = RenovationController()
+        success, error = controller.anonymize_renovations_by_creator('creator_uid')
+        
+        assert success is True
+        assert error is None
+
+    @patch('api.controllers.renovation_controller.RenovationDAO')
+    def test_anonymize_renovations_by_creator_failure(self, mock_dao_class):
+        """Test anonimització de renovations per creador amb error del DAO"""
+        mock_dao = mock_dao_class.return_value
+        mock_dao.anonymize_renovations_by_creator.return_value = (False, "Error anonimitzant")
+        
+        controller = RenovationController()
+        success, error = controller.anonymize_renovations_by_creator('creator_uid')
+        
+        assert success is False
+        assert error == "Error anonimitzant"
+
+    @patch('api.controllers.renovation_controller.RenovationDAO')
+    def test_anonymize_renovations_by_creator_exception(self, mock_dao_class):
+        """Test excepció durant l'anonimització de renovations per creador"""
+        mock_dao = mock_dao_class.return_value
+        mock_dao.anonymize_renovations_by_creator.side_effect = Exception("Database error")
+        
+        controller = RenovationController()
+        success, error = controller.anonymize_renovations_by_creator('creator_uid')
+        
+        assert success is False
+        assert 'Error intern' in error
+
+    @patch('api.controllers.renovation_controller.RenovationDAO')
+    def test_remove_user_from_participations_success(self, mock_dao_class):
+        """Test eliminació d'usuari de participacions amb èxit"""
+        mock_dao = mock_dao_class.return_value
+        mock_dao.remove_user_from_participations.return_value = (True, None)
+        
+        controller = RenovationController()
+        success, error = controller.remove_user_from_participations('user_uid')
+        
+        assert success is True
+        assert error is None
+
+    @patch('api.controllers.renovation_controller.RenovationDAO')
+    def test_remove_user_from_participations_failure(self, mock_dao_class):
+        """Test eliminació d'usuari de participacions amb error del DAO"""
+        mock_dao = mock_dao_class.return_value
+        mock_dao.remove_user_from_participations.return_value = (False, "Error al eliminar")
+        
+        controller = RenovationController()
+        success, error = controller.remove_user_from_participations('user_uid')
+        
+        assert success is False
+        assert error == "Error al eliminar"
+
+    @patch('api.controllers.renovation_controller.RenovationDAO')
+    def test_remove_user_from_participations_exception(self, mock_dao_class):
+        """Test excepció durant l'eliminació d'usuari de participacions"""
+        mock_dao = mock_dao_class.return_value
+        mock_dao.remove_user_from_participations.side_effect = Exception("Database error")
+        
+        controller = RenovationController()
+        success, error = controller.remove_user_from_participations('user_uid')
+        
+        assert success is False
+        assert 'Error intern' in error
+
+    @patch('api.controllers.renovation_controller.RenovationDAO')
+    def test_remove_user_from_expelled_success(self, mock_dao_class):
+        """Test eliminació d'usuari de expelled amb èxit"""
+        mock_dao = mock_dao_class.return_value
+        mock_dao.remove_user_from_expelled.return_value = (True, None)
+        
+        controller = RenovationController()
+        success, error = controller.remove_user_from_expelled('user_uid')
+        
+        assert success is True
+        assert error is None
+
+    @patch('api.controllers.renovation_controller.RenovationDAO')
+    def test_remove_user_from_expelled_failure(self, mock_dao_class):
+        """Test eliminació d'usuari de expelled amb error del DAO"""
+        mock_dao = mock_dao_class.return_value
+        mock_dao.remove_user_from_expelled.return_value = (False, "Error al eliminar")
+        
+        controller = RenovationController()
+        success, error = controller.remove_user_from_expelled('user_uid')
+        
+        assert success is False
+        assert error == "Error al eliminar"
+
+    @patch('api.controllers.renovation_controller.RenovationDAO')
+    def test_remove_user_from_expelled_exception(self, mock_dao_class):
+        """Test excepció durant l'eliminació d'usuari de expelled"""
+        mock_dao = mock_dao_class.return_value
+        mock_dao.remove_user_from_expelled.side_effect = Exception("Database error")
+        
+        controller = RenovationController()
+        success, error = controller.remove_user_from_expelled('user_uid')
+        
+        assert success is False
+        assert 'Error intern' in error
+
+    @patch('api.controllers.renovation_controller.UserDAO')
+    @patch('api.controllers.renovation_controller.RenovationDAO')
+    def test_delete_current_renovations_by_creator_no_participants(self, mock_dao_class, mock_user_dao_class):
+        """Test eliminació de renovations sense participants"""
+        mock_dao = mock_dao_class.return_value
+        mock_dao.delete_current_renovations_by_creator.return_value = (True, None, None)  # No participants
+        
+        mock_user_dao = mock_user_dao_class.return_value
+        
+        controller = RenovationController()
+        success, error = controller.delete_current_renovations_by_creator('creator_uid')
+        
+        assert success is True
+        assert error is None
+        mock_user_dao.decrement_renovated_refuges.assert_not_called()

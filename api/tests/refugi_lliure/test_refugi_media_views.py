@@ -181,3 +181,112 @@ class TestRefugiMediaViews:
         response = view(request, id='refugi_123', key='key')
         
         assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
+
+    # ===== TESTS ADICIONALS PER MILLORAR COVERAGE =====
+
+    def test_get_media_list_exception(self, factory, mock_controller):
+        """Test excepció obtenint llista de mitjans (cobreix línies 92-94)"""
+        controller_instance = mock_controller.return_value
+        controller_instance.get_refugi_media.side_effect = Exception("Unexpected error")
+        
+        view = RefugiMediaAPIView.as_view()
+        request = factory.get('/api/refugis/refugi_123/media/')
+        force_authenticate(request, user=MagicMock())
+        
+        response = view(request, id='refugi_123')
+        
+        assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
+        assert 'error' in response.data
+
+    def test_post_media_not_found(self, factory, mock_controller, user_uid):
+        """Test pujada de mitjans amb refugi no trobat (cobreix línies 163-168)"""
+        controller_instance = mock_controller.return_value
+        controller_instance.upload_refugi_media.return_value = (None, "Refugi not found")
+        
+        file1 = SimpleUploadedFile("file1.jpg", b"content", content_type="image/jpeg")
+        
+        view = RefugiMediaAPIView.as_view()
+        request = factory.post(
+            '/api/refugis/nonexistent/media/',
+            {'files': [file1]},
+            format='multipart'
+        )
+        force_authenticate(request, user=MagicMock())
+        request.user_uid = user_uid
+        
+        response = view(request, id='nonexistent')
+        
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+        assert 'not found' in response.data['error'].lower()
+
+    def test_post_media_server_error(self, factory, mock_controller, user_uid):
+        """Test pujada de mitjans amb error intern (cobreix línia 170)"""
+        controller_instance = mock_controller.return_value
+        controller_instance.upload_refugi_media.return_value = (None, "Internal server error")
+        
+        file1 = SimpleUploadedFile("file1.jpg", b"content", content_type="image/jpeg")
+        
+        view = RefugiMediaAPIView.as_view()
+        request = factory.post(
+            '/api/refugis/refugi_123/media/',
+            {'files': [file1]},
+            format='multipart'
+        )
+        force_authenticate(request, user=MagicMock())
+        request.user_uid = user_uid
+        
+        response = view(request, id='refugi_123')
+        
+        assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
+
+    def test_post_media_exception(self, factory, mock_controller, user_uid):
+        """Test excepció en pujada de mitjans (cobreix línies 175-177)"""
+        controller_instance = mock_controller.return_value
+        controller_instance.upload_refugi_media.side_effect = Exception("Unexpected error")
+        
+        file1 = SimpleUploadedFile("file1.jpg", b"content", content_type="image/jpeg")
+        
+        view = RefugiMediaAPIView.as_view()
+        request = factory.post(
+            '/api/refugis/refugi_123/media/',
+            {'files': [file1]},
+            format='multipart'
+        )
+        force_authenticate(request, user=MagicMock())
+        request.user_uid = user_uid
+        
+        response = view(request, id='refugi_123')
+        
+        assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
+        assert 'error' in response.data
+
+    @patch('api.views.refugi_media_views.IsMediaUploader.has_permission')
+    def test_delete_media_success_returns_false_no_error(self, mock_permission, factory, mock_controller):
+        """Test eliminació retorna False sense error (cobreix línia 249)"""
+        mock_permission.return_value = True
+        controller_instance = mock_controller.return_value
+        controller_instance.delete_refugi_media.return_value = (False, None)
+        
+        view = RefugiMediaDeleteAPIView.as_view()
+        request = factory.delete('/api/refugis/refugi_123/media/some%2Fkey.jpg')
+        force_authenticate(request, user=MagicMock())
+        
+        response = view(request, id='refugi_123', key='some%2Fkey.jpg')
+        
+        assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
+
+    @patch('api.views.refugi_media_views.IsMediaUploader.has_permission')
+    def test_delete_media_exception(self, mock_permission, factory, mock_controller):
+        """Test excepció en eliminació de mitjà (cobreix línies 260-262)"""
+        mock_permission.return_value = True
+        controller_instance = mock_controller.return_value
+        controller_instance.delete_refugi_media.side_effect = Exception("Unexpected error")
+        
+        view = RefugiMediaDeleteAPIView.as_view()
+        request = factory.delete('/api/refugis/refugi_123/media/key')
+        force_authenticate(request, user=MagicMock())
+        
+        response = view(request, id='refugi_123', key='key')
+        
+        assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
+        assert 'error' in response.data

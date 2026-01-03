@@ -1278,6 +1278,574 @@ class TestTemplateMethodPattern:
         user_controller.refugi_dao.remove_visitor_from_refugi.assert_called_once_with(sample_refugi_id, sample_uid)
 
 
+# ==================== TESTS PER MILLORAR COVERAGE ====================
+
+@pytest.mark.controllers
+class TestDeleteUserCoverage:
+    """Tests addicionals per cobrir les branques de delete_user"""
+
+    @patch('api.controllers.experience_controller.ExperienceController')
+    @patch('api.controllers.user_controller.RefugiLliureDAO')
+    @patch('api.controllers.user_controller.UserDAO')
+    def test_delete_user_experience_error(self, mock_user_dao_class, mock_refugi_dao_class, mock_exp_controller, sample_user):
+        """Test delete_user quan falla l'eliminació d'experiències"""
+        mock_user_dao = mock_user_dao_class.return_value
+        mock_user_dao.get_user_by_uid.return_value = sample_user
+        
+        mock_exp_instance = mock_exp_controller.return_value
+        mock_exp_instance.delete_experiences_by_creator.return_value = (False, "Error experiències")
+        
+        controller = UserController()
+        success, error = controller.delete_user('test_uid')
+        
+        assert success is False
+        assert 'experiències' in error.lower()
+
+    @patch('api.controllers.doubt_controller.DoubtController')
+    @patch('api.controllers.experience_controller.ExperienceController')
+    @patch('api.controllers.user_controller.RefugiLliureDAO')
+    @patch('api.controllers.user_controller.UserDAO')
+    def test_delete_user_doubts_error(self, mock_user_dao_class, mock_refugi_dao_class, mock_exp_controller, mock_doubt_controller, sample_user):
+        """Test delete_user quan falla l'eliminació de dubtes"""
+        mock_user_dao = mock_user_dao_class.return_value
+        mock_user_dao.get_user_by_uid.return_value = sample_user
+        
+        mock_exp_controller.return_value.delete_experiences_by_creator.return_value = (True, None)
+        mock_doubt_controller.return_value.delete_doubts_by_creator.return_value = (False, "Error dubtes")
+        
+        controller = UserController()
+        success, error = controller.delete_user('test_uid')
+        
+        assert success is False
+        assert 'dubtes' in error.lower()
+
+    @patch('api.controllers.doubt_controller.DoubtController')
+    @patch('api.controllers.experience_controller.ExperienceController')
+    @patch('api.controllers.user_controller.RefugiLliureDAO')
+    @patch('api.controllers.user_controller.UserDAO')
+    def test_delete_user_answers_error(self, mock_user_dao_class, mock_refugi_dao_class, mock_exp_controller, mock_doubt_controller, sample_user):
+        """Test delete_user quan falla l'eliminació de respostes"""
+        mock_user_dao = mock_user_dao_class.return_value
+        mock_user_dao.get_user_by_uid.return_value = sample_user
+        
+        mock_exp_controller.return_value.delete_experiences_by_creator.return_value = (True, None)
+        mock_doubt_instance = mock_doubt_controller.return_value
+        mock_doubt_instance.delete_doubts_by_creator.return_value = (True, None)
+        mock_doubt_instance.delete_answers_by_creator.return_value = (False, "Error respostes")
+        
+        controller = UserController()
+        success, error = controller.delete_user('test_uid')
+        
+        assert success is False
+        assert 'respostes' in error.lower()
+
+    @patch('api.controllers.refuge_proposal_controller.RefugeProposalController')
+    @patch('api.controllers.doubt_controller.DoubtController')
+    @patch('api.controllers.experience_controller.ExperienceController')
+    @patch('api.controllers.user_controller.RefugiLliureDAO')
+    @patch('api.controllers.user_controller.UserDAO')
+    def test_delete_user_proposals_error(self, mock_user_dao_class, mock_refugi_dao_class, mock_exp_controller, mock_doubt_controller, mock_proposal_controller, sample_user):
+        """Test delete_user quan falla l'anonimització de proposals"""
+        mock_user_dao = mock_user_dao_class.return_value
+        mock_user_dao.get_user_by_uid.return_value = sample_user
+        
+        mock_exp_controller.return_value.delete_experiences_by_creator.return_value = (True, None)
+        mock_doubt_instance = mock_doubt_controller.return_value
+        mock_doubt_instance.delete_doubts_by_creator.return_value = (True, None)
+        mock_doubt_instance.delete_answers_by_creator.return_value = (True, None)
+        mock_proposal_controller.return_value.anonymize_proposals_by_creator.return_value = (False, "Error proposals")
+        
+        controller = UserController()
+        success, error = controller.delete_user('test_uid')
+        
+        assert success is False
+        assert 'proposals' in error.lower()
+
+    @patch('api.controllers.renovation_controller.RenovationController')
+    @patch('api.controllers.refuge_proposal_controller.RefugeProposalController')
+    @patch('api.controllers.doubt_controller.DoubtController')
+    @patch('api.controllers.experience_controller.ExperienceController')
+    @patch('api.controllers.user_controller.RefugiLliureDAO')
+    @patch('api.controllers.user_controller.UserDAO')
+    def test_delete_user_renovations_error(self, mock_user_dao_class, mock_refugi_dao_class, mock_exp_controller, mock_doubt_controller, mock_proposal_controller, mock_renovation_controller, sample_user):
+        """Test delete_user quan falla l'eliminació de renovations actuals"""
+        mock_user_dao = mock_user_dao_class.return_value
+        mock_user_dao.get_user_by_uid.return_value = sample_user
+        
+        mock_exp_controller.return_value.delete_experiences_by_creator.return_value = (True, None)
+        mock_doubt_instance = mock_doubt_controller.return_value
+        mock_doubt_instance.delete_doubts_by_creator.return_value = (True, None)
+        mock_doubt_instance.delete_answers_by_creator.return_value = (True, None)
+        mock_proposal_controller.return_value.anonymize_proposals_by_creator.return_value = (True, None)
+        mock_renovation_controller.return_value.delete_current_renovations_by_creator.return_value = (False, "Error renovations")
+        
+        controller = UserController()
+        success, error = controller.delete_user('test_uid')
+        
+        assert success is False
+        assert 'renovations' in error.lower()
+
+    @patch('api.controllers.renovation_controller.RenovationController')
+    @patch('api.controllers.refuge_proposal_controller.RefugeProposalController')
+    @patch('api.controllers.doubt_controller.DoubtController')
+    @patch('api.controllers.experience_controller.ExperienceController')
+    @patch('api.controllers.user_controller.RefugiLliureDAO')
+    @patch('api.controllers.user_controller.UserDAO')
+    def test_delete_user_anonymize_renovations_error(self, mock_user_dao_class, mock_refugi_dao_class, mock_exp_controller, mock_doubt_controller, mock_proposal_controller, mock_renovation_controller, sample_user):
+        """Test delete_user quan falla l'anonimització de renovations"""
+        mock_user_dao = mock_user_dao_class.return_value
+        mock_user_dao.get_user_by_uid.return_value = sample_user
+        
+        mock_exp_controller.return_value.delete_experiences_by_creator.return_value = (True, None)
+        mock_doubt_instance = mock_doubt_controller.return_value
+        mock_doubt_instance.delete_doubts_by_creator.return_value = (True, None)
+        mock_doubt_instance.delete_answers_by_creator.return_value = (True, None)
+        mock_proposal_controller.return_value.anonymize_proposals_by_creator.return_value = (True, None)
+        mock_renovation_instance = mock_renovation_controller.return_value
+        mock_renovation_instance.delete_current_renovations_by_creator.return_value = (True, None)
+        mock_renovation_instance.anonymize_renovations_by_creator.return_value = (False, "Error anonimitzant")
+        
+        controller = UserController()
+        success, error = controller.delete_user('test_uid')
+        
+        assert success is False
+        assert 'anonimitzant' in error.lower()
+
+    @patch('api.controllers.renovation_controller.RenovationController')
+    @patch('api.controllers.refuge_proposal_controller.RefugeProposalController')
+    @patch('api.controllers.doubt_controller.DoubtController')
+    @patch('api.controllers.experience_controller.ExperienceController')
+    @patch('api.controllers.user_controller.RefugiLliureDAO')
+    @patch('api.controllers.user_controller.UserDAO')
+    def test_delete_user_participations_error(self, mock_user_dao_class, mock_refugi_dao_class, mock_exp_controller, mock_doubt_controller, mock_proposal_controller, mock_renovation_controller, sample_user):
+        """Test delete_user quan falla l'eliminació de participacions"""
+        mock_user_dao = mock_user_dao_class.return_value
+        mock_user_dao.get_user_by_uid.return_value = sample_user
+        
+        mock_exp_controller.return_value.delete_experiences_by_creator.return_value = (True, None)
+        mock_doubt_instance = mock_doubt_controller.return_value
+        mock_doubt_instance.delete_doubts_by_creator.return_value = (True, None)
+        mock_doubt_instance.delete_answers_by_creator.return_value = (True, None)
+        mock_proposal_controller.return_value.anonymize_proposals_by_creator.return_value = (True, None)
+        mock_renovation_instance = mock_renovation_controller.return_value
+        mock_renovation_instance.delete_current_renovations_by_creator.return_value = (True, None)
+        mock_renovation_instance.anonymize_renovations_by_creator.return_value = (True, None)
+        mock_renovation_instance.remove_user_from_participations.return_value = (False, "Error participacions")
+        
+        controller = UserController()
+        success, error = controller.delete_user('test_uid')
+        
+        assert success is False
+        assert 'participacions' in error.lower()
+
+    @patch('api.controllers.renovation_controller.RenovationController')
+    @patch('api.controllers.refuge_proposal_controller.RefugeProposalController')
+    @patch('api.controllers.doubt_controller.DoubtController')
+    @patch('api.controllers.experience_controller.ExperienceController')
+    @patch('api.controllers.user_controller.RefugiLliureDAO')
+    @patch('api.controllers.user_controller.UserDAO')
+    def test_delete_user_expelled_error(self, mock_user_dao_class, mock_refugi_dao_class, mock_exp_controller, mock_doubt_controller, mock_proposal_controller, mock_renovation_controller, sample_user):
+        """Test delete_user quan falla l'eliminació de expelled"""
+        mock_user_dao = mock_user_dao_class.return_value
+        mock_user_dao.get_user_by_uid.return_value = sample_user
+        
+        mock_exp_controller.return_value.delete_experiences_by_creator.return_value = (True, None)
+        mock_doubt_instance = mock_doubt_controller.return_value
+        mock_doubt_instance.delete_doubts_by_creator.return_value = (True, None)
+        mock_doubt_instance.delete_answers_by_creator.return_value = (True, None)
+        mock_proposal_controller.return_value.anonymize_proposals_by_creator.return_value = (True, None)
+        mock_renovation_instance = mock_renovation_controller.return_value
+        mock_renovation_instance.delete_current_renovations_by_creator.return_value = (True, None)
+        mock_renovation_instance.anonymize_renovations_by_creator.return_value = (True, None)
+        mock_renovation_instance.remove_user_from_participations.return_value = (True, None)
+        mock_renovation_instance.remove_user_from_expelled.return_value = (False, "Error expelled")
+        
+        controller = UserController()
+        success, error = controller.delete_user('test_uid')
+        
+        assert success is False
+        assert 'expelled' in error.lower()
+
+
+@pytest.mark.controllers
+class TestDeleteUserPhotosAndAvatarCoverage:
+    """Tests per cobrir l'eliminació de fotos i avatar en delete_user"""
+
+    @patch('api.controllers.refugi_lliure_controller.RefugiLliureController')
+    @patch('api.controllers.renovation_controller.RenovationController')
+    @patch('api.controllers.refuge_proposal_controller.RefugeProposalController')
+    @patch('api.controllers.doubt_controller.DoubtController')
+    @patch('api.controllers.experience_controller.ExperienceController')
+    @patch('api.controllers.user_controller.RefugiLliureDAO')
+    @patch('api.controllers.user_controller.UserDAO')
+    def test_delete_user_with_photos_error(self, mock_user_dao_class, mock_refugi_dao_class, mock_exp_controller, mock_doubt_controller, mock_proposal_controller, mock_renovation_controller, mock_refugi_ctrl):
+        """Test delete_user amb fotos que fallen en eliminar-se"""
+        # Crear usuari amb fotos
+        user_with_photos = User(
+            uid='test_uid',
+            username='test_user',
+            uploaded_photos_keys=['refugis-lliures/refuge_1/photo1.jpg']
+        )
+        
+        mock_user_dao = mock_user_dao_class.return_value
+        mock_user_dao.get_user_by_uid.return_value = user_with_photos
+        
+        mock_refugi_dao = mock_refugi_dao_class.return_value
+        mock_refugi_dao.get_by_id.return_value = Mock()  # Refugi existeix
+        
+        mock_exp_controller.return_value.delete_experiences_by_creator.return_value = (True, None)
+        mock_doubt_instance = mock_doubt_controller.return_value
+        mock_doubt_instance.delete_doubts_by_creator.return_value = (True, None)
+        mock_doubt_instance.delete_answers_by_creator.return_value = (True, None)
+        mock_proposal_controller.return_value.anonymize_proposals_by_creator.return_value = (True, None)
+        mock_renovation_instance = mock_renovation_controller.return_value
+        mock_renovation_instance.delete_current_renovations_by_creator.return_value = (True, None)
+        mock_renovation_instance.anonymize_renovations_by_creator.return_value = (True, None)
+        mock_renovation_instance.remove_user_from_participations.return_value = (True, None)
+        mock_renovation_instance.remove_user_from_expelled.return_value = (True, None)
+        mock_refugi_ctrl.return_value.delete_multiple_refugi_media.return_value = (False, "Error fotos")
+        
+        controller = UserController()
+        success, error = controller.delete_user('test_uid')
+        
+        assert success is False
+        assert 'fotos' in error.lower()
+
+    @patch('api.controllers.renovation_controller.RenovationController')
+    @patch('api.controllers.refuge_proposal_controller.RefugeProposalController')
+    @patch('api.controllers.doubt_controller.DoubtController')
+    @patch('api.controllers.experience_controller.ExperienceController')
+    @patch('api.controllers.user_controller.RefugiLliureDAO')
+    @patch('api.controllers.user_controller.UserDAO')
+    def test_delete_user_with_avatar_error(self, mock_user_dao_class, mock_refugi_dao_class, mock_exp_controller, mock_doubt_controller, mock_proposal_controller, mock_renovation_controller):
+        """Test delete_user amb avatar que falla en eliminar-se"""
+        # Crear usuari amb avatar
+        from api.models.media_metadata import MediaMetadata
+        user_with_avatar = User(
+            uid='test_uid',
+            username='test_user',
+            avatar_metadata=MediaMetadata(key='avatars/test_uid/avatar.jpg', url='http://example.com/avatar.jpg')
+        )
+        
+        mock_user_dao = mock_user_dao_class.return_value
+        mock_user_dao.get_user_by_uid.return_value = user_with_avatar
+        
+        mock_exp_controller.return_value.delete_experiences_by_creator.return_value = (True, None)
+        mock_doubt_instance = mock_doubt_controller.return_value
+        mock_doubt_instance.delete_doubts_by_creator.return_value = (True, None)
+        mock_doubt_instance.delete_answers_by_creator.return_value = (True, None)
+        mock_proposal_controller.return_value.anonymize_proposals_by_creator.return_value = (True, None)
+        mock_renovation_instance = mock_renovation_controller.return_value
+        mock_renovation_instance.delete_current_renovations_by_creator.return_value = (True, None)
+        mock_renovation_instance.anonymize_renovations_by_creator.return_value = (True, None)
+        mock_renovation_instance.remove_user_from_participations.return_value = (True, None)
+        mock_renovation_instance.remove_user_from_expelled.return_value = (True, None)
+        
+        controller = UserController()
+        controller.delete_user_avatar = Mock(return_value=(False, "Error avatar"))
+        
+        success, error = controller.delete_user('test_uid')
+        
+        assert success is False
+        assert 'avatar' in error.lower()
+
+    @patch('api.controllers.renovation_controller.RenovationController')
+    @patch('api.controllers.refuge_proposal_controller.RefugeProposalController')
+    @patch('api.controllers.doubt_controller.DoubtController')
+    @patch('api.controllers.experience_controller.ExperienceController')
+    @patch('api.controllers.user_controller.RefugiLliureDAO')
+    @patch('api.controllers.user_controller.UserDAO')
+    def test_delete_user_with_visited_refuges_error(self, mock_user_dao_class, mock_refugi_dao_class, mock_exp_controller, mock_doubt_controller, mock_proposal_controller, mock_renovation_controller):
+        """Test delete_user amb refugis visitats que fallen en eliminar-se"""
+        user_with_visits = User(
+            uid='test_uid',
+            username='test_user',
+            visited_refuges=['refuge_1', 'refuge_2']
+        )
+        
+        mock_user_dao = mock_user_dao_class.return_value
+        mock_user_dao.get_user_by_uid.return_value = user_with_visits
+        
+        mock_refugi_dao = mock_refugi_dao_class.return_value
+        mock_refugi_dao.remove_visitor_from_all_refuges.return_value = (False, "Error visitors")
+        
+        mock_exp_controller.return_value.delete_experiences_by_creator.return_value = (True, None)
+        mock_doubt_instance = mock_doubt_controller.return_value
+        mock_doubt_instance.delete_doubts_by_creator.return_value = (True, None)
+        mock_doubt_instance.delete_answers_by_creator.return_value = (True, None)
+        mock_proposal_controller.return_value.anonymize_proposals_by_creator.return_value = (True, None)
+        mock_renovation_instance = mock_renovation_controller.return_value
+        mock_renovation_instance.delete_current_renovations_by_creator.return_value = (True, None)
+        mock_renovation_instance.anonymize_renovations_by_creator.return_value = (True, None)
+        mock_renovation_instance.remove_user_from_participations.return_value = (True, None)
+        mock_renovation_instance.remove_user_from_expelled.return_value = (True, None)
+        
+        controller = UserController()
+        success, error = controller.delete_user('test_uid')
+        
+        assert success is False
+        assert 'refugis visitats' in error.lower()
+
+    @patch('api.controllers.refuge_visit_controller.RefugeVisitController')
+    @patch('api.controllers.renovation_controller.RenovationController')
+    @patch('api.controllers.refuge_proposal_controller.RefugeProposalController')
+    @patch('api.controllers.doubt_controller.DoubtController')
+    @patch('api.controllers.experience_controller.ExperienceController')
+    @patch('api.controllers.user_controller.RefugiLliureDAO')
+    @patch('api.controllers.user_controller.UserDAO')
+    def test_delete_user_visits_error(self, mock_user_dao_class, mock_refugi_dao_class, mock_exp_controller, mock_doubt_controller, mock_proposal_controller, mock_renovation_controller, mock_visit_controller):
+        """Test delete_user quan falla l'eliminació de visites"""
+        user = User(uid='test_uid', username='test_user')
+        
+        mock_user_dao = mock_user_dao_class.return_value
+        mock_user_dao.get_user_by_uid.return_value = user
+        
+        mock_exp_controller.return_value.delete_experiences_by_creator.return_value = (True, None)
+        mock_doubt_instance = mock_doubt_controller.return_value
+        mock_doubt_instance.delete_doubts_by_creator.return_value = (True, None)
+        mock_doubt_instance.delete_answers_by_creator.return_value = (True, None)
+        mock_proposal_controller.return_value.anonymize_proposals_by_creator.return_value = (True, None)
+        mock_renovation_instance = mock_renovation_controller.return_value
+        mock_renovation_instance.delete_current_renovations_by_creator.return_value = (True, None)
+        mock_renovation_instance.anonymize_renovations_by_creator.return_value = (True, None)
+        mock_renovation_instance.remove_user_from_participations.return_value = (True, None)
+        mock_renovation_instance.remove_user_from_expelled.return_value = (True, None)
+        mock_visit_controller.return_value.remove_user_from_all_visits.return_value = (False, "Error visites")
+        
+        controller = UserController()
+        success, error = controller.delete_user('test_uid')
+        
+        assert success is False
+        assert 'visites' in error.lower()
+
+
+@pytest.mark.controllers
+class TestUploadDeleteAvatarCoverage:
+    """Tests per cobrir upload_user_avatar i delete_user_avatar"""
+
+    @patch('api.controllers.user_controller.r2_media_service')
+    @patch('api.controllers.user_controller.RefugiLliureDAO')
+    @patch('api.controllers.user_controller.UserDAO')
+    def test_upload_avatar_success(self, mock_user_dao_class, mock_refugi_dao_class, mock_r2_service):
+        """Test upload_user_avatar amb èxit"""
+        user = User(uid='test_uid', username='test_user')
+        
+        mock_user_dao = mock_user_dao_class.return_value
+        mock_user_dao.get_user_by_uid.return_value = user
+        mock_user_dao.update_avatar_metadata.return_value = True
+        
+        controller = UserController()
+        controller.avatar_service = Mock()
+        controller.avatar_service.upload_file.return_value = {'key': 'avatars/test_uid/avatar.jpg'}
+        
+        mock_media_service = Mock()
+        mock_r2_service.get_user_avatar_service.return_value = mock_media_service
+        mock_media_service.generate_media_metadata_from_dict.return_value = Mock(key='avatars/test_uid/avatar.jpg')
+        
+        mock_file = Mock()
+        mock_file.content_type = 'image/jpeg'
+        mock_file.name = 'avatar.jpg'
+        
+        success, avatar_metadata, error = controller.upload_user_avatar('test_uid', mock_file)
+        
+        assert success is True
+        assert error is None
+
+    @patch('api.controllers.user_controller.RefugiLliureDAO')
+    @patch('api.controllers.user_controller.UserDAO')
+    def test_upload_avatar_user_not_found(self, mock_user_dao_class, mock_refugi_dao_class):
+        """Test upload_user_avatar amb usuari no trobat"""
+        mock_user_dao = mock_user_dao_class.return_value
+        mock_user_dao.get_user_by_uid.return_value = None
+        
+        controller = UserController()
+        
+        mock_file = Mock()
+        success, avatar_metadata, error = controller.upload_user_avatar('test_uid', mock_file)
+        
+        assert success is False
+        assert 'no trobat' in error.lower()
+
+    @patch('api.controllers.user_controller.RefugiLliureDAO')
+    @patch('api.controllers.user_controller.UserDAO')
+    def test_upload_avatar_with_existing_avatar(self, mock_user_dao_class, mock_refugi_dao_class):
+        """Test upload_user_avatar quan l'usuari ja té avatar"""
+        from api.models.media_metadata import MediaMetadata
+        user_with_avatar = User(
+            uid='test_uid',
+            username='test_user',
+            avatar_metadata=MediaMetadata(key='avatars/test_uid/old_avatar.jpg', url='http://example.com/old.jpg')
+        )
+        
+        mock_user_dao = mock_user_dao_class.return_value
+        mock_user_dao.get_user_by_uid.return_value = user_with_avatar
+        mock_user_dao.update_avatar_metadata.return_value = True
+        
+        controller = UserController()
+        controller.avatar_service = Mock()
+        controller.avatar_service.delete_file.return_value = True
+        controller.avatar_service.upload_file.return_value = {'key': 'avatars/test_uid/new_avatar.jpg'}
+        
+        with patch('api.controllers.user_controller.r2_media_service') as mock_r2:
+            mock_media_service = Mock()
+            mock_r2.get_user_avatar_service.return_value = mock_media_service
+            mock_media_service.generate_media_metadata_from_dict.return_value = Mock()
+            
+            mock_file = Mock()
+            mock_file.content_type = 'image/jpeg'
+            mock_file.name = 'new_avatar.jpg'
+            
+            success, avatar_metadata, error = controller.upload_user_avatar('test_uid', mock_file)
+            
+            assert success is True
+            controller.avatar_service.delete_file.assert_called_once_with('avatars/test_uid/old_avatar.jpg')
+
+    @patch('api.controllers.user_controller.RefugiLliureDAO')
+    @patch('api.controllers.user_controller.UserDAO')
+    def test_upload_avatar_firestore_fails(self, mock_user_dao_class, mock_refugi_dao_class):
+        """Test upload_user_avatar quan falla Firestore"""
+        user = User(uid='test_uid', username='test_user')
+        
+        mock_user_dao = mock_user_dao_class.return_value
+        mock_user_dao.get_user_by_uid.return_value = user
+        mock_user_dao.update_avatar_metadata.return_value = False  # Falla Firestore
+        
+        controller = UserController()
+        controller.avatar_service = Mock()
+        controller.avatar_service.upload_file.return_value = {'key': 'avatars/test_uid/avatar.jpg'}
+        controller.avatar_service.delete_file.return_value = True
+        
+        mock_file = Mock()
+        mock_file.content_type = 'image/jpeg'
+        mock_file.name = 'avatar.jpg'
+        
+        success, avatar_metadata, error = controller.upload_user_avatar('test_uid', mock_file)
+        
+        assert success is False
+        assert 'metadades' in error.lower()
+
+    @patch('api.controllers.user_controller.RefugiLliureDAO')
+    @patch('api.controllers.user_controller.UserDAO')
+    def test_upload_avatar_validation_error(self, mock_user_dao_class, mock_refugi_dao_class):
+        """Test upload_user_avatar amb error de validació"""
+        user = User(uid='test_uid', username='test_user')
+        
+        mock_user_dao = mock_user_dao_class.return_value
+        mock_user_dao.get_user_by_uid.return_value = user
+        
+        controller = UserController()
+        controller.avatar_service = Mock()
+        controller.avatar_service.upload_file.side_effect = ValueError("Format no permès")
+        
+        mock_file = Mock()
+        mock_file.content_type = 'application/pdf'
+        mock_file.name = 'file.pdf'
+        
+        success, avatar_metadata, error = controller.upload_user_avatar('test_uid', mock_file)
+        
+        assert success is False
+        assert 'Format no permès' in error
+
+    @patch('api.controllers.user_controller.RefugiLliureDAO')
+    @patch('api.controllers.user_controller.UserDAO')
+    def test_upload_avatar_exception(self, mock_user_dao_class, mock_refugi_dao_class):
+        """Test upload_user_avatar amb excepció"""
+        user = User(uid='test_uid', username='test_user')
+        
+        mock_user_dao = mock_user_dao_class.return_value
+        mock_user_dao.get_user_by_uid.return_value = user
+        
+        controller = UserController()
+        controller.avatar_service = Mock()
+        controller.avatar_service.upload_file.side_effect = Exception("Error R2")
+        
+        mock_file = Mock()
+        mock_file.content_type = 'image/jpeg'
+        mock_file.name = 'avatar.jpg'
+        
+        success, avatar_metadata, error = controller.upload_user_avatar('test_uid', mock_file)
+        
+        assert success is False
+        assert 'Error intern' in error
+
+    @patch('api.controllers.user_controller.RefugiLliureDAO')
+    @patch('api.controllers.user_controller.UserDAO')
+    def test_delete_avatar_success(self, mock_user_dao_class, mock_refugi_dao_class):
+        """Test delete_user_avatar amb èxit"""
+        mock_user_dao = mock_user_dao_class.return_value
+        mock_user_dao.delete_avatar_metadata.return_value = (True, {'key': 'avatars/test_uid/avatar.jpg'})
+        
+        controller = UserController()
+        controller.avatar_service = Mock()
+        controller.avatar_service.delete_file.return_value = True
+        
+        success, error = controller.delete_user_avatar('test_uid')
+        
+        assert success is True
+        assert error is None
+
+    @patch('api.controllers.user_controller.RefugiLliureDAO')
+    @patch('api.controllers.user_controller.UserDAO')
+    def test_delete_avatar_user_not_found(self, mock_user_dao_class, mock_refugi_dao_class):
+        """Test delete_user_avatar amb usuari no trobat"""
+        mock_user_dao = mock_user_dao_class.return_value
+        mock_user_dao.delete_avatar_metadata.return_value = (False, None)
+        
+        controller = UserController()
+        
+        success, error = controller.delete_user_avatar('test_uid')
+        
+        assert success is False
+        assert 'no trobat' in error.lower()
+
+    @patch('api.controllers.user_controller.RefugiLliureDAO')
+    @patch('api.controllers.user_controller.UserDAO')
+    def test_delete_avatar_no_avatar(self, mock_user_dao_class, mock_refugi_dao_class):
+        """Test delete_user_avatar quan l'usuari no té avatar"""
+        mock_user_dao = mock_user_dao_class.return_value
+        mock_user_dao.delete_avatar_metadata.return_value = (True, None)  # No hi ha avatar
+        
+        controller = UserController()
+        
+        success, error = controller.delete_user_avatar('test_uid')
+        
+        assert success is False
+        assert 'no té cap avatar' in error.lower()
+
+    @patch('api.controllers.user_controller.RefugiLliureDAO')
+    @patch('api.controllers.user_controller.UserDAO')
+    def test_delete_avatar_r2_error(self, mock_user_dao_class, mock_refugi_dao_class):
+        """Test delete_user_avatar quan falla l'eliminació a R2"""
+        mock_user_dao = mock_user_dao_class.return_value
+        mock_user_dao.delete_avatar_metadata.return_value = (True, {'key': 'avatars/test_uid/avatar.jpg'})
+        mock_user_dao.update_avatar_metadata.return_value = True  # Restaurar metadades
+        
+        controller = UserController()
+        controller.avatar_service = Mock()
+        controller.avatar_service.delete_file.side_effect = Exception("Error R2")
+        
+        success, error = controller.delete_user_avatar('test_uid')
+        
+        # Hauria de tornar True perquè es restauren les metadades
+        assert success is True
+        # Verifica que s'han restaurat les metadades
+        mock_user_dao.update_avatar_metadata.assert_called_once()
+
+    @patch('api.controllers.user_controller.RefugiLliureDAO')
+    @patch('api.controllers.user_controller.UserDAO')
+    def test_delete_avatar_exception(self, mock_user_dao_class, mock_refugi_dao_class):
+        """Test delete_user_avatar amb excepció"""
+        mock_user_dao = mock_user_dao_class.return_value
+        mock_user_dao.delete_avatar_metadata.side_effect = Exception("Database error")
+        
+        controller = UserController()
+        
+        success, error = controller.delete_user_avatar('test_uid')
+        
+        assert success is False
+        assert 'Error intern' in error
+
+
 # ==================== TESTS D'INTEGRACIÓ (SIMULATS) ====================
 
 

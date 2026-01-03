@@ -797,3 +797,470 @@ class TestRenovationDAO:
         result = dao.remove_participant('test_id', 'participant_uid')
         
         assert result is False
+
+    # ===== TESTS ADICIONALS PER MILLORAR COVERAGE =====
+
+    @patch('api.daos.renovation_dao.FirestoreService')
+    @patch('api.daos.renovation_dao.cache_service')
+    @patch('api.daos.renovation_dao.get_madrid_today')
+    def test_get_all_renovations_fetch_all_internal(self, mock_get_today, mock_cache, mock_firestore_service, sample_renovation_data):
+        """Test obtenció de renovations amb funcions internes executades"""
+        mock_today = date.today()
+        mock_get_today.return_value = mock_today
+        
+        mock_cache.generate_key.return_value = 'test_cache_key'
+        mock_cache.get_timeout.return_value = 300
+        
+        mock_db = MagicMock()
+        mock_firestore_instance = mock_firestore_service.return_value
+        mock_firestore_instance.get_db.return_value = mock_db
+        
+        # Simular document de Firestore
+        mock_doc = MagicMock()
+        mock_doc.id = 'test_renovation_id'
+        mock_doc.to_dict.return_value = sample_renovation_data
+        
+        mock_query = MagicMock()
+        mock_query.stream.return_value = [mock_doc]
+        mock_collection = MagicMock()
+        mock_collection.where.return_value.order_by.return_value = mock_query
+        mock_db.collection.return_value = mock_collection
+        
+        # Capturar funcions internes
+        captured_funcs = {}
+        def capture_and_execute(**kwargs):
+            captured_funcs['fetch_all'] = kwargs.get('fetch_all_fn')
+            captured_funcs['fetch_single'] = kwargs.get('fetch_single_fn')
+            captured_funcs['get_id'] = kwargs.get('get_id_fn')
+            # Executar fetch_all per cobrir línies 126-141
+            return captured_funcs['fetch_all']()
+        
+        mock_cache.get_or_fetch_list.side_effect = capture_and_execute
+        
+        dao = RenovationDAO()
+        result = dao.get_all_renovations()
+        
+        assert len(result) == 1
+        assert 'fetch_all' in captured_funcs
+
+    @patch('api.daos.renovation_dao.FirestoreService')
+    @patch('api.daos.renovation_dao.cache_service')
+    @patch('api.daos.renovation_dao.get_madrid_today')
+    def test_get_all_renovations_fetch_single_internal(self, mock_get_today, mock_cache, mock_firestore_service, sample_renovation_data):
+        """Test obtenció de renovation individual amb fetch_single"""
+        mock_today = date.today()
+        mock_get_today.return_value = mock_today
+        
+        mock_cache.generate_key.return_value = 'test_cache_key'
+        mock_cache.get_timeout.return_value = 300
+        
+        mock_db = MagicMock()
+        mock_firestore_instance = mock_firestore_service.return_value
+        mock_firestore_instance.get_db.return_value = mock_db
+        
+        # Simular document individual de Firestore
+        mock_doc = MagicMock()
+        mock_doc.exists = True
+        mock_doc.id = 'test_renovation_id'
+        mock_doc.to_dict.return_value = sample_renovation_data
+        
+        mock_doc_ref = MagicMock()
+        mock_doc_ref.get.return_value = mock_doc
+        
+        mock_collection = MagicMock()
+        mock_collection.document.return_value = mock_doc_ref
+        mock_db.collection.return_value = mock_collection
+        
+        # Capturar funcions internes
+        captured_funcs = {}
+        def capture_and_execute(**kwargs):
+            captured_funcs['fetch_all'] = kwargs.get('fetch_all_fn')
+            captured_funcs['fetch_single'] = kwargs.get('fetch_single_fn')
+            captured_funcs['get_id'] = kwargs.get('get_id_fn')
+            # Executar fetch_single per cobrir línies 145-153
+            result = captured_funcs['fetch_single']('test_renovation_id')
+            return [result] if result else []
+        
+        mock_cache.get_or_fetch_list.side_effect = capture_and_execute
+        
+        dao = RenovationDAO()
+        result = dao.get_all_renovations()
+        
+        assert len(result) == 1
+
+    @patch('api.daos.renovation_dao.FirestoreService')
+    @patch('api.daos.renovation_dao.cache_service')
+    @patch('api.daos.renovation_dao.get_madrid_today')
+    def test_get_all_renovations_fetch_single_not_found(self, mock_get_today, mock_cache, mock_firestore_service):
+        """Test fetch_single retorna None quan no troba document"""
+        mock_today = date.today()
+        mock_get_today.return_value = mock_today
+        
+        mock_cache.generate_key.return_value = 'test_cache_key'
+        mock_cache.get_timeout.return_value = 300
+        
+        mock_db = MagicMock()
+        mock_firestore_instance = mock_firestore_service.return_value
+        mock_firestore_instance.get_db.return_value = mock_db
+        
+        # Simular document que no existeix
+        mock_doc = MagicMock()
+        mock_doc.exists = False
+        
+        mock_doc_ref = MagicMock()
+        mock_doc_ref.get.return_value = mock_doc
+        
+        mock_collection = MagicMock()
+        mock_collection.document.return_value = mock_doc_ref
+        mock_db.collection.return_value = mock_collection
+        
+        # Capturar funcions internes
+        captured_funcs = {}
+        def capture_and_execute(**kwargs):
+            captured_funcs['fetch_single'] = kwargs.get('fetch_single_fn')
+            # Executar fetch_single amb document no existent
+            result = captured_funcs['fetch_single']('nonexistent_id')
+            return [] if result is None else [result]
+        
+        mock_cache.get_or_fetch_list.side_effect = capture_and_execute
+        
+        dao = RenovationDAO()
+        result = dao.get_all_renovations()
+        
+        assert result == []
+
+    @patch('api.daos.renovation_dao.FirestoreService')
+    @patch('api.daos.renovation_dao.cache_service')
+    @patch('api.daos.renovation_dao.get_madrid_today')
+    def test_get_all_renovations_exception(self, mock_get_today, mock_cache, mock_firestore_service):
+        """Test excepció durant l'obtenció de renovations"""
+        mock_today = date.today()
+        mock_get_today.return_value = mock_today
+        mock_cache.generate_key.return_value = 'test_cache_key'
+        mock_cache.get_or_fetch_list.side_effect = Exception("Cache error")
+        
+        dao = RenovationDAO()
+        result = dao.get_all_renovations()
+        
+        assert result == []
+
+    @patch('api.daos.renovation_dao.FirestoreService')
+    @patch('api.daos.renovation_dao.cache_service')
+    @patch('api.daos.renovation_dao.get_madrid_today')
+    def test_delete_current_renovations_by_creator_success(self, mock_get_today, mock_cache, mock_firestore_service, sample_renovation_data):
+        """Test eliminació de renovations actuals per creador"""
+        mock_today = date.today()
+        mock_get_today.return_value = mock_today
+        
+        mock_db = MagicMock()
+        mock_firestore_instance = mock_firestore_service.return_value
+        mock_firestore_instance.get_db.return_value = mock_db
+        
+        # Simular una renovation amb participants
+        mock_doc = MagicMock()
+        mock_doc.id = 'test_renovation_id'
+        mock_doc.to_dict.return_value = {
+            'refuge_id': 'refuge_1',
+            'participants_uids': ['user1', 'user2']
+        }
+        mock_doc.reference = MagicMock()
+        
+        mock_query = MagicMock()
+        mock_query.stream.return_value = [mock_doc]
+        mock_collection = MagicMock()
+        mock_collection.where.return_value.where.return_value = mock_query
+        mock_db.collection.return_value = mock_collection
+        
+        mock_cache.generate_key.return_value = 'test_cache_key'
+        
+        dao = RenovationDAO()
+        success, participants, error = dao.delete_current_renovations_by_creator('test_creator')
+        
+        assert success is True
+        assert error is None
+        assert 'user1' in participants
+        assert 'user2' in participants
+        mock_doc.reference.delete.assert_called_once()
+
+    @patch('api.daos.renovation_dao.FirestoreService')
+    @patch('api.daos.renovation_dao.cache_service')
+    @patch('api.daos.renovation_dao.get_madrid_today')
+    def test_delete_current_renovations_by_creator_exception(self, mock_get_today, mock_cache, mock_firestore_service):
+        """Test excepció durant l'eliminació de renovations actuals"""
+        mock_today = date.today()
+        mock_get_today.return_value = mock_today
+        
+        mock_firestore_instance = mock_firestore_service.return_value
+        mock_firestore_instance.get_db.side_effect = Exception("Database error")
+        
+        dao = RenovationDAO()
+        success, participants, error = dao.delete_current_renovations_by_creator('test_creator')
+        
+        assert success is False
+        assert participants is None
+        assert 'Database error' in error
+
+    @patch('api.daos.renovation_dao.FirestoreService')
+    @patch('api.daos.renovation_dao.cache_service')
+    def test_anonymize_renovations_by_creator_success(self, mock_cache, mock_firestore_service):
+        """Test anonimització de renovations per creador"""
+        mock_db = MagicMock()
+        mock_firestore_instance = mock_firestore_service.return_value
+        mock_firestore_instance.get_db.return_value = mock_db
+        
+        mock_doc = MagicMock()
+        mock_doc.id = 'test_renovation_id'
+        mock_doc.to_dict.return_value = {'refuge_id': 'refuge_1'}
+        mock_doc.reference = MagicMock()
+        
+        mock_query = MagicMock()
+        mock_query.stream.return_value = [mock_doc]
+        mock_collection = MagicMock()
+        mock_collection.where.return_value = mock_query
+        mock_db.collection.return_value = mock_collection
+        
+        mock_cache.generate_key.return_value = 'test_cache_key'
+        
+        dao = RenovationDAO()
+        success, error = dao.anonymize_renovations_by_creator('test_creator')
+        
+        assert success is True
+        assert error is None
+        mock_doc.reference.update.assert_called_once_with({
+            'creator_uid': 'unknown',
+            'group_link': None
+        })
+
+    @patch('api.daos.renovation_dao.FirestoreService')
+    @patch('api.daos.renovation_dao.cache_service')
+    def test_anonymize_renovations_by_creator_exception(self, mock_cache, mock_firestore_service):
+        """Test excepció durant l'anonimització de renovations"""
+        mock_firestore_instance = mock_firestore_service.return_value
+        mock_firestore_instance.get_db.side_effect = Exception("Database error")
+        
+        dao = RenovationDAO()
+        success, error = dao.anonymize_renovations_by_creator('test_creator')
+        
+        assert success is False
+        assert 'Database error' in error
+
+    @patch('api.daos.renovation_dao.FirestoreService')
+    @patch('api.daos.renovation_dao.cache_service')
+    def test_remove_user_from_participations_success(self, mock_cache, mock_firestore_service):
+        """Test eliminació d'usuari de participacions"""
+        mock_db = MagicMock()
+        mock_firestore_instance = mock_firestore_service.return_value
+        mock_firestore_instance.get_db.return_value = mock_db
+        
+        mock_doc = MagicMock()
+        mock_doc.id = 'test_renovation_id'
+        mock_doc.to_dict.return_value = {'refuge_id': 'refuge_1'}
+        mock_doc.reference = MagicMock()
+        
+        mock_query = MagicMock()
+        mock_query.stream.return_value = [mock_doc]
+        mock_collection = MagicMock()
+        mock_collection.where.return_value = mock_query
+        mock_db.collection.return_value = mock_collection
+        
+        mock_cache.generate_key.return_value = 'test_cache_key'
+        
+        dao = RenovationDAO()
+        success, error = dao.remove_user_from_participations('user_uid')
+        
+        assert success is True
+        assert error is None
+        mock_doc.reference.update.assert_called_once()
+
+    @patch('api.daos.renovation_dao.FirestoreService')
+    @patch('api.daos.renovation_dao.cache_service')
+    def test_remove_user_from_participations_exception(self, mock_cache, mock_firestore_service):
+        """Test excepció durant l'eliminació d'usuari de participacions"""
+        mock_firestore_instance = mock_firestore_service.return_value
+        mock_firestore_instance.get_db.side_effect = Exception("Database error")
+        
+        dao = RenovationDAO()
+        success, error = dao.remove_user_from_participations('user_uid')
+        
+        assert success is False
+        assert 'Database error' in error
+
+    @patch('api.daos.renovation_dao.FirestoreService')
+    @patch('api.daos.renovation_dao.cache_service')
+    def test_remove_user_from_expelled_success(self, mock_cache, mock_firestore_service):
+        """Test eliminació d'usuari de expelled_uids"""
+        mock_db = MagicMock()
+        mock_firestore_instance = mock_firestore_service.return_value
+        mock_firestore_instance.get_db.return_value = mock_db
+        
+        mock_doc = MagicMock()
+        mock_doc.id = 'test_renovation_id'
+        mock_doc.to_dict.return_value = {'refuge_id': 'refuge_1'}
+        mock_doc.reference = MagicMock()
+        
+        mock_query = MagicMock()
+        mock_query.stream.return_value = [mock_doc]
+        mock_collection = MagicMock()
+        mock_collection.where.return_value = mock_query
+        mock_db.collection.return_value = mock_collection
+        
+        mock_cache.generate_key.return_value = 'test_cache_key'
+        
+        dao = RenovationDAO()
+        success, error = dao.remove_user_from_expelled('user_uid')
+        
+        assert success is True
+        assert error is None
+        mock_doc.reference.update.assert_called_once()
+
+    @patch('api.daos.renovation_dao.FirestoreService')
+    @patch('api.daos.renovation_dao.cache_service')
+    def test_remove_user_from_expelled_exception(self, mock_cache, mock_firestore_service):
+        """Test excepció durant l'eliminació d'usuari de expelled"""
+        mock_firestore_instance = mock_firestore_service.return_value
+        mock_firestore_instance.get_db.side_effect = Exception("Database error")
+        
+        dao = RenovationDAO()
+        success, error = dao.remove_user_from_expelled('user_uid')
+        
+        assert success is False
+        assert 'Database error' in error
+
+    @patch('api.daos.renovation_dao.FirestoreService')
+    @patch('api.daos.renovation_dao.cache_service')
+    @patch('api.daos.renovation_dao.get_madrid_today')
+    def test_get_all_renovations_get_id_function(self, mock_get_today, mock_cache, mock_firestore_service, sample_renovation_data):
+        """Test que verifica la funció get_id de get_all_renovations"""
+        mock_today = date.today()
+        mock_get_today.return_value = mock_today
+        
+        mock_cache.generate_key.return_value = 'test_cache_key'
+        mock_cache.get_timeout.return_value = 300
+        
+        mock_db = MagicMock()
+        mock_firestore_instance = mock_firestore_service.return_value
+        mock_firestore_instance.get_db.return_value = mock_db
+        
+        # Simular get_or_fetch_list per capturar les funcions internes
+        captured_funcs = {}
+        def capture_funcs(**kwargs):
+            captured_funcs['fetch_all'] = kwargs.get('fetch_all_fn')
+            captured_funcs['fetch_single'] = kwargs.get('fetch_single_fn')
+            captured_funcs['get_id'] = kwargs.get('get_id_fn')
+            return [sample_renovation_data]
+        
+        mock_cache.get_or_fetch_list.side_effect = capture_funcs
+        
+        dao = RenovationDAO()
+        result = dao.get_all_renovations()
+        
+        assert len(result) == 1
+        assert 'fetch_all' in captured_funcs
+        assert 'fetch_single' in captured_funcs
+        assert 'get_id' in captured_funcs
+        
+        # Testejar get_id (línia 157)
+        test_data = {'id': 'test_123'}
+        assert captured_funcs['get_id'](test_data) == 'test_123'
+
+    @patch('api.daos.renovation_dao.FirestoreService')
+    @patch('api.daos.renovation_dao.cache_service')
+    @patch('api.daos.renovation_dao.get_madrid_today')
+    def test_get_renovations_by_refuge_internal_functions(self, mock_get_today, mock_cache, mock_firestore_service, sample_renovation_data):
+        """Test que verifica les funcions internes de get_renovations_by_refuge"""
+        mock_today = date.today()
+        mock_get_today.return_value = mock_today
+        
+        mock_cache.generate_key.return_value = 'test_cache_key'
+        mock_cache.get_timeout.return_value = 300
+        
+        mock_db = MagicMock()
+        mock_firestore_instance = mock_firestore_service.return_value
+        mock_firestore_instance.get_db.return_value = mock_db
+        
+        # Simular get_or_fetch_list per capturar les funcions internes
+        captured_funcs = {}
+        def capture_funcs(**kwargs):
+            captured_funcs['fetch_all'] = kwargs.get('fetch_all_fn')
+            captured_funcs['fetch_single'] = kwargs.get('fetch_single_fn')
+            captured_funcs['get_id'] = kwargs.get('get_id_fn')
+            return [sample_renovation_data]
+        
+        mock_cache.get_or_fetch_list.side_effect = capture_funcs
+        
+        dao = RenovationDAO()
+        result = dao.get_renovations_by_refuge('test_refuge_id', active_only=True)
+        
+        assert len(result) == 1
+        assert 'fetch_all' in captured_funcs
+
+        # Testejar get_id
+        test_data = {'id': 'test_456'}
+        assert captured_funcs['get_id'](test_data) == 'test_456'
+
+    @patch('api.daos.renovation_dao.FirestoreService')
+    @patch('api.daos.renovation_dao.cache_service')
+    def test_update_renovation_date_normalization(self, mock_cache, mock_firestore_service, sample_renovation_data):
+        """Test normalització de dates durant update_renovation"""
+        mock_db = MagicMock()
+        mock_firestore_instance = mock_firestore_service.return_value
+        mock_firestore_instance.get_db.return_value = mock_db
+        
+        mock_doc = MagicMock()
+        mock_doc.exists = True
+        mock_doc.to_dict.return_value = {'refuge_id': 'test_refuge'}
+        
+        mock_doc_ref = MagicMock()
+        mock_doc_ref.get.return_value = mock_doc
+        
+        mock_collection = MagicMock()
+        mock_collection.document.return_value = mock_doc_ref
+        mock_db.collection.return_value = mock_collection
+        
+        mock_cache.generate_key.return_value = 'test_cache_key'
+        
+        dao = RenovationDAO()
+        
+        # Test amb datetime objects
+        update_data = {
+            'ini_date': datetime(2024, 6, 15, 10, 30),
+            'fin_date': datetime(2024, 6, 20, 15, 45)
+        }
+        
+        result = dao.update_renovation('test_id', update_data)
+        
+        assert result is True
+        mock_doc_ref.update.assert_called_once()
+
+    @patch('api.daos.renovation_dao.FirestoreService')
+    @patch('api.daos.renovation_dao.cache_service')
+    def test_update_renovation_with_date_objects(self, mock_cache, mock_firestore_service):
+        """Test update_renovation amb objectes date"""
+        mock_db = MagicMock()
+        mock_firestore_instance = mock_firestore_service.return_value
+        mock_firestore_instance.get_db.return_value = mock_db
+        
+        mock_doc = MagicMock()
+        mock_doc.exists = True
+        mock_doc.to_dict.return_value = {'refuge_id': 'test_refuge'}
+        
+        mock_doc_ref = MagicMock()
+        mock_doc_ref.get.return_value = mock_doc
+        
+        mock_collection = MagicMock()
+        mock_collection.document.return_value = mock_doc_ref
+        mock_db.collection.return_value = mock_collection
+        
+        mock_cache.generate_key.return_value = 'test_cache_key'
+        
+        dao = RenovationDAO()
+        
+        # Test amb date objects
+        update_data = {
+            'ini_date': date(2024, 6, 15),
+            'fin_date': date(2024, 6, 20)
+        }
+        
+        result = dao.update_renovation('test_id', update_data)
+        
+        assert result is True
