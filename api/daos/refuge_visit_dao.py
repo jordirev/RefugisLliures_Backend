@@ -471,7 +471,8 @@ class RefugeVisitDAO:
             refuge_id: ID del refugi
         """
         # Invalida totes les claus de llista que continguin aquest refuge_id
-        cache_service.delete_pattern(f'refuge_visits_list:refuge_id:{refuge_id}')
+        # El patró inclou :* al final per coincidir amb qualsevol from_date
+        cache_service.delete_pattern(f'refuge_visits_list:from_date:*:refuge_id:{refuge_id}')
     
     def _invalidate_visit_cache(self, visit_id: str, refuge_id: Optional[str] = None):
         """
