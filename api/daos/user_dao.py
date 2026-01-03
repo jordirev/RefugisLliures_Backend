@@ -282,7 +282,7 @@ class UserDAO:
         # Intenta obtenir de cache
         cached_data = cache_service.get(cache_key)
         if cached_data is not None:
-            return cached_data
+            return self.refugi_mapper.dict_list_to_refugi_info_representations(cached_data)
         
         try:
             if not refugis_ids:
