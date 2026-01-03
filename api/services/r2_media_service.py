@@ -85,10 +85,6 @@ class RefugiMediaStrategy(MediaPathStrategy):
         Returns:
             Objecte MediaMetadata amb URL prefirmada
         """
-        # Calculem el expriation en funció del TTL a Cache
-        cache_service = CacheService()
-        expiration = cache_service.get_timeout('refugi_detail')
-
         key = next(iter(metadata_dict)) if metadata_dict else ''
         key_dict = metadata_dict[key] if key else {}
         url = service.generate_presigned_url(key, expiration) if key else ''
@@ -139,10 +135,6 @@ class UserAvatarStrategy(MediaPathStrategy):
         Returns:
             Objecte MediaMetadata amb URL prefirmada
         """
-        # Calculem el expriation en funció del TTL a Cache
-        cache_service = CacheService()
-        expiration = cache_service.get_timeout('user_detail')
-        
         key = metadata_dict.get('key', '')
         url = service.generate_presigned_url(key, expiration) if key else ''
         
