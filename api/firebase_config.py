@@ -21,21 +21,30 @@ def _is_render_environment():
     return os.environ.get('RENDER') == 'true'
 
 
-def _initialize_firebase_render():
-    logger.info("🌐 Entorn: PRODUCCIÓ (Render)")
+def _is_production_environment():
+    """Detecta si estem en un entorn de producció (Render, GitHub Actions, etc.)"""
+    return (
+        os.environ.get('RENDER') == 'true' or 
+        os.environ.get('PRODUCTION') == 'true' or
+        os.environ.get('CI') == 'true'  # GitHub Actions configura CI=true
+    )
+
+
+def _initialize_firebase_production():
+    logger.info("🌐 Entorn: PRODUCCIÓ (Render/GitHub Actions/CI)")
     firebase_creds = os.environ.get('FIREBASE_SERVICE_ACCOUNT_KEY')
     
     if not firebase_creds:
-        raise ValueError("Variable d'entorn FIREBASE_SERVICE_ACCOUNT_KEY no trobada a Render")
+        raise ValueError("Variable d'entorn FIREBASE_SERVICE_ACCOUNT_KEY no trobada")
     
-    logger.info("� Carregant credencials de Firebase des de variable d'entorn")
+    logger.info("🔐 Carregant credencials de Firebase des de variable d'entorn")
     cred_dict = json.loads(firebase_creds)
     cred = credentials.Certificate(cred_dict)
     
     firebase_admin.initialize_app(cred, {
         'projectId': cred_dict.get('project_id')
     })
-    logger.info(f"✅ Firebase inicialitzat (Render) amb project_id: {cred_dict.get('project_id')}")
+    logger.info(f"✅ Firebase inicialitzat (Producció) amb project_id: {cred_dict.get('project_id')}")
 
 
 def _initialize_firebase_local():
@@ -71,9 +80,14 @@ def _initialize_firebase_local():
 def initialize_firebase():
     """
     Inicialitza Firebase Admin SDK si encara no s'ha inicialitzat.
-    - A Render: usa la variable d'entorn FIREBASE_SERVICE_ACCOUNT_KEY
+    - En producció (Render/GitHub Actions): usa la variable d'entorn FIREBASE_SERVICE_ACCOUNT_KEY
     - En local: carrega les variables d'entorn des de env/.env.development i busca el fitxer JSON
     - En tests: no inicialitza Firebase
+    
+    Detecta automàticament l'entorn segons les variables:
+    - RENDER=true (Render)
+    - PRODUCTION=true (configuració manual)
+    - CI=true (GitHub Actions i altres CI/CD)
     """
     if _is_testing_environment():
         logger.info("🧪 Entorn de testing detectat - Firebase NO s'inicialitza")
@@ -81,8 +95,8 @@ def initialize_firebase():
     
     if not firebase_admin._apps:
         try:
-            if _is_render_environment():
-                _initialize_firebase_render()
+            if _is_production_environment():
+                _initialize_firebase_production()
             else:
                 _initialize_firebase_local()
         except Exception as e:
