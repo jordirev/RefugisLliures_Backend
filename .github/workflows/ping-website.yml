@@ -2,8 +2,8 @@ name: Ping Website
 
 on:
   schedule:
-    # Executa cada 12 minuts
-    - cron: '*/12 * * * *'
+    # Executa cada 9 minuts
+    - cron: '*/9 * * * *'
   workflow_dispatch: # Permet executar manualment
 
 jobs:
