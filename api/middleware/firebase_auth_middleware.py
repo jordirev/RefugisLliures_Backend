@@ -20,8 +20,6 @@ class FirebaseAuthenticationMiddleware(MiddlewareMixin):
     EXCLUDED_PATHS = [
         '/api/health/',
         '/api/refuges/',
-        '/api/cache/',
-        '/admin/',
         '/swagger/',
         '/redoc/',
     ]
