@@ -5,6 +5,13 @@ import firebase_admin
 from firebase_admin import credentials, firestore
 from pathlib import Path
 
+"""
+IMPORTANT: Aquesta comanda està dissenyada per a ser executada una sola vegada per migrar les coordenades dels refugis existents a una nova col·lecció
+anomenada 'coords_refugis'. Aquesta col·lecció contindrà un únic document amb totes les coordenades per facilitar les consultes geogràfiques.
+
+Si ja s'ha executat aquesta comanda i la col·lecció 'coords_refugis' ja existeix, NO s'ha d'executar de nou per evitar duplicats, inconsistències o perdua d'informació.
+
+"""
 
 class Command(BaseCommand):
     help = 'Extract coordinates from existing refugis in Firestore and create a coords_refugis collection'
@@ -74,35 +81,39 @@ class Command(BaseCommand):
 
             for doc in docs:
                 doc_data = doc.to_dict()
-                refugi_id = doc.id
+                refuge_id = doc.id
 
                 # Extract coordinates
                 coord_info = doc_data.get('coord', {})
                 
                 if not coord_info or 'lat' not in coord_info or 'long' not in coord_info:
                     self.stdout.write(
-                        self.style.WARNING(f'Skipping refugi {refugi_id}: missing coordinates')
+                        self.style.WARNING(f'Skipping refugi {refuge_id}: missing coordinates')
                     )
                     skipped_count += 1
                     continue
 
                 # Prepare coordinate document
                 coord_doc = {
-                    'refugi_id': refugi_id,
-                    'coordinates': {
-                        'latitude': coord_info['lat'],
-                        'longitude': coord_info['long']
+                    'id': refuge_id,
+                    'coord': {
+                        'lat': coord_info['lat'],
+                        'long': coord_info['long']
                     },
-                    # Add geohash for efficient geo queries (optional)
-                    'geohash': self._generate_simple_geohash(coord_info['lat'], coord_info['long'])
+                    # Add geohash for efficient geo queries
+                    'geohash': self.generate_simple_geohash(coord_info['lat'], coord_info['long'])
                 }
 
                 # Add refugi name if available for easier identification
                 if 'name' in doc_data:
-                    coord_doc['refugi_name'] = doc_data['name']
+                    coord_doc['name'] = doc_data['name']
+                
+                # Add surname if available
+                if 'surname' in doc_data and doc_data['surname']:
+                    coord_doc['surname'] = doc_data['surname']
 
                 coords_data.append({
-                    'id': refugi_id,
+                    'id': refuge_id,
                     'data': coord_doc
                 })
 
@@ -110,7 +121,7 @@ class Command(BaseCommand):
 
                 if dry_run:
                     self.stdout.write(
-                        f'[DRY RUN] Would create coordinate document for refugi: {refugi_id} '
+                        f'[DRY RUN] Would create coordinate document for refugi: {refuge_id} '
                         f'(lat: {coord_info["lat"]}, long: {coord_info["long"]})'
                     )
 
@@ -191,7 +202,7 @@ class Command(BaseCommand):
         except Exception as e:
             self.stdout.write(f'Could not get collection stats: {str(e)}')
 
-    def _generate_simple_geohash(self, lat, lng, precision=5):
+    def generate_simple_geohash(self, lat, lng, precision=5):
         """Generate a simple geohash for geographical indexing"""
         # Simple implementation for demonstration
         # In production, consider using a proper geohash library

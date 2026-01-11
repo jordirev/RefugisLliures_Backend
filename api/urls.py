@@ -1,12 +1,49 @@
 from django.urls import path
 from .views.health_check_views import HealthCheckAPIView
 from .views.refugi_lliure_views import (
-    RefugiDetailAPIView,
-    RefugisCollectionAPIView
+    RefugiLliureDetailAPIView,
+    RefugiLliureCollectionAPIView,
+    RefugeRenovationsAPIView
+)
+from .views.refugi_media_views import (
+    RefugiMediaAPIView,
+    RefugiMediaDeleteAPIView
+)
+from .views.experience_views import (
+    ExperienceListAPIView,
+    ExperienceDetailAPIView
+)
+from .views.doubt_views import (
+    DoubtListAPIView,
+    DoubtDetailAPIView,
+    AnswerListAPIView,
+    AnswerReplyAPIView
 )
 from .views.user_views import (
     UsersCollectionAPIView,
-    UserDetailAPIView
+    UserDetailAPIView,
+    UserFavouriteRefugesAPIView,
+    UserFavouriteRefugesDetailAPIView,
+    UserVisitedRefugesAPIView,
+    UserVisitedRefugesDetailAPIView,
+    UserAvatarAPIView
+)
+from .views.renovation_views import (
+    RenovationListAPIView,
+    RenovationAPIView,
+    RenovationParticipantsAPIView,
+    RenovationParticipantDetailAPIView
+)
+from .views.refuge_proposal_views import (
+    RefugeProposalCollectionAPIView,
+    RefugeProposalApproveAPIView,
+    RefugeProposalRejectAPIView,
+    MyRefugeProposalCollectionAPIView
+)
+from .views.refuge_visit_views import (
+    RefugeVisitsAPIView,
+    UserVisitsAPIView,
+    RefugeVisitDetailAPIView
 )
 from .views.cache_views import cache_stats, cache_clear, cache_invalidate
 
@@ -15,12 +52,49 @@ urlpatterns = [
     path('health/', HealthCheckAPIView.as_view(), name='health_check'),
     
     # Refugis endpoints 
-    path('refugis/', RefugisCollectionAPIView.as_view(), name='refugis_collection'),
-    path('refugis/<str:refugi_id>/', RefugiDetailAPIView.as_view(), name='refugi_detail'),
+    path('refuges/', RefugiLliureCollectionAPIView.as_view(), name='refugi_lliure_collection'),
+    path('refuges/<str:id>/', RefugiLliureDetailAPIView.as_view(), name='refugi_lliure_detail'),
+    path('refuges/<str:id>/renovations/', RefugeRenovationsAPIView.as_view(), name='refuge_renovations'),  # GET /refuges/{id}/renovations/
     
-    # Users endpoints (REST estàndard)
+    # Refuge visits endpoints
+    path('refuges/<str:refuge_id>/visits/', RefugeVisitsAPIView.as_view(), name='refuge_visits'),  # GET /refuges/{id}/visits/
+    path('refuges/<str:refuge_id>/visits/<str:visit_date>/', RefugeVisitDetailAPIView.as_view(), name='refuge_visit_detail'),  # POST + PATCH + DELETE /refuges/{id}/visits/{date}/
+    
+    # Refugi media endpoints
+    path('refuges/<str:id>/media/', RefugiMediaAPIView.as_view(), name='refugi_media'),  # GET + POST /refuges/{id}/media/
+    path('refuges/<str:id>/media/<path:key>/', RefugiMediaDeleteAPIView.as_view(), name='refugi_media_delete'),  # DELETE /refuges/{id}/media/{key}/
+    
+    # Refuge experience endpoints
+    path('experiences/', ExperienceListAPIView.as_view(), name='experience_list'),  # GET + POST /refuges/{refuge_id}/experiences/
+    path('experiences/<str:experience_id>/', ExperienceDetailAPIView.as_view(), name='experience_detail'),  # PATCH + DELETE /refuges/{refuge_id}/experiences/{experience_id}/
+    
+    # Refuge doubts endpoints
+    path('doubts/', DoubtListAPIView.as_view(), name='doubt_list'),  # GET + POST /refuges/{refuge_id}/doubts/
+    path('doubts/<str:doubt_id>/', DoubtDetailAPIView.as_view(), name='doubt_detail'),  # DELETE /refuges/{refuge_id}/doubts/{doubt_id}/
+    path('doubts/<str:doubt_id>/answers/', AnswerListAPIView.as_view(), name='answer_list'),  # POST /refuges/{refuge_id}/doubts/{doubt_id}/answers/
+    path('doubts/<str:doubt_id>/answers/<str:answer_id>/', AnswerReplyAPIView.as_view(), name='answer_reply'),  # POST + DELETE /refuges/{refuge_id}/doubts/{doubt_id}/answers/{answer_id}/
+    
+    # Users endpoints
     path('users/', UsersCollectionAPIView.as_view(), name='users_collection'),  # POST /users/ (crear)
     path('users/<str:uid>/', UserDetailAPIView.as_view(), name='user_detail'),  # GET + PATCH + DELETE /users/{uid}/
+    path('users/<str:uid>/avatar/', UserAvatarAPIView.as_view(), name='user_avatar'),  # PATCH + DELETE /users/{uid}/avatar/
+    path('users/<str:uid>/favorite-refuges/', UserFavouriteRefugesAPIView.as_view(), name='user_refugis_preferits'),  # GET + POST /users/{uid}/favorite-refuges/
+    path('users/<str:uid>/favorite-refuges/<str:refuge_id>/', UserFavouriteRefugesDetailAPIView.as_view(), name='user_favourite_refuges_delete'),  # DELETE /users/{uid}/favorite-refuges/{refuge_id}/
+    path('users/<str:uid>/visited-refuges/', UserVisitedRefugesAPIView.as_view(), name='user_visited_refuges'),  # GET + POST /users/{uid}/visited-refuges/
+    path('users/<str:uid>/visited-refuges/<str:refuge_id>/', UserVisitedRefugesDetailAPIView.as_view(), name='user_visited_refuges_delete'),  # DELETE /users/{uid}/visited-refuges/{refuge_id}/
+    path('users/<str:uid>/visits/', UserVisitsAPIView.as_view(), name='user_visits'),  # GET /users/{uid}/visits/
+    
+    # Renovations endpoints
+    path('renovations/', RenovationListAPIView.as_view(), name='renovation_list'),  # GET + POST /renovations/
+    path('renovations/<str:id>/', RenovationAPIView.as_view(), name='renovation_detail'),  # GET + PATCH + DELETE /renovations/{id}/
+    path('renovations/<str:id>/participants/', RenovationParticipantsAPIView.as_view(), name='renovation_participants'),  # POST /renovations/{id}/participants/
+    path('renovations/<str:id>/participants/<str:uid>/', RenovationParticipantDetailAPIView.as_view(), name='renovation_participant_detail'),  # DELETE /renovations/{id}/participants/{uid}/
+    
+    # Refuge proposal endpoints
+    path('refuges-proposals/', RefugeProposalCollectionAPIView.as_view(), name='refuge_proposal_collection'),  # POST /refuges-proposals/ (crear) + GET /refuges-proposals/ (llistar - només admins)
+    path('my-refuges-proposals/', MyRefugeProposalCollectionAPIView.as_view(), name='my_refuge_proposal_collection'),  # GET /my-refuges-proposals/ (llistar les pròpies propostes)
+    path('refuges-proposals/<str:id>/approve/', RefugeProposalApproveAPIView.as_view(), name='refuge_proposal_approve'),  # POST /refuges-proposals/{id}/approve/ (només admins)
+    path('refuges-proposals/<str:id>/reject/', RefugeProposalRejectAPIView.as_view(), name='refuge_proposal_reject'),  # POST /refuges-proposals/{id}/reject/ (només admins)
     
     # Cache management endpoints
     path('cache/stats/', cache_stats, name='cache_stats'),

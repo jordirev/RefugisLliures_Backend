@@ -1,8 +1,11 @@
 """
 Model de refugi per a l'aplicació RefugisLliures
 """
+from asyncio.log import logger
 from dataclasses import dataclass, field
 from typing import Optional, List, Dict, Any
+from .media_metadata import RefugeMediaMetadata
+from ..services import r2_media_service
 
 @dataclass
 class Coordinates:
@@ -18,19 +21,10 @@ class Coordinates:
     
     @classmethod
     def from_dict(cls, data: dict) -> 'Coordinates':
-        # Handle both formats for coordinates
-        if 'longitude' in data and 'latitude' in data:
-            # Format from extract_coords_to_firestore command
-            return cls(
-                long=data.get('longitude', 0.0),
-                lat=data.get('latitude', 0.0)
-            )
-        else:
-            # Original format
-            return cls(
-                long=data.get('long', 0.0),
-                lat=data.get('lat', 0.0)
-            )
+        return cls(
+            long=data.get('long'),
+            lat=data.get('lat')
+        )
 
 @dataclass
 class InfoComplementaria:
@@ -61,7 +55,7 @@ class InfoComplementaria:
             'couchage': self.couchage,
             'bas_flancs': self.bas_flancs,
             'lits': self.lits,
-            'mezzanine/etage': self.mezzanine_etage  # Mapejat de tornada al format original
+            'mezzanine_etage': self.mezzanine_etage
         }
     
     @classmethod
@@ -78,7 +72,7 @@ class InfoComplementaria:
             couchage=data.get('couchage', 0),
             bas_flancs=data.get('bas_flancs', 0),
             lits=data.get('lits', 0),
-            mezzanine_etage=data.get('mezzanine/etage', 0)
+            mezzanine_etage=data.get('mezzanine_etage', 0)
         )
 
 @dataclass
@@ -87,16 +81,19 @@ class Refugi:
     id: str
     name: str
     coord: Coordinates
-    altitude: int = 0
-    places: int = 0
-    remarque: str = ""
+    altitude: Optional[int] = None
+    places: Optional[int] = None
+    remarque: Optional[str] = None
     info_comp: InfoComplementaria = field(default_factory=InfoComplementaria)
-    description: str = ""
-    links: List[str] = field(default_factory=list)
-    type: str = ""
-    modified_at: str = ""
+    description: Optional[str] = None
+    links: Optional[List[str]] = field(default_factory=list)
+    type: str = 'non gardé'
+    modified_at: Optional[str] = None
     region: Optional[str] = None
     departement: Optional[str] = None
+    condition: Optional[int] = None  # Estat del refugi (0-3): 0: pobre, 1: correcte, 2: be, 3: excellent
+    visitors: Optional[List[str]] = field(default_factory=list)
+    images_metadata: Optional[List[RefugeMediaMetadata]] = field(default_factory=list)  # Metadades amb URLs prefirmades (generades dinàmicament)
     
     def __post_init__(self):
         """Validacions després de la inicialització"""
@@ -109,6 +106,21 @@ class Refugi:
     
     def to_dict(self) -> dict:
         """Converteix el refugi a diccionari"""
+        
+        # Generem les metadades per a guardar a Firestore sense URLs prefirmades
+        media_metadata = {}
+        if self.images_metadata:
+            for image in self.images_metadata:
+                media_metadata[image.key] = {
+                    'creator_uid': image.creator_uid,
+                    'uploaded_at': image.uploaded_at
+                }
+        
+        # Convertir images_metadata a diccionaris per a la resposta JSON
+        images_metadata_dicts = []
+        if self.images_metadata:
+            images_metadata_dicts = [img.to_dict() for img in self.images_metadata]
+
         return {
             'id': self.id,
             'name': self.name,
@@ -122,7 +134,11 @@ class Refugi:
             'type': self.type,
             'modified_at': self.modified_at,
             'region': self.region,
-            'departement': self.departement
+            'departement': self.departement,
+            'condition': self.condition,
+            'visitors': self.visitors,
+            'media_metadata': media_metadata,
+            'images_metadata': images_metadata_dicts,
         }
     
     @classmethod
@@ -130,21 +146,34 @@ class Refugi:
         """Crea un refugi des d'un diccionari"""
         coord_data = data.get('coord', {})
         info_comp_data = data.get('info_comp', {})
+
+        # Generem les metadades amb URLs prefirmades
+        images_metadata = []
+        if 'media_metadata' in data and data['media_metadata']:
+            try:
+                media_service = r2_media_service.get_refugi_media_service()
+                images_metadata = media_service.generate_media_metadata_list(data['media_metadata'])
+            except Exception as e:
+                logger.warning(f"Error generant MediaMetadata per refugi {data.get('id', '')}: {str(e)}")
+                images_metadata = []
         
         return cls(
             id=str(data.get('id', '')),
             name=data.get('name', ''),
             coord=Coordinates.from_dict(coord_data),
-            altitude=data.get('altitude', 0),
-            places=data.get('places', 0),
+            altitude=data.get('altitude'),
+            places=data.get('places'),
             remarque=data.get('remarque', ''),
             info_comp=InfoComplementaria.from_dict(info_comp_data),
-            description=data.get('description', ''),
+            description=data.get('description'),
             links=data.get('links', []),
             type=data.get('type', ''),
             modified_at=data.get('modified_at', ''),
             region=data.get('region'),
-            departement=data.get('departement')
+            departement=data.get('departement'),
+            condition=data.get('condition'),
+            visitors=data.get('visitors', []),
+            images_metadata=images_metadata
         )
     
     def __str__(self) -> str:
@@ -158,38 +187,28 @@ class Refugi:
 @dataclass
 class RefugiCoordinates:
     """Model simplificat per representar només les coordenades d'un refugi"""
-    refugi_id: str
+    refuge_id: str
     refugi_name: str
-    coordinates: Coordinates
+    coord: Coordinates
     geohash: str = ""
     
     def to_dict(self) -> dict:
         return {
-            'refugi_id': self.refugi_id,
+            'refuge_id': self.refuge_id,
             'refugi_name': self.refugi_name,
-            'coordinates': self.coordinates.to_dict(),
+            'coord': self.coord.to_dict(),
             'geohash': self.geohash
         }
     
     @classmethod
     def from_dict(cls, data: dict) -> 'RefugiCoordinates':
-        coord_data = data.get('coordinates', {})
-        
-        # Handle both formats: original (long, lat) and coordinates document (longitude, latitude)
-        if 'longitude' in coord_data and 'latitude' in coord_data:
-            # Format from extract_coords_to_firestore command
-            coordinates = Coordinates(
-                long=coord_data.get('longitude', 0.0),
-                lat=coord_data.get('latitude', 0.0)
-            )
-        else:
-            # Original format or standard format
-            coordinates = Coordinates.from_dict(coord_data)
-        
+        coord_data = data.get('coord', {})
+        coord = Coordinates.from_dict(coord_data)
+
         return cls(
-            refugi_id=data.get('refugi_id', ''),
+            refuge_id=data.get('refuge_id', ''),
             refugi_name=data.get('refugi_name', ''),
-            coordinates=coordinates,
+            coord=coord,
             geohash=data.get('geohash', '')
         )
 
@@ -199,12 +218,9 @@ class RefugiSearchFilters:
     # Text search
     name: str = ""
     
-    # Location filters
-    region: str = ""
-    departement: str = ""
-
     # Characteristics filters
-    type: str = ""
+    type: List[str] = field(default_factory=list)
+    condition: List[int] = field(default_factory=list)
     
     # Numeric range filters
     places_min: Optional[int] = None
@@ -212,28 +228,15 @@ class RefugiSearchFilters:
     altitude_min: Optional[int] = None
     altitude_max: Optional[int] = None
     
-    # Info complementaria filters (1 = has feature, 0 or None = ignore)
-    cheminee: Optional[int] = None
-    poele: Optional[int] = None
-    couvertures: Optional[int] = None
-    latrines: Optional[int] = None
-    bois: Optional[int] = None
-    eau: Optional[int] = None
-    matelas: Optional[int] = None
-    couchage: Optional[int] = None
-    lits: Optional[int] = None
-    
     def __post_init__(self):
         """Validacions dels filtres"""
         # Normalize empty strings to defaults
         if self.name is None:
             self.name = ""
-        if self.region is None:
-            self.region = ""
-        if self.departement is None:
-            self.departement = ""
         if self.type is None:
-            self.type = ""
+            self.type = []
+        if self.condition is None:
+            self.condition = []
 
     def to_dict(self) -> dict:
         """Retorna una representació dict dels filtres.
@@ -247,12 +250,10 @@ class RefugiSearchFilters:
         # Include text filters only when non-empty
         if isinstance(self.name, str) and self.name.strip():
             out['name'] = self.name.strip()
-        if isinstance(self.region, str) and self.region.strip():
-            out['region'] = self.region.strip()
-        if isinstance(self.departement, str) and self.departement.strip():
-            out['departement'] = self.departement.strip()
-        if isinstance(self.type, str) and self.type.strip():
-            out['type'] = self.type.strip()
+        if isinstance(self.type, list) and len(self.type) > 0:
+            out['type'] = sorted(self.type)  # Sort for consistent cache keys
+        if isinstance(self.condition, list) and len(self.condition) > 0:
+            out['condition'] = sorted(self.condition)  # Sort for consistent cache keys
 
         # Numeric ranges
         if self.places_min is not None:
@@ -264,16 +265,6 @@ class RefugiSearchFilters:
         if self.altitude_max is not None:
             out['altitude_max'] = self.altitude_max
 
-        # Include amenity filters only when explicitly requested (== 1)
-        amenity_fields = [
-            'cheminee', 'poele', 'couvertures', 'latrines',
-            'bois', 'eau', 'matelas', 'couchage', 'lits'
-        ]
-        for field_name in amenity_fields:
-            value = getattr(self, field_name)
-            if value == 1:
-                out[field_name] = 1
-
         return out
 
     @classmethod
@@ -281,21 +272,11 @@ class RefugiSearchFilters:
         """Crea un RefugiSearchFilters a partir d'un dict (opcional)."""
         return cls(
             name=data.get('name', ''),
-            region=data.get('region', ''),
-            departement=data.get('departement', ''),
-            type=data.get('type', ''),
+            type=data.get('type', []),
+            condition=data.get('condition', []),
             places_min=data.get('places_min'),
             places_max=data.get('places_max'),
             altitude_min=data.get('altitude_min'),
             altitude_max=data.get('altitude_max'),
-            cheminee=data.get('cheminee'),
-            poele=data.get('poele'),
-            couvertures=data.get('couvertures'),
-            latrines=data.get('latrines'),
-            bois=data.get('bois'),
-            eau=data.get('eau'),
-            matelas=data.get('matelas'),
-            couchage=data.get('couchage'),
-            lits=data.get('lits'),
         )
             

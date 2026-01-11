@@ -1,17 +1,24 @@
 """
 Fixtures i configuració compartida per als tests amb pytest
 """
+# IMPORTANT: Configurar variables d'entorn ABANS de qualsevol import de mòduls de l'API
+# Això és necessari perquè alguns mòduls llegeixen les variables a nivell de mòdul
+import os
+os.environ['TESTING'] = 'true'
+os.environ['R2_ACCESS_KEY_ID'] = 'test_access_key'
+os.environ['R2_SECRET_ACCESS_KEY'] = 'test_secret_key'
+os.environ['R2_ENDPOINT'] = 'https://test.r2.cloudflarestorage.com'
+os.environ['R2_BUCKET_NAME'] = 'test-bucket'
+
 import pytest
 from unittest.mock import Mock, MagicMock, patch
-from datetime import datetime
-from zoneinfo import ZoneInfo
 from api.models.user import User
 from api.models.refugi_lliure import Refugi, Coordinates, InfoComplementaria, RefugiSearchFilters
+from api.utils.timezone_utils import get_madrid_now
 
 
 # ============= CONFIGURACIÓ GLOBAL =============
 
-EMAIL = 'test@example.com'
 DEPARTMENT = 'Ariège'
 
 
@@ -19,14 +26,10 @@ DEPARTMENT = 'Ariège'
 def setup_test_environment():
     """
     Configuració global que s'executa una vegada al principi de tots els tests.
-    Assegura que Firebase no s'inicialitza durant els tests.
+    Les variables d'entorn ja estan configurades a l'inici del mòdul.
     """
-    import os
-    os.environ['TESTING'] = 'true'
     yield
-    # Cleanup
-    if 'TESTING' in os.environ:
-        del os.environ['TESTING']
+    # No fem cleanup de les variables d'entorn ja que altres tests podrien necessitar-les
 
 
 # ============= FIXTURES D'USUARIS =============
@@ -37,16 +40,14 @@ def sample_user_data():
     return {
         'uid': 'test_uid_12345',
         'username': 'testuser',
-        'email': EMAIL,
         'avatar': 'https://example.com/avatar.jpg',
-        'idioma': 'ca',
-        'refugis_favorits': [],
-        'refugis_visitats': [],
-        'reformes': [],
-        'num_fotos_pujades': 0,
-        'num_experiencies_compartides': 0,
-        'num_refugis_reformats': 0,
-        'created_at': datetime.now(ZoneInfo("Europe/Madrid")).isoformat()
+        'language': 'ca',
+        'favourite_refuges': [],
+        'visited_refuges': [],
+        'num_uploaded_photos': 0,
+        'num_shared_experiences': 0,
+        'num_renovated_refuges': 0,
+        'created_at': get_madrid_now().isoformat()
     }
 
 
@@ -63,23 +64,20 @@ def multiple_users_data():
         {
             'uid': 'uid_001',
             'username': 'user1',
-            'email': 'user1@example.com',
-            'idioma': 'ca',
-            'created_at': datetime.now(ZoneInfo("Europe/Madrid")).isoformat()
+            'language': 'ca',
+            'created_at': get_madrid_now().isoformat()
         },
         {
             'uid': 'uid_002',
             'username': 'user2',
-            'email': 'user2@example.com',
-            'idioma': 'es',
-            'created_at': datetime.now(ZoneInfo("Europe/Madrid")).isoformat()
+            'language': 'es',
+            'created_at': get_madrid_now().isoformat()
         },
         {
             'uid': 'uid_003',
             'username': 'user3',
-            'email': 'user3@example.com',
-            'idioma': 'en',
-            'created_at': datetime.now(ZoneInfo("Europe/Madrid")).isoformat()
+            'language': 'en',
+            'created_at': get_madrid_now().isoformat()
         }
     ]
 
@@ -88,10 +86,8 @@ def multiple_users_data():
 def invalid_user_data():
     """Dades d'usuari invàlides per tests"""
     return [
-        {'uid': '', 'email': EMAIL},  # UID buit
-        {'uid': 'test_uid', 'email': ''},  # Email buit
-        {'uid': 'test_uid', 'email': 'invalid_email'},  # Email sense @
-        {'uid': 'test_uid', 'email': EMAIL, 'idioma': 'invalid_lang'}  # Idioma invàlid
+        {'uid': ''},  # UID buit
+        {'uid': 'test_uid', 'language': 'invalid_lang'}  # Idioma invàlid
     ]
 
 
@@ -133,9 +129,10 @@ def sample_refugi_data(sample_coordinates, sample_info_complementaria):
         'description': 'Descripció del refugi de prova',
         'links': ['https://example.com'],
         'type': 'garde',
-        'modified_at': datetime.now(ZoneInfo("Europe/Madrid")).isoformat(),
+        'modified_at': get_madrid_now().isoformat(),
         'region': 'Pirineus',
-        'departement': DEPARTMENT
+        'departement': DEPARTMENT,
+        'condition': 2
     }
 
 
@@ -160,14 +157,15 @@ def multiple_refugis_data():
                 'cheminee': 1, 'poele': 0, 'couvertures': 1,
                 'latrines': 1, 'bois': 1, 'eau': 0,
                 'matelas': 1, 'couchage': 5, 'lits': 2,
-                'bas_flancs': 0, 'mezzanine/etage': 0, 'manque_un_mur': 0
+                'bas_flancs': 0, 'mezzanine_etage': 0, 'manque_un_mur': 0
             },
             'description': '',
             'links': [],
             'type': 'garde',
             'modified_at': '',
             'region': 'Pirineus',
-            'departement': DEPARTMENT
+            'departement': DEPARTMENT,
+            'condition': 2
         },
         {
             'id': 'refugi_002',
@@ -180,14 +178,15 @@ def multiple_refugis_data():
                 'cheminee': 0, 'poele': 1, 'couvertures': 1,
                 'latrines': 1, 'bois': 0, 'eau': 1,
                 'matelas': 0, 'couchage': 8, 'lits': 4,
-                'bas_flancs': 0, 'mezzanine/etage': 1, 'manque_un_mur': 0
+                'bas_flancs': 0, 'mezzanine_etage': 1, 'manque_un_mur': 0
             },
             'description': '',
             'links': [],
             'type': 'no guardat',
             'modified_at': '',
             'region': 'Pirineus',
-            'departement': 'Haute-Garonne'
+            'departement': 'Haute-Garonne',
+            'condition': 1
         },
         {
             'id': 'refugi_003',
@@ -200,14 +199,15 @@ def multiple_refugis_data():
                 'cheminee': 1, 'poele': 1, 'couvertures': 0,
                 'latrines': 0, 'bois': 1, 'eau': 1,
                 'matelas': 1, 'couchage': 4, 'lits': 1,
-                'bas_flancs': 0, 'mezzanine/etage': 0, 'manque_un_mur': 0
+                'bas_flancs': 0, 'mezzanine_etage': 0, 'manque_un_mur': 0
             },
             'description': '',
             'links': [],
             'type': 'garde',
             'modified_at': '',
             'region': 'Pirineus',
-            'departement': DEPARTMENT
+            'departement': DEPARTMENT,
+            'condition': 2
         }
     ]
 
@@ -229,15 +229,12 @@ def sample_search_filters():
     """Filtres de cerca de mostra"""
     return RefugiSearchFilters(
         name='Refugi Test',
-        region='Pirineus',
-        departement=DEPARTMENT,
-        type='garde',
+        type=['garde'],
+        condition=[2],
         places_min=5,
         places_max=15,
         altitude_min=1500,
-        altitude_max=2500,
-        cheminee=1,
-        eau=1
+        altitude_max=2500
     )
 
 
@@ -358,7 +355,7 @@ def mock_authenticated_request():
         
         # Afegeix els atributs que el middleware de Firebase afegeix
         request.user_uid = uid
-        request.firebase_user = {'uid': uid, 'email': f'{uid}@example.com'}
+        request.firebase_user = {'uid': uid}
         
         # Mock de l'usuari autenticat de DRF
         request.user = MagicMock()
@@ -421,30 +418,6 @@ def refugi_mapper():
 # ============= FIXTURES DE VALIDACIÓ =============
 
 @pytest.fixture
-def valid_emails():
-    """Llista d'emails vàlids per tests"""
-    return [
-        EMAIL,
-        'user.name@domain.co.uk',
-        'first.last+tag@example.com',
-        'test_user@test-domain.com'
-    ]
-
-
-@pytest.fixture
-def invalid_emails():
-    """Llista d'emails invàlids per tests"""
-    return [
-        'invalid_email',
-        '@example.com',
-        'test@',
-        'test @example.com',
-        '',
-        None
-    ]
-
-
-@pytest.fixture
 def valid_languages():
     """Llista d'idiomes vàlids"""
     return ['ca', 'es', 'en', 'fr']
@@ -463,9 +436,8 @@ def assert_user_equals():
     """Helper per comparar usuaris"""
     def _assert_equals(user1, user2):
         assert user1.uid == user2.uid
-        assert user1.email == user2.email
         assert user1.username == user2.username
-        assert user1.idioma == user2.idioma
+        assert user1.language == user2.language
     return _assert_equals
 
 

@@ -52,7 +52,7 @@ from rest_framework.test import APIClient
 
 client = APIClient()
 client.force_authenticate(user=mock_user)  # ✅ Funciona
-response = client.get('/api/refugis/')
+response = client.get('/api/refuges/')
 
 # Amb només middleware:
 # ❌ Has de mockejar el middleware manualment
@@ -249,3 +249,4 @@ class RefugiViewSet(viewsets.ModelViewSet):
 ```
 
 Això et dona tota la potència de DRF mantenint l'autenticació de Firebase.
+

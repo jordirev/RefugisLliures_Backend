@@ -5,7 +5,6 @@ from rest_framework import serializers
 from ..models.user import User
 
 USERNAME_HELPER_TEXT = "Nom d'usuari"
-EMAIL_HELPER_TEXT = "Adreça de correu electrònic"
 URL_AVATAR_HELPER_TEXT = "URL de l'avatar de l'usuari"
 LANGUAGE_HELPER_TEXT = "Idioma preferit de l'usuari (codi ISO 639-1, ex: 'ca', 'es', 'en', 'fr')"
 
@@ -13,15 +12,6 @@ class UserValidatorMixin:
     """Mixin amb validadors comuns per a usuaris"""
     
     VALID_LANGUAGES = ['ca', 'es', 'en', 'fr']
-    
-    @staticmethod
-    def validate_email_field(value, required=True):
-        """Validador reutilitzable per a email"""
-        if not value or not value.strip():
-            if required:
-                raise serializers.ValidationError("Email és requerit")
-            return value
-        return value.strip().lower()
     
     @staticmethod
     def validate_username_field(value, required=False):
@@ -34,8 +24,8 @@ class UserValidatorMixin:
         return value.strip() if value else ""
     
     @staticmethod
-    def validate_idioma_field(value, required=False):
-        """Validador reutilitzable per a idioma"""
+    def validate_language_field(value, required=False):
+        """Validador reutilitzable per a language"""
         if value is None:
             return 'ca' if required else None
             
@@ -52,6 +42,11 @@ class UserValidatorMixin:
             raise serializers.ValidationError("UID no pot estar buit")
         return value.strip()
 
+class MediaMetadataSerializer(serializers.Serializer):
+    """Serializer per a metadades de mitjans"""
+    key = serializers.CharField()
+    url = serializers.URLField()
+    uploaded_at = serializers.CharField()  # ISO 8601 formatelp_text="Data i hora de pujada (ISO 8601)"
 
 class UserSerializer(UserValidatorMixin, serializers.Serializer):
     """Serializer per a usuaris"""
@@ -67,43 +62,36 @@ class UserSerializer(UserValidatorMixin, serializers.Serializer):
         required=False, 
         help_text=USERNAME_HELPER_TEXT
     )
-    email = serializers.EmailField(
-        help_text=EMAIL_HELPER_TEXT
+    avatar_metadata = MediaMetadataSerializer(
+        required=False,
+        allow_null=True,
+        help_text="Metadades de l'avatar (key, url, uploaded_at)",
+        read_only=True
     )
-    avatar = serializers.URLField(
-        allow_blank=True, 
-        required=False, 
-        help_text=URL_AVATAR_HELPER_TEXT
-    )
-    idioma = serializers.CharField(
+    language = serializers.CharField(
         max_length=5,
         default='ca',
         help_text=LANGUAGE_HELPER_TEXT
     )
-    refugis_favorits = serializers.ListField(
+    favourite_refuges = serializers.ListField(
         child=serializers.CharField(),
         help_text="Refugis favorits de l'usuari",
         read_only=True
     )
-    refugis_visitats = serializers.ListField(
+    visited_refuges = serializers.ListField(
         child=serializers.CharField(),
         help_text="Refugis visitats de l'usuari",
         read_only=True
     )
-    reformes = serializers.ListField(
-        child=serializers.CharField(),
-        help_text="Refugis reformats de l'usuari",
-        read_only=True
-    )
-    num_fotos_pujades = serializers.IntegerField(
+    num_uploaded_photos = serializers.IntegerField(
         help_text="Nombre de fotos pujades per l'usuari",
         read_only=True
     )
-    num_experiencies_compartides = serializers.IntegerField(
+    num_shared_experiences = serializers.IntegerField(
         help_text="Nombre d'experiències compartides per l'usuari",
         read_only=True
     )
-    num_refugis_reformats = serializers.IntegerField(
+    num_renovated_refuges = serializers.IntegerField(
         help_text="Nombre de refugis reformats per l'usuari",
         read_only=True
     )
@@ -115,19 +103,19 @@ class UserSerializer(UserValidatorMixin, serializers.Serializer):
     def validate_uid(self, value):
         return self.validate_uid_field(value)
     
-    def validate_email(self, value):
-        return self.validate_email_field(value, required=True)
-    
     def validate_username(self, value):
         return self.validate_username_field(value, required=False)
     
-    def validate_idioma(self, value):
-        return self.validate_idioma_field(value, required=False)
+    def validate_language(self, value):
+        return self.validate_language_field(value, required=False)
     
     def to_representation(self, instance):
         """Converteix instància a representació JSON"""
         if isinstance(instance, User):
-            return instance.to_dict()
+            user_dict = instance.to_dict()
+            if 'media_metadata' in user_dict:
+                user_dict.pop('media_metadata')
+            return user_dict
         return super().to_representation(instance)
     
     def create(self, validated_data):
@@ -137,7 +125,6 @@ class UserSerializer(UserValidatorMixin, serializers.Serializer):
     def update(self, instance, validated_data):
         """Actualitza una instància d'usuari"""
         instance.username = validated_data.get('username', instance.username)
-        instance.email = validated_data.get('email', instance.email)
         instance.avatar = validated_data.get('avatar', instance.avatar)
         return instance
 
@@ -146,43 +133,39 @@ class UserCreateSerializer(UserValidatorMixin, serializers.Serializer):
 
     username = serializers.CharField(max_length=255, allow_blank=True, required=False, 
                                    help_text=USERNAME_HELPER_TEXT)
-    email = serializers.EmailField(help_text=EMAIL_HELPER_TEXT)
-    avatar = serializers.URLField(allow_blank=True, required=False, 
-                                help_text=URL_AVATAR_HELPER_TEXT)
-    idioma = serializers.CharField(default='ca', max_length=5, required=False,
+    language = serializers.CharField(default='ca', max_length=5, required=False,
                                 help_text=LANGUAGE_HELPER_TEXT)
-    
-    def validate_email(self, value):
-        return self.validate_email_field(value, required=True)
     
     def validate_username(self, value):
         return self.validate_username_field(value, required=False)
     
-    def validate_idioma(self, value):
-        return self.validate_idioma_field(value, required=False)
+    def validate_language(self, value):
+        return self.validate_language_field(value, required=False)
 
 class UserUpdateSerializer(UserValidatorMixin, serializers.Serializer):
     """Serializer per a actualització d'usuaris"""
     
     username = serializers.CharField(max_length=255, allow_blank=True, required=False, 
                                    help_text=USERNAME_HELPER_TEXT)
-    email = serializers.EmailField(required=False, help_text=EMAIL_HELPER_TEXT)
-    avatar = serializers.URLField(allow_blank=True, required=False, 
-                                help_text=URL_AVATAR_HELPER_TEXT)
-    idioma = serializers.CharField(default='ca', max_length=5, required=False,
+    language = serializers.CharField(default='ca', max_length=5, required=False,
                                 help_text=LANGUAGE_HELPER_TEXT)
-    
-    def validate_email(self, value):
-        return self.validate_email_field(value, required=False)
     
     def validate_username(self, value):
         return self.validate_username_field(value, required=False)
     
-    def validate_idioma(self, value):
-        return self.validate_idioma_field(value, required=False)
+    def validate_language(self, value):
+        return self.validate_language_field(value, required=False)
     
     def validate(self, attrs):
         """Validació global"""
         if not any(attrs.values()):
             raise serializers.ValidationError("Almenys un camp ha de ser proporcionat per actualitzar")
         return attrs
+    
+class UserRefugiSerializer(serializers.Serializer):
+    """Serializer per a afegir/treure refugis preferits o visitats"""
+    
+    refuge_id = serializers.CharField(
+        max_length=255,
+        help_text="Identificador únic del refugi"
+    )

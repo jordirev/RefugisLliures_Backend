@@ -3,6 +3,9 @@ Serializers per a la gestió de refugis
 """
 from rest_framework import serializers
 
+VALID_TYPES = ['non gardé', 'fermée', 'cabane ouverte mais ocupee par le berger l ete', 'orri', 'emergence', 'key_needed']
+
+
 class CoordinatesSerializer(serializers.Serializer):
     """Serializer per a coordenades"""
     long = serializers.FloatField()
@@ -21,7 +24,15 @@ class InfoComplementariaSerializer(serializers.Serializer):
     couchage = serializers.IntegerField(default=0)
     bas_flancs = serializers.IntegerField(default=0)
     lits = serializers.IntegerField(default=0)
-    mezzanine_etage = serializers.IntegerField(default=0, source='mezzanine/etage')
+    mezzanine_etage = serializers.IntegerField(default=0)
+
+class RefugeMediaMetadataSerializer(serializers.Serializer):
+    """Serializer per a metadades de mitjans"""
+    key = serializers.CharField()
+    url = serializers.URLField()
+    creator_uid = serializers.CharField(required=False, allow_null=True)
+    uploaded_at = serializers.CharField(required=False, allow_null=True)  # ISO 8601 format
+    experience_id = serializers.CharField(required=False, allow_null=True)
 
 class RefugiSerializer(serializers.Serializer):
     """Serializer per a refugi"""
@@ -38,58 +49,60 @@ class RefugiSerializer(serializers.Serializer):
     modified_at = serializers.CharField(default=None, allow_null=True)
     region = serializers.CharField(default=None, allow_null=True, required=False)
     departement = serializers.CharField(default=None, allow_null=True, required=False)
+    condition = serializers.IntegerField(default=None, allow_null=True, required=False, min_value=0, max_value=3)
+    visitors = serializers.ListField(child=serializers.CharField(), default=list, required=False)
+    images_metadata = RefugeMediaMetadataSerializer(many=True, required=False, allow_null=True)
 
-class RefugiCoordinatesSerializer(serializers.Serializer):
-    """Serializer per a coordenades de refugi"""
-    refugi_id = serializers.CharField()
-    refugi_name = serializers.CharField()
-    coordinates = CoordinatesSerializer()
-    geohash = serializers.CharField(default=None, allow_null=True)
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+
+        # Arrodonir la condition cap a l'enter més proper
+        if 'condition' in data and data['condition'] is not None:
+            try:
+                data['condition'] = round(float(data['condition']))
+            except (TypeError, ValueError):
+                pass  # Mantenir el valor original si no es pot convertir
+
+        # Eliminem  informació sensible si l'usuari no està autenticat
+        is_authenticated = self.context.get('is_authenticated', False)
+        if not is_authenticated:
+            if 'visitors' in data:
+                data.pop('visitors', None)
+            if 'media_metadata' in data:
+                data.pop('media_metadata', None)
+            if 'images_metadata' in data:
+                data.pop('images_metadata', None)
+        return data
 
 class RefugiSearchResponseSerializer(serializers.Serializer):
     """Serializer per a resposta de cerca"""
     count = serializers.IntegerField()
     results = RefugiSerializer(many=True)
-    filters = serializers.DictField()
-
-
-
-class HealthCheckResponseSerializer(serializers.Serializer):
-    """Serializer per a resposta de health check"""
-    status = serializers.CharField()
-    message = serializers.CharField()
-    firebase = serializers.BooleanField()
-    firestore = serializers.BooleanField(required=False)
-    collections_count = serializers.IntegerField(required=False)
 
 class RefugiSearchFiltersSerializer(serializers.Serializer):
     """Serializer per a filtres de cerca"""
     # Text search
     name = serializers.CharField(required=False, default='', allow_blank=True)
-    
-    # Location filters
-    region = serializers.CharField(required=False, default='', allow_blank=True)
-    departement = serializers.CharField(required=False, default='', allow_blank=True)
 
-    # Characteristics filters
-    type = serializers.CharField(required=False, default='', allow_blank=True)
+    # Characteristics filters - accepten strings amb comes o llistes
+    type = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        default='',
+        help_text="Comma-separated list of refuge types to filter by"
+    )
+    condition = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        default='',
+        help_text="Comma-separated list of conditions to filter by (0: pobre, 1: correcte, 2: bé)"
+    )
     
     # Numeric range filters
     places_min = serializers.IntegerField(required=False, allow_null=True, min_value=0)
     places_max = serializers.IntegerField(required=False, allow_null=True, min_value=0)
-    altitude_min = serializers.IntegerField(required=False, allow_null=True, min_value=0)
-    altitude_max = serializers.IntegerField(required=False, allow_null=True, min_value=0)
-    
-    # Info complementaria filters (1 = required feature)
-    cheminee = serializers.IntegerField(required=False, allow_null=True, min_value=0, max_value=1)
-    poele = serializers.IntegerField(required=False, allow_null=True, min_value=0, max_value=1)
-    couvertures = serializers.IntegerField(required=False, allow_null=True, min_value=0, max_value=1)
-    latrines = serializers.IntegerField(required=False, allow_null=True, min_value=0, max_value=1)
-    bois = serializers.IntegerField(required=False, allow_null=True, min_value=0, max_value=1)
-    eau = serializers.IntegerField(required=False, allow_null=True, min_value=0, max_value=1)
-    matelas = serializers.IntegerField(required=False, allow_null=True, min_value=0, max_value=1)
-    couchage = serializers.IntegerField(required=False, allow_null=True, min_value=0, max_value=1)
-    lits = serializers.IntegerField(required=False, allow_null=True, min_value=0, max_value=1)
+    altitude_min = serializers.IntegerField(required=False, allow_null=True, min_value=0, max_value=8848)
+    altitude_max = serializers.IntegerField(required=False, allow_null=True, min_value=0, max_value=8848)
     
     def _validate_range(self, min_value, max_value, field_prefix):
         if min_value is not None and min_value < 0:
@@ -107,6 +120,39 @@ class RefugiSearchFiltersSerializer(serializers.Serializer):
     
     def validate(self, data):
         """Validació personalitzada per assegurar que min < max i que siguin enters positius"""
+        # Convertir type i condition de strings amb comes a llistes
+        
+        if 'type' in data and isinstance(data['type'], str):
+            if data['type'].strip():
+                data['type'] = [t.strip() for t in data['type'].split(',') if t.strip()]
+                # Validar que els valors de type són vàlids
+                for t in data['type']:
+                    if t not in VALID_TYPES:
+                        raise serializers.ValidationError({
+                            'type': f'El valor "{t}" no és vàlid. Els valors permesos són: {", ".join(VALID_TYPES)}'
+                        })
+            else:
+                data['type'] = []
+        
+        if 'condition' in data and isinstance(data['condition'], str):
+            if data['condition'].strip():
+                try:
+                    data['condition'] = [int(c.strip()) for c in data['condition'].split(',') if c.strip() and (c != '' or c != '--')]
+
+                except ValueError:
+                    raise serializers.ValidationError({
+                        'condition': 'condition ha de contenir només enters (0, 1 o 2) separats per comes'
+                    })
+                
+                # Validar que els valors de condition són vàlids
+                for c in data['condition']:
+                    if c not in [0, 1, 2]:
+                        raise serializers.ValidationError({
+                            'condition': 'Els valors de condition han de ser 0 (pobre), 1 (correcte) o 2 (bé)'
+                        })
+            else:
+                data['condition'] = []
+        
         places_min = data.get('places_min')
         places_max = data.get('places_max')
         self._validate_range(places_min, places_max, 'places')
@@ -117,6 +163,46 @@ class RefugiSearchFiltersSerializer(serializers.Serializer):
         
         return data
 
-#class RefugiCoordinatesFiltersSerializer(serializers.Serializer):
-    """Serializer per a filtres de coordenades"""
-    """Serà util per quan haguem de filtrar per ubicació"""
+class UserRefugiInfoSerializer(serializers.Serializer):
+    """Serializer per a llistar refugis preferits o visitats amb informació resumida"""
+    
+    id = serializers.CharField(
+        help_text="Identificador únic del refugi"
+    )
+    name = serializers.CharField(
+        help_text="Nom del refugi"
+    )
+    region = serializers.CharField(
+        help_text="Regió del refugi"
+    )
+    places = serializers.IntegerField(
+        help_text="Nombre de places del refugi"
+    )
+    coord = CoordinatesSerializer(
+        help_text="Coordenades del refugi"
+    )
+    images_metadata = RefugeMediaMetadataSerializer(
+        many=True,
+        required=False,
+        allow_null=True,
+        help_text="Metadades de la imatge principal del refugi"
+    )
+
+class UserRefugiInfoResponseSerializer(serializers.Serializer):
+    """Serializer per a resposta de llistar refugis preferits o visitats"""
+    
+    count = serializers.IntegerField(
+        help_text="Nombre total de refugis en la llista"
+    )
+    results = UserRefugiInfoSerializer(
+        many=True,
+        help_text="Llista de refugis amb informació resumida"
+    )
+
+class HealthCheckResponseSerializer(serializers.Serializer):
+    """Serializer per a resposta de health check"""
+    status = serializers.CharField()
+    message = serializers.CharField()
+    firebase = serializers.BooleanField()
+    firestore = serializers.BooleanField(required=False)
+    collections_count = serializers.IntegerField(required=False)

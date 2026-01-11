@@ -77,6 +77,18 @@ The API will be available at `http://127.0.0.1:8000/`
 - `GET /api/health/` - Health check endpoint
 - `GET /admin/` - Django admin panel
 
+## Documentació Addicional
+
+- **[CUSTOM_CLAIMS.md](CUSTOM_CLAIMS.md)** - Sistema de rols i permisos amb Custom Claims de Firebase Auth
+- **[CACHE_ADMIN_ENDPOINTS.md](CACHE_ADMIN_ENDPOINTS.md)** - Endpoints d'administració de cache Redis
+- **[FIREBASE_AUTH.md](FIREBASE_AUTH.md)** - Autenticació amb Firebase
+- **[FIREBASE_CONFIG.md](FIREBASE_CONFIG.md)** - Configuració de Firebase
+- **[TESTING_GUIDE.md](TESTING_GUIDE.md)** - Guia de testing
+- **[GUIA_RAPIDA.md](GUIA_RAPIDA.md)** - Guia ràpida d'ús
+- **[REFUGI_ARCHITECTURE.md](REFUGI_ARCHITECTURE.md)** - Arquitectura dels refugis
+- **[USER_ARCHITECTURE.md](USER_ARCHITECTURE.md)** - Arquitectura d'usuaris
+- **[RENOVATIONS.md](RENOVATIONS.md)** - Sistema de renovacions
+
 ## Project Structure
 
 ```
@@ -135,3 +147,4 @@ Don't forget to add the new app to `INSTALLED_APPS` in `settings.py`.
 ## License
 
 This project is licensed under the MIT License.
+

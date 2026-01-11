@@ -5,6 +5,9 @@ python-dotenv==1.0.0
 django-cors-headers==4.4.0
 firebase-admin==6.5.0
 
+# Cloudflare R2 / AWS S3 compatible storage
+boto3==1.35.78
+
 # Gestió d'arxius estàtics
 whitenoise==6.6.0
 
@@ -17,6 +20,9 @@ drf_yasg
 # Cache i Redis
 redis==5.0.1
 django-redis==5.4.0
+
+# Cron jobs
+django-crontab==0.7.1
 
 # Testing
 pytest==7.4.3

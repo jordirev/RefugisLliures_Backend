@@ -2,9 +2,14 @@
 DAO per a la gestió d'usuaris amb Firestore
 """
 import logging
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Tuple
 from ..services.firestore_service import FirestoreService
 from ..services.cache_service import cache_service
+from ..mappers.user_mapper import UserMapper
+from ..mappers.refugi_lliure_mapper import RefugiLliureMapper
+from ..models.user import User
+from google.cloud.firestore_v1.transforms import Increment
+
 
 logger = logging.getLogger(__name__)
 
@@ -16,8 +21,10 @@ class UserDAO:
     def __init__(self):
         """Inicialitza el DAO amb la connexió a Firestore"""
         self.firestore_service = FirestoreService()
+        self.mapper = UserMapper()
+        self.refugi_mapper = RefugiLliureMapper()
     
-    def create_user(self, user_data: Dict[str, Any], uid: str) -> Optional[str]:
+    def create_user(self, user_data: Dict[str, Any], uid: str) -> Optional[User]:
         """
         Crea un nou usuari a Firestore amb el UID del token de Firebase
         
@@ -26,7 +33,7 @@ class UserDAO:
             uid: UID del token de Firebase que s'utilitzarà com a ID del document
             
         Returns:
-            str: UID de l'usuari creat o None si hi ha error
+            User: Instància del model User creada o None si hi ha error
         """
         try:
             db = self.firestore_service.get_db()
@@ -36,13 +43,13 @@ class UserDAO:
             doc_ref.set(user_data)
             
             logger.info(f"Usuari creat amb UID: {uid}")
-            return uid
+            return self.mapper.firebase_to_model(user_data)
             
         except Exception as e:
             logger.error(f"Error creant usuari: {str(e)}")
             return None
     
-    def get_user_by_uid(self, uid: str) -> Optional[Dict[str, Any]]:
+    def get_user_by_uid(self, uid: str) -> Optional[User]:
         """
         Obté un usuari per UID amb cache
         
@@ -50,7 +57,7 @@ class UserDAO:
             uid: UID de l'usuari
             
         Returns:
-            Dict amb les dades de l'usuari o None si no existeix
+            User: Instància del model User o None si no existeix
         """
         # Genera clau de cache
         cache_key = cache_service.generate_key('user_detail', uid=uid)
@@ -58,7 +65,7 @@ class UserDAO:
         # Intenta obtenir de cache
         cached_data = cache_service.get(cache_key)
         if cached_data is not None:
-            return cached_data
+            return self.mapper.firebase_to_model(cached_data)
         
         try:
             db = self.firestore_service.get_db()
@@ -75,56 +82,13 @@ class UserDAO:
                 cache_service.set(cache_key, user_data, timeout)
                 
                 logger.log(23, f"Usuari trobat amb UID: {uid}")
-                return user_data
+                return self.mapper.firebase_to_model(user_data)
             else:
                 logger.warning(f"Usuari no trobat amb UID: {uid}")
                 return None
                 
         except Exception as e:
             logger.error(f"Error obtenint usuari amb UID {uid}: {str(e)}")
-            return None
-    
-    def get_user_by_email(self, email: str) -> Optional[Dict[str, Any]]:
-        """
-        Obté un usuari per email amb cache
-        
-        Args:
-            email: Email de l'usuari
-            
-        Returns:
-            Dict amb les dades de l'usuari o None si no existeix
-        """
-        # Genera clau de cache
-        cache_key = cache_service.generate_key('user_email', email=email.lower())
-        
-        # Intenta obtenir de cache
-        cached_data = cache_service.get(cache_key)
-        if cached_data is not None:
-            return cached_data
-        
-        try:
-            db = self.firestore_service.get_db()
-            logger.log(23, f"Firestore QUERY: collection={self.COLLECTION_NAME} filter=email=={email}")
-            query = db.collection(self.COLLECTION_NAME).where('email', '==', email).limit(1)
-            docs = query.get()
-
-            if docs:
-                doc = docs[0]  # Agafa el primer document
-                user_data = doc.to_dict()
-                user_data['uid'] = doc.id
-                
-                # Guarda a cache
-                timeout = cache_service.get_timeout('user_detail')
-                cache_service.set(cache_key, user_data, timeout)
-                
-                logger.log(23, f"Usuari trobat amb email: {email}")
-                return user_data
-            
-            logger.warning(f"Usuari no trobat amb email: {email}")
-            return None
-            
-        except Exception as e:
-            logger.error(f"Error obtenint usuari amb email {email}: {str(e)}")
             return None
     
     def update_user(self, uid: str, user_data: Dict[str, Any]) -> bool:
@@ -153,8 +117,6 @@ class UserDAO:
             
             # Invalida cache relacionada
             cache_service.delete(cache_service.generate_key('user_detail', uid=uid))
-            if 'email' in user_data:
-                cache_service.delete(cache_service.generate_key('user_email', email=user_data['email']))
             
             logger.log(23, f"Usuari actualitzat amb UID: {uid}")
             return True
@@ -179,7 +141,8 @@ class UserDAO:
             
             # Comprova que l'usuari existeixi
             logger.info(f"Firestore READ (exists check): collection={self.COLLECTION_NAME} document={uid}")
-            if not doc_ref.get().exists:
+            doc = doc_ref.get()
+            if not doc.exists:
                 logger.warning(f"No es pot eliminar, usuari no trobat amb UID: {uid}")
                 return False
             
@@ -215,3 +178,475 @@ class UserDAO:
         except Exception as e:
             logger.error(f"Error comprovant si existeix usuari amb UID {uid}: {str(e)}")
             return False
+    
+    def add_refugi_to_list(self, uid: str, refugi_id: str, list_name: str) -> bool:
+        """
+        Afegeix un refugi a una llista de l'usuari (favourite_refuges o visited_refuges)
+        
+        Args:
+            uid: UID de l'usuari
+            refugi_id: ID del refugi a afegir
+            list_name: Nom de la llista ('favourite_refuges' o 'visited_refuges')
+            
+        Returns:
+            bool: True si s'ha afegit correctament
+        """
+        try:
+            # Primer obté l'usuari actual per veure si ja té el refugi a la llista
+            user = self.get_user_by_uid(uid)
+            if not user:
+                logger.warning(f"No es pot afegir refugi, usuari no trobat amb UID: {uid}")
+                return (False, None)
+            
+            from google.cloud.firestore import ArrayUnion
+            # Actualitza a Firestore
+            db = self.firestore_service.get_db()
+            doc_ref = db.collection(self.COLLECTION_NAME).document(uid)
+            doc_ref.update({list_name: ArrayUnion([refugi_id])})
+            
+            # Invalida cache de l'usuari i de la info dels refugis
+            cache_service.delete(cache_service.generate_key('user_detail', uid=uid))
+            cache_service.delete(cache_service.generate_key('user_refugis_info', uid=uid, list_name=list_name))
+
+            logger.log(23, f"Refugi {refugi_id} afegit a {list_name} de l'usuari {uid}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error afegint refugi {refugi_id} a {list_name} de l'usuari {uid}: {str(e)}")
+            return False
+    
+    def remove_refugi_from_list(self, uid: str, refugi_id: str, list_name: str) -> tuple[bool, Optional[List[str]]]:
+        """
+        Elimina un refugi d'una llista de l'usuari (favourite_refuges o visited_refuges)
+        
+        Args:
+            uid: UID de l'usuari
+            refugi_id: ID del refugi a eliminar
+            list_name: Nom de la llista ('favourite_refuges' o 'visited_refuges')
+            
+        Returns:
+            bool: True si s'ha eliminat correctament
+        """
+        try:
+            # Primer obté l'usuari actual
+            user = self.get_user_by_uid(uid)
+            if not user:
+                logger.warning(f"No es pot eliminar refugi, usuari no trobat amb UID: {uid}")
+                return (False, None)
+            
+            # Obté la llista actual
+            current_list = getattr(user, list_name, [])
+            if current_list is None:
+                current_list = []
+            
+            # Comprova si el refugi no està a la llista
+            if refugi_id not in current_list:
+                logger.info(f"Refugi {refugi_id} no està a {list_name} de l'usuari {uid}")
+                return (True, current_list)
+            
+            # Elimina el refugi de la llista
+            current_list.remove(refugi_id)
+            
+            # Actualitza a Firestore
+            db = self.firestore_service.get_db()
+            doc_ref = db.collection(self.COLLECTION_NAME).document(uid)
+            doc_ref.update({list_name: current_list})
+            
+            # Invalida cache de l'usuari i de la info dels refugis
+            cache_service.delete(cache_service.generate_key('user_detail', uid=uid))
+            cache_service.delete(cache_service.generate_key('user_refugis_info', uid=uid, list_name=list_name))
+            
+            logger.log(23, f"Refugi {refugi_id} eliminat de {list_name} de l'usuari {uid}")
+            return (True, current_list)
+            
+        except Exception as e:
+            logger.error(f"Error eliminant refugi {refugi_id} de {list_name} de l'usuari {uid}: {str(e)}")
+            return (False, None)
+    
+    def get_refugis_info(self, uid: str, list_name: str, refugis_ids: Optional[List[str]] = None) -> List[Dict[str, Any]]:
+        """
+        Obté la informació dels refugis d'una llista de l'usuari
+        Només retorna: id, name, region, places, coordinates
+        
+        Args:
+            uid: UID de l'usuari
+            list_name: Nom de la llista ('favourite_refuges' o 'visited_refuges')
+            refugis_ids: Llista d'IDs de refugis (opcional). Si no es proporciona, s'obté de l'usuari.
+            
+        Returns:
+            List[Dict]: Llista amb la informació dels refugis
+        """
+        # Genera clau de cache
+        cache_key = cache_service.generate_key('user_refugis_info', uid=uid, list_name=list_name)
+        
+        # Intenta obtenir de cache
+        cached_data = cache_service.get(cache_key)
+        if cached_data is not None:
+            return self.refugi_mapper.dict_list_to_refugi_info_representations(cached_data)
+        
+        try:
+            if not refugis_ids:
+                # Obté l'usuari
+                user = self.get_user_by_uid(uid)
+                if not user:
+                    return []
+                
+                # Obté la llista de IDs
+                refugis_ids = getattr(user, list_name, [])
+                if not refugis_ids:
+                    return []
+            
+            # Obté la informació de cada refugi
+            db = self.firestore_service.get_db()
+            refugis_info = []
+            
+            for refugi_id in refugis_ids:
+                # Comprova primer si està a cache
+                refugi_cache_key = cache_service.generate_key('refugi_detail', refugi_id=refugi_id)
+                refugi_data = cache_service.get(refugi_cache_key)
+                
+                if refugi_data is None:
+                    # Si no està a cache, obté de Firestore
+                    doc_ref = db.collection('data_refugis_lliures').document(str(refugi_id))
+                    logger.log(23, f"Firestore READ: collection=data_refugis_lliures document={refugi_id}")
+                    doc = doc_ref.get()
+                    
+                    if doc.exists:
+                        refugi_data = doc.to_dict()
+                        # Guarda a cache
+                        timeout = cache_service.get_timeout('refugi_detail')
+                        cache_service.set(refugi_cache_key, refugi_data, timeout)
+                
+                if refugi_data:
+                    refugis_info.append(refugi_data)
+            
+            # Guarda a cache
+            timeout = cache_service.get_timeout('user_detail')
+            cache_service.set(cache_key, refugis_info, timeout)
+            
+            logger.log(23, f"Informació de refugis de {list_name} obtinguda per l'usuari {uid}")
+            return self.refugi_mapper.dict_list_to_refugi_info_representations(refugis_info)
+            
+        except Exception as e:
+            logger.error(f"Error obtenint informació de refugis de {list_name} per l'usuari {uid}: {str(e)}")
+            return []
+    
+    def increment_renovated_refuges(self, uid: str) -> bool:
+        """
+        Incrementa el comptador de refugis renovats per un usuari
+        
+        Args:
+            uid: UID de l'usuari
+            
+        Returns:
+            bool: True si s'ha incrementat correctament
+        """
+        try:
+            db = self.firestore_service.get_db()
+            doc_ref = db.collection(self.COLLECTION_NAME).document(uid)
+            
+            # Comprova que l'usuari existeixi
+            doc = doc_ref.get()
+            if not doc.exists:
+                logger.warning(f"No es pot incrementar comptador, usuari no trobat amb UID: {uid}")
+                return False
+            
+            # Incrementa el comptador
+            doc_ref.update({'num_renovated_refuges': Increment(1)})
+            
+            # Invalida cache de l'usuari
+            cache_service.delete(cache_service.generate_key('user_detail', uid=uid))
+            
+            logger.info(f"Comptador de refugis renovats incrementat per l'usuari {uid}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error incrementant comptador de refugis renovats per l'usuari {uid}: {str(e)}")
+            return False
+    
+    def add_uploaded_photos_keys(self, uid: str, media_keys: List[str]) -> bool:
+        """
+        Afegeix keys de fotos pujades a l'array uploaded_photos_keys d'un usuari
+        
+        Args:
+            uid: UID de l'usuari
+            media_keys: Llista de keys de fotos a afegir
+            
+        Returns:
+            bool: True si s'ha afegit correctament
+        """
+        try:
+            db = self.firestore_service.get_db()
+            doc_ref = db.collection(self.COLLECTION_NAME).document(uid)
+            
+            # Comprova que l'usuari existeixi
+            doc = doc_ref.get()
+            if not doc.exists:
+                logger.warning(f"No es poden afegir keys, usuari no trobat amb UID: {uid}")
+                return False
+            
+            # Obté l'array actual
+            user_data = doc.to_dict()
+            current_keys = user_data.get('uploaded_photos_keys', [])
+            if current_keys is None:
+                current_keys = []
+            
+            # Afegeix les noves keys
+            current_keys.extend(media_keys)
+            
+            # Actualitza l'array
+            doc_ref.update({'uploaded_photos_keys': current_keys})
+            
+            # Invalida cache de l'usuari
+            cache_service.delete(cache_service.generate_key('user_detail', uid=uid))
+            
+            logger.info(f"Keys de fotos pujades afegides per l'usuari {uid}: {media_keys}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error afegint keys de fotos pujades per l'usuari {uid}: {str(e)}")
+            return False
+        
+    def increment_shared_experiences(self, uid: str) -> bool:
+        """
+        Incrementa el comptador d'experiencies compartides.
+        
+        Args:
+            uid: UID de l'usuari
+
+        Returns:
+            bool: True si s'ha incrementat correctament
+        """
+        try:
+            db = self.firestore_service.get_db()
+            doc_ref = db.collection(self.COLLECTION_NAME).document(uid)
+            
+            # Comprova que l'usuari existeixi
+            doc = doc_ref.get()
+            if not doc.exists:
+                logger.warning(f"No es pot incrementar comptador, usuari no trobat amb UID: {uid}")
+                return False
+            
+            # Incrementa els comptadors
+            updates = {
+                'num_shared_experiences': Increment(1),
+            }
+            
+            doc_ref.update(updates)
+            
+            # Invalida cache de l'usuari
+            cache_service.delete(cache_service.generate_key('user_detail', uid=uid))
+            
+            logger.info(f"Comptadors de fotos pujades i experiencies incrementats per l'usuari {uid}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error incrementant comptadors per l'usuari {uid}: {str(e)}")
+            return False
+
+    def decrement_shared_experiences(self, uid: str) -> bool:
+        """
+        Decrementa el comptador d'experiencies compartides 
+
+        Args:
+            uid: UID de l'usuari
+            
+        Returns:
+            bool: True si s'ha decrementat correctament
+        """
+        try:
+            db = self.firestore_service.get_db()
+            doc_ref = db.collection(self.COLLECTION_NAME).document(uid)
+            
+            # Comprova que l'usuari existeixi i obté el valor actual
+            doc = doc_ref.get()
+            if not doc.exists:
+                logger.warning(f"No es pot decrementar comptadors, usuari no trobat amb UID: {uid}")
+                return False
+            
+            # Obté el valor actual dels comptadors
+            user_data = doc.to_dict()
+            current_experiences = user_data.get('num_shared_experiences', 0)
+            
+            # Prepara les actualitzacions
+            updates = {}
+            
+            # Només decrementa experiencies si el valor actual és major que 0
+            if current_experiences > 0:
+                updates['num_shared_experiences'] = Increment(-1)
+            
+            if updates:
+                doc_ref.update(updates)
+                
+                # Invalida cache de l'usuari
+                cache_service.delete(cache_service.generate_key('user_detail', uid=uid))
+                
+                logger.info(f"Comptadors de fotos pujades i experiencies decrementats per l'usuari {uid}")
+            else:
+                logger.warning(f"No es poden decrementar comptadors per l'usuari {uid}, valors actuals són insuficients")
+            
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error decrementant comptadors per l'usuari {uid}: {str(e)}")
+            return False
+    
+    def remove_uploaded_photos_keys(self, uid: str, media_keys: List[str]) -> bool:
+        """
+        Elimina keys de fotos pujades de l'array uploaded_photos_keys d'un usuari
+        
+        Args:
+            uid: UID de l'usuari
+            media_keys: Llista de keys de fotos a eliminar
+            
+        Returns:
+            bool: True si s'ha eliminat correctament
+        """
+        try:
+            db = self.firestore_service.get_db()
+            doc_ref = db.collection(self.COLLECTION_NAME).document(uid)
+            
+            # Comprova que l'usuari existeixi i obté l'array actual
+            doc = doc_ref.get()
+            if not doc.exists:
+                logger.warning(f"No es poden eliminar keys, usuari no trobat amb UID: {uid}")
+                return False
+            
+            # Obté l'array actual
+            user_data = doc.to_dict()
+            current_keys = user_data.get('uploaded_photos_keys', [])
+            if current_keys is None:
+                current_keys = []
+            
+            # Elimina les keys especificades
+            updated_keys = [key for key in current_keys if key not in media_keys]
+            
+            # Actualitza l'array
+            doc_ref.update({'uploaded_photos_keys': updated_keys})
+            
+            # Invalida cache de l'usuari
+            cache_service.delete(cache_service.generate_key('user_detail', uid=uid))
+            
+            logger.info(f"Keys de fotos pujades eliminades per l'usuari {uid}: {media_keys}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error eliminant keys de fotos pujades per l'usuari {uid}: {str(e)}")
+            return False
+    
+    def decrement_renovated_refuges(self, uid: str, count: int = 1) -> bool:
+        """
+        Decrementa el comptador de refugis renovats per un usuari
+        
+        Args:
+            uid: UID de l'usuari
+            count: Quantitat a decrementar (per defecte 1)
+            
+        Returns:
+            bool: True si s'ha decrementat correctament
+        """
+        try:
+            db = self.firestore_service.get_db()
+            doc_ref = db.collection(self.COLLECTION_NAME).document(uid)
+            
+            # Comprova que l'usuari existeixi i obté el valor actual
+            doc = doc_ref.get()
+            if not doc.exists:
+                logger.warning(f"No es pot decrementar comptador, usuari no trobat amb UID: {uid}")
+                return False
+            
+            # Obté el valor actual del comptador
+            user_data = doc.to_dict()
+            current_value = user_data.get('num_renovated_refuges', 0)
+            
+            # Només decrementa si el valor actual és major que 0
+            if current_value > 0:
+                # Decrementa el comptador (increment amb valor negatiu)
+                doc_ref.update({'num_renovated_refuges': Increment(-1*count)})
+                
+                # Invalida cache de l'usuari
+                cache_service.delete(cache_service.generate_key('user_detail', uid=uid))
+                
+                logger.info(f"Comptador de refugis renovats decrementat per l'usuari {uid} ({current_value} -> {current_value - count})")
+            else:
+                logger.warning(f"No es pot decrementar comptador de refugis renovats per l'usuari {uid}, valor actual és {current_value}")
+            
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error decrementant comptador de refugis renovats per l'usuari {uid}: {str(e)}")
+            return False
+    
+    def update_avatar_metadata(self, uid: str, media_metadata: Dict[str, str]) -> bool:
+        """
+        Actualitza les metadades de l'avatar d'un usuari
+        
+        Args:
+            uid: UID de l'usuari
+            media_metadata: Diccionari amb metadades de l'avatar (key, uploaded_at)
+            
+        Returns:
+            bool: True si s'ha actualitzat correctament
+        """
+        try:
+            db = self.firestore_service.get_db()
+            doc_ref = db.collection(self.COLLECTION_NAME).document(uid)
+            
+            # Comprova que l'usuari existeixi
+            doc = doc_ref.get()
+            if not doc.exists:
+                logger.warning(f"No es pot actualitzar avatar, usuari no trobat amb UID: {uid}")
+                return False
+            
+            # Actualitza les metadades de l'avatar
+            doc_ref.update({
+                'media_metadata': media_metadata,
+            })
+            
+            # Invalida cache de l'usuari
+            cache_service.delete(cache_service.generate_key('user_detail', uid=uid))
+            
+            logger.info(f"Avatar actualitzat per l'usuari {uid}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error actualitzant avatar per l'usuari {uid}: {str(e)}")
+            return False
+    
+    def delete_avatar_metadata(self, uid: str) -> Tuple[bool, Optional[Dict[str, str]]]:
+        """
+        Elimina les metadades de l'avatar d'un usuari
+        
+        Args:
+            uid: UID de l'usuari
+            
+        Returns:
+            Tuple[bool, Optional[Dict]]: (True si s'ha eliminat correctament, metadades de l'avatar eliminat)
+        """
+        try:
+            db = self.firestore_service.get_db()
+            doc_ref = db.collection(self.COLLECTION_NAME).document(uid)
+            
+            # Comprova que l'usuari existeixi i obté les metadades actuals
+            doc = doc_ref.get()
+            if not doc.exists:
+                logger.warning(f"No es pot eliminar avatar, usuari no trobat amb UID: {uid}")
+                return False, None
+            
+            user_data = doc.to_dict()
+            media_metadata = user_data.get('media_metadata')
+            
+            # Elimina les metadades de l'avatar
+            doc_ref.update({
+                'media_metadata': None,
+            })
+            
+            # Invalida cache de l'usuari
+            cache_service.delete(cache_service.generate_key('user_detail', uid=uid))
+            
+            logger.info(f"Avatar eliminat per l'usuari {uid}")
+            return True, media_metadata
+            
+        except Exception as e:
+            logger.error(f"Error eliminant avatar per l'usuari {uid}: {str(e)}")
+            return False, None

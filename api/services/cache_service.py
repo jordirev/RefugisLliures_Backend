@@ -4,18 +4,48 @@ Servei per gestionar la cache amb Redis
 import json
 import logging
 import hashlib
-from typing import Any, Optional, Callable
+from typing import Any, Optional, Callable, List, Dict
 from functools import wraps
 from django.core.cache import cache
 from django.conf import settings
 
 logger = logging.getLogger(__name__)
 
-
 class CacheService:
     """Servei singleton per gestionar operacions de cache"""
     
     _instance = None
+    
+    # Cache timeouts per defecte (en segons)
+    CACHE_TIMEOUTS = {
+        # Refugis
+        'refugi_detail': 600,      # 10 minuts
+        'refugi_search': 600,      # 10 minuts
+        'refugi_coords': 3600,     # 1 hora
+        
+        # Usuaris
+        'user_detail': 600,        # 10 minuts
+        
+        # Renovations
+        'renovation_detail': 600,  # 10 minuts
+        'renovation_list': 600,    # 10 minuts
+        
+        # Experiences
+        'experience_detail': 600,  # 10 minuts
+        'experience_list': 600,    # 10 minuts
+        
+        # Proposals
+        'proposal_detail': 600,    # 10 minuts
+        'proposal_list': 600,      # 10 minuts
+        
+        # Visits
+        'refuge_visit_detail': 600,  # 10 minuts
+        'refuge_visits_list': 600,   # 10 minuts
+        
+        # Doubts
+        'doubt_detail': 600,       # 10 minuts
+        'doubt_list': 600,         # 10 minuts
+    }
     
     def __new__(cls):
         if cls._instance is None:
@@ -23,11 +53,12 @@ class CacheService:
         return cls._instance
     
     def __init__(self):
-        self.default_timeout = getattr(settings, 'CACHE_TIMEOUTS', {})
+        # Inicialitza els timeouts definits en CACHE_TIMEOUTS
+        self.timeouts = self.CACHE_TIMEOUTS.copy()
     
     def get_timeout(self, key_type: str) -> int:
         """Obté el timeout específic per un tipus de clau"""
-        return self.default_timeout.get(key_type, 300)
+        return self.timeouts.get(key_type, 600)  # 10 minuts per defecte
     
     def generate_key(self, prefix: str, **kwargs) -> str:
         """
@@ -38,12 +69,20 @@ class CacheService:
             **kwargs: Paràmetres que identifiquen únicament l'objecte
             
         Returns:
-            Clau de cache generada
+            Clau de cache generada (ex: 'refugi_detail:refugi_id:123')
         """
         # Ordena els paràmetres per consistència
-        params_str = json.dumps(kwargs, sort_keys=True)
-        params_hash = hashlib.md5(params_str.encode()).hexdigest()
-        return f"{prefix}:{params_hash}"
+        if not kwargs:
+            return prefix
+        
+        # Construeix la clau concatenant parelles clau:valor ordenades
+        sorted_params = sorted(kwargs.items())
+        parts = [prefix]
+        for key, value in sorted_params:
+            # Converteix el valor a string per assegurar consistència
+            parts.append(f"{key}:{value}")
+        
+        return ":".join(parts)
     
     def get(self, key: str) -> Optional[Any]:
         """
@@ -165,6 +204,113 @@ class CacheService:
                 'connected': False,
                 'error': str(e)
             }
+    
+    def get_or_fetch_list(
+        self, 
+        list_cache_key: str, 
+        detail_key_prefix: str,
+        fetch_all_fn: Callable[[], List[Dict[str, Any]]],
+        fetch_single_fn: Callable[[str], Optional[Dict[str, Any]]],
+        get_id_fn: Callable[[Dict[str, Any]], str],
+        list_timeout: Optional[int] = None,
+        detail_timeout: Optional[int] = None,
+        id_param_name: str = 'id'
+    ) -> List[Dict[str, Any]]:
+        """
+        Implementa l'estratègia ID caching per llistes:
+        1. Busca la llista d'IDs a la cache
+        2. Per cada ID, busca el detall a la cache
+        3. Si no hi ha llista cached, llegeix TOTES les dades d'una (no el doble de lectures)
+        4. Guarda la llista d'IDs i cada detall per separat
+        5. Si algun detall ha expirat, el llegeix individualment de Firestore
+        
+        Args:
+            list_cache_key: Clau de cache per la llista d'IDs
+            detail_key_prefix: Prefix per les claus de detall (ex: 'refugi_detail')
+            fetch_all_fn: Funció que retorna TOTES les dades completes des de Firestore
+            fetch_single_fn: Funció que retorna un element individual per ID des de Firestore
+            get_id_fn: Funció per extreure l'ID d'un element de dades
+            list_timeout: Timeout per la llista d'IDs
+            detail_timeout: Timeout per cada detall
+            id_param_name: Nom del paràmetre per la clau de detall (ex: 'renovation_id', 'experience_id')
+            
+        Returns:
+            Llista de diccionaris amb les dades completes
+        """
+        # 1. Intenta obtenir llista d'IDs de la cache
+        cached_ids = self.get(list_cache_key)
+        
+        if cached_ids is None:
+            # Cache MISS: Llegeix TOTES les dades d'una des de Firestore (no el doble de lectures)
+            all_data = fetch_all_fn()
+            
+            # Extreu les IDs i guarda la llista
+            ids = [get_id_fn(item) for item in all_data]
+            actual_list_timeout = list_timeout or self.get_timeout(detail_key_prefix.replace('_detail', '_list'))
+            self.set(list_cache_key, ids, actual_list_timeout)
+            
+            # Guarda cada detall individualment a la cache
+            actual_detail_timeout = detail_timeout or self.get_timeout(detail_key_prefix)
+            for item_data in all_data:
+                item_id = get_id_fn(item_data)
+                detail_cache_key = self.generate_key(detail_key_prefix, **{id_param_name: item_id})
+                self.set(detail_cache_key, item_data, actual_detail_timeout)
+            
+            return all_data
+        
+        # Cache HIT: Usa la llista d'IDs cached i busca cada detall
+        results = []
+        actual_detail_timeout = detail_timeout or self.get_timeout(detail_key_prefix)
+        
+        for item_id in cached_ids:
+            detail_cache_key = self.generate_key(detail_key_prefix, **{id_param_name: item_id})
+            cached_detail = self.get(detail_cache_key)
+            
+            if cached_detail is not None:
+                # Detall trobat a la cache
+                results.append(cached_detail)
+            else:
+                # Detall no cached: llegeix-lo individualment de Firestore
+                logger.log(21, f"Cache MISS for detail {detail_key_prefix}:{item_id}, fetching from Firestore")
+                item_data = fetch_single_fn(item_id)
+                if item_data:
+                    # Guarda el detall a la cache per futures lectures
+                    self.set(detail_cache_key, item_data, actual_detail_timeout)
+                    results.append(item_data)
+        
+        return results
+    
+    def get_or_fetch_detail(
+        self,
+        detail_cache_key: str,
+        fetch_fn: Callable[[], Optional[Dict[str, Any]]],
+        timeout: Optional[int] = None
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Obté un detall de la cache o el llegeix de Firestore
+        
+        Args:
+            detail_cache_key: Clau de cache per el detall
+            fetch_fn: Funció que retorna el detall des de Firestore
+            timeout: Timeout per la cache
+            
+        Returns:
+            Diccionari amb les dades o None si no existeix
+        """
+        # Intenta obtenir de cache
+        cached_data = self.get(detail_cache_key)
+        if cached_data is not None:
+            logger.info(f"Retrieved detail for cache key {detail_cache_key} from cache")
+            return cached_data
+        
+        # Cache MISS: llegeix de Firestore
+        data = fetch_fn()
+        logger.info(f"Fetched detail for cache key {detail_cache_key} from Firestore")
+        if data:
+            # Guarda a cache
+            self.set(detail_cache_key, data, timeout)
+        
+        return data
 
 
 # Instància global del servei
@@ -182,7 +328,7 @@ def cache_result(key_prefix: str, timeout: Optional[int] = None):
     
     Usage:
         @cache_result('refugi_detail', timeout=600)
-        def get_refugi(refugi_id):
+        def get_refugi(refuge_id):
             return refugi_data
     """
     def decorator(func: Callable) -> Callable:

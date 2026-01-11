@@ -33,8 +33,8 @@ Els següents endpoints requereixen autenticació:
 Els següents endpoints NO requereixen autenticació:
 
 - `GET /api/health/` - Health check
-- `GET /api/refugis/` - Llistar refugis
-- `GET /api/refugis/{id}/` - Obtenir detalls d'un refugi
+- `GET /api/refuges/` - Llistar refugis
+- `GET /api/refuges/{id}/` - Obtenir detalls d'un refugi
 - `POST /api/users/` - Crear un nou usuari
 - Endpoints de cache (`/api/cache/*`)
 
@@ -163,3 +163,4 @@ Per provar l'autenticació en desenvolupament, necessites:
 3. Obtenir un token JWT vàlid d'aquest usuari
 
 Alternativament, pots crear un script de test que generi tokens per a proves.
+
