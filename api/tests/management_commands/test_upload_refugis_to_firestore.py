@@ -73,7 +73,8 @@ class TestUploadRefugisToFirestore:
         command.handle(
             json_file='api/utils/demo_data_refugis.json',
             collection='data_refugis_lliures',
-            dry_run=False
+            dry_run=False,
+            clear_collection=False
         )
         
         # Assert
@@ -105,7 +106,8 @@ class TestUploadRefugisToFirestore:
         command.handle(
             json_file='api/utils/demo_data_refugis.json',
             collection='data_refugis_lliures',
-            dry_run=False
+            dry_run=False,
+            clear_collection=False
         )
         
         # Assert
@@ -137,7 +139,8 @@ class TestUploadRefugisToFirestore:
         command.handle(
             json_file='api/utils/demo_data_refugis.json',
             collection='data_refugis_lliures',
-            dry_run=False
+            dry_run=False,
+            clear_collection=False
         )
         
         # Assert
@@ -166,7 +169,8 @@ class TestUploadRefugisToFirestore:
         command.handle(
             json_file='api/utils/demo_data_refugis.json',
             collection='data_refugis_lliures',
-            dry_run=False
+            dry_run=False,
+            clear_collection=False
         )
         
         # Assert
@@ -195,7 +199,8 @@ class TestUploadRefugisToFirestore:
         command.handle(
             json_file='api/utils/demo_data_refugis.json',
             collection='data_refugis_lliures',
-            dry_run=False
+            dry_run=False,
+            clear_collection=False
         )
         
         # Assert
@@ -224,7 +229,8 @@ class TestUploadRefugisToFirestore:
         command.handle(
             json_file='api/utils/demo_data_refugis.json',
             collection='data_refugis_lliures',
-            dry_run=True
+            dry_run=True,
+            clear_collection=False
         )
         
         # Assert
@@ -258,7 +264,8 @@ class TestUploadRefugisToFirestore:
         command.handle(
             json_file='api/utils/demo_data_refugis.json',
             collection='custom_collection',
-            dry_run=False
+            dry_run=False,
+            clear_collection=False
         )
         
         # Assert
@@ -291,7 +298,8 @@ class TestUploadRefugisToFirestore:
         command.handle(
             json_file='api/utils/demo_data_refugis.json',
             collection='data_refugis_lliures',
-            dry_run=False
+            dry_run=False,
+            clear_collection=False
         )
         
         # Assert
@@ -322,7 +330,8 @@ class TestUploadRefugisToFirestore:
         command.handle(
             json_file='api/utils/demo_data_refugis.json',
             collection='data_refugis_lliures',
-            dry_run=False
+            dry_run=False,
+            clear_collection=False
         )
         
         # Assert
