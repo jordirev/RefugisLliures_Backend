@@ -119,20 +119,22 @@ class TestFirebaseAuthenticationMiddleware:
         assert result is None
     
     def test_excluded_path_cache(self, request_factory):
-        """Test que el path /api/cache/ està exclòs"""
+        """Test que el path /api/cache/ requereix autenticació"""
         middleware = FirebaseAuthenticationMiddleware(get_response=lambda r: None)
         request = request_factory.get('/api/cache/')
         
         result = middleware.process_request(request)
-        assert result is None
+        assert isinstance(result, JsonResponse)
+        assert result.status_code == status.HTTP_401_UNAUTHORIZED
     
     def test_excluded_path_admin(self, request_factory):
-        """Test que el path /admin/ està exclòs"""
+        """Test que el path /admin/ requereix autenticació"""
         middleware = FirebaseAuthenticationMiddleware(get_response=lambda r: None)
         request = request_factory.get('/admin/')
         
         result = middleware.process_request(request)
-        assert result is None
+        assert isinstance(result, JsonResponse)
+        assert result.status_code == status.HTTP_401_UNAUTHORIZED
     
     def test_no_authorization_header(self, request_factory):
         """Test que retorna error 401 si no hi ha header Authorization"""
