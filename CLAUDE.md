@@ -70,8 +70,26 @@ api/views  api/serializers  api/controllers  api/daos  api/services   + api/mapp
 - `docs/deep-dives/` — condition-average · refuge-proposals-payload · user-deletion (enllaçats des dels fluxos pare).
 
 ## En canviar codi
-- Endpoint nou → `docs/recipes/add-endpoint.md`; actualitza `docs/ARCHITECTURE.md §4` i el flux afectat.
-- Corregeixes un bug de `docs/TECH_DEBT.md` → treu-lo o marca'l com a resolt.
+**Regla general: `docs/` s'actualitza en el mateix canvi que el codi.** Abans de donar una tasca per acabada, revisa aquesta taula i edita els docs afectats (mantén la llegenda **[FET]** / **[INFERÈNCIA]** / **[NO VERIFICAT]**; si verifiques una inferència, passa-la a [FET]).
+
+| Canvi al codi | Docs a actualitzar |
+|---|---|
+| Endpoint nou/modificat/eliminat (ruta, mètode, permisos, payload, codis HTTP) | `docs/recipes/add-endpoint.md` (guia); `docs/ARCHITECTURE.md §4` (taula de rutes i permisos); el flux afectat a `docs/flows/` |
+| Model, mapper, serializer o regla de validació nova/canviada | El flux afectat; `docs/recipes/add-model.md` si canvia el patró; `docs/deep-dives/` relacionat (ex. `refuge-proposals-payload`, `condition-average`) |
+| Servei nou o canvi a `api/services` (cache, R2, Firestore) | `docs/recipes/add-service.md` si canvia el patró; l'`docs/integrations/` corresponent |
+| Canvi a middleware, autenticació, permisos o claims | `docs/flows/00-auth-request-pipeline.md`, `docs/integrations/firebase-auth.md`, `docs/ARCHITECTURE.md §5`, `docs/guides/client-auth-usage.md`, i ADR a `docs/design/decisions.md` si és una decisió d'arquitectura |
+| Canvi a cache (claus, TTL, invalidació) | `docs/integrations/redis-cache.md`, `docs/ARCHITECTURE.md §6` |
+| Nou patró, excepció al patró de capes o convenció | `docs/design/patterns.md`, `docs/ARCHITECTURE.md §7–9` |
+| Canvi a deploy, CI, GitHub Actions, variables d'entorn, `render.yaml`, `tox.ini` | `docs/integrations/render-deploy-ci.md`, `docs/guides/local-setup.md`, `docs/guides/r2-render-setup.md`, `docs/guides/firebase-credentials.md` (només noms de variables) |
+| Canvi a proves (markers, fixtures, estructura de tests) | `docs/guides/testing.md`, `docs/ARCHITECTURE.md §10` |
+| Canvi a scripts o al procés diari (`process_yesterday_visits`, `manage_admins.py`) | `docs/guides/daily-visits-process.md` / `docs/guides/admin-management.md`, `docs/flows/06-refuge-visits.md` |
+| Descobreixes un comportament perillós o contraintuïtiu | Afegeix-lo a `docs/GOTCHAS.md` (i al "Top gotchas" d'aquest fitxer si és crític) |
+| Corregeixes un bug de `docs/TECH_DEBT.md` | Treu-lo o marca'l com a resolt; si també era un gotcha, actualitza `docs/GOTCHAS.md` |
+| Detectes un bug o deute nou que no corregeixes | Afegeix-lo a `docs/TECH_DEBT.md` amb severitat |
+| Fitxer de doc nou, reanomenat o eliminat | Actualitza `docs/README.md` i l'"Índex de docs" d'aquest fitxer; revisa enllaços trencats |
+| Canvis a l'estructura de directoris, stack o comandes | `docs/ARCHITECTURE.md §1–2`, la secció "Stack"/"Comandes" d'aquest fitxer |
+
+Després de modificar codi, executa també `graphify update .` (vegeu la secció graphify).
 
 ## graphify
 
