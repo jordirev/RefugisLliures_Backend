@@ -53,3 +53,17 @@ Factories: `get_refugi_media_service()` (L462), `get_user_avatar_service()` (L46
 - Una URL servida caduca en 1 h: el client no l'ha de desar a llarg termini **[INFERÈNCIA]**.
 - Sense límit de mida i sense comprovar magic bytes **[FET]**.
 - Construir un controller que crea `R2MediaService` (p. ex. `RefugiLliureController`) **falla si falta config R2**, fins i tot per a operacions que no toquen R2 (health check) **[FET]**.
+
+## Estendre el servei
+- **Nou format** a una estratègia existent: afegeix el MIME a la llista de tipus permesos de `RefugiMediaStrategy`/`UserAvatarStrategy`.
+- **Nou tipus de media** (p. ex. documents): nova subclasse de `MediaPathStrategy` amb `get_base_path`, `get_allowed_content_types`, `validate_file`, `generate_media_metadata_from_dict`, i una factory `get_<x>_service()` → `R2MediaService(<X>Strategy())`. Patró: [design/patterns.md §Strategy](../design/patterns.md#strategy).
+
+Estructura del bucket:
+```
+<bucket>/
+├── refugis-lliures/{refuge_id}/<fitxer>   imatges i vídeos
+└── users-avatars/{uid}/<fitxer>           només imatges
+```
+
+## Guia de configuració
+[guides/r2-render-setup.md](../guides/r2-render-setup.md) — variables a Render/GitHub/local, bucket privat, CORS, rotació de claus.

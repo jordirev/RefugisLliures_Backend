@@ -91,7 +91,7 @@ sequenceDiagram
     end
 ```
 
-Detall de cada pas (`api/controllers/user_controller.py:125-276`):
+Detall de cada pas (`api/controllers/user_controller.py:125-276`). Criteri esborrar vs anonimitzar, abast complet, estratègia d'errors i com mantenir-ho: [deep-dives/user-deletion.md](../deep-dives/user-deletion.md).
 
 | # | Acció | Codi |
 |---|---|---|

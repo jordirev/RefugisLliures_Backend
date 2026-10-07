@@ -63,6 +63,8 @@ sequenceDiagram
 ```
 
 ## Passos
+> Detall: validació i exemples de payload + sincronització de `coords_refugis` → [deep-dives/refuge-proposals-payload.md](../deep-dives/refuge-proposals-payload.md) · càlcul de la condició mitjana → [deep-dives/condition-average.md](../deep-dives/condition-average.md) · fer-se admin per revisar → [guides/admin-management.md](../guides/admin-management.md).
+
 1. **Validació** (`api/serializers/refuge_proposal_serializer.py:85-166`): `create` requereix payload amb `name` i `coord` i cap `refuge_id`; `update` requereix `refuge_id` + payload; `delete` requereix `refuge_id` i cap payload. Claus del payload ⊂ `ALLOWED_REFUGE_FIELDS` (L14-17).
 2. **Crear** — `RefugeProposalController.create_proposal` (`api/controllers/refuge_proposal_controller.py:19-61`) → `RefugeProposalDAO.create` (`api/daos/refuge_proposal_dao.py:582-616`).
 3. **Llistar** — `list_proposals` (`api/controllers/refuge_proposal_controller.py:85-117`) → `RefugeProposalDAO.list_all` (`api/daos/refuge_proposal_dao.py:646-734`), ID caching amb `proposal_list:*` i detalls `proposal_detail`.

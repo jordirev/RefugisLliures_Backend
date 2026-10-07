@@ -15,6 +15,8 @@
 - Usuari: `users/{uid}.uploaded_photos_keys: [claus]`.
 - Experiència (si n'hi ha): `experiences/{id}.media_keys: [claus]`.
 - La URL **no** es desa: es presigna en llegir (3600 s). Models: `MediaMetadata`, `RefugeMediaMetadata` (`api/models/media_metadata.py:9-78`).
+- Dos noms, dues coses: `media_metadata` és el **map desat a Firestore** (sense URL); `images_metadata` és la **llista que retorna l'API** (`[{key, url, creator_uid, uploaded_at, experience_id}]`), generada en llegir. Versions antigues usaven `media_keys` / `images_urls` (obsolet).
+- Configurar R2: [guides/r2-render-setup.md](../guides/r2-render-setup.md).
 
 ## Diagrama — pujar
 

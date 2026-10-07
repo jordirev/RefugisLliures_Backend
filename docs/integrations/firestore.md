@@ -33,7 +33,7 @@ Firestore és la **base de dades real** de tot el domini. No hi ha ORM: els DAOs
 | **Transaccions** | **cap** a `api/` |
 
 ## Queries que probablement requereixen índex compost [INFERÈNCIA]
-No hi ha `firestore.indexes.json` al repo → l'estat dels índexs és **[NO VERIFICAT]**. Candidates:
+No hi ha `firestore.indexes.json` al repo → l'estat dels índexs és **[NO VERIFICAT]**. La documentació antiga (quan es van crear les estratègies de cerca) afirmava que hi havia índexs compostos `type+places` i `type+altitude` creats a la consola, i en llistava com a pendents `type+condition+places`, `type+condition+altitude`, `condition+places`, `condition+altitude` **[NO VERIFICAT]**. Candidates:
 - `renovations`: `where fin_date >=` + `order_by ini_date` (`api/daos/renovation_dao.py:131-133`), i variants amb `refuge_id ==` (L291-294, L372-375).
 - `refuges_proposals`: diversos `where` + `order_by created_at desc` (`api/daos/refuge_proposal_dao.py:646-734`).
 - `refuge_visits`: `refuge_id ==` + `date >=` + `order_by date`.
@@ -47,7 +47,9 @@ No hi ha `firestore.indexes.json` al repo → l'estat dels índexs és **[NO VER
 | `upload_refugis_to_firestore` | Carrega `api/utils/final_data_refuges.json` a `data_refugis_lliures` amb batches. **Només s'ha d'executar una vegada** (avís a les L10-16 del fitxer). |
 | `extract_coords_to_firestore` | Construeix `coords_refugis/all_refugis_coords` a partir dels refugis |
 | `assign_conditions` / `verify_conditions` | Assigna/verifica `condition` inicial a partir d'`info_comp` |
-| `process_yesterday_visits` | Procés diari (vegeu [flux 6](../flows/06-refuge-visits.md)) |
+| `process_yesterday_visits` | Procés diari (vegeu [flux 6](../flows/06-refuge-visits.md) i [guia](../guides/daily-visits-process.md)) |
+
+Ordre d'execució en una BD nova: [guides/local-setup.md §5](../guides/local-setup.md).
 
 ## Gotchas
 - Cap escriptura multi-document és atòmica; diversos arrays/maps es reescriuen sencers → vegeu [GOTCHAS](../GOTCHAS.md) #7-9.

@@ -35,7 +35,7 @@ Per a llistes: es desa la **llista d'IDs** a la clau de llista i cada element a 
 Totes les excepcions s'empassen → les lectures fan miss i van a Firestore; les invalidacions no es fan però tampoc hi ha res cachejat **[FET]**. Els endpoints admin `cache/stats` retornen `connected:false` amb 200.
 
 ## Endpoints admin
-Vegeu [flows/11-admin-cache-health.md](../flows/11-admin-cache-health.md).
+Vegeu [flows/11-admin-cache-health.md](../flows/11-admin-cache-health.md) i, per usar-los, [guides/admin-management.md](../guides/admin-management.md).
 
 ## Gotchas
 - `delete_pattern` ja afegeix `*` als dos costats; **no** afegeixis `:*` al final (bug de propostes, [TECH_DEBT C2](../TECH_DEBT.md)).

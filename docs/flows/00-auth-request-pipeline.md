@@ -76,6 +76,9 @@ sequenceDiagram
 | Altre error | 401 amb el text de l'excepció (`:94-96`) |
 | Permís denegat | 403 (DRF) |
 
+## Guies
+Com obtenir i enviar el token des del client, cURL o Swagger: [guides/client-auth-usage.md](../guides/client-auth-usage.md).
+
 ## Gotchas
 - Un token caducat a `GET /api/refuges/` (públic) retorna **401** en lloc de servir la resposta anònima **[FET]**.
 - `has_object_permission` no s'executa mai → vegeu [GOTCHAS.md](../GOTCHAS.md) #1.

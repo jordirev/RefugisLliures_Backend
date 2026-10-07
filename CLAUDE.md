@@ -65,7 +65,9 @@ api/views  api/serializers  api/controllers  api/daos  api/services   + api/mapp
 - `docs/flows/` — 00 auth · 01 perfil · 02 avatar · 03 fotos refugi · 04 cerca/detall · 05 propostes · 06 visites · 07 renovations · 08 experiències · 09 dubtes · 10 preferits/visitats · 11 admin cache/health.
 - `docs/integrations/` — firebase-auth · firestore · cloudflare-r2 · redis-cache · render-deploy-ci.
 - `docs/recipes/` — add-endpoint · add-service · add-model.
-- `DOCUMENTATION/` — docs antigues; algunes obsoletes (p. ex. claim `admin: true`). Vegeu `docs/README.md`.
+- `docs/guides/` — passos per executar/configurar: local-setup · testing · firebase-credentials · r2-render-setup · admin-management · client-auth-usage · daily-visits-process.
+- `docs/design/` — patterns (detall dels patrons) · decisions (ADR: APIView, auth DRF+middleware, custom claims).
+- `docs/deep-dives/` — condition-average · refuge-proposals-payload · user-deletion (enllaçats des dels fluxos pare).
 
 ## En canviar codi
 - Endpoint nou → `docs/recipes/add-endpoint.md`; actualitza `docs/ARCHITECTURE.md §4` i el flux afectat.

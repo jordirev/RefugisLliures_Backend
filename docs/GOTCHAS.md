@@ -8,7 +8,7 @@
 2. **NO assumeixis que una ruta sota `/api/refuges/` és privada.** El middleware exclou per prefix (`startswith`) `/api/refuges/`, i això inclou `media/`, `visits/` i `renovations/` (`api/middleware/firebase_auth_middleware.py:20-25,98-103`). La protecció depèn **només** de `permission_classes` de la vista. Si crees una vista nova sota aquest prefix sense `IsAuthenticated`, serà pública (el default és `AllowAny`, `refugis_lliures/settings.py:161-163`).
 3. **NO confiïs en el default de permisos**: és `AllowAny`. Declara sempre `permission_classes` o `get_permissions()`.
 4. Un token caducat o mal format en una ruta pública (p. ex. `GET /api/refuges/`) dona **401**, no accés anònim: si hi ha header `Authorization` mal format a ruta exclosa es deixa passar, però si és un Bearer invàlid es rebutja (`api/middleware/firebase_auth_middleware.py:49-96`) **[FET]**.
-5. Admin és el claim **`role == 'admin'`**, no `admin: true` (com diuen docs antigues). Usa `scripts/manage_admins.py` **[FET]**.
+5. Admin és el claim **`role == 'admin'`**, no `admin: true` (com deia la documentació antiga). Usa `scripts/manage_admins.py` **[FET]**.
 6. **NO llegeixis ni imprimeixis** res de `env/` (service accounts, `.env.*`). No està versionat (`git ls-files env` buit) i ha de continuar així. `run_process_visits.sh` porta placeholders de credencials R2: no hi posis valors reals (ho avisa el mateix fitxer, L2).
 
 ## Firestore i consistència

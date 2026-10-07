@@ -17,6 +17,9 @@ L'UID sempre surt del token: només es pot actuar sobre la pròpia entrada **[FE
 
 Col·lecció `refuge_visits/{autoId}` = `{id, date:'YYYY-MM-DD', refuge_id, visitors:[{uid, num_visitors}], total_visitors}` (model `api/models/refuge_visit.py`, mapper `api/mappers/refuge_visit_mapper.py`). Un document per (refugi, data).
 
+## Privacitat i format de resposta
+Les respostes **mai** exposen la llista `visitors` amb UIDs d'altres usuaris. Cada visita es serialitza com `{date, total_visitors, is_visitor, num_visitors}` (+ `refuge_id` al llistat per usuari), on `is_visitor`/`num_visitors` es calculen respecte a l'usuari del token (`api/serializers/refuge_visit_serializer.py:56-82`) **[FET]**. El llistat per refugi només inclou dates ≥ avui (ordre ascendent); el d'usuari, ordre descendent.
+
 ## Diagrama — registrar visita
 
 ```mermaid
@@ -86,6 +89,7 @@ sequenceDiagram
 - Llistar per refugi: ID caching `refuge_visits_list:from_date:<avui>:refuge_id:X`, query `refuge_id==, date>=avui, order_by date`.
 - Llistar per usuari: `get_visits_by_user` (DAO L207-248) fa **stream de tota la col·lecció** i filtra en Python **[FET]**.
 - Procés diari: `api/management/commands/process_yesterday_visits.py:15-38` → `RefugeVisitController.process_yesterday_visits` (controller L242-312); `RefugiLliureDAO.update_refugi_visitors` (`api/daos/refugi_lliure_dao.py:541-575`).
+- Com executar-lo (Actions, manual, crontab): [guides/daily-visits-process.md](../guides/daily-visits-process.md).
 - Planificació real: `.github/workflows/process-visits.yml:1-37` (cron `0 3 * * *` UTC, `PRODUCTION='true'`). Alternatives no actives: `CRONJOBS` a `refugis_lliures/settings.py:275-278` (django-crontab, mai instal·lat) i `run_process_visits.sh` / `run_process_visits.bat` (manual) **[FET]**.
 
 ## Errors

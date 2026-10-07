@@ -47,6 +47,7 @@ sequenceDiagram
 ```
 
 ## Passos
+- Fer-se admin, cURL i Swagger: [guides/admin-management.md](../guides/admin-management.md).
 - Health: `RefugiLliureController.health_check` (`api/controllers/refugi_lliure_controller.py:102-127`) → `RefugiLliureDAO.health_check` (`api/daos/refugi_lliure_dao.py:229-243`).
 - Ping extern: `.github/workflows/ping-website.yml` fa `curl` a `/swagger/` cada 9 minuts (no a `/api/health/`) per mantenir despert el servei de Render **[FET]**; el motiu (evitar l'*spin-down* del pla gratuït) és **[INFERÈNCIA]**.
 

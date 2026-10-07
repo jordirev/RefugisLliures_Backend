@@ -43,4 +43,7 @@ Vegeu [flows/00-auth-request-pipeline.md](../flows/00-auth-request-pipeline.md).
 - `settings.py` considera producció només `RENDER`/`PRODUCTION` (`refugis_lliures/settings.py:21`), però `firebase_config` també `CI` → a GitHub Actions CI els settings carreguen `.env.development` mentre Firebase espera `FIREBASE_SERVICE_ACCOUNT_KEY` (als tests no importa perquè no s'inicialitza) **[FET]**.
 - `verify_id_token` sense `check_revoked=True`: un token revocat continua sent vàlid fins que caduca (≈1 h) **[INFERÈNCIA sobre l'SDK]**.
 - Dues rutes d'inicialització amb criteris diferents → possible confusió de credencials **[FET]**.
-- Docs antigues (`DOCUMENTATION/CUSTOM_CLAIMS.md`) parlen de `admin: true`: **obsolet**.
+- Versions antigues de la documentació parlaven de `admin: true` o de `FIREBASE_ADMIN_UIDS`: **obsolet** ([design/decisions.md ADR-3](../design/decisions.md)).
+
+## Guies relacionades
+[firebase-credentials.md](../guides/firebase-credentials.md) (configurar el service account) · [admin-management.md](../guides/admin-management.md) (fer/treure admins) · [client-auth-usage.md](../guides/client-auth-usage.md) (enviar el token des del client).

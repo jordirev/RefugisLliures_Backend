@@ -41,24 +41,35 @@ Les línies poden desplaçar-se amb canvis futurs; si una cita no quadra, busca 
 - [integrations/redis-cache.md](integrations/redis-cache.md)
 - [integrations/render-deploy-ci.md](integrations/render-deploy-ci.md) (Render, GitHub Actions, SonarCloud, Codecov)
 
-### Receptes
+### Receptes (canvis al codi)
 - [recipes/add-endpoint.md](recipes/add-endpoint.md)
 - [recipes/add-service.md](recipes/add-service.md)
 - [recipes/add-model.md](recipes/add-model.md)
 
-## Relació amb `DOCUMENTATION/` (documentació antiga)
+### Guies (passos per executar o configurar)
+| Guia | Per a… |
+|---|---|
+| [guides/local-setup.md](guides/local-setup.md) | Posar en marxa el backend en local (venv, `env/`, R2, seeding, `runserver`) |
+| [guides/testing.md](guides/testing.md) | Executar i escriure tests, coverage, per què Firebase no s'inicialitza |
+| [guides/firebase-credentials.md](guides/firebase-credentials.md) | Configurar el service account (local, Render, GitHub Actions) |
+| [guides/r2-render-setup.md](guides/r2-render-setup.md) | Configurar Cloudflare R2 a Render/local, bucket, rotació de claus |
+| [guides/admin-management.md](guides/admin-management.md) | Fer/treure admins (custom claims) i usar els endpoints de cache |
+| [guides/client-auth-usage.md](guides/client-auth-usage.md) | Cridar l'API amb token de Firebase (JS, cURL, Swagger) |
+| [guides/daily-visits-process.md](guides/daily-visits-process.md) | Executar el procés diari de visites (Actions, manual, crontab) |
 
-La carpeta `DOCUMENTATION/` (~35 fitxers, ~8.300 línies) es manté sense canvis. És útil com a context històric, però **té afirmacions que ja no quadren amb el codi**. Contradiccions detectades:
+### Disseny
+- [design/patterns.md](design/patterns.md) — patrons arquitectònics i de disseny amb diagrames (amplia [ARCHITECTURE §7](ARCHITECTURE.md)).
+- [design/decisions.md](design/decisions.md) — decisions preses (APIView, autenticació DRF + middleware, custom claims) i el seu estat real.
 
-| Fitxer antic | Afirmació | Realitat al codi |
-|---|---|---|
-| `DOCUMENTATION/CUSTOM_CLAIMS.md` (p. ex. L34, L70, L114) | Admin = custom claim `admin: true` | Admin = claim `role == 'admin'` (`api/permissions.py:21`, `scripts/manage_admins.py:35`) **[FET]** |
-| `DOCUMENTATION/CACHE_ADMIN_ENDPOINTS.md` L68-83, L186 | Barreja `admin: True` i `role: 'admin'` | Només `role == 'admin'` **[FET]** |
-| `DOCUMENTATION/CHANGE_TO_CUSTOM_CLAMIS.md` L23, L34, L193 | `IsFirebaseAdmin` comprova `admin: true` | Comprova `role == 'admin'` **[FET]** |
-| `DOCUMENTATION/AUTHENTICATION_STANDARD.md` L129-246 | Exemples amb `ModelViewSet` | Totes les vistes són `APIView` o `@api_view` (`api/views/*.py`) **[FET]** |
-| `DOCUMENTATION/README.md` | Python 3.8+ | CI usa Python 3.10 (`.github/workflows/django.yml:16`); `zoneinfo` requereix ≥3.9 (`api/utils/timezone_utils.py:5`) **[FET]** |
+### Deep dives (detall que no cap als fluxos)
+| Document | Pare |
+|---|---|
+| [deep-dives/condition-average.md](deep-dives/condition-average.md) — mitjana de `condition` | [flux 5](flows/05-refuge-proposals.md) |
+| [deep-dives/refuge-proposals-payload.md](deep-dives/refuge-proposals-payload.md) — validació del payload i sincronització de `coords_refugis` | [flux 5](flows/05-refuge-proposals.md) |
+| [deep-dives/user-deletion.md](deep-dives/user-deletion.md) — criteris i manteniment de l'esborrat d'usuari | [flux 1](flows/01-user-profile.md) |
 
-La resta de fitxers antics no s'han contrastat línia a línia → tractar-los com a **[NO VERIFICAT]**.
+## Història
+Fins a l'octubre de 2026 hi havia una carpeta `DOCUMENTATION/` amb documentació escrita durant el desenvolupament. S'ha fusionat aquí: les guies s'han passat a `guides/` (corregides contra el codi), les explicacions vàlides s'han integrat als fluxos, integracions o `deep-dives/`/`design/`, i la resta (resums de canvis puntuals, resultats de tests antics, prompts d'especificació) s'ha eliminat perquè estava desactualitzada. Afirmacions antigues que ja **no** són certes: admin = `admin: true` (és `role == 'admin'`), admins a `FIREBASE_ADMIN_UIDS`, camps `media_keys`/`images_urls` al refugi, endpoints `/media/list/` i `/media/delete/` amb URLs, permisos d'admin per pujar fotos, vistes `ModelViewSet`, Python 3.8.
 
 ## Fora d'abast
 - Frontend (`TFG/RefugisLliures_Frontend`) i integració frontend↔backend: es documentaran a part.

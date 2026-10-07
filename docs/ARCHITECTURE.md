@@ -37,7 +37,7 @@ api/
   utils/                swagger_examples, swagger_error_responses, timezone_utils, JSON de dades
   tests/<domini>/       test_models/daos/mappers/serializers/controllers/views(/integration)
 scripts/                manage_admins.py (custom claims), verify_conditions.py
-DOCUMENTATION/          docs antigues (vegeu docs/README.md)
+docs/                   documentació (aquesta carpeta): flows, integrations, recipes, guides, design, deep-dives
 env/                    .env.* i service accounts — NO versionat, NO llegir valors
 ```
 
@@ -111,13 +111,17 @@ Detall complet a [flows/00-auth-request-pipeline.md](flows/00-auth-request-pipel
 2. `FirebaseAuthentication` (DRF, `api/authentication.py`) reaprofita el que ha posat el middleware.
 3. Permís per defecte: `AllowAny` (`refugis_lliures/settings.py:161-163`) — **cada vista ha de declarar els seus permisos**.
 4. Admin = custom claim `role == 'admin'` (`api/permissions.py:10-21`). Es gestiona amb `scripts/manage_admins.py`.
-5. **[FET]** Cap vista crida `check_object_permissions()`, i totes hereten d'`APIView` (no `GenericAPIView`) → **`has_object_permission` de `IsExperienceCreator`, `IsRenovationCreator`, `IsDoubtCreator`, `IsAnswerCreator`, `IsOwnerOrReadOnly` mai s'executa**. Només funcionen els permisos basats en `has_permission`: `IsSameUser`, `IsFirebaseAdmin`, `IsMediaUploader`.
+5. Gestió d'admins: [guides/admin-management.md](guides/admin-management.md). Per què hi ha middleware **i** classe DRF: [design/decisions.md](design/decisions.md).
+6. **[FET]** Cap vista crida `check_object_permissions()`, i totes hereten d'`APIView` (no `GenericAPIView`) → **`has_object_permission` de `IsExperienceCreator`, `IsRenovationCreator`, `IsDoubtCreator`, `IsAnswerCreator`, `IsOwnerOrReadOnly` mai s'executa**. Només funcionen els permisos basats en `has_permission`: `IsSameUser`, `IsFirebaseAdmin`, `IsMediaUploader`.
 
 ## 6. Cache (resum)
 
 Redis amb `KEY_PREFIX='refugis'` i TTL per defecte 300 s (`refugis_lliures/settings.py:185-202`), però `CacheService` aplica els seus propis TTL (600 s gairebé tot, 3600 s coords) (`api/services/cache_service.py:20-48`). Claus `prefix:k1:v1:k2:v2` amb kwargs ordenats (`api/services/cache_service.py:63-85`). Patró **"ID caching"** per a llistes (`get_or_fetch_list`, `api/services/cache_service.py:208`). Errors de Redis s'empassen → fallback silenciós a Firestore. Detall: [integrations/redis-cache.md](integrations/redis-cache.md).
 
 ## 7. Patrons de disseny presents [FET]
+
+Detall amb diagrames i motivació: [design/patterns.md](design/patterns.md).
+
 
 | Patró | On |
 |---|---|
@@ -154,6 +158,9 @@ Redis amb `KEY_PREFIX='refugis'` i TTL per defecte 300 s (`refugis_lliures/setti
 | Imports erronis de `logger` | `api/models/user.py:6` (`from venv import logger`), `api/models/experience.py:9` i `api/models/refugi_lliure.py:4` (`from asyncio.log import logger`) |
 
 ## 10. Tests
+
+Guia pràctica (comandes, coverage, per què Firebase no s'inicialitza): [guides/testing.md](guides/testing.md).
+
 
 - Config: `pytest.ini` (`DJANGO_SETTINGS_MODULE=refugis_lliures.settings`, `testpaths=api/tests`, `--strict-markers`, markers `unit, integration, views, serializers, controller(s), daos, mappers, models, edge_cases, slow`).
 - `conftest.py` (arrel) i `api/tests/conftest.py` fixen `TESTING=true` i variables R2 falses **abans** d'importar res; amb `TESTING`/`pytest` carregat, Firebase **no s'inicialitza** (`api/firebase_config.py:15-17,92-94`).
