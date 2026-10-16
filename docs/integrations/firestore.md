@@ -21,6 +21,16 @@ Firestore és la **base de dades real** de tot el domini. No hi ha ORM: els DAOs
 | `refuges_proposals` | `api/daos/refuge_proposal_dao.py:579` | auto-ID + camp `id` | |
 | `refuge_visits` | `api/daos/refuge_visit_dao.py:19` | auto-ID | un per (refugi, data) |
 
+### Col·leccions noves (feature images) [FET]
+| Col·lecció | Contingut | Notes |
+|---|---|---|
+| `upload_intents` | intents de pujada directa | **TTL** sobre `expire_at` (Timestamp, +1 dia) — crear la política a la consola |
+| `media_reports` | denúncies de mitjans | ID determinista per (refugi, mitjà, denunciant); queries només d'igualtat |
+| `moderation_notices` | avisos de moderació per usuari | query `uid ==`, ordenació en Python |
+| `moderation_hash_blocklist` | hashes prohibits (sha256 / pHash) | manteniment manual |
+| `audit_logs` | registre d'auditoria | **TTL** sobre `expire_at` (Timestamp, +12 mesos) |
+Camps nous a `users/{uid}`: `age_confirmed_at`, `age_threshold`, `moderation_strikes`, `is_blocked`, `blocked_reason`, `blocked_at`. A `data_refugis_lliures/{id}.media_metadata[key]`: `status`, `thumb_key`, `width`, `height`, `size`, `blurhash`, `taken_at`, `media_type`, `content_type`, `rights_confirmed_at` ([flux 3](../flows/03-refuge-media-upload.md)).
+
 ## Operacions especials [FET] (grep a `api/`, excloent tests)
 | Operació | On |
 |---|---|

@@ -56,6 +56,8 @@ sequenceDiagram
 ```
 Ordre de prioritat de les 15 estratègies: [flux 4](../flows/04-refuge-search-detail.md#estratègies-de-cerca-apidaossearch_strategiespy).
 
+**Strategy de moderació (feature images)**: `ModerationProvider` (interfície) amb `HashBlocklistProvider` actiu i stubs desactivats `PhotoDNAProvider` / `GoogleContentSafetyProvider`; `ModerationService` els executa en ordre i el primer que bloqueja guanya (fail-closed si un falla). `api/services/moderation_service.py`, [flux 12](../flows/12-media-moderation.md).
+
 ### Singleton
 `CacheService` i `FirestoreService` amb `__new__` + instància global (`cache_service`, `firestore_service`). Compte: `CacheService.__init__` es re-executa a cada `CacheService()` ([recipes/add-service.md](../recipes/add-service.md)).
 

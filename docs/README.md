@@ -33,6 +33,7 @@ Les línies poden desplaçar-se amb canvis futurs; si una cita no quadra, busca 
 | 9 | Dubtes i respostes | [flows/09-doubts-answers.md](flows/09-doubts-answers.md) |
 | 10 | Refugis preferits i visitats | [flows/10-favourite-visited.md](flows/10-favourite-visited.md) |
 | 11 | Endpoints admin de cache i health check | [flows/11-admin-cache-health.md](flows/11-admin-cache-health.md) |
+| 12 | Denúncies, moderació de mitjans, edat mínima i auditoria | [flows/12-media-moderation.md](flows/12-media-moderation.md) |
 
 ### Integracions externes
 - [integrations/firebase-auth.md](integrations/firebase-auth.md)
@@ -56,6 +57,7 @@ Les línies poden desplaçar-se amb canvis futurs; si una cita no quadra, busca 
 | [guides/admin-management.md](guides/admin-management.md) | Fer/treure admins (custom claims) i usar els endpoints de cache |
 | [guides/client-auth-usage.md](guides/client-auth-usage.md) | Cridar l'API amb token de Firebase (JS, cURL, Swagger) |
 | [guides/daily-visits-process.md](guides/daily-visits-process.md) | Executar el procés diari de visites (Actions, manual, crontab) |
+| [guides/cloudflare-domain-csam.md](guides/cloudflare-domain-csam.md) | (Futur) domini propi + Worker amb tokens HMAC, CSAM Scanning Tool, PhotoDNA/NCMEC/Google Content Safety |
 
 ### Disseny
 - [design/patterns.md](design/patterns.md) — patrons arquitectònics i de disseny amb diagrames (amplia [ARCHITECTURE §7](ARCHITECTURE.md)).

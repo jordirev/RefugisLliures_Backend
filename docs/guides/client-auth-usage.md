@@ -66,3 +66,6 @@ curl -X PATCH -H "Authorization: Bearer <token>" -H "Content-Type: application/j
 | 500 | — | Backend sense credencials de Firebase ([firebase-credentials.md](firebase-credentials.md)) |
 
 Llista completa i línies de codi: [flux 0 §Errors](../flows/00-auth-request-pipeline.md#errors).
+
+## Errors amb codi (feature images)
+Alguns 403/409 porten `{"error": "<codi>", "code": "<codi>", "message": "..."}` amb codi ∈ `user_blocked`, `age_not_confirmed`, `not_owner`, `underage`, `own_media`, `already_reported`, `already_resolved`, `moderation_blocked`. El client ha de decidir pel camp `code` (o `error`), no pel text.

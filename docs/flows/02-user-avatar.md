@@ -2,65 +2,58 @@
 
 > **[FET]** comprovat al codi · **[INFERÈNCIA]** deducció · **[NO VERIFICAT]** depèn de config externa.
 
-## Endpoints (`api/views/user_views.py`)
+## Endpoints
 | Mètode | URL | Vista | Permisos | Body |
 |---|---|---|---|---|
-| PATCH | `/api/users/{uid}/avatar/` | `UserAvatarAPIView.patch` (L647) | IsAuthenticated + IsSameUser | multipart, camp `file` (parsers L605-606) |
-| DELETE | `/api/users/{uid}/avatar/` | `.delete` (L708) | idem | — |
+| POST | `/api/media/upload-intents/` + `/confirm/` | [flux 3](03-refuge-media-upload.md) amb `target=avatar` (**recomanat**) | IsAuthenticated + IsNotBlocked + IsAgeConfirmed | JSON, 1 sola imatge |
+| PATCH | `/api/users/{uid}/avatar/` | `UserAvatarAPIView.patch` (**legacy**) | IsAuthenticated + IsSameUser + IsNotBlocked | multipart, camp `file` |
+| DELETE | `/api/users/{uid}/avatar/` | `.delete` | IsAuthenticated + IsSameUser | — |
 
-Emmagatzematge: R2 amb `UserAvatarStrategy` → clau `users-avatars/{uid}/{filename}`, només imatges (`api/services/r2_media_service.py:101-145`). Firestore: `users/{uid}.media_metadata = {key, uploaded_at}`.
+Emmagatzematge [FET]: R2 `users-avatars/{uid}/{uuid}.webp` (WebP, màx. 512 px, sense metadades, sense miniatura → `thumb_url = url`). Firestore `users/{uid}.media_metadata = {key, uploaded_at, width, height, blurhash, size, content_type}`. L'API exposa `avatar_metadata` en forma **MediaItem** (`creator_uid` = uid, `media_type` = `image`, `taken_at`/`experience_id` = null).
 
-## Diagrama — pujar avatar
+## Diagrama — canviar l'avatar (els dos camins comparteixen `_publish_avatar`)
 
 ```mermaid
 sequenceDiagram
     autonumber
     participant C as Client
-    participant V as UserAvatarAPIView.patch
-    participant UC as UserController.upload_user_avatar
-    participant D as UserDAO
+    participant UC as UserController.upload_user_avatar / confirm
+    participant MC as MediaUploadController
+    participant IP as ImageProcessingService
     participant R2 as R2MediaService(UserAvatarStrategy)
-    participant F as Firestore users/{uid}
-    participant K as CacheService
+    participant D as UserDAO
 
-    C->>V: PATCH multipart file
-    V->>V: request.FILES['file'] (400 si falta)
-    V->>UC: upload_user_avatar(uid, file)
-    UC->>D: get_user_by_uid (404 si no existeix)
-    opt ja tenia avatar
-        UC->>R2: delete_file(old_key) — abans de pujar el nou
-    end
-    UC->>R2: upload_file(file, uid, content_type, filename=file.name)
-    alt content_type no permès
-        R2-->>UC: ValueError("... no permès")
-        V-->>C: 400
-    end
-    R2-->>UC: {key, url presignada}
-    UC->>D: update_avatar_metadata(uid, {key, uploaded_at})
-    D->>F: update({media_metadata})
-    D->>K: delete user_detail:uid:{uid}
+    C->>UC: PATCH multipart file (o confirm d'un intent target=avatar)
+    UC->>D: get_user_by_uid (404)
+    UC->>UC: llegeix ≤ 15 MB + 1 → too_large
+    UC->>MC: process_and_publish(target=avatar)
+    MC->>IP: magic bytes + Pillow, només imatges → WebP 512 px sense EXIF
+    MC->>R2: put_bytes users-avatars/{uid}/{uuid}.webp
+    MC->>D: update_avatar_metadata(uid, {...})
     alt Firestore falla
-        UC->>R2: delete_file(new_key) (rollback)
+        MC->>R2: delete_file(nou) — l'antic es conserva
+        UC-->>C: 500
     end
-    UC-->>V: MediaMetadata(key, url, uploaded_at)
-    V-->>C: 200 {key, url, uploaded_at}
+    MC->>R2: delete_file(antic) — NOMÉS després d'haver desat el nou (si falla: orfe + warning)
+    UC-->>C: 200 MediaItem
 ```
 
-## Passos (`api/controllers/user_controller.py`)
-1. `upload_user_avatar` (L470-533): comprova usuari, **esborra l'avatar antic primer** (L488-495), puja el nou (L503), actualitza metadades (`api/daos/user_dao.py:580-614`), rollback del fitxer nou si falla Firestore (L515-519).
-2. `delete_user_avatar` (L535-571): `UserDAO.delete_avatar_metadata` (`api/daos/user_dao.py:616-652`, posa `media_metadata: None`) i després `delete_file`.
+## Passos
+1. `UserController.upload_user_avatar` (`api/controllers/user_controller.py:485`) → `MediaUploadController.process_and_publish` → `_publish_avatar` (`api/controllers/media_upload_controller.py:376`).
+2. `delete_user_avatar` (`api/controllers/user_controller.py:536`): `UserDAO.delete_avatar_metadata` (posa `media_metadata: None`) i després `delete_file`; si `delete_file` retorna `False` (o llança) es **tornen a desar** les metadades i es retorna error.
 
 ## Errors
 | Cas | HTTP |
 |---|---|
 | Sense fitxer | 400 |
-| MIME no permès | 400 (match de `'no permès'`) |
+| Tipus real no permès / massa gran | 400 (missatge amb `invalid_type` / `too_large`) |
+| Bloquejat per moderació automàtica | 403 `{error: 'moderation_blocked'}` |
+| Usuari bloquejat | 403 `{error: 'user_blocked'}` |
 | Usuari no trobat / sense avatar (DELETE) | 404 |
+| R2 no pot esborrar (DELETE) | 500 (metadades restaurades) |
 | Altres | 500 |
 | DELETE OK | 204 |
 
 ## Gotchas
-- L'avatar antic s'esborra **abans** de pujar el nou: si la pujada falla, Firestore apunta a una clau inexistent **[FET]**.
-- El rollback de DELETE (re-posar metadades si R2 falla, L557-564) no s'executa mai perquè `delete_file` retorna `False` en lloc de llançar **[FET]**.
-- La clau usa el nom original del fitxer **[FET]**; per a l'avatar és menys greu (prefix per usuari).
-- No hi ha límit de mida **[FET]**.
+- Corregit: abans l'avatar antic s'esborrava **abans** de pujar el nou i el rollback del DELETE era codi mort ([TECH_DEBT A4](../TECH_DEBT.md)) **[FET]**.
+- Els avatars antics poden tenir claus amb el nom original (`users-avatars/{uid}/avatar.jpg`): es continuen servint i s'esborren en canviar d'avatar **[FET]**.

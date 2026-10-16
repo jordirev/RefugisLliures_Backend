@@ -15,6 +15,10 @@ Punt d'entrada: `UserController.delete_user(uid) -> (success, error)` (`api/cont
 | Participacions i expulsions en renovations | `ArrayRemove` de `participants_uids` / `expelled_uids` | No deixar UIDs penjats |
 | Fotos pujades (R2 + `media_metadata` + `media_keys` d'experiències) | **Esborrar** | Dades personals |
 | Avatar | **Esborrar** | Dada personal |
+| Miniatures (`{uuid}_thumb.webp`) de les fotos i de l'avatar | **Esborrar** (via `thumb_key` de les metadades) | Dades personals; si falla l'esborrat queda orfe i es registra un warning |
+| `media_reports` (com a denunciant o autor), `moderation_notices` | **Es conserven** (pendent de decidir, [TECH_DEBT I3](../TECH_DEBT.md)) | Obligacions DSA i possible evidència |
+| `moderation-hold/` (R2) | **Es conserva** | Evidència retinguda per obligació legal |
+| `audit_logs` | Caduca per TTL (12 mesos) | Registre art. 32 RGPD |
 | `visitors` dels refugis visitats i entrades a `refuge_visits` | Treure l'UID / l'entrada | No deixar referències |
 | `users/{uid}` | **Esborrar** (últim) | — |
 
@@ -39,7 +43,7 @@ Per permetre l'anonimització, el model `Renovation` accepta `group_link=None` q
 
 Com que no hi ha transaccions, "aturar" **no desfà** els passos anteriors: un error al pas 7 deixa experiències i dubtes ja esborrats i l'usuari encara existent. Reintentar el DELETE és segur en la majoria de passos (consultes per `creator_uid` que ja no troben res) **[INFERÈNCIA]**. La vista retorna sempre 404 en cas d'error ([TECH_DEBT M10](../TECH_DEBT.md)).
 
-Bugs coneguts del procés: decrement de `total_visitors` en 1 i no en `num_visitors` ([TECH_DEBT M3](../TECH_DEBT.md)); `delete_file` de R2 no llança i amaga fallades ([TECH_DEBT A4](../TECH_DEBT.md)); escriptures no atòmiques ([TECH_DEBT A6](../TECH_DEBT.md)).
+Bugs coneguts del procés: decrement de `total_visitors` en 1 i no en `num_visitors` ([TECH_DEBT M3](../TECH_DEBT.md)); escriptures no atòmiques entre passos ([TECH_DEBT A6](../TECH_DEBT.md)). Des de la feature *images* l'esborrat de fotos i avatar comprova el resultat de `delete_file` (A4 resolt) i `uploaded_photos_keys`/`media_metadata` s'escriuen atòmicament.
 
 ## Privacitat (dret a l'oblit)
 - S'eliminen totes les dades identificables de l'usuari al backend.

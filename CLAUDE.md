@@ -43,16 +43,16 @@ api/views  api/serializers  api/controllers  api/daos  api/services   + api/mapp
 - Tests per domini a `api/tests/<domini>/test_{models,mappers,daos,serializers,controllers,views}.py`; es mocka `FirestoreService`/`cache_service` al mòdul del DAO i el controller al mòdul de la vista.
 
 ## Top gotchas (llista completa: docs/GOTCHAS.md)
-1. `has_object_permission` **mai s'executa** (cap `check_object_permissions`): `Is*Creator` no protegeix res. Comprova la propietat al controller. Avui experiències, dubtes i respostes **no tenen control de propietari**.
+1. `has_object_permission` **mai s'executa** (cap `check_object_permissions`): `Is*Creator` no protegeix res. Comprova la propietat al controller (experiències ja ho fan; dubtes i respostes **encara no**).
 2. El middleware exclou per prefix `/api/refuges/` (també media/visits/renovations): la protecció depèn només de `permission_classes`.
 3. `cache_service.delete_pattern(p)` ja fa `*p*`: **no** afegeixis `:*` al final (bug a propostes → doble aprovació).
-4. No facis read-modify-write d'arrays/maps: usa `ArrayUnion`/`ArrayRemove`/`Increment` o transaccions (no n'hi ha cap avui).
+4. No facis read-modify-write d'arrays/maps: usa `ArrayUnion`/`ArrayRemove`/`Increment` o `FieldPath('media_metadata', key).to_api_repr()` / `DELETE_FIELD` (les claus R2 porten `/` i `.`).
 5. Serializer i `__post_init__` han d'aplicar les mateixes regles (cas `ini_date == fin_date` a renovations).
 6. Cap `default=` en serializers d'update (PATCH d'usuari reseteja `language`).
-7. `R2MediaService.delete_file` retorna `False`, no llança. No passis `filename=file.name` a `upload_file` (col·lisions).
+7. `R2MediaService.delete_file` retorna `False`, no llança: comprova el booleà. Tota pujada ha de passar per `MediaUploadController.process_and_publish` (neteja EXIF, tipus real, claus UUID); no facis `put_object` de bytes de l'usuari directament.
 8. Variables `R2_*` es llegeixen amb `os.getenv`; `decouple` no omple `os.environ` → exporta-les a l'entorn.
 9. Canviar el text d'un error pot canviar el codi HTTP.
-10. Els tests de vistes muten `view.cls.permission_classes`; usa `patch.object`.
+10. Els tests de vistes muten `view.cls.permission_classes`; usa `patch.object`. `api/tests/conftest.py` bloqueja Firestore real i mocka `AuditLogService.log` i `get_user_for_permissions` (markers `real_audit_log`, `real_permissions` per desactivar-ho).
 
 ## Seguretat
 - **No llegeixis ni imprimeixis** fitxers de `env/` (service accounts, `.env.*`, `api-keys.env`). No estan versionats; només se'n poden esmentar els noms de variables.
@@ -62,10 +62,10 @@ api/views  api/serializers  api/controllers  api/daos  api/services   + api/mapp
 ## Índex de docs
 - `docs/ARCHITECTURE.md` — stack, capes, taula de rutes i permisos, auth, cache, convencions, excepcions, tests.
 - `docs/GOTCHAS.md` — què NO fer · `docs/TECH_DEBT.md` — bugs i deute per severitat.
-- `docs/flows/` — 00 auth · 01 perfil · 02 avatar · 03 fotos refugi · 04 cerca/detall · 05 propostes · 06 visites · 07 renovations · 08 experiències · 09 dubtes · 10 preferits/visitats · 11 admin cache/health.
+- `docs/flows/` — 00 auth · 01 perfil · 02 avatar · 03 fotos refugi · 04 cerca/detall · 05 propostes · 06 visites · 07 renovations · 08 experiències · 09 dubtes · 10 preferits/visitats · 11 admin cache/health · 12 denúncies/moderació/edat/auditoria.
 - `docs/integrations/` — firebase-auth · firestore · cloudflare-r2 · redis-cache · render-deploy-ci.
 - `docs/recipes/` — add-endpoint · add-service · add-model.
-- `docs/guides/` — passos per executar/configurar: local-setup · testing · firebase-credentials · r2-render-setup · admin-management · client-auth-usage · daily-visits-process.
+- `docs/guides/` — passos per executar/configurar: local-setup · testing · firebase-credentials · r2-render-setup · admin-management · client-auth-usage · daily-visits-process · cloudflare-domain-csam (futur: domini + CSAM).
 - `docs/design/` — patterns (detall dels patrons) · decisions (ADR: APIView, auth DRF+middleware, custom claims).
 - `docs/deep-dives/` — condition-average · refuge-proposals-payload · user-deletion (enllaçats des dels fluxos pare).
 

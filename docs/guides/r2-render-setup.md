@@ -36,6 +36,11 @@ Exporta-les a la shell abans de `runserver` (no n'hi ha prou amb `env/.env.devel
      "AllowedHeaders": ["*"], "ExposeHeaders": ["ETag"], "MaxAgeSeconds": 3600}]
    ```
 
+### 4b. Pujada directa i lifecycle (feature images) [NO VERIFICAT]
+- **CORS** del bucket: permetre `PUT`, `GET`, `HEAD` amb headers `Content-Type` i `Content-Length` (JSON a [integrations/cloudflare-r2.md](../integrations/cloudflare-r2.md#configuració-del-bucket-manual-al-dashboard-de-cloudflare-no-verificat)).
+- **Lifecycle**: esborrar el prefix `quarantine/` als 1 dia. No apliquis lifecycle a `moderation-hold/`.
+- El token d'API de R2 necessita permisos *Object Read & Write* (presigned PUT, HEAD, GET, COPY, DELETE).
+
 ## 5. Rotació de credencials
 1. Cloudflare: genera noves access keys i **revoca** les antigues.
 2. Render i GitHub secrets: actualitza les variables (redesplegament automàtic a Render).

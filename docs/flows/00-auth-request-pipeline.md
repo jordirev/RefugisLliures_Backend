@@ -83,3 +83,6 @@ Com obtenir i enviar el token des del client, cURL o Swagger: [guides/client-aut
 - Un token caducat a `GET /api/refuges/` (públic) retorna **401** en lloc de servir la resposta anònima **[FET]**.
 - `has_object_permission` no s'executa mai → vegeu [GOTCHAS.md](../GOTCHAS.md) #1.
 - `request.user_uid` és la font de veritat de l'identitat a vistes i controllers; mai s'agafa l'UID del body.
+
+## Permisos de moderació (feature images) [FET]
+Després de l'autenticació, alguns endpoints afegeixen `IsNotBlocked` (403 `{error:'user_blocked'}`) i `IsAgeConfirmed` (403 `{error:'age_not_confirmed'}`), que llegeixen `users/{uid}` (cache-first). Vegeu [flux 12](12-media-moderation.md).
