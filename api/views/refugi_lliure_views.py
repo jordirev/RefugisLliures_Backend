@@ -10,6 +10,7 @@ from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 from ..controllers.refugi_lliure_controller import RefugiLliureController
 from ..controllers.renovation_controller import RenovationController
+from ..permissions import is_firebase_admin
 from ..serializers.refugi_lliure_serializer import (
     RefugiSerializer, 
     RefugiSearchResponseSerializer,
@@ -135,7 +136,9 @@ class RefugiLliureCollectionAPIView(APIView):
             controller = RefugiLliureController()
             search_result, error = controller.search_refugis(
                 filters_serializer.validated_data,
-                is_authenticated=is_authenticated
+                is_authenticated=is_authenticated,
+                viewer_uid=getattr(request, 'user_uid', None),
+                is_admin=bool(is_authenticated) and is_firebase_admin(request)
             )
             
             if error:
@@ -210,7 +213,12 @@ class RefugiLliureDetailAPIView(APIView):
             is_authenticated = request.user and hasattr(request.user, 'is_authenticated') and request.user.is_authenticated
             
             controller = RefugiLliureController()
-            refugi, error = controller.get_refugi_by_id(id, is_authenticated=is_authenticated)
+            refugi, error = controller.get_refugi_by_id(
+                id,
+                is_authenticated=is_authenticated,
+                viewer_uid=getattr(request, 'user_uid', None),
+                is_admin=bool(is_authenticated) and is_firebase_admin(request)
+            )
             
             if error:
                 if "not found" in error.lower():

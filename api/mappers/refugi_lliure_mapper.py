@@ -50,23 +50,26 @@ class RefugiLliureMapper:
             'images_metadata': images_metadata
         }
 
-        # Si ja tenim images_metadata, no cal generar la URL pre-signada
-        if images_metadata:
+        # Prioritat: el map desat (té status) → primera imatge VISIBLE en forma MediaItem.
+        # Si només tenim images_metadata (ja generades), s'usa la primera.
+        media_metadata_dict = data.get('media_metadata') or {}
+        visible_keys = [
+            key for key, value in media_metadata_dict.items()
+            if ((value or {}).get('status') or 'visible') == 'visible'
+        ] if isinstance(media_metadata_dict, dict) else []
+
+        if visible_keys:
+            first_media_key = visible_keys[0]
+            media_service = r2_media_service.get_refugi_media_service()
+            item = media_service.generate_media_metadata_from_dict({first_media_key: media_metadata_dict[first_media_key]})
+            data['images_metadata'] = [item.to_dict()]
+            del data['media_metadata']
+        elif images_metadata and not media_metadata_dict:
             # Només mostrem la primera imatge
             data['images_metadata'] = [data['images_metadata'][0]]
             del data['media_metadata']
-            
         else:
-            # Obtenim la key de la primera imatge i generem la URL pre-signada
-            media_metadata_dict = data.get('media_metadata')
-            if media_metadata_dict:
-                first_media_key = next(iter(media_metadata_dict))
-                media_service = r2_media_service.get_refugi_media_service()
-                first_media_url = media_service.generate_presigned_url(first_media_key)
-                data['images_metadata'] = [RefugeMediaMetadata(first_media_key, first_media_url).to_dict()]
-                del data['media_metadata']
-            else:
-                data['images_metadata'] = None
+            data['images_metadata'] = None
 
         return data
 

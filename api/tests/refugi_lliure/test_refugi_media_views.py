@@ -46,7 +46,7 @@ class TestRefugiMediaViews:
         # Verificar
         assert response.status_code == status.HTTP_200_OK
         assert response.data['media'] == expected_media
-        controller_instance.get_refugi_media.assert_called_once_with('refugi_123', 3600)
+        controller_instance.get_refugi_media.assert_called_once_with('refugi_123', 3600, viewer_uid=None, is_admin=False)
 
     def test_get_media_list_not_found(self, factory, mock_controller):
         """Test obtenció de mitjans quan el refugi no existeix"""
@@ -150,7 +150,7 @@ class TestRefugiMediaViews:
         
         assert response.status_code == status.HTTP_200_OK
         assert response.data['success'] is True
-        controller_instance.delete_refugi_media.assert_called_once_with('refugi_123', 'some/key.jpg')
+        controller_instance.delete_refugi_media.assert_called_once_with('refugi_123', 'some/key.jpg', actor_uid=None)
 
     @patch('api.views.refugi_media_views.IsMediaUploader.has_permission')
     def test_delete_media_not_found(self, mock_permission, factory, mock_controller):

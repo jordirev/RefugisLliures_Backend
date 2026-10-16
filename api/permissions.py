@@ -372,3 +372,73 @@ class IsAnswerCreator(permissions.BasePermission):
         # Comprova si l'usuari és el creador de la resposta
         return answer.creator_uid == user_uid
 
+
+
+# ========== Edat i bloqueig (feature images) ==========
+
+from rest_framework import exceptions as drf_exceptions
+
+ERROR_CODE_AGE_NOT_CONFIRMED = 'age_not_confirmed'
+ERROR_CODE_USER_BLOCKED = 'user_blocked'
+
+
+def coded_error(code: str, message: str) -> dict:
+    """Cos d'error amb codi explícit: {error: code, code: code, message: text}"""
+    return {'error': code, 'code': code, 'message': message}
+
+
+def _request_uid(request):
+    uid = getattr(request, 'user_uid', None)
+    if not uid:
+        uid = getattr(getattr(request, 'user', None), 'uid', None)
+    return uid if isinstance(uid, str) else None
+
+
+def get_user_for_permissions(uid):
+    """Obté el model User (cache-first) per a les comprovacions d'edat i bloqueig"""
+    if not uid:
+        return None
+    from .daos.user_dao import UserDAO
+    return UserDAO().get_user_by_uid(uid)
+
+
+def _is_authenticated(request) -> bool:
+    return bool(request.user and getattr(request.user, 'is_authenticated', False))
+
+
+class IsNotBlocked(permissions.BasePermission):
+    """
+    Denega l'accés als usuaris bloquejats per moderació (users/{uid}.is_blocked).
+    Falla amb 403 {error: 'user_blocked'}.
+    """
+
+    def has_permission(self, request, view):
+        # L'autenticació la comprova IsAuthenticated (va abans a la llista); aquí només el bloqueig
+        uid = _request_uid(request)
+        if not uid:
+            return _is_authenticated(request)
+        user = get_user_for_permissions(uid)
+        if user is not None and getattr(user, 'is_blocked', False) is True:
+            raise drf_exceptions.PermissionDenied(coded_error(
+                ERROR_CODE_USER_BLOCKED,
+                "El teu compte està bloquejat per incompliment de les normes de la comunitat."
+            ))
+        return True
+
+
+class IsAgeConfirmed(permissions.BasePermission):
+    """
+    Requereix que l'usuari hagi confirmat que té 16 anys o més (users/{uid}.age_confirmed_at).
+    Falla amb 403 {error: 'age_not_confirmed'}.
+    """
+
+    def has_permission(self, request, view):
+        if not _is_authenticated(request):
+            return False
+        user = get_user_for_permissions(_request_uid(request))
+        if user is None or not getattr(user, 'age_confirmed_at', None):
+            raise drf_exceptions.PermissionDenied(coded_error(
+                ERROR_CODE_AGE_NOT_CONFIRMED,
+                "Cal confirmar l'edat abans de pujar o denunciar contingut."
+            ))
+        return True

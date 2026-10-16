@@ -11,7 +11,7 @@ from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 
 from ..controllers.refugi_lliure_controller import RefugiLliureController
-from ..permissions import IsMediaUploader
+from ..permissions import IsMediaUploader, IsNotBlocked, is_firebase_admin
 from ..utils.swagger_examples import EXAMPLE_REFUGI_MEDIA_LIST, EXAMPLE_REFUGI_MEDIA_UPLOAD_RESPONSE
 from ..utils.swagger_error_responses import (
     ERROR_400_INVALID_FILE_TYPE,
@@ -35,6 +35,12 @@ class RefugiMediaAPIView(APIView):
     permission_classes = [IsAuthenticated]
     parser_classes = [MultiPartParser, FormParser]
     
+    def get_permissions(self):
+        """GET: IsAuthenticated · POST (multipart antic): IsAuthenticated + IsNotBlocked"""
+        if self.request.method == 'POST':
+            return [IsAuthenticated(), IsNotBlocked()]
+        return [permission() for permission in self.permission_classes]
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.controller = RefugiLliureController()
@@ -42,7 +48,9 @@ class RefugiMediaAPIView(APIView):
     @swagger_auto_schema(
         tags=['Refuge Media'],
         operation_description=(
-            "Obté la llista de tots els mitjans (imatges i vídeos) d'un refugi amb URLs prefirmades. "
+            "Obté la llista de mitjans (imatges i vídeos) d'un refugi amb URLs prefirmades, en forma MediaItem "
+            "({key, url, thumb_url, media_type, width, height, blurhash, creator_uid, uploaded_at, taken_at, experience_id}). "
+            "Els mitjans ocults o retirats només els veuen el seu autor i els admins. "
             "\n\nRequereix autenticació."
         ),
         manual_parameters=[
@@ -74,7 +82,11 @@ class RefugiMediaAPIView(APIView):
             # URLs prefirmades vàlides per 1 hora
             expiration = 3600 
             
-            media_list, error = self.controller.get_refugi_media(id, expiration)
+            media_list, error = self.controller.get_refugi_media(
+                id, expiration,
+                viewer_uid=getattr(request, 'user_uid', None),
+                is_admin=is_firebase_admin(request)
+            )
             
             if error:
                 if "not found" in error.lower():
@@ -99,11 +111,13 @@ class RefugiMediaAPIView(APIView):
     @swagger_auto_schema(
         tags=['Refuge Media'],
         operation_description=(
-            "Puja una o més imatges/vídeos per a un refugi específic. "
-            "Els fitxers es guarden a R2 en la carpeta refugis-lliures/{refuge_id}/. "
+            "[LEGACY] Puja una o més imatges/vídeos per a un refugi (multipart). Es manté per a versions antigues "
+            "de l'app; el flux recomanat és POST /api/media/upload-intents/ + confirm. "
+            "Cada fitxer passa pel mateix processament (tipus real, neteja de metadades, WebP, clau UUID). "
+            "Els fitxers rebutjats surten a failed[] amb error ∈ invalid_type | too_large | processing_error | moderation_blocked. "
             "\n\nFormats acceptats:"
             "\n- Imatges: JPEG, JPG, PNG, WebP, HEIC, HEIF"
-            "\n- Vídeos: MP4, MOV, AVI, WebM"
+            "\n- Vídeos: MP4, MOV, WebM"
             "\n\nRequereix autenticació."
         ),
         manual_parameters=[
@@ -232,7 +246,7 @@ class RefugiMediaDeleteAPIView(APIView):
             decoded_key = unquote(key)
             
             # Delegar al controller
-            success, error = self.controller.delete_refugi_media(id, decoded_key)
+            success, error = self.controller.delete_refugi_media(id, decoded_key, actor_uid=getattr(request, 'user_uid', None))
             
             if error:
                 if "not found" in error.lower():

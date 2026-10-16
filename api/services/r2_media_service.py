@@ -44,7 +44,7 @@ class MediaPathStrategy(ABC):
 class RefugiMediaStrategy(MediaPathStrategy):
     """
     Estratègia per a mitjans (imatges i vídeos) de refugis.
-    Path: refugis-lliures/{refuge_id}/{filename}
+    Path: refugis-lliures/{refuge_id}/{uuid}.{ext} (+ {uuid}_thumb.webp)
     """
     
     ALLOWED_IMAGE_TYPES = [
@@ -86,22 +86,18 @@ class RefugiMediaStrategy(MediaPathStrategy):
             Objecte MediaMetadata amb URL prefirmada
         """
         key = next(iter(metadata_dict)) if metadata_dict else ''
-        key_dict = metadata_dict[key] if key else {}
+        key_dict = (metadata_dict[key] or {}) if key else {}
         url = service.generate_presigned_url(key, expiration) if key else ''
+        thumb_key = key_dict.get('thumb_key')
+        thumb_url = service.generate_presigned_url(thumb_key, expiration) if thumb_key else url
         
-        return RefugeMediaMetadata(
-            key=key,
-            url=url,
-            creator_uid=key_dict.get('creator_uid', ''),
-            uploaded_at=key_dict.get('uploaded_at', ''),
-            experience_id=key_dict.get('experience_id', None)
-        )
+        return RefugeMediaMetadata.from_stored(key, key_dict, url, thumb_url)
 
 
 class UserAvatarStrategy(MediaPathStrategy):
     """
     Estratègia per a avatars d'usuaris (només imatges).
-    Path: users-avatars/{uid}/{filename}
+    Path: users-avatars/{uid}/{uuid}.webp
     """
     
     ALLOWED_IMAGE_TYPES = [
@@ -137,12 +133,13 @@ class UserAvatarStrategy(MediaPathStrategy):
         """
         key = metadata_dict.get('key', '')
         url = service.generate_presigned_url(key, expiration) if key else ''
+        thumb_key = metadata_dict.get('thumb_key')
+        thumb_url = service.generate_presigned_url(thumb_key, expiration) if thumb_key else url
         
-        return MediaMetadata(
-            key=key,
-            url=url,
-            uploaded_at=metadata_dict.get('uploaded_at', '')
-        )
+        item = MediaMetadata.from_stored(key, metadata_dict, url, thumb_url)
+        item.media_type = 'image'
+        item.experience_id = None
+        return item
 
 
 class R2MediaService:
@@ -193,10 +190,10 @@ class R2MediaService:
                 f"Tipus permesos: {self.strategy.get_allowed_content_types()}"
             )
         
-        # Generar nom de fitxer si no es proporciona
-        if not filename:
-            extension = self._get_extension_from_content_type(content_type)
-            filename = f"{uuid.uuid4()}{extension}"
+        # La clau SEMPRE és un UUID (no previsible i sense col·lisions). El paràmetre
+        # filename es manté per compatibilitat però s'ignora (vegeu GOTCHAS).
+        extension = self._get_extension_from_content_type(content_type)
+        filename = f"{uuid.uuid4()}{extension}"
         
         # Construir path complet
         base_path = self.strategy.get_base_path(entity_id)
@@ -364,6 +361,124 @@ class R2MediaService:
             'failed': failed
         }
     
+    # ------------------------------------------------------------------
+    # Pujada directa (presigned PUT) i post-procés
+    # ------------------------------------------------------------------
+
+    def build_media_key(self, entity_id: str, extension: str, suffix: str = '', media_id: Optional[str] = None) -> str:
+        """
+        Construeix una clau UUID dins del path base de l'estratègia.
+        Ex: refugis-lliures/{id}/{uuid}.webp, refugis-lliures/{id}/{uuid}_thumb.webp
+        """
+        media_id = media_id or str(uuid.uuid4())
+        if extension and not extension.startswith('.'):
+            extension = f".{extension}"
+        return f"{self.strategy.get_base_path(entity_id)}/{media_id}{suffix}{extension}"
+
+    def generate_presigned_put_url(self, key: str, content_type: str, content_length: int,
+                                   expiration: int = 600) -> str:
+        """
+        Genera una URL PUT prefirmada. Es signen Content-Type i Content-Length, de manera
+        que R2 rebutja una pujada amb un altre tipus o una altra mida.
+
+        Raises:
+            Exception: si no es pot generar
+        """
+        try:
+            return self.client.generate_presigned_url(
+                'put_object',
+                Params={
+                    'Bucket': self.bucket_name,
+                    'Key': key,
+                    'ContentType': content_type,
+                    'ContentLength': int(content_length),
+                },
+                ExpiresIn=expiration,
+                HttpMethod='PUT',
+            )
+        except ClientError as e:
+            logger.error(f"Error generant URL PUT prefirmada: {str(e)}")
+            raise Exception(f"Error generant URL PUT prefirmada: {str(e)}")
+
+    def head_object(self, key: str) -> Optional[Dict]:
+        """
+        Retorna {'size': int, 'content_type': str} o None si l'objecte no existeix.
+
+        Raises:
+            ClientError: errors diferents de 404
+        """
+        try:
+            response = self.client.head_object(Bucket=self.bucket_name, Key=key)
+            return {
+                'size': int(response.get('ContentLength', 0)),
+                'content_type': response.get('ContentType'),
+            }
+        except ClientError as e:
+            code = str(e.response.get('Error', {}).get('Code', ''))
+            if code in ('404', 'NoSuchKey', 'NotFound'):
+                return None
+            logger.error(f"Error fent HEAD de {key}: {str(e)}")
+            raise
+
+    def get_object_bytes(self, key: str, max_bytes: Optional[int] = None) -> Optional[bytes]:
+        """
+        Descarrega un objecte. Si max_bytes està definit es llegeixen com a molt
+        max_bytes + 1 bytes (el caller detecta "massa gran"). None si no existeix.
+        """
+        try:
+            response = self.client.get_object(Bucket=self.bucket_name, Key=key)
+            body = response['Body']
+            if max_bytes is not None:
+                return body.read(max_bytes + 1)
+            return body.read()
+        except ClientError as e:
+            code = str(e.response.get('Error', {}).get('Code', ''))
+            if code in ('404', 'NoSuchKey', 'NotFound'):
+                return None
+            logger.error(f"Error descarregant {key}: {str(e)}")
+            raise
+
+    def put_bytes(self, key: str, data: bytes, content_type: str) -> None:
+        """
+        Puja bytes ja processats a una clau concreta.
+
+        Raises:
+            Exception: si falla la pujada
+        """
+        try:
+            self.client.put_object(
+                Bucket=self.bucket_name,
+                Key=key,
+                Body=data,
+                ContentType=content_type,
+                CacheControl='private, max-age=31536000, immutable',
+            )
+            logger.info(f"Fitxer pujat correctament: {key}")
+        except ClientError as e:
+            logger.error(f"Error pujant {key} a R2: {str(e)}")
+            raise Exception(f"Error pujant fitxer: {str(e)}")
+
+    def copy_object(self, source_key: str, dest_key: str) -> bool:
+        """Copia un objecte dins del bucket. Retorna True/False (no llança)."""
+        try:
+            self.client.copy_object(
+                Bucket=self.bucket_name,
+                Key=dest_key,
+                CopySource={'Bucket': self.bucket_name, 'Key': source_key},
+            )
+            return True
+        except ClientError as e:
+            logger.error(f"Error copiant {source_key} a {dest_key}: {str(e)}")
+            return False
+
+    def move_object(self, source_key: str, dest_key: str) -> bool:
+        """Copia i esborra l'origen. Retorna True només si la còpia ha anat bé."""
+        if not self.copy_object(source_key, dest_key):
+            return False
+        if not self.delete_file(source_key):
+            logger.warning(f"Copiat {source_key} a {dest_key} però no s'ha pogut esborrar l'origen")
+        return True
+
     def list_files(self, entity_id: str) -> List[str]:
         """
         Llista tots els fitxers d'una entitat (refugi o usuari).
@@ -467,3 +582,17 @@ def get_refugi_media_service() -> R2MediaService:
 def get_user_avatar_service() -> R2MediaService:
     """Retorna una instància del servei configurada per a avatars d'usuaris."""
     return R2MediaService(UserAvatarStrategy())
+
+
+QUARANTINE_PREFIX = 'quarantine'
+MODERATION_HOLD_PREFIX = 'moderation-hold'
+
+
+def quarantine_key(upload_id: str) -> str:
+    """Clau temporal d'una pujada directa (lifecycle de R2: 1 dia)."""
+    return f"{QUARANTINE_PREFIX}/{upload_id}"
+
+
+def moderation_hold_key(original_key: str) -> str:
+    """Clau d'evidència retinguda per moderació (accés restringit)."""
+    return f"{MODERATION_HOLD_PREFIX}/{original_key}"

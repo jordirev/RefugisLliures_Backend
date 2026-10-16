@@ -19,13 +19,15 @@ from ..serializers.user_serializer import (
     UserSerializer, 
     UserCreateSerializer, 
     UserUpdateSerializer,
+    AgeConfirmationSerializer,
 )
+from ..serializers.media_serializer import ModerationNoticeSerializer
 from ..serializers.refugi_lliure_serializer import (
     UserRefugiInfoResponseSerializer,
     UserRefugiInfoSerializer,
 )
 from ..serializers.renovation_serializer import RenovationSerializer
-from ..permissions import IsSameUser
+from ..permissions import IsSameUser, IsNotBlocked, coded_error
 from ..utils.swagger_examples import (
     EXAMPLE_REFUGI_INFO_COLOMERS,
     EXAMPLE_USER_BASIC,
@@ -41,6 +43,8 @@ from ..utils.swagger_examples import (
     EXAMPLE_USER_VISITED_REFUGI_INFO_RESPONSE_2,
     EXAMPLE_USER_VISITED_REFUGI_INFO_RESPONSE_3,
     EXAMPLE_AVATAR_UPLOAD_RESPONSE,
+    EXAMPLE_AGE_CONFIRMATION_REQUEST,
+    EXAMPLE_MODERATION_NOTICES,
 )
 from ..utils.swagger_error_responses import (
     ERROR_400_INVALID_DATA,
@@ -53,10 +57,12 @@ from ..utils.swagger_error_responses import (
     SUCCESS_204_NO_CONTENT,
     ERROR_400_INVALID_FILE_TYPE,
     ERROR_404_AVATAR_NOT_FOUND,
+    ERROR_403_UNDERAGE,
 )
 
 # Constants d'error per usar dins del codi (no Swagger)
 UID_NOT_FOUND_ERROR = "No autenticat"
+UNDERAGE_MESSAGE = "Cal tenir 16 anys o més per utilitzar l'aplicació"
 UID_NOT_FOUND_MESSAGE = "UID no trobat al token d'autenticació"
 INTERNAL_SERVER_ERROR = "Error intern del servidor"
 
@@ -81,7 +87,8 @@ class UsersCollectionAPIView(APIView):
             properties={
                 'username': openapi.Schema(type=openapi.TYPE_STRING, description="Nom d'usuari"),
                 'avatar': openapi.Schema(type=openapi.TYPE_STRING, format='uri', description="URL de l'avatar de l'usuari"),
-                'language': openapi.Schema(type=openapi.TYPE_STRING, description="Idioma preferit (ca, es, en, fr)", default='ca')
+                'language': openapi.Schema(type=openapi.TYPE_STRING, description="Idioma preferit (ca, es, en, fr)", default='ca'),
+                'birth_date': openapi.Schema(type=openapi.TYPE_STRING, format='date', description="Data de naixement YYYY-MM-DD (opcional). Si es dona i l'usuari té < 16 anys → 403 underage. No es desa: només age_confirmed_at i age_threshold.")
             },
             example=EXAMPLE_USER_CREATE_REQUEST
         ),
@@ -95,6 +102,7 @@ class UsersCollectionAPIView(APIView):
             ),
             400: ERROR_400_INVALID_DATA,
             401: ERROR_401_UNAUTHORIZED,
+            403: ERROR_403_UNDERAGE,
             409: ERROR_409_USER_EXISTS
         }
     )
@@ -121,6 +129,8 @@ class UsersCollectionAPIView(APIView):
             success, user, error_message = controller.create_user(serializer.validated_data, uid)
             
             if not success:
+                if error_message == 'underage':
+                    return Response(coded_error('underage', UNDERAGE_MESSAGE), status=status.HTTP_403_FORBIDDEN)
                 status_code = status.HTTP_409_CONFLICT if 'ja existeix' in error_message else status.HTTP_400_BAD_REQUEST
                 return Response({
                     'error': error_message
@@ -605,11 +615,19 @@ class UserAvatarAPIView(APIView):
     permission_classes = [IsAuthenticated, IsSameUser]
     parser_classes = [MultiPartParser, FormParser]
     
+    def get_permissions(self):
+        """PATCH: IsAuthenticated + IsSameUser + IsNotBlocked · DELETE: IsAuthenticated + IsSameUser"""
+        if self.request.method == 'PATCH':
+            return [IsAuthenticated(), IsSameUser(), IsNotBlocked()]
+        return [permission() for permission in self.permission_classes]
+
     @swagger_auto_schema(
         tags=['Users'],
         operation_description=(
-            "Puja o actualitza l'avatar d'un usuari. "
-            "El fitxer es guarda a R2 en la carpeta users-avatars/{uid}/. "
+            "[LEGACY] Puja o actualitza l'avatar d'un usuari (multipart). El flux recomanat és "
+            "POST /api/media/upload-intents/ amb target=avatar. "
+            "La imatge es recodifica a WebP 512 px sense metadades i es desa a users-avatars/{uid}/{uuid}.webp; "
+            "l'avatar antic s'esborra només quan el nou s'ha desat. Resposta en forma MediaItem. "
             "\n\nFormats acceptats: JPEG, JPG, PNG, WebP, HEIC, HEIF"
             "\n\nRequereix autenticació i només pot ser executat pel mateix usuari."
         ),
@@ -664,7 +682,10 @@ class UserAvatarAPIView(APIView):
                     return Response({
                         'error': error_message
                     }, status=status.HTTP_404_NOT_FOUND)
-                elif 'no permès' in error_message or 'Content type' in error_message:
+                elif 'moderation_blocked' in error_message:
+                    return Response(coded_error('moderation_blocked', error_message), status=status.HTTP_403_FORBIDDEN)
+                elif ('no permès' in error_message or 'Content type' in error_message
+                      or 'invalid_type' in error_message or 'too_large' in error_message):
                     return Response({
                         'error': error_message
                     }, status=status.HTTP_400_BAD_REQUEST)
@@ -728,3 +749,85 @@ class UserAvatarAPIView(APIView):
             return Response({
                 'error': 'Error eliminant l\'avatar'
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+# ========== AGE CONFIRMATION: /users/{uid}/age-confirmation/ ==========
+
+class UserAgeConfirmationAPIView(APIView):
+    """
+    PATCH: confirma que l'usuari té 16 anys o més (usuaris existents i registres amb Google).
+    Només es desa age_confirmed_at i age_threshold; la data de naixement es descarta.
+    """
+    permission_classes = [IsAuthenticated, IsSameUser]
+
+    @swagger_auto_schema(
+        tags=['Users'],
+        operation_description=(
+            "Confirma l'edat de l'usuari a partir de la data de naixement (YYYY-MM-DD). "
+            "Amb < 16 anys retorna 403 {error: 'underage'}. La data de naixement NO es desa "
+            "(minimització): només age_confirmed_at i age_threshold=16. El GET d'usuari exposa age_confirmed."
+        ),
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            required=['birth_date'],
+            properties={'birth_date': openapi.Schema(type=openapi.TYPE_STRING, format='date')},
+            example=EXAMPLE_AGE_CONFIRMATION_REQUEST
+        ),
+        responses={
+            200: openapi.Response(description='Edat confirmada', schema=UserSerializer,
+                                  examples={'application/json': EXAMPLE_USER_WITH_DATA}),
+            400: ERROR_400_INVALID_DATA,
+            401: ERROR_401_UNAUTHORIZED,
+            403: ERROR_403_UNDERAGE,
+            404: ERROR_404_USER_NOT_FOUND,
+        }
+    )
+    def patch(self, request, uid):
+        try:
+            serializer = AgeConfirmationSerializer(data=request.data)
+            if not serializer.is_valid():
+                return Response({'error': ERROR_400_INVALID_DATA, 'details': serializer.errors},
+                                status=status.HTTP_400_BAD_REQUEST)
+            success, user, error_message = UserController().confirm_age(uid, serializer.validated_data['birth_date'])
+            if not success:
+                if error_message == 'underage':
+                    return Response(coded_error('underage', UNDERAGE_MESSAGE), status=status.HTTP_403_FORBIDDEN)
+                if 'no trobat' in error_message:
+                    return Response({'error': error_message}, status=status.HTTP_404_NOT_FOUND)
+                return Response({'error': error_message}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response(UserSerializer(user).data, status=status.HTTP_200_OK)
+        except Exception as e:
+            logger.error(f"Error en age_confirmation: {str(e)}")
+            return Response({'error': INTERNAL_SERVER_ERROR}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+# ========== MODERATION NOTICES: /users/{uid}/moderation-notices/ ==========
+
+class UserModerationNoticesAPIView(APIView):
+    """GET: avisos de moderació de l'usuari (declaració de motius, art. 17 DSA)"""
+    permission_classes = [IsAuthenticated, IsSameUser]
+
+    @swagger_auto_schema(
+        tags=['Users'],
+        operation_description=(
+            "Llista els avisos de moderació de l'usuari (més recents primer): ocultacions cautelars, "
+            "retirades, strikes, bloquejos i restauracions, amb la motivació i la via de recurs."
+        ),
+        responses={
+            200: openapi.Response(description='Avisos de moderació',
+                                  examples={'application/json': EXAMPLE_MODERATION_NOTICES}),
+            401: ERROR_401_UNAUTHORIZED,
+            403: ERROR_403_FORBIDDEN,
+            500: ERROR_500_INTERNAL_ERROR,
+        }
+    )
+    def get(self, request, uid):
+        try:
+            success, notices, error_message = UserController().get_moderation_notices(uid)
+            if not success:
+                return Response({'error': error_message}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response({'notices': ModerationNoticeSerializer(notices, many=True).data},
+                            status=status.HTTP_200_OK)
+        except Exception as e:
+            logger.error(f"Error en moderation_notices: {str(e)}")
+            return Response({'error': INTERNAL_SERVER_ERROR}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

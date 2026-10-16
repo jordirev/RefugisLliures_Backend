@@ -10,6 +10,7 @@ from ..daos.refugi_lliure_dao import RefugiLliureDAO
 from ..daos.user_dao import UserDAO
 from ..models.refugi_lliure import Refugi, RefugiCoordinates, RefugiSearchFilters
 from ..services import r2_media_service
+from ..services import audit_log_service as audit
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +22,18 @@ class RefugiLliureController:
         self.user_dao = UserDAO()
         self.media_service = r2_media_service.get_refugi_media_service()
     
-    def get_refugi_by_id(self, refuge_id: str, is_authenticated: bool) -> Tuple[Optional[Refugi], Optional[str]]:
+    @staticmethod
+    def filter_media_for_viewer(items, viewer_uid: Optional[str] = None, is_admin: bool = False):
+        """Treu els mitjans amb status ≠ visible, llevat que qui consulta en sigui l'autor o un admin"""
+        if not items:
+            return items
+        return [
+            item for item in items
+            if not hasattr(item, 'is_visible_to') or item.is_visible_to(viewer_uid, is_admin)
+        ]
+
+    def get_refugi_by_id(self, refuge_id: str, is_authenticated: bool, viewer_uid: Optional[str] = None,
+                         is_admin: bool = False) -> Tuple[Optional[Refugi], Optional[str]]:
         """
         Obtenir un refugi per ID
         Args:
@@ -40,6 +52,8 @@ class RefugiLliureController:
             if not is_authenticated:
                 refugi.visitors = []
                 refugi.images_metadata = []
+            else:
+                refugi.images_metadata = self.filter_media_for_viewer(refugi.images_metadata, viewer_uid, is_admin)
             
             return refugi, None
             
@@ -47,7 +61,8 @@ class RefugiLliureController:
             logger.error(f'Error in get_refugi_by_id: {str(e)}')
             return None, f"Internal server error: {str(e)}"
     
-    def search_refugis(self, query_params: Dict[str, Any], is_authenticated: bool) -> Tuple[Optional[Dict[str, Any]], Optional[str]]:
+    def search_refugis(self, query_params: Dict[str, Any], is_authenticated: bool, viewer_uid: Optional[str] = None,
+                       is_admin: bool = False) -> Tuple[Optional[Dict[str, Any]], Optional[str]]:
         """
         Cercar refugis amb filtres
         Args:
@@ -78,6 +93,10 @@ class RefugiLliureController:
                 for refugi in refugis_results:
                     refugi.visitors = []
                     refugi.images_metadata = []
+            elif has_filters:
+                for refugi in refugis_results:
+                    refugi.images_metadata = self.filter_media_for_viewer(
+                        getattr(refugi, 'images_metadata', None), viewer_uid, is_admin)
             
             # El DAO ja retorna models o dades raw segons calgui
             # Necessitem crear resposta segons el format
@@ -126,7 +145,8 @@ class RefugiLliureController:
             }
             return response, f"Health check failed: {str(e)}"
     
-    def get_refugi_media(self, refugi_id: str, expiration: int = 3600) -> Tuple[Optional[List[Dict[str, Any]]], Optional[str]]:
+    def get_refugi_media(self, refugi_id: str, expiration: int = 3600, viewer_uid: Optional[str] = None,
+                         is_admin: bool = False) -> Tuple[Optional[List[Dict[str, Any]]], Optional[str]]:
         """
         Obté la llista de tots els mitjans d'un refugi amb URLs prefirmades
         
@@ -138,11 +158,18 @@ class RefugiLliureController:
         """
         try:
             # Obtenir media_metadata de Firestore
-            images_metadata_list = self.refugi_dao.get_media_metadata(refugi_id)
+            if viewer_uid is None and not is_admin:
+                images_metadata_list = self.refugi_dao.get_media_metadata(refugi_id)
+            else:
+                images_metadata_list = self.refugi_dao.get_media_metadata(refugi_id, viewer_uid=viewer_uid, is_admin=is_admin)
             
             if images_metadata_list is None:
                 # Refugi no existeix
                 return None, "Refugi not found"
+
+            # Registre d'accés a mitjans (art. 32 RGPD)
+            audit.audit_log_service.log(viewer_uid, audit.ACTION_MEDIA_LIST, 'refuge', refugi_id,
+                                        {'count': len(images_metadata_list)})
             
             return images_metadata_list, None
             
@@ -152,7 +179,9 @@ class RefugiLliureController:
     
     def upload_refugi_media(self, refugi_id: str, files: List[Any], creator_uid: str, experience_id: str = None, uploaded_at: str = None) -> Tuple[Optional[Dict[str, Any]], Optional[str]]:
         """
-        Puja mitjans per a un refugi
+        Puja mitjans per a un refugi (camí multipart antic, es manté per compatibilitat).
+        Cada fitxer passa pel MATEIX processament que el flux nou (upload-intents/confirm):
+        tipus real per magic bytes, límit de mida, recodificació sense metadades i claus UUID.
         
         Args:
             refugi_id: ID del refugi
@@ -161,74 +190,62 @@ class RefugiLliureController:
             experience_id: ID de l'experiència associada (opcional)
             uploaded_at: Data i hora de pujada (ISO 8601 format, opcional) Si no es proporciona, es genera la data actual
             
-        Returns: (Diccionari amb uploaded i failed o None, missatge d'error o None)
+        Returns: (Diccionari amb uploaded [MediaItem] i failed [{filename, error}] o None, missatge d'error o None)
         """
         try:
             # Verificar que el refugi existeix
             if not self.refugi_dao.refugi_exists(refugi_id):
                 return None, "Refugi not found"
             
+            from .media_upload_controller import MediaUploadController
+            from ..services.image_processing_service import (
+                kind_for_content_type, max_bytes_for_kind, VIDEO_MAX_BYTES, REASON_TOO_LARGE,
+                REASON_PROCESSING_ERROR,
+            )
+            upload_controller = MediaUploadController()
+
+            if uploaded_at is None:
+                uploaded_at = get_madrid_now().isoformat()
+
             uploaded = []
             failed = []
-            media_metadata_dict = {}
             
             for file in files:
+                filename = getattr(file, 'name', 'file')
                 try:
-                    # Obtenir content type
-                    content_type = file.content_type
+                    content_type = getattr(file, 'content_type', None)
+                    kind = kind_for_content_type(content_type)
+                    limit = max_bytes_for_kind(kind) if kind else VIDEO_MAX_BYTES
+                    data = file.read(limit + 1)
+                    if len(data) > limit:
+                        failed.append({'filename': filename, 'error': REASON_TOO_LARGE})
+                        continue
                     
-                    # Pujar fitxer
-                    result = self.media_service.upload_file(
-                        file_content=file,
-                        entity_id=refugi_id,
-                        content_type=content_type,
-                        filename=file.name
+                    item, reason = upload_controller.process_and_publish(
+                        data=data,
+                        declared_content_type=content_type,
+                        target='experience' if experience_id else 'refuge',
+                        uid=creator_uid,
+                        refuge_id=refugi_id,
+                        experience_id=experience_id,
+                        uploaded_at=uploaded_at,
                     )
+                    if item is None:
+                        failed.append({'filename': filename, 'error': reason or REASON_PROCESSING_ERROR})
+                    else:
+                        uploaded.append(item)
                     
-                    # Crear metadades del mitjà
-                    if uploaded_at is None:
-                        uploaded_at = get_madrid_now().isoformat()
-                    
-                    # Utilitzar la key com a clau del diccionari
-                    key = result['key']
-                    metadata = {
-                        'creator_uid': creator_uid,
-                        'uploaded_at': uploaded_at,
-                        'experience_id': experience_id
-                    }
-                    media_metadata_dict[key] = metadata
-
-                    # Generar l'objecte RefugeMediaMetadata per a la resposta
-                    # Passar només l'entrada actual amb la key i metadata
-                    single_entry = {key: metadata}
-                    image_metadata = self.media_service.generate_media_metadata_from_dict(single_entry)
-                    
-                    uploaded.append(image_metadata.to_dict())  
-                    
-                except ValueError as e:
-                    failed.append({
-                        'filename': file.name,
-                        'error': str(e)
-                    })
                 except Exception as e:
-                    logger.error(f"Error pujant fitxer {file.name}: {str(e)}")
+                    logger.error(f"Error pujant fitxer {filename}: {str(e)}")
                     failed.append({
-                        'filename': file.name,
-                        'error': 'Error intern pujant el fitxer'
+                        'filename': filename,
+                        'error': REASON_PROCESSING_ERROR
                     })
             
-            # Actualitzar Firestore amb les noves media_metadata
-            if media_metadata_dict:
-                success = self.refugi_dao.add_media_metadata(refugi_id, media_metadata_dict)
-                if not success:
-                    logger.warning(f"No s'han pogut guardar les metadata a Firestore per refugi {refugi_id}")
-                    # Si no s'ha pogut guardar, eliminar els fitxers pujats
-                    self.media_service.delete_files([item['key'] for item in uploaded])
-                    return None, "Error intern guardant les metadades a Firestore"
-                
-                # Afegir les keys de les fotos pujades a l'usuari
-                uploaded_keys = [item['key'] for item in uploaded]
-                self.user_dao.add_uploaded_photos_keys(creator_uid, uploaded_keys)
+            if uploaded:
+                audit.audit_log_service.log(creator_uid, audit.ACTION_UPLOAD_LEGACY, 'refuge', refugi_id,
+                                            {'keys': [item['key'] for item in uploaded],
+                                             'experience_id': experience_id})
             
             return {
                 'uploaded': uploaded,
@@ -239,7 +256,7 @@ class RefugiLliureController:
             logger.error(f"Error pujant mitjans al refugi {refugi_id}: {str(e)}")
             return None, f"Internal server error: {str(e)}"
     
-    def delete_refugi_media(self, refugi_id: str, media_key: str) -> Tuple[bool, Optional[str]]:
+    def delete_refugi_media(self, refugi_id: str, media_key: str, actor_uid: Optional[str] = None) -> Tuple[bool, Optional[str]]:
         """
         Elimina un mitjà d'un refugi
         
@@ -263,23 +280,30 @@ class RefugiLliureController:
                 experience_dao = ExperienceDAO()
                 experience_dao.remove_media_key(experience_id, media_key)
             
-            # Eliminar fitxer de R2
+            # Eliminar fitxer de R2 (delete_file retorna False, no llança: cal comprovar-ho)
             try:
-                self.media_service.delete_file(media_key)
+                deleted = self.media_service.delete_file(media_key)
             except Exception as e:
                 logger.error(f"Error eliminant fitxer de R2: {str(e)}")
+                deleted = False
 
-                # Restore Firestore media_metadata
+            if not deleted:
+                # Rollback real: restaurar Firestore
                 logger.info(f"Restoring Firestore media metadata for {media_key}")
                 self.refugi_dao.add_media_metadata(refugi_id, {media_key: metadata_backup})
-                
-                # Restore experience media_key if needed
                 if experience_id:
                     from ..daos.experience_dao import ExperienceDAO
                     experience_dao = ExperienceDAO()
                     experience_dao.add_media_keys_to_experience(experience_id, [media_key])
-
                 return False, "Error deleting file from storage"
+
+            # Miniatura (si n'hi ha): si falla només queda un fitxer orfe
+            thumb_key = metadata_backup.get('thumb_key') if metadata_backup else None
+            if thumb_key and not self.media_service.delete_file(thumb_key):
+                logger.warning(f"Miniatura òrfena a R2: {thumb_key}")
+
+            audit.audit_log_service.log(actor_uid, audit.ACTION_MEDIA_DELETE, 'media', media_key,
+                                        {'refuge_id': refugi_id})
             
             # Eliminar la key de l'array de fotos pujades per l'usuari
             # Obtenir creator_uid de les metadades
@@ -324,6 +348,12 @@ class RefugiLliureController:
 
             deleted_keys = result['deleted']
             failed_keys = result['failed']
+
+            # Miniatures dels mitjans esborrats (si fallen només queden orfes)
+            for metadata in metadata_backup_list:
+                thumb_key = metadata.get('thumb_key')
+                if thumb_key and metadata['key'] in deleted_keys and not self.media_service.delete_file(thumb_key):
+                    logger.warning(f"Miniatura òrfena a R2: {thumb_key}")
 
             # Eliminar keys de les experiències
             if experiences_to_update:

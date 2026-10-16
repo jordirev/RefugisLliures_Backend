@@ -16,6 +16,9 @@ from ..utils.timezone_utils import get_madrid_now
 
 logger = logging.getLogger(__name__)
 
+# Error de propietat (la vista el tradueix a 403 {error: 'not_owner'})
+ERROR_NOT_OWNER = "not_owner"
+
 
 class ExperienceController:
     """Controller per a la gestió d'experiències"""
@@ -27,7 +30,34 @@ class ExperienceController:
         self.user_dao = UserDAO()
         self.media_service = r2_media_service.get_refugi_media_service()
     
-    def get_experiences_by_refuge(self, refuge_id: str) -> Tuple[Optional[List[Dict[str, Any]]], Optional[str]]:
+    def _attach_media_items(self, experiences: List[Experience], refuge_id: str,
+                            viewer_uid: Optional[str] = None, is_admin: bool = False) -> None:
+        """
+        Substitueix images_metadata de cada experiència per MediaItems complets (thumb_url,
+        blurhash...) a partir del map media_metadata del refugi, i amaga els mitjans amb
+        status ≠ visible (llevat de l'autor i dels admins).
+        """
+        try:
+            raw = self.refugi_dao.get_raw_media_metadata(refuge_id)
+        except Exception as e:
+            logger.warning(f"No s'han pogut obtenir les metadades del refugi {refuge_id}: {e}")
+            return
+        if not isinstance(raw, dict):
+            return
+        for experience in experiences or []:
+            if not experience or not getattr(experience, 'media_keys', None):
+                continue
+            items = []
+            for key in experience.media_keys:
+                if key not in raw:
+                    continue  # el mitjà ja no existeix al refugi
+                item = self.media_service.generate_media_metadata_from_dict({key: raw[key]})
+                if item.is_visible_to(viewer_uid, is_admin):
+                    items.append(item)
+            experience.images_metadata = items
+
+    def get_experiences_by_refuge(self, refuge_id: str, viewer_uid: Optional[str] = None,
+                                  is_admin: bool = False) -> Tuple[Optional[List[Dict[str, Any]]], Optional[str]]:
         """
         Obté totes les experiències d'un refugi amb URLs prefirmades
         
@@ -44,6 +74,7 @@ class ExperienceController:
             
             # Obtenir experiències del DAO (ja genera URLs prefirmades)
             experiences = self.experience_dao.get_experiences_by_refuge_id(refuge_id)
+            self._attach_media_items(experiences, refuge_id, viewer_uid, is_admin)
 
             return experiences, None
             
@@ -123,6 +154,8 @@ class ExperienceController:
             
             # Obtenir l'experiència creada amb totes les dades
             experience = self.experience_dao.get_experience_by_id(experience.id)
+            if experience:
+                self._attach_media_items([experience], refuge_id, creator_uid)
             return experience, upload_result, None
             
         except Exception as e:
@@ -133,7 +166,9 @@ class ExperienceController:
         self,
         experience_id: str,
         comment: Optional[str] = None,
-        files: Optional[List[Any]] = None
+        files: Optional[List[Any]] = None,
+        requester_uid: Optional[str] = None,
+        is_admin: bool = False
     ) -> Tuple[Optional[Dict[str, Any]], Optional[Dict[str, List[Any]]], Optional[str]]:
         """
         Actualitza una experiència
@@ -152,6 +187,10 @@ class ExperienceController:
             experience = self.experience_dao.get_experience_by_id(experience_id)
             if not experience:
                 return None, None, "Experience not found"
+
+            # Comprovació de propietat (has_object_permission no s'executa mai: es fa aquí)
+            if requester_uid is not None and not is_admin and experience.creator_uid != requester_uid:
+                return None, None, ERROR_NOT_OWNER
             
             modified_at = get_madrid_now().isoformat()
 
@@ -187,13 +226,16 @@ class ExperienceController:
             
             # Obtenir l'experiència actualitzada
             updated_experience = self.experience_dao.get_experience_by_id(experience_id)
+            if updated_experience:
+                self._attach_media_items([updated_experience], experience.refuge_id, requester_uid, is_admin)
             return updated_experience, upload_result, None
             
         except Exception as e:
             logger.error(f"Error actualitzant experiència {experience_id}: {str(e)}")
             return None, None, f"Internal server error: {str(e)}"
     
-    def delete_experience(self, experience_id: str) -> Tuple[bool, Optional[str]]:
+    def delete_experience(self, experience_id: str, requester_uid: Optional[str] = None,
+                          is_admin: bool = False) -> Tuple[bool, Optional[str]]:
         """
         Elimina una experiència i tots els seus mitjans
         
@@ -208,6 +250,10 @@ class ExperienceController:
             experience = self.experience_dao.get_experience_by_id(experience_id)
             if not experience:
                 return False, "Experience not found"
+
+            # Comprovació de propietat (has_object_permission no s'executa mai: es fa aquí)
+            if requester_uid is not None and not is_admin and experience.creator_uid != requester_uid:
+                return False, ERROR_NOT_OWNER
             
             # Eliminar fitxers del refugi associats amb l'experiencia
             if experience.media_keys and len(experience.media_keys) > 0:

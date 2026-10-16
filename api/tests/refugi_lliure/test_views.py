@@ -202,7 +202,7 @@ class TestRefugiViews:
         # Configurar el mock per retornar refugi sense visitants quan include_visitors=False
         mock_controller = mock_controller_class.return_value
         
-        def get_refugi_side_effect(refuge_id, is_authenticated=False):
+        def get_refugi_side_effect(refuge_id, is_authenticated=False, **kwargs):
             refugi_copy = Refugi.from_dict(sample_refugi.to_dict())
             if not is_authenticated:
                 refugi_copy.visitors = []
@@ -224,7 +224,7 @@ class TestRefugiViews:
         # Verificar que els visitants NO estan en la resposta o estan buits
         assert response.data.get('visitors', []) == []
         # Verificar que el controller es va cridar amb is_authenticated=False
-        mock_controller.get_refugi_by_id.assert_called_once_with('refugi_001', is_authenticated=False)
+        mock_controller.get_refugi_by_id.assert_called_once_with('refugi_001', is_authenticated=False, viewer_uid=None, is_admin=False)
     
     @patch('api.views.refugi_lliure_views.RefugiLliureController')
     def test_get_refugi_detail_with_auth_includes_visitors(self, mock_controller_class, sample_refugi, db):
@@ -235,7 +235,7 @@ class TestRefugiViews:
         # Configurar el mock per retornar refugi amb visitants quan include_visitors=True
         mock_controller = mock_controller_class.return_value
         
-        def get_refugi_side_effect(refuge_id, is_authenticated=False):
+        def get_refugi_side_effect(refuge_id, is_authenticated=False, **kwargs):
             refugi_copy = Refugi.from_dict(sample_refugi.to_dict())
             if not is_authenticated:
                 refugi_copy.visitors = []
@@ -262,7 +262,7 @@ class TestRefugiViews:
         assert len(response.data['visitors']) == 3
         assert response.data['visitors'] == ['uid_001', 'uid_002', 'uid_003']
         # Verificar que el controller es va cridar amb is_authenticated=True
-        mock_controller.get_refugi_by_id.assert_called_once_with('refugi_001', is_authenticated=True)
+        mock_controller.get_refugi_by_id.assert_called_once_with('refugi_001', is_authenticated=True, viewer_uid=None, is_admin=False)
     
     @patch('api.views.refugi_lliure_views.RefugiLliureController')
     def test_get_refugis_collection_no_filters(self, mock_controller_class):

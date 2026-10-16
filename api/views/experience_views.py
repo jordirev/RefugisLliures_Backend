@@ -6,12 +6,12 @@ from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework.parsers import MultiPartParser, FormParser
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 
-from ..controllers.experience_controller import ExperienceController
-from ..permissions import IsExperienceCreator
+from ..controllers.experience_controller import ExperienceController, ERROR_NOT_OWNER
+from ..permissions import IsExperienceCreator, IsNotBlocked, is_firebase_admin, coded_error
 from ..serializers.experience_serializer import (
     ExperienceCreateSerializer,
     ExperienceUpdateSerializer,
@@ -29,7 +29,13 @@ class ExperienceListAPIView(APIView):
     POST /api/experiences/
     """
     permission_classes = [IsAuthenticated]
-    parser_classes = [MultiPartParser, FormParser]
+    parser_classes = [JSONParser, MultiPartParser, FormParser]
+
+    def get_permissions(self):
+        """GET: IsAuthenticated · POST: IsAuthenticated + IsNotBlocked"""
+        if self.request.method == 'POST':
+            return [IsAuthenticated(), IsNotBlocked()]
+        return [permission() for permission in self.permission_classes]
     
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -72,7 +78,11 @@ class ExperienceListAPIView(APIView):
                     status=status.HTTP_400_BAD_REQUEST
                 )
             
-            experiences, error = self.controller.get_experiences_by_refuge(refuge_id)
+            experiences, error = self.controller.get_experiences_by_refuge(
+                refuge_id,
+                viewer_uid=getattr(request, 'user_uid', None),
+                is_admin=is_firebase_admin(request)
+            )
             
             if error:
                 if "not found" in error.lower():
@@ -102,32 +112,20 @@ class ExperienceListAPIView(APIView):
         tags=['Refuge Experiences'],
         operation_description=(
             "Crea una nova experiència per a un refugi. "
-            "S'envia el comentari i opcionalment fitxers mitjançant multipart/form-data. "
+            "Accepta JSON {refuge_id, comment} (flux nou: després es pugen els fitxers amb "
+            "POST /api/media/upload-intents/ i target=experience) o multipart/form-data amb `files` "
+            "(compatibilitat; els fitxers passen pel mateix processament del servidor). "
             "\n\nRequereix autenticació."
         ),
-        manual_parameters=[
-            openapi.Parameter(
-                'refuge_id',
-                openapi.IN_FORM,
-                description="ID del refugi",
-                type=openapi.TYPE_STRING,
-                required=True
-            ),
-            openapi.Parameter(
-                'comment',
-                openapi.IN_FORM,
-                description="Comentari de l'experiència",
-                type=openapi.TYPE_STRING,
-                required=True
-            ),
-            openapi.Parameter(
-                'files',
-                openapi.IN_FORM,
-                description='Fitxers a pujar (imatges o vídeos)',
-                type=openapi.TYPE_FILE,
-                required=False
-            )
-        ],
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            required=['refuge_id', 'comment'],
+            properties={
+                'refuge_id': openapi.Schema(type=openapi.TYPE_STRING, description="ID del refugi"),
+                'comment': openapi.Schema(type=openapi.TYPE_STRING, description="Comentari de l'experiència"),
+            },
+            example={'refuge_id': 'refugi_colomers', 'comment': 'Refugi net i amb llenya.'}
+        ),
         responses={
             201: openapi.Response(
                 description="Experiència creada correctament",
@@ -221,9 +219,10 @@ class ExperienceDetailAPIView(APIView):
     """
     Gestiona una experiència específica.
     PATCH + DELETE /api/experiences/{experience_id}/
+    La propietat es comprova al controller (403 not_owner; els admins hi tenen accés).
     """
-    permission_classes = [IsAuthenticated, IsExperienceCreator]
-    parser_classes = [MultiPartParser, FormParser]
+    permission_classes = [IsAuthenticated, IsNotBlocked, IsExperienceCreator]
+    parser_classes = [JSONParser, MultiPartParser, FormParser]
     
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -248,21 +247,14 @@ class ExperienceDetailAPIView(APIView):
                 type=openapi.TYPE_STRING,
                 required=True
             ),
-            openapi.Parameter(
-                'comment',
-                openapi.IN_FORM,
-                description="Nou comentari de l'experiència (opcional)",
-                type=openapi.TYPE_STRING,
-                required=False
-            ),
-            openapi.Parameter(
-                'files',
-                openapi.IN_FORM,
-                description='Nous fitxers a pujar (opcional)',
-                type=openapi.TYPE_FILE,
-                required=False
-            )
         ],
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            properties={
+                'comment': openapi.Schema(type=openapi.TYPE_STRING, description="Nou comentari (opcional)"),
+            },
+            example={'comment': 'Actualització: ja no hi ha llenya.'}
+        ),
         responses={
             200: openapi.Response(
                 description="Experiència actualitzada correctament",
@@ -298,10 +290,15 @@ class ExperienceDetailAPIView(APIView):
             result, upload_result, error = self.controller.update_experience(
                 experience_id=experience_id,
                 comment=comment,
-                files=files if files else None
+                files=files if files else None,
+                requester_uid=getattr(request, 'user_uid', None) or getattr(request.user, 'uid', None),
+                is_admin=is_firebase_admin(request)
             )
             
             if error:
+                if error == ERROR_NOT_OWNER:
+                    return Response(coded_error('not_owner', "No ets el creador d'aquesta experiència"),
+                                    status=status.HTTP_403_FORBIDDEN)
                 if "not found" in error.lower():
                     return Response(
                         {'error': error},
@@ -366,9 +363,16 @@ class ExperienceDetailAPIView(APIView):
         Elimina una experiència i tots els seus mitjans.
         """
         try:
-            success, error = self.controller.delete_experience(experience_id)
+            success, error = self.controller.delete_experience(
+                experience_id,
+                requester_uid=getattr(request, 'user_uid', None) or getattr(request.user, 'uid', None),
+                is_admin=is_firebase_admin(request)
+            )
             
             if error:
+                if error == ERROR_NOT_OWNER:
+                    return Response(coded_error('not_owner', "No ets el creador d'aquesta experiència"),
+                                    status=status.HTTP_403_FORBIDDEN)
                 if "not found" in error.lower():
                     return Response(
                         {'error': error},
