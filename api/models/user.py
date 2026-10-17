@@ -19,7 +19,7 @@ class User:
     """Model per representar un usuari"""
     uid: str
     username: str
-    avatar_metadata: MediaMetadata = None  # Metadades amb URLs prefirmades (generades dinàmicament) en forma MediaItem
+    avatar_metadata: Optional[MediaMetadata] = None  # Metadades amb URLs prefirmades (generades dinàmicament) en forma MediaItem
     language: str = 'ca'
     favourite_refuges: Optional[list] = None # Llista d'IDs de refugis preferits
     visited_refuges: Optional[list] = None # Llista d'IDs de refugis visitats
