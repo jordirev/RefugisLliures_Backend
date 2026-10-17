@@ -452,3 +452,42 @@ def assert_refugi_equals():
         assert refugi1.altitude == refugi2.altitude
         assert refugi1.places == refugi2.places
     return _assert_equals
+
+
+# ============= AÏLLAMENT (feature images) =============
+# 1) Cap test pot inicialitzar Firebase real (env/ pot contenir credencials de producció).
+# 2) El registre d'auditoria es mocka per defecte (marker `real_audit_log` per provar-lo).
+# 3) Les comprovacions IsNotBlocked / IsAgeConfirmed retornen un usuari confirmat i no
+#    bloquejat per defecte (marker `real_permissions` per provar-les).
+
+@pytest.fixture(autouse=True)
+def _block_real_firestore():
+    from api.services.firestore_service import FirestoreService
+
+    def _forbidden(self):
+        raise RuntimeError("Els tests no poden connectar-se a Firestore real: mocka FirestoreService")
+
+    with patch.object(FirestoreService, '_initialize_firebase', _forbidden), \
+            patch('firebase_admin.get_app', side_effect=ValueError('no app')):
+        FirestoreService._db = None
+        yield
+
+
+@pytest.fixture(autouse=True)
+def _mock_audit_log(request):
+    if request.node.get_closest_marker('real_audit_log'):
+        yield None
+        return
+    with patch('api.services.audit_log_service.AuditLogService.log', return_value=True) as mock_log:
+        yield mock_log
+
+
+@pytest.fixture(autouse=True)
+def _mock_permission_user_lookup(request):
+    if request.node.get_closest_marker('real_permissions'):
+        yield None
+        return
+    user = User(uid='perm_user', username='perm', age_confirmed_at='2025-01-01T00:00:00+01:00',
+                age_threshold=16, is_blocked=False)
+    with patch('api.permissions.get_user_for_permissions', return_value=user) as mock_lookup:
+        yield mock_lookup

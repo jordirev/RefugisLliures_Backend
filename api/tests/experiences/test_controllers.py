@@ -52,7 +52,7 @@ class TestExperienceController:
         mock_exp_dao.get_experience_by_id.return_value = mock_exp
         
         controller = ExperienceController()
-        experience, upload_result, error = controller.create_experience("ref_1", "user_1", "Comment")
+        experience, error = controller.create_experience("ref_1", "user_1", "Comment")
         
         assert error is None
         assert experience.id == "exp_1"
@@ -130,31 +130,16 @@ class TestExperienceControllerExtended:
         
         # Refuge not found
         mock_refuge_dao.refugi_exists.return_value = False
-        exp, upload, error = ctrl.create_experience("r1", "u1", "comment")
+        exp, error = ctrl.create_experience("r1", "u1", "comment")
         assert exp is None
         assert "not found" in error
         
         # DAO failure
         mock_refuge_dao.refugi_exists.return_value = True
         mock_exp_dao.create_experience.return_value = None
-        exp, upload, error = ctrl.create_experience("r1", "u1", "comment")
+        exp, error = ctrl.create_experience("r1", "u1", "comment")
         assert exp is None
         assert "Error creating experience" in error
-        
-        # Media upload failure
-        mock_exp = MagicMock(spec=Experience)
-        mock_exp.id = "e1"
-        mock_exp_dao.create_experience.return_value = mock_exp
-        
-        with patch.object(ctrl, '_upload_experience_media_to_refuge', return_value=(None, "Upload Error")):
-            exp, upload, error = ctrl.create_experience("r1", "u1", "comment", files=[MagicMock()])
-            assert error == "Upload Error"
-            
-        # add_media_keys failure
-        with patch.object(ctrl, '_upload_experience_media_to_refuge', return_value=({'uploaded': [{'key': 'k1'}]}, None)):
-            mock_exp_dao.add_media_keys_to_experience.return_value = (False, "Add Keys Error")
-            exp, upload, error = ctrl.create_experience("r1", "u1", "comment", files=[MagicMock()])
-            assert "Error actualitzant media_keys" in error
 
     @patch('api.controllers.experience_controller.get_madrid_now')
     @patch('api.controllers.experience_controller.r2_media_service')
@@ -173,23 +158,18 @@ class TestExperienceControllerExtended:
         
         # Experience not found
         mock_exp_dao.get_experience_by_id.return_value = None
-        exp, upload, error = ctrl.update_experience("e1", "new comment")
+        exp, error = ctrl.update_experience("e1", "new comment")
         assert exp is None
         assert "not found" in error
         
-        # Media upload failure
         mock_exp = MagicMock(spec=Experience)
         mock_exp.refuge_id = "r1"
         mock_exp.creator_uid = "u1"
         mock_exp_dao.get_experience_by_id.return_value = mock_exp
-        
-        with patch.object(ctrl, '_upload_experience_media_to_refuge', return_value=(None, "Upload Error")):
-            exp, upload, error = ctrl.update_experience("e1", files=[MagicMock()])
-            assert error == "Upload Error"
-            
+
         # update_experience failure
         mock_exp_dao.update_experience.return_value = (None, "Update Error")
-        exp, upload, error = ctrl.update_experience("e1", "new comment")
+        exp, error = ctrl.update_experience("e1", "new comment")
         assert exp is None
         assert "Update Error" in error
 
@@ -231,30 +211,6 @@ class TestExperienceControllerExtended:
         success, error = ctrl.delete_experience("e1")
         assert success is False
         assert "DAO Error" in error
-
-    @patch('api.controllers.experience_controller.get_madrid_now')
-    @patch('api.controllers.experience_controller.r2_media_service')
-    @patch('api.controllers.experience_controller.UserDAO')
-    @patch('api.controllers.experience_controller.RefugiLliureController')
-    @patch('api.controllers.experience_controller.RefugiLliureDAO')
-    @patch('api.controllers.experience_controller.ExperienceDAO')
-    def test_upload_experience_media_errors(self, mock_exp_dao_class, mock_ref_dao_class, 
-                                           mock_ref_ctrl_class, mock_user_dao_class, 
-                                           mock_r2, mock_now):
-        """Test _upload_experience_media_to_refuge errors"""
-        ctrl = ExperienceController()
-        
-        # Upload failure
-        with patch('api.controllers.experience_controller.RefugiLliureController') as mock_ref_ctrl_local:
-            mock_ref_ctrl_local.return_value.upload_refugi_media.return_value = (None, "Upload Error")
-            res, error = ctrl._upload_experience_media_to_refuge("e1", "r1", [], "u1", "now")
-            assert res is None
-            assert "Upload Error" in error
-            
-            # Exception
-            mock_ref_ctrl_local.return_value.upload_refugi_media.side_effect = Exception("Error")
-            res, error = ctrl._upload_experience_media_to_refuge("e1", "r1", [], "u1", "now")
-            assert res is None
 
     @patch('api.controllers.experience_controller.get_madrid_now')
     @patch('api.controllers.experience_controller.r2_media_service')
@@ -304,7 +260,7 @@ class TestExperienceControllerExtended:
         mock_exp_dao.get_experience_by_id.return_value = mock_exp
         
         ctrl = ExperienceController()
-        exp, upload, error = ctrl.create_experience("r1", "u1", "comment")
+        exp, error = ctrl.create_experience("r1", "u1", "comment")
         
         assert exp == mock_exp
         assert error is None
@@ -329,7 +285,7 @@ class TestExperienceControllerExtended:
         mock_exp_dao.update_experience.return_value = (True, None)
         
         ctrl = ExperienceController()
-        exp, upload, error = ctrl.update_experience("e1", "new comment")
+        exp, error = ctrl.update_experience("e1", "new comment")
         
         assert exp == mock_exp
         assert error is None
@@ -375,13 +331,13 @@ class TestExperienceControllerExtended:
         
         # create_experience exception
         mock_refuge_dao.refugi_exists.side_effect = Exception("Create Error")
-        exp, upload, error = ctrl.create_experience("r1", "u1", "comment")
+        exp, error = ctrl.create_experience("r1", "u1", "comment")
         assert exp is None
         assert "Create Error" in error
         
         # update_experience exception
         mock_exp_dao.get_experience_by_id.side_effect = Exception("Update Error")
-        exp, upload, error = ctrl.update_experience("e1", "comment")
+        exp, error = ctrl.update_experience("e1", "comment")
         assert exp is None
         assert "Update Error" in error
         
@@ -420,44 +376,3 @@ class TestExperienceControllerExtended:
         assert success is True
         assert error is None
 
-    @patch('api.controllers.experience_controller.get_madrid_now')
-    @patch('api.controllers.experience_controller.r2_media_service')
-    @patch('api.controllers.experience_controller.UserDAO')
-    @patch('api.controllers.experience_controller.RefugiLliureController')
-    @patch('api.controllers.experience_controller.RefugiLliureDAO')
-    @patch('api.controllers.experience_controller.ExperienceDAO')
-    def test_update_experience_with_files_success(self, mock_exp_dao_class, mock_ref_dao_class, 
-                                                 mock_ref_ctrl_class, mock_user_dao_class, 
-                                                 mock_r2, mock_now):
-        """Test update_experience amb fitxers èxit"""
-        mock_now.return_value.isoformat.return_value = "2024-01-01T00:00:00"
-        mock_exp_dao = mock_exp_dao_class.return_value
-        
-        mock_exp = MagicMock(spec=Experience)
-        mock_exp.refuge_id = "r1"
-        mock_exp.creator_uid = "u1"
-        mock_exp_dao.get_experience_by_id.return_value = mock_exp
-        mock_exp_dao.update_experience.return_value = (True, None)
-        
-        ctrl = ExperienceController()
-        with patch.object(ctrl, '_upload_experience_media_to_refuge', return_value=({'uploaded': [{'key': 'k1'}]}, None)):
-            exp, upload, error = ctrl.update_experience("e1", files=[MagicMock()])
-            assert error is None
-            assert upload['uploaded'][0]['key'] == 'k1'
-
-    @patch('api.controllers.experience_controller.get_madrid_now')
-    @patch('api.controllers.experience_controller.r2_media_service')
-    @patch('api.controllers.experience_controller.UserDAO')
-    @patch('api.controllers.experience_controller.RefugiLliureController')
-    @patch('api.controllers.experience_controller.RefugiLliureDAO')
-    @patch('api.controllers.experience_controller.ExperienceDAO')
-    def test_upload_experience_media_success(self, mock_exp_dao_class, mock_ref_dao_class, 
-                                            mock_ref_ctrl_class, mock_user_dao_class, 
-                                            mock_r2, mock_now):
-        """Test _upload_experience_media_to_refuge èxit"""
-        ctrl = ExperienceController()
-        with patch('api.controllers.experience_controller.RefugiLliureController') as mock_ref_ctrl_local:
-            mock_ref_ctrl_local.return_value.upload_refugi_media.return_value = ({'uploaded': []}, None)
-            res, error = ctrl._upload_experience_media_to_refuge("e1", "r1", [], "u1", "now")
-            assert res == {'uploaded': []}
-            assert error is None

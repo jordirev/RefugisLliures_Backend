@@ -9,6 +9,7 @@ from ..mappers.user_mapper import UserMapper
 from ..mappers.refugi_lliure_mapper import RefugiLliureMapper
 from ..models.user import User
 from google.cloud.firestore_v1.transforms import Increment
+from google.cloud.firestore import ArrayUnion, ArrayRemove
 
 
 logger = logging.getLogger(__name__)
@@ -385,17 +386,8 @@ class UserDAO:
                 logger.warning(f"No es poden afegir keys, usuari no trobat amb UID: {uid}")
                 return False
             
-            # Obté l'array actual
-            user_data = doc.to_dict()
-            current_keys = user_data.get('uploaded_photos_keys', [])
-            if current_keys is None:
-                current_keys = []
-            
-            # Afegeix les noves keys
-            current_keys.extend(media_keys)
-            
-            # Actualitza l'array
-            doc_ref.update({'uploaded_photos_keys': current_keys})
+            # Afegeix les noves keys de forma atòmica (sense read-modify-write)
+            doc_ref.update({'uploaded_photos_keys': ArrayUnion(list(media_keys))})
             
             # Invalida cache de l'usuari
             cache_service.delete(cache_service.generate_key('user_detail', uid=uid))
@@ -512,17 +504,8 @@ class UserDAO:
                 logger.warning(f"No es poden eliminar keys, usuari no trobat amb UID: {uid}")
                 return False
             
-            # Obté l'array actual
-            user_data = doc.to_dict()
-            current_keys = user_data.get('uploaded_photos_keys', [])
-            if current_keys is None:
-                current_keys = []
-            
-            # Elimina les keys especificades
-            updated_keys = [key for key in current_keys if key not in media_keys]
-            
-            # Actualitza l'array
-            doc_ref.update({'uploaded_photos_keys': updated_keys})
+            # Elimina les keys de forma atòmica (sense read-modify-write)
+            doc_ref.update({'uploaded_photos_keys': ArrayRemove(list(media_keys))})
             
             # Invalida cache de l'usuari
             cache_service.delete(cache_service.generate_key('user_detail', uid=uid))
@@ -650,3 +633,63 @@ class UserDAO:
         except Exception as e:
             logger.error(f"Error eliminant avatar per l'usuari {uid}: {str(e)}")
             return False, None
+
+    # ------------------------------------------------------------------
+    # Edat i moderació
+    # ------------------------------------------------------------------
+
+    def set_age_confirmed(self, uid: str, confirmed_at: str, threshold: int) -> bool:
+        """
+        Desa NOMÉS la confirmació d'edat (data de confirmació + llindar).
+        Mai es desa la data de naixement (minimització, art. 5.1.c RGPD).
+        """
+        try:
+            db = self.firestore_service.get_db()
+            doc_ref = db.collection(self.COLLECTION_NAME).document(uid)
+            if not doc_ref.get().exists:
+                logger.warning(f"No es pot confirmar l'edat, usuari no trobat amb UID: {uid}")
+                return False
+            logger.log(23, f"Firestore UPDATE: collection={self.COLLECTION_NAME} document={uid} (age confirmation)")
+            doc_ref.update({'age_confirmed_at': confirmed_at, 'age_threshold': threshold})
+            cache_service.delete(cache_service.generate_key('user_detail', uid=uid))
+            return True
+        except Exception as e:
+            logger.error(f"Error confirmant l'edat de l'usuari {uid}: {str(e)}")
+            return False
+
+    def increment_moderation_strikes(self, uid: str) -> Optional[int]:
+        """
+        Incrementa atòmicament els strikes de moderació.
+        Retorna el nombre de strikes resultant o None si l'usuari no existeix / error.
+        """
+        try:
+            db = self.firestore_service.get_db()
+            doc_ref = db.collection(self.COLLECTION_NAME).document(uid)
+            if not doc_ref.get().exists:
+                logger.warning(f"No es pot afegir strike, usuari no trobat amb UID: {uid}")
+                return None
+            logger.log(23, f"Firestore UPDATE: collection={self.COLLECTION_NAME} document={uid} (strike)")
+            doc_ref.update({'moderation_strikes': Increment(1)})
+            cache_service.delete(cache_service.generate_key('user_detail', uid=uid))
+            data = doc_ref.get().to_dict() or {}
+            return int(data.get('moderation_strikes') or 0)
+        except Exception as e:
+            logger.error(f"Error afegint strike a l'usuari {uid}: {str(e)}")
+            return None
+
+    def set_blocked(self, uid: str, blocked: bool = True, reason: Optional[str] = None,
+                    blocked_at: Optional[str] = None) -> bool:
+        """Marca (o desmarca) un usuari com a bloquejat"""
+        try:
+            db = self.firestore_service.get_db()
+            doc_ref = db.collection(self.COLLECTION_NAME).document(uid)
+            if not doc_ref.get().exists:
+                logger.warning(f"No es pot bloquejar, usuari no trobat amb UID: {uid}")
+                return False
+            logger.log(23, f"Firestore UPDATE: collection={self.COLLECTION_NAME} document={uid} (is_blocked={blocked})")
+            doc_ref.update({'is_blocked': blocked, 'blocked_reason': reason, 'blocked_at': blocked_at})
+            cache_service.delete(cache_service.generate_key('user_detail', uid=uid))
+            return True
+        except Exception as e:
+            logger.error(f"Error bloquejant l'usuari {uid}: {str(e)}")
+            return False

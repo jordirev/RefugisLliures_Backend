@@ -6,9 +6,11 @@ D'aquesta manera, no dupliquem informació a Firestore i només ens guardem les 
 """
 from dataclasses import dataclass, field
 from typing import Optional, List
-from asyncio.log import logger
+import logging
 from api.services import r2_media_service
 from .media_metadata import MediaMetadata
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -49,7 +51,9 @@ class Experience:
                 media_service = r2_media_service.get_refugi_media_service()
                 for key in data['media_keys']:
                     url = media_service.generate_presigned_url(key)
-                    images_metadata.append(MediaMetadata(key=key, url=url, uploaded_at=None))
+                    images_metadata.append(MediaMetadata(key=key, url=url, uploaded_at=None,
+                                                       creator_uid=data.get('creator_uid'),
+                                                       experience_id=data.get('id')))
             except Exception as e:
                 logger.warning(f"Error generant MediaMetadata per experiència {data.get('id', '')}: {str(e)}")
                 images_metadata = []

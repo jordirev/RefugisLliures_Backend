@@ -96,7 +96,11 @@ class TestRefugeMediaMetadata:
         )
         
         data = media.to_dict()
-        assert 'experience_id' not in data
+        # Contracte MediaItem: experience_id sempre present (null si no n'hi ha)
+        assert data['experience_id'] is None
+        assert data['thumb_url'] == data['url']
+        assert data['media_type'] == 'image'
+        assert data['width'] is None and data['height'] is None and data['blurhash'] is None
     
     def test_from_dict(self):
         """Test creació des de diccionari"""

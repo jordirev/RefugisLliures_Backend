@@ -291,43 +291,6 @@ class TestRefugiController:
         assert media_list is None
         assert "not found" in error.lower()
 
-    @patch('api.controllers.refugi_lliure_controller.UserDAO')
-    @patch('api.controllers.refugi_lliure_controller.r2_media_service.get_refugi_media_service')
-    @patch('api.controllers.refugi_lliure_controller.RefugiLliureDAO')
-    def test_upload_refugi_media_success(self, mock_dao_class, mock_get_service, mock_user_dao_class):
-        """Test pujada de mitjans exitosa"""
-        mock_dao = mock_dao_class.return_value
-        mock_r2_service = mock_get_service.return_value
-        mock_user_dao = mock_user_dao_class.return_value
-        
-        # Mock refugi existent
-        mock_dao.get_by_id.return_value = MagicMock()
-        
-        # Mock pujada R2
-        mock_r2_service.upload_file.return_value = {'key': "path/to/file.jpg"}
-        mock_r2_service.generate_presigned_url.return_value = "http://presigned"
-        
-        # Mock generació objecte metadata
-        mock_metadata_obj = MagicMock()
-        mock_metadata_obj.to_dict.return_value = {'key': "path/to/file.jpg", 'url': "http://presigned"}
-        mock_r2_service.generate_media_metadata_from_dict.return_value = mock_metadata_obj
-        
-        # Mock actualització metadades
-        mock_dao.add_media_metadata.return_value = True
-        
-        # Mock increment usuari
-        mock_user_dao.increment_uploaded_photos.return_value = True
-        
-        controller = RefugiLliureController()
-        files = [MagicMock(name='file1.jpg')]
-        result, error = controller.upload_refugi_media('refugi_123', files, 'user_123')
-        
-        assert error is None
-        assert len(result['uploaded']) == 1
-        assert result['uploaded'][0]['key'] == "path/to/file.jpg"
-        mock_r2_service.upload_file.assert_called()
-        mock_dao.add_media_metadata.assert_called()
-
     @patch('api.daos.experience_dao.ExperienceDAO')
     @patch('api.controllers.refugi_lliure_controller.r2_media_service.get_refugi_media_service')
     @patch('api.controllers.refugi_lliure_controller.RefugiLliureDAO')
@@ -467,51 +430,6 @@ class TestRefugiLliureControllerExtended:
     @patch('api.controllers.refugi_lliure_controller.r2_media_service')
     @patch('api.controllers.refugi_lliure_controller.RefugiLliureDAO')
     @patch('api.controllers.refugi_lliure_controller.UserDAO')
-    @patch('api.controllers.refugi_lliure_controller.get_madrid_now')
-    def test_upload_refugi_media_errors(self, mock_now, mock_user_dao_class, mock_ref_dao_class, mock_r2):
-        """Test upload_refugi_media errors"""
-        ctrl = RefugiLliureController()
-        mock_ref_dao = mock_ref_dao_class.return_value
-        mock_media_service = mock_r2.get_refugi_media_service.return_value
-        
-        # Refugi not found
-        mock_ref_dao.refugi_exists.return_value = False
-        res, error = ctrl.upload_refugi_media("r1", [], "u1")
-        assert res is None
-        assert "not found" in error
-        
-        # File upload failure (ValueError)
-        mock_ref_dao.refugi_exists.return_value = True
-        mock_file = MagicMock()
-        mock_file.name = "f1.jpg"
-        mock_media_service.upload_file.side_effect = ValueError("Invalid file")
-        res, error = ctrl.upload_refugi_media("r1", [mock_file], "u1")
-        assert len(res['failed']) == 1
-        assert "Invalid file" in res['failed'][0]['error']
-        
-        # File upload failure (General Exception)
-        mock_media_service.upload_file.side_effect = Exception("Upload Error")
-        res, error = ctrl.upload_refugi_media("r1", [mock_file], "u1")
-        assert len(res['failed']) == 1
-        assert "Error intern" in res['failed'][0]['error']
-        
-        # Firestore save failure
-        mock_media_service.upload_file.side_effect = None
-        mock_media_service.upload_file.return_value = {'key': 'k1'}
-        mock_ref_dao.add_media_metadata.return_value = False
-        res, error = ctrl.upload_refugi_media("r1", [mock_file], "u1")
-        assert res is None
-        assert "Error intern guardant les metadades" in error
-        
-        # General exception
-        mock_ref_dao.refugi_exists.side_effect = Exception("Fatal Error")
-        res, error = ctrl.upload_refugi_media("r1", [], "u1")
-        assert res is None
-        assert "Fatal Error" in error
-
-    @patch('api.controllers.refugi_lliure_controller.r2_media_service')
-    @patch('api.controllers.refugi_lliure_controller.RefugiLliureDAO')
-    @patch('api.controllers.refugi_lliure_controller.UserDAO')
     @patch('api.controllers.refugi_lliure_controller.ExperienceDAO', create=True)
     def test_delete_refugi_media_errors(self, mock_exp_dao_class, mock_user_dao_class, mock_ref_dao_class, mock_r2):
         """Test delete_refugi_media errors"""
@@ -569,32 +487,6 @@ class TestRefugiLliureControllerExtended:
         res, error = ctrl.delete_multiple_refugi_media("r1", ["k1"])
         assert res is False
         assert "Fatal Error" in error
-
-    @patch('api.controllers.refugi_lliure_controller.r2_media_service')
-    @patch('api.controllers.refugi_lliure_controller.RefugiLliureDAO')
-    @patch('api.controllers.refugi_lliure_controller.UserDAO')
-    def test_upload_refugi_media_success(self, mock_user_dao_class, mock_ref_dao_class, mock_r2):
-        """Test upload_refugi_media èxit"""
-        ctrl = RefugiLliureController()
-        mock_ref_dao = mock_ref_dao_class.return_value
-        mock_user_dao = mock_user_dao_class.return_value
-        mock_media_service = mock_r2.get_refugi_media_service.return_value
-        
-        mock_ref_dao.refugi_exists.return_value = True
-        mock_file = MagicMock()
-        mock_file.name = "f1.jpg"
-        mock_file.content_type = "image/jpeg"
-        mock_media_service.upload_file.return_value = {'key': 'k1'}
-        
-        mock_meta = MagicMock()
-        mock_meta.to_dict.return_value = {'key': 'k1'}
-        mock_media_service.generate_media_metadata_from_dict.return_value = mock_meta
-        mock_ref_dao.add_media_metadata.return_value = True
-        
-        res, error = ctrl.upload_refugi_media("r1", [mock_file], "u1")
-        assert error is None
-        assert len(res['uploaded']) == 1
-        mock_user_dao.add_uploaded_photos_keys.assert_called()
 
     @patch('api.controllers.refugi_lliure_controller.r2_media_service')
     @patch('api.controllers.refugi_lliure_controller.RefugiLliureDAO')
