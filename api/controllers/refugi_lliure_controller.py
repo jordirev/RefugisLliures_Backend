@@ -5,7 +5,6 @@ import logging
 from typing import Dict, Any, List, Optional, Tuple
 
 from api.models.media_metadata import RefugeMediaMetadata
-from api.utils.timezone_utils import get_madrid_now
 from ..daos.refugi_lliure_dao import RefugiLliureDAO
 from ..daos.user_dao import UserDAO
 from ..models.refugi_lliure import Refugi, RefugiCoordinates, RefugiSearchFilters
@@ -175,85 +174,6 @@ class RefugiLliureController:
             
         except Exception as e:
             logger.error(f"Error obtenint mitjans del refugi {refugi_id}: {str(e)}")
-            return None, f"Internal server error: {str(e)}"
-    
-    def upload_refugi_media(self, refugi_id: str, files: List[Any], creator_uid: str, experience_id: str = None, uploaded_at: str = None) -> Tuple[Optional[Dict[str, Any]], Optional[str]]:
-        """
-        Puja mitjans per a un refugi (camí multipart antic, es manté per compatibilitat).
-        Cada fitxer passa pel MATEIX processament que el flux nou (upload-intents/confirm):
-        tipus real per magic bytes, límit de mida, recodificació sense metadades i claus UUID.
-        
-        Args:
-            refugi_id: ID del refugi
-            files: Llista de fitxers a pujar
-            creator_uid: UID de l'usuari que puja els mitjans
-            experience_id: ID de l'experiència associada (opcional)
-            uploaded_at: Data i hora de pujada (ISO 8601 format, opcional) Si no es proporciona, es genera la data actual
-            
-        Returns: (Diccionari amb uploaded [MediaItem] i failed [{filename, error}] o None, missatge d'error o None)
-        """
-        try:
-            # Verificar que el refugi existeix
-            if not self.refugi_dao.refugi_exists(refugi_id):
-                return None, "Refugi not found"
-            
-            from .media_upload_controller import MediaUploadController
-            from ..services.image_processing_service import (
-                kind_for_content_type, max_bytes_for_kind, VIDEO_MAX_BYTES, REASON_TOO_LARGE,
-                REASON_PROCESSING_ERROR,
-            )
-            upload_controller = MediaUploadController()
-
-            if uploaded_at is None:
-                uploaded_at = get_madrid_now().isoformat()
-
-            uploaded = []
-            failed = []
-            
-            for file in files:
-                filename = getattr(file, 'name', 'file')
-                try:
-                    content_type = getattr(file, 'content_type', None)
-                    kind = kind_for_content_type(content_type)
-                    limit = max_bytes_for_kind(kind) if kind else VIDEO_MAX_BYTES
-                    data = file.read(limit + 1)
-                    if len(data) > limit:
-                        failed.append({'filename': filename, 'error': REASON_TOO_LARGE})
-                        continue
-                    
-                    item, reason = upload_controller.process_and_publish(
-                        data=data,
-                        declared_content_type=content_type,
-                        target='experience' if experience_id else 'refuge',
-                        uid=creator_uid,
-                        refuge_id=refugi_id,
-                        experience_id=experience_id,
-                        uploaded_at=uploaded_at,
-                    )
-                    if item is None:
-                        failed.append({'filename': filename, 'error': reason or REASON_PROCESSING_ERROR})
-                    else:
-                        uploaded.append(item)
-                    
-                except Exception as e:
-                    logger.error(f"Error pujant fitxer {filename}: {str(e)}")
-                    failed.append({
-                        'filename': filename,
-                        'error': REASON_PROCESSING_ERROR
-                    })
-            
-            if uploaded:
-                audit.audit_log_service.log(creator_uid, audit.ACTION_UPLOAD_LEGACY, 'refuge', refugi_id,
-                                            {'keys': [item['key'] for item in uploaded],
-                                             'experience_id': experience_id})
-            
-            return {
-                'uploaded': uploaded,
-                'failed': failed
-            }, None
-            
-        except Exception as e:
-            logger.error(f"Error pujant mitjans al refugi {refugi_id}: {str(e)}")
             return None, f"Internal server error: {str(e)}"
     
     def delete_refugi_media(self, refugi_id: str, media_key: str, actor_uid: Optional[str] = None) -> Tuple[bool, Optional[str]]:

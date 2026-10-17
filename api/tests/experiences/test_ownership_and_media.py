@@ -1,6 +1,6 @@
 """
 Tests de la feature images per a experiències: control de propietat (403 not_owner),
-creació en JSON sense fitxers i MediaItems amb filtre de status.
+creació en JSON i MediaItems amb filtre de status.
 """
 from unittest.mock import MagicMock, patch
 
@@ -33,7 +33,7 @@ def ctrl():
 class TestExperienceOwnership:
     def test_update_by_non_owner_is_rejected(self, ctrl):
         ctrl.experience_dao.get_experience_by_id.return_value = experience()
-        result, upload, error = ctrl.update_experience('exp_1', comment='hack', requester_uid='intruder')
+        result, error = ctrl.update_experience('exp_1', comment='hack', requester_uid='intruder')
         assert result is None and error == ERROR_NOT_OWNER
         ctrl.experience_dao.update_experience.assert_not_called()
 
@@ -41,8 +41,8 @@ class TestExperienceOwnership:
         ctrl.experience_dao.get_experience_by_id.return_value = experience()
         ctrl.experience_dao.update_experience.return_value = (True, None)
         ctrl.refugi_dao.get_raw_media_metadata.return_value = {}
-        assert ctrl.update_experience('exp_1', comment='ok', requester_uid='owner')[2] is None
-        assert ctrl.update_experience('exp_1', comment='ok', requester_uid='admin', is_admin=True)[2] is None
+        assert ctrl.update_experience('exp_1', comment='ok', requester_uid='owner')[1] is None
+        assert ctrl.update_experience('exp_1', comment='ok', requester_uid='admin', is_admin=True)[1] is None
 
     def test_delete_by_non_owner_is_rejected(self, ctrl):
         ctrl.experience_dao.get_experience_by_id.return_value = experience(keys=['k'])
@@ -92,7 +92,7 @@ def authed(request, uid='intruder', admin=False):
 class TestExperienceViewsOwnership:
     @patch('api.views.experience_views.ExperienceController')
     def test_patch_non_owner_403(self, mock_ctrl):
-        mock_ctrl.return_value.update_experience.return_value = (None, None, ERROR_NOT_OWNER)
+        mock_ctrl.return_value.update_experience.return_value = (None, ERROR_NOT_OWNER)
         request = authed(APIRequestFactory().patch('/api/experiences/exp_1/', {'comment': 'x'}, format='json'))
         response = ExperienceDetailAPIView.as_view()(request, experience_id='exp_1')
         assert response.status_code == 403
@@ -117,18 +117,18 @@ class TestExperienceViewsOwnership:
         mock_ctrl.return_value.delete_experience.assert_called_once_with('exp_1', requester_uid='adm', is_admin=True)
 
     @patch('api.views.experience_views.ExperienceController')
-    def test_create_with_json_without_files(self, mock_ctrl):
-        mock_ctrl.return_value.create_experience.return_value = (experience(creator='intruder'), None, None)
+    def test_create_with_json(self, mock_ctrl):
+        mock_ctrl.return_value.create_experience.return_value = (experience(creator='intruder'), None)
         request = authed(APIRequestFactory().post('/api/experiences/', {'refuge_id': 'ref_1', 'comment': 'Molt bé'}, format='json'))
         response = ExperienceListAPIView.as_view()(request)
         assert response.status_code == 201
         kwargs = mock_ctrl.return_value.create_experience.call_args.kwargs
-        assert kwargs['files'] is None and kwargs['comment'] == 'Molt bé'
-        assert response.data['uploaded_files'] == []
+        assert 'files' not in kwargs and kwargs['comment'] == 'Molt bé'
+        assert set(response.data.keys()) == {'experience'}
 
     @patch('api.views.experience_views.ExperienceController')
     def test_patch_with_json(self, mock_ctrl):
-        mock_ctrl.return_value.update_experience.return_value = (experience(creator='intruder'), None, None)
+        mock_ctrl.return_value.update_experience.return_value = (experience(creator='intruder'), None)
         request = authed(APIRequestFactory().patch('/api/experiences/exp_1/', {'comment': 'nou'}, format='json'))
         response = ExperienceDetailAPIView.as_view()(request, experience_id='exp_1')
         assert response.status_code == 200

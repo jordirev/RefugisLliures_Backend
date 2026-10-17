@@ -7,14 +7,12 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework.parsers import MultiPartParser, FormParser
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 from urllib3 import request
 from ..controllers.user_controller import UserController
 from ..controllers.renovation_controller import RenovationController
 from ..serializers.user_serializer import (
-    MediaMetadataSerializer,
     UserRefugiSerializer,
     UserSerializer, 
     UserCreateSerializer, 
@@ -27,7 +25,7 @@ from ..serializers.refugi_lliure_serializer import (
     UserRefugiInfoSerializer,
 )
 from ..serializers.renovation_serializer import RenovationSerializer
-from ..permissions import IsSameUser, IsNotBlocked, coded_error
+from ..permissions import IsSameUser, coded_error
 from ..utils.swagger_examples import (
     EXAMPLE_REFUGI_INFO_COLOMERS,
     EXAMPLE_USER_BASIC,
@@ -42,7 +40,6 @@ from ..utils.swagger_examples import (
     EXAMPLE_USER_REFUGI_INFO_RESPONSE_1,
     EXAMPLE_USER_VISITED_REFUGI_INFO_RESPONSE_2,
     EXAMPLE_USER_VISITED_REFUGI_INFO_RESPONSE_3,
-    EXAMPLE_AVATAR_UPLOAD_RESPONSE,
     EXAMPLE_AGE_CONFIRMATION_REQUEST,
     EXAMPLE_MODERATION_NOTICES,
 )
@@ -55,7 +52,6 @@ from ..utils.swagger_error_responses import (
     ERROR_409_USER_EXISTS,
     ERROR_500_INTERNAL_ERROR,
     SUCCESS_204_NO_CONTENT,
-    ERROR_400_INVALID_FILE_TYPE,
     ERROR_404_AVATAR_NOT_FOUND,
     ERROR_403_UNDERAGE,
 )
@@ -120,7 +116,7 @@ class UsersCollectionAPIView(APIView):
             serializer = UserCreateSerializer(data=request.data)
             if not serializer.is_valid():
                 return Response({
-                    'error': ERROR_400_INVALID_DATA,
+                    'error': 'Dades invàlides',
                     'details': serializer.errors
                 }, status=status.HTTP_400_BAD_REQUEST)
             
@@ -235,7 +231,7 @@ class UserDetailAPIView(APIView):
             serializer = UserUpdateSerializer(data=request.data)
             if not serializer.is_valid():
                 return Response({
-                    'error': ERROR_400_INVALID_DATA,
+                    'error': 'Dades invàlides',
                     'details': serializer.errors
                 }, status=status.HTTP_400_BAD_REQUEST)
             
@@ -377,7 +373,7 @@ class UserFavouriteRefugesAPIView(APIView):
             serializer = UserRefugiSerializer(data=request.data)
             if not serializer.is_valid():
                 return Response({
-                    'error': ERROR_400_INVALID_DATA,
+                    'error': 'Dades invàlides',
                     'details': serializer.errors
                 }, status=status.HTTP_400_BAD_REQUEST)
             
@@ -534,7 +530,7 @@ class UserVisitedRefugesAPIView(APIView):
             serializer = UserRefugiSerializer(data=request.data)
             if not serializer.is_valid():
                 return Response({
-                    'error': ERROR_400_INVALID_DATA,
+                    'error': 'Dades invàlides',
                     'details': serializer.errors
                 }, status=status.HTTP_400_BAD_REQUEST)
             
@@ -609,100 +605,11 @@ class UserVisitedRefugesDetailAPIView(APIView):
 class UserAvatarAPIView(APIView):
     """
     Gestiona operacions sobre l'avatar d'un usuari:
-    - PATCH: Puja o actualitza l'avatar de l'usuari (requereix autenticació, només el mateix usuari)
     - DELETE: Elimina l'avatar de l'usuari (requereix autenticació, només el mateix usuari)
+    L'avatar es puja amb POST /api/media/upload-intents/ (target=avatar) + confirm.
     """
     permission_classes = [IsAuthenticated, IsSameUser]
-    parser_classes = [MultiPartParser, FormParser]
-    
-    def get_permissions(self):
-        """PATCH: IsAuthenticated + IsSameUser + IsNotBlocked · DELETE: IsAuthenticated + IsSameUser"""
-        if self.request.method == 'PATCH':
-            return [IsAuthenticated(), IsSameUser(), IsNotBlocked()]
-        return [permission() for permission in self.permission_classes]
 
-    @swagger_auto_schema(
-        tags=['Users'],
-        operation_description=(
-            "[LEGACY] Puja o actualitza l'avatar d'un usuari (multipart). El flux recomanat és "
-            "POST /api/media/upload-intents/ amb target=avatar. "
-            "La imatge es recodifica a WebP 512 px sense metadades i es desa a users-avatars/{uid}/{uuid}.webp; "
-            "l'avatar antic s'esborra només quan el nou s'ha desat. Resposta en forma MediaItem. "
-            "\n\nFormats acceptats: JPEG, JPG, PNG, WebP, HEIC, HEIF"
-            "\n\nRequereix autenticació i només pot ser executat pel mateix usuari."
-        ),
-        manual_parameters=[
-            openapi.Parameter(
-                'uid',
-                openapi.IN_PATH,
-                description="UID de l'usuari",
-                type=openapi.TYPE_STRING,
-                required=True
-            ),
-            openapi.Parameter(
-                'file',
-                openapi.IN_FORM,
-                description="Fitxer d'imatge de l'avatar",
-                type=openapi.TYPE_FILE,
-                required=True
-            )
-        ],
-        responses={
-            200: openapi.Response(
-                description="Avatar pujat correctament",
-                schema=MediaMetadataSerializer,
-                examples={
-                    'application/json': EXAMPLE_AVATAR_UPLOAD_RESPONSE
-                }
-            ),
-            400: ERROR_400_INVALID_FILE_TYPE,
-            401: ERROR_401_UNAUTHORIZED,
-            403: ERROR_403_FORBIDDEN,
-            404: ERROR_404_USER_NOT_FOUND,
-            500: ERROR_500_INTERNAL_ERROR
-        }
-    )
-    def patch(self, request, uid):
-        """Puja o actualitza l'avatar d'un usuari"""
-        try:
-            # Verificar que hi ha fitxer
-            if 'file' not in request.FILES:
-                return Response({
-                    'error': 'No s\'ha proporcionat cap fitxer'
-                }, status=status.HTTP_400_BAD_REQUEST)
-            
-            file=  request.FILES['file']
-            
-            # Pujar avatar
-            controller = UserController()
-            success, avatar_metadata, error_message = controller.upload_user_avatar(uid, file)
-            
-            if not success:
-                if 'no trobat' in error_message:
-                    return Response({
-                        'error': error_message
-                    }, status=status.HTTP_404_NOT_FOUND)
-                elif 'moderation_blocked' in error_message:
-                    return Response(coded_error('moderation_blocked', error_message), status=status.HTTP_403_FORBIDDEN)
-                elif ('no permès' in error_message or 'Content type' in error_message
-                      or 'invalid_type' in error_message or 'too_large' in error_message):
-                    return Response({
-                        'error': error_message
-                    }, status=status.HTTP_400_BAD_REQUEST)
-                else:
-                    return Response({
-                        'error': error_message
-                    }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-            
-            serializer = MediaMetadataSerializer(avatar_metadata)
-            return Response(serializer.data, status=status.HTTP_200_OK)
-            
-        except Exception as e:
-            logger.error(f"Error pujant avatar: {str(e)}")
-            return Response({
-                'error': 'Error pujant l\'avatar'
-            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-    
     @swagger_auto_schema(
         tags=['Users'],
         operation_description=(
@@ -786,7 +693,7 @@ class UserAgeConfirmationAPIView(APIView):
         try:
             serializer = AgeConfirmationSerializer(data=request.data)
             if not serializer.is_valid():
-                return Response({'error': ERROR_400_INVALID_DATA, 'details': serializer.errors},
+                return Response({'error': 'Dades invàlides', 'details': serializer.errors},
                                 status=status.HTTP_400_BAD_REQUEST)
             success, user, error_message = UserController().confirm_age(uid, serializer.validated_data['birth_date'])
             if not success:

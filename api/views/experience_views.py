@@ -6,7 +6,8 @@ from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
+from rest_framework.exceptions import ParseError, UnsupportedMediaType
+from rest_framework.parsers import JSONParser
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 
@@ -29,7 +30,7 @@ class ExperienceListAPIView(APIView):
     POST /api/experiences/
     """
     permission_classes = [IsAuthenticated]
-    parser_classes = [JSONParser, MultiPartParser, FormParser]
+    parser_classes = [JSONParser]
 
     def get_permissions(self):
         """GET: IsAuthenticated · POST: IsAuthenticated + IsNotBlocked"""
@@ -112,9 +113,8 @@ class ExperienceListAPIView(APIView):
         tags=['Refuge Experiences'],
         operation_description=(
             "Crea una nova experiència per a un refugi. "
-            "Accepta JSON {refuge_id, comment} (flux nou: després es pugen els fitxers amb "
-            "POST /api/media/upload-intents/ i target=experience) o multipart/form-data amb `files` "
-            "(compatibilitat; els fitxers passen pel mateix processament del servidor). "
+            "Accepta només JSON {refuge_id, comment}. Les fotos/vídeos es pugen després amb "
+            "POST /api/media/upload-intents/ (target=experience) + confirm. "
             "\n\nRequereix autenticació."
         ),
         request_body=openapi.Schema(
@@ -158,15 +158,11 @@ class ExperienceListAPIView(APIView):
                     'message': 'UID d\'usuari no trobat'
                 }, status=status.HTTP_401_UNAUTHORIZED)
             
-            # Obtenir fitxers si n'hi ha
-            files = request.FILES.getlist('files')
-            
             # Crear l'experiència
-            result, uploaded_result, error = self.controller.create_experience(
+            result, error = self.controller.create_experience(
                 refuge_id=serializer.validated_data['refuge_id'],
                 creator_uid=creator_uid,
-                comment=serializer.validated_data['comment'],
-                files=files if files else None
+                comment=serializer.validated_data['comment']
             )
             
             if error:
@@ -175,38 +171,18 @@ class ExperienceListAPIView(APIView):
                         {'error': error},
                         status=status.HTTP_404_NOT_FOUND
                     )
-                if result is not None and uploaded_result is not None:
-                    # Error al assignar media_keys a l'experiència però ja s'han pujat fitxers i creat l'experiència
-                    serializer = ExperienceResponseSerializer(result.to_dict())
-                    response = {
-                        'experience': serializer.data,
-                        'uploaded_files': uploaded_result['uploaded'] if uploaded_result else [],
-                        'failed_files': uploaded_result['failed'] if uploaded_result else [],
-                        'message': error
-                    }
-                    return Response(response, status=status.HTTP_201_CREATED)
-                if result is not None:
-                    # Error al pujar fitxers però experiència creada
-                    serializer = ExperienceResponseSerializer(result.to_dict())
-                    response = {
-                        'experience': serializer.data,
-                        'message': error
-                    }
-                    return Response(response, status=status.HTTP_201_CREATED)
                 return Response(
                     {'error': error},
                     status=status.HTTP_500_INTERNAL_SERVER_ERROR
                 )
             
             serializer = ExperienceResponseSerializer(result.to_dict())
-            response = {
-                'experience': serializer.data,
-                'uploaded_files': uploaded_result['uploaded'] if uploaded_result else [],
-                'failed_files': uploaded_result['failed'] if uploaded_result else []
-            }
+            response = {'experience': serializer.data}
             
             return Response(response, status=status.HTTP_201_CREATED)
             
+        except (ParseError, UnsupportedMediaType):
+            raise  # DRF respon 400/415 (p. ex. multipart, ja no suportat)
         except Exception as e:
             logger.error(f"Error creant experiència: {str(e)}")
             return Response(
@@ -222,7 +198,7 @@ class ExperienceDetailAPIView(APIView):
     La propietat es comprova al controller (403 not_owner; els admins hi tenen accés).
     """
     permission_classes = [IsAuthenticated, IsNotBlocked, IsExperienceCreator]
-    parser_classes = [JSONParser, MultiPartParser, FormParser]
+    parser_classes = [JSONParser]
     
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -269,9 +245,9 @@ class ExperienceDetailAPIView(APIView):
     )
     def patch(self, request, experience_id):
         """
-        Actualitza una experiència (comentari i/o fotos).
-        Permet afegir noves fotos a l'experiència existent. Aquestes s'afegiran també al refugi de l'experiència.
-        Per eliminar fotos d'experiencies, utilitzar: DELETE /api/refuges/{id}/media/{key}/ amb la key del mitjà a eliminar.
+        Actualitza el comentari d'una experiència.
+        Les fotos es pugen amb POST /api/media/upload-intents/ (target=experience) + confirm;
+        per eliminar-ne, DELETE /api/refuges/{id}/media/{key}/.
         """
         try:
             # Validar dades
@@ -284,13 +260,11 @@ class ExperienceDetailAPIView(APIView):
             
             # Obtenir dades validades
             comment = serializer.validated_data.get('comment')
-            files = request.FILES.getlist('files')
             
             # Actualitzar l'experiència
-            result, upload_result, error = self.controller.update_experience(
+            result, error = self.controller.update_experience(
                 experience_id=experience_id,
                 comment=comment,
-                files=files if files else None,
                 requester_uid=getattr(request, 'user_uid', None) or getattr(request.user, 'uid', None),
                 is_admin=is_firebase_admin(request)
             )
@@ -304,29 +278,16 @@ class ExperienceDetailAPIView(APIView):
                         {'error': error},
                         status=status.HTTP_404_NOT_FOUND
                     )
-                if upload_result is not None:
-                    # Error en actualitzar però ja s'han pujat fitxers
-                    serializer = ExperienceResponseSerializer(result.to_dict())
-                    response = {
-                        'uploaded_files': upload_result['uploaded'] if upload_result else [],
-                        'failed_files': upload_result['failed'] if upload_result else [],
-                        'message': error
-                    }
-                    return Response(response, status=status.HTTP_200_OK)
                 return Response(
                     {'error': error},
                     status=status.HTTP_500_INTERNAL_SERVER_ERROR
                 )
             
             serializer = ExperienceResponseSerializer(result.to_dict())
-            response = {
-                'experience': serializer.data,
-                'uploaded_files': upload_result['uploaded'] if upload_result else [],
-                'failed_files': upload_result['failed'] if upload_result else [], 
-            }
+            return Response({'experience': serializer.data}, status=status.HTTP_200_OK)
             
-            return Response(response, status=status.HTTP_200_OK)
-            
+        except (ParseError, UnsupportedMediaType):
+            raise  # DRF respon 400/415 (p. ex. multipart, ja no suportat)
         except Exception as e:
             logger.error(f"Error actualitzant experiència: {str(e)}")
             return Response(

@@ -5,7 +5,6 @@ import pytest
 from unittest.mock import MagicMock, patch
 from rest_framework.test import APIRequestFactory
 from rest_framework import status
-from django.core.files.uploadedfile import SimpleUploadedFile
 from api.views.experience_views import ExperienceListAPIView, ExperienceDetailAPIView
 from api.models.experience import Experience
 
@@ -53,11 +52,11 @@ class TestExperienceViews:
             'modified_at': '2024-01-01',
             'comment': 'Test'
         }
-        mock_controller.create_experience.return_value = (mock_exp, None, None)
+        mock_controller.create_experience.return_value = (mock_exp, None)
         
         view = ExperienceListAPIView.as_view()
         data = {'refuge_id': 'ref_1', 'comment': 'Test'}
-        request = factory.post('/api/experiences/', data, format='multipart')
+        request = factory.post('/api/experiences/', data, format='json')
         request.user_uid = 'user_1'
         
         with patch.object(ExperienceListAPIView, 'get_permissions', return_value=[]):
@@ -65,6 +64,36 @@ class TestExperienceViews:
         
         assert response.status_code == status.HTTP_201_CREATED
         assert response.data['experience']['id'] == 'exp_1'
+
+    @patch('api.views.experience_views.ExperienceController')
+    def test_create_experience_multipart_not_supported(self, mock_controller_class, factory):
+        """El multipart antic ja no es processa: respon 415 i no arriba al controller"""
+        mock_controller = mock_controller_class.return_value
+        
+        view = ExperienceListAPIView.as_view()
+        request = factory.post('/api/experiences/', {'refuge_id': 'ref_1', 'comment': 'Test'}, format='multipart')
+        request.user_uid = 'user_1'
+        
+        with patch.object(ExperienceListAPIView, 'get_permissions', return_value=[]):
+            response = view(request)
+        
+        assert response.status_code == status.HTTP_415_UNSUPPORTED_MEDIA_TYPE
+        mock_controller.create_experience.assert_not_called()
+
+    @patch('api.views.experience_views.ExperienceController')
+    def test_patch_experience_multipart_not_supported(self, mock_controller_class, factory):
+        """El multipart antic ja no es processa en editar: respon 415"""
+        mock_controller = mock_controller_class.return_value
+        
+        view = ExperienceDetailAPIView.as_view()
+        request = factory.patch('/api/experiences/exp_1/', {'comment': 'Nou'}, format='multipart')
+        request.user_uid = 'user_1'
+        
+        with patch.object(ExperienceDetailAPIView, 'get_permissions', return_value=[]):
+            response = view(request, experience_id='exp_1')
+        
+        assert response.status_code == status.HTTP_415_UNSUPPORTED_MEDIA_TYPE
+        mock_controller.update_experience.assert_not_called()
 
     @patch('api.views.experience_views.ExperienceController')
     def test_patch_experience_success(self, mock_controller_class, factory):
@@ -78,11 +107,11 @@ class TestExperienceViews:
             'modified_at': '2024-01-01',
             'comment': 'Updated'
         }
-        mock_controller.update_experience.return_value = (mock_exp, None, None)
+        mock_controller.update_experience.return_value = (mock_exp, None)
         
         view = ExperienceDetailAPIView.as_view()
         data = {'comment': 'Updated'}
-        request = factory.patch('/api/experiences/exp_1/', data, format='multipart')
+        request = factory.patch('/api/experiences/exp_1/', data, format='json')
         
         with patch.object(ExperienceDetailAPIView, 'get_permissions', return_value=[]):
             response = view(request, experience_id='exp_1')
@@ -166,7 +195,7 @@ class TestExperienceViews:
         """Test crear experiència amb dades invàlides (400)"""
         view = ExperienceListAPIView.as_view()
         data = {'refuge_id': 'ref_1'}  # Falta comment
-        request = factory.post('/api/experiences/', data, format='multipart')
+        request = factory.post('/api/experiences/', data, format='json')
         request.user_uid = 'user_1'
         
         with patch.object(ExperienceListAPIView, 'get_permissions', return_value=[]):
@@ -179,7 +208,7 @@ class TestExperienceViews:
         """Test crear experiència sense UID (401)"""
         view = ExperienceListAPIView.as_view()
         data = {'refuge_id': 'ref_1', 'comment': 'Test'}
-        request = factory.post('/api/experiences/', data, format='multipart')
+        request = factory.post('/api/experiences/', data, format='json')
         # No establim request.user_uid
         
         with patch.object(ExperienceListAPIView, 'get_permissions', return_value=[]):
@@ -191,11 +220,11 @@ class TestExperienceViews:
     def test_create_experience_not_found(self, mock_controller_class, factory):
         """Test crear experiència en refugi no trobat (404)"""
         mock_controller = mock_controller_class.return_value
-        mock_controller.create_experience.return_value = (None, None, "Refuge not found")
+        mock_controller.create_experience.return_value = (None, "Refuge not found")
         
         view = ExperienceListAPIView.as_view()
         data = {'refuge_id': 'nonexistent', 'comment': 'Test'}
-        request = factory.post('/api/experiences/', data, format='multipart')
+        request = factory.post('/api/experiences/', data, format='json')
         request.user_uid = 'user_1'
         
         with patch.object(ExperienceListAPIView, 'get_permissions', return_value=[]):
@@ -207,68 +236,17 @@ class TestExperienceViews:
     def test_create_experience_server_error(self, mock_controller_class, factory):
         """Test crear experiència amb error del servidor (500)"""
         mock_controller = mock_controller_class.return_value
-        mock_controller.create_experience.return_value = (None, None, "Database error")
+        mock_controller.create_experience.return_value = (None, "Database error")
         
         view = ExperienceListAPIView.as_view()
         data = {'refuge_id': 'ref_1', 'comment': 'Test'}
-        request = factory.post('/api/experiences/', data, format='multipart')
+        request = factory.post('/api/experiences/', data, format='json')
         request.user_uid = 'user_1'
         
         with patch.object(ExperienceListAPIView, 'get_permissions', return_value=[]):
             response = view(request)
         
         assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
-
-    @patch('api.views.experience_views.ExperienceController')
-    def test_create_experience_with_partial_upload_error(self, mock_controller_class, factory):
-        """Test crear experiència amb error parcial de pujada (201)"""
-        mock_controller = mock_controller_class.return_value
-        mock_exp = MagicMock(spec=Experience)
-        mock_exp.to_dict.return_value = {
-            'id': 'exp_1',
-            'refuge_id': 'ref_1',
-            'creator_uid': 'user_1',
-            'modified_at': '2024-01-01',
-            'comment': 'Test'
-        }
-        upload_result = {'uploaded': ['file1.jpg'], 'failed': ['file2.jpg']}
-        mock_controller.create_experience.return_value = (mock_exp, upload_result, "Error assigning media keys")
-        
-        view = ExperienceListAPIView.as_view()
-        data = {'refuge_id': 'ref_1', 'comment': 'Test'}
-        request = factory.post('/api/experiences/', data, format='multipart')
-        request.user_uid = 'user_1'
-        
-        with patch.object(ExperienceListAPIView, 'get_permissions', return_value=[]):
-            response = view(request)
-        
-        assert response.status_code == status.HTTP_201_CREATED
-        assert 'message' in response.data
-
-    @patch('api.views.experience_views.ExperienceController')
-    def test_create_experience_with_upload_error_only(self, mock_controller_class, factory):
-        """Test crear experiència amb error de pujada però experiència creada (201)"""
-        mock_controller = mock_controller_class.return_value
-        mock_exp = MagicMock(spec=Experience)
-        mock_exp.to_dict.return_value = {
-            'id': 'exp_1',
-            'refuge_id': 'ref_1',
-            'creator_uid': 'user_1',
-            'modified_at': '2024-01-01',
-            'comment': 'Test'
-        }
-        mock_controller.create_experience.return_value = (mock_exp, None, "Error uploading files")
-        
-        view = ExperienceListAPIView.as_view()
-        data = {'refuge_id': 'ref_1', 'comment': 'Test'}
-        request = factory.post('/api/experiences/', data, format='multipart')
-        request.user_uid = 'user_1'
-        
-        with patch.object(ExperienceListAPIView, 'get_permissions', return_value=[]):
-            response = view(request)
-        
-        assert response.status_code == status.HTTP_201_CREATED
-        assert 'message' in response.data
 
     @patch('api.views.experience_views.ExperienceController')
     def test_create_experience_exception(self, mock_controller_class, factory):
@@ -278,7 +256,7 @@ class TestExperienceViews:
         
         view = ExperienceListAPIView.as_view()
         data = {'refuge_id': 'ref_1', 'comment': 'Test'}
-        request = factory.post('/api/experiences/', data, format='multipart')
+        request = factory.post('/api/experiences/', data, format='json')
         request.user_uid = 'user_1'
         
         with patch.object(ExperienceListAPIView, 'get_permissions', return_value=[]):
@@ -291,12 +269,12 @@ class TestExperienceViews:
         """Test actualitzar experiència amb dades invàlides (400)"""
         mock_controller = mock_controller_class.return_value
         # El serializer ExperienceUpdateSerializer no requereix cap camp, però podem forçar un error
-        mock_controller.update_experience.return_value = (None, None, "Invalid data")
+        mock_controller.update_experience.return_value = (None, "Invalid data")
         
         view = ExperienceDetailAPIView.as_view()
         # Dades buides, que el serializer hauria d'acceptar
         data = {}
-        request = factory.patch('/api/experiences/exp_1/', data, format='multipart')
+        request = factory.patch('/api/experiences/exp_1/', data, format='json')
         
         with patch.object(ExperienceDetailAPIView, 'get_permissions', return_value=[]):
             response = view(request, experience_id='exp_1')
@@ -308,41 +286,16 @@ class TestExperienceViews:
     def test_patch_experience_not_found(self, mock_controller_class, factory):
         """Test actualitzar experiència no trobada (404)"""
         mock_controller = mock_controller_class.return_value
-        mock_controller.update_experience.return_value = (None, None, "Experience not found")
+        mock_controller.update_experience.return_value = (None, "Experience not found")
         
         view = ExperienceDetailAPIView.as_view()
         data = {'comment': 'Updated'}
-        request = factory.patch('/api/experiences/exp_1/', data, format='multipart')
+        request = factory.patch('/api/experiences/exp_1/', data, format='json')
         
         with patch.object(ExperienceDetailAPIView, 'get_permissions', return_value=[]):
             response = view(request, experience_id='exp_1')
         
         assert response.status_code == status.HTTP_404_NOT_FOUND
-
-    @patch('api.views.experience_views.ExperienceController')
-    def test_patch_experience_with_partial_upload_error(self, mock_controller_class, factory):
-        """Test actualitzar experiència amb error parcial de pujada (200)"""
-        mock_controller = mock_controller_class.return_value
-        mock_exp = MagicMock(spec=Experience)
-        mock_exp.to_dict.return_value = {
-            'id': 'exp_1',
-            'refuge_id': 'ref_1',
-            'creator_uid': 'user_1',
-            'modified_at': '2024-01-01',
-            'comment': 'Updated'
-        }
-        upload_result = {'uploaded': ['file1.jpg'], 'failed': ['file2.jpg']}
-        mock_controller.update_experience.return_value = (mock_exp, upload_result, "Error assigning media keys")
-        
-        view = ExperienceDetailAPIView.as_view()
-        data = {'comment': 'Updated'}
-        request = factory.patch('/api/experiences/exp_1/', data, format='multipart')
-        
-        with patch.object(ExperienceDetailAPIView, 'get_permissions', return_value=[]):
-            response = view(request, experience_id='exp_1')
-        
-        assert response.status_code == status.HTTP_200_OK
-        assert 'message' in response.data
 
     @patch('api.views.experience_views.ExperienceController')
     def test_patch_experience_exception(self, mock_controller_class, factory):
@@ -352,7 +305,7 @@ class TestExperienceViews:
         
         view = ExperienceDetailAPIView.as_view()
         data = {'comment': 'Updated'}
-        request = factory.patch('/api/experiences/exp_1/', data, format='multipart')
+        request = factory.patch('/api/experiences/exp_1/', data, format='json')
         
         with patch.object(ExperienceDetailAPIView, 'get_permissions', return_value=[]):
             response = view(request, experience_id='exp_1')

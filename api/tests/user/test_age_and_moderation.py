@@ -190,6 +190,21 @@ class TestAgeViews:
         request = authed(APIRequestFactory().patch('/x', {'birth_date': '2000-01-01'}, format='json'))
         assert UserAgeConfirmationAPIView.as_view()(request, uid='u1').status_code == code
 
+    def test_age_confirmation_invalid_birth_date_error_is_string(self):
+        for payload in ({'birth_date': 'no-es-data'}, {}):
+            request = authed(APIRequestFactory().patch('/x', payload, format='json'))
+            response = UserAgeConfirmationAPIView.as_view()(request, uid='u1')
+            assert response.status_code == 400
+            assert response.data['error'] == 'Dades invàlides'
+            assert 'birth_date' in response.data['details']
+
+    def test_create_user_invalid_data_error_is_string(self):
+        request = authed(APIRequestFactory().post('/api/users/', {'birth_date': 'xx'}, format='json'))
+        response = UsersCollectionAPIView.as_view()(request)
+        assert response.status_code == 400
+        assert response.data['error'] == 'Dades invàlides'
+        assert isinstance(response.data['details'], dict)
+
     def test_age_confirmation_validation_and_same_user(self):
         request = authed(APIRequestFactory().patch('/x', {}, format='json'))
         assert UserAgeConfirmationAPIView.as_view()(request, uid='u1').status_code == 400

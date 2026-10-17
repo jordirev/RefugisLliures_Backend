@@ -291,35 +291,6 @@ class TestRefugiController:
         assert media_list is None
         assert "not found" in error.lower()
 
-    @patch('api.controllers.media_upload_controller.MediaUploadController')
-    @patch('api.controllers.refugi_lliure_controller.UserDAO')
-    @patch('api.controllers.refugi_lliure_controller.r2_media_service.get_refugi_media_service')
-    @patch('api.controllers.refugi_lliure_controller.RefugiLliureDAO')
-    def test_upload_refugi_media_success(self, mock_dao_class, mock_get_service, mock_user_dao_class, mock_upload_ctrl_class):
-        """Test pujada de mitjans (multipart antic) exitosa: passa pel pipeline de processament"""
-        mock_dao = mock_dao_class.return_value
-        mock_dao.refugi_exists.return_value = True
-        mock_upload_ctrl = mock_upload_ctrl_class.return_value
-        mock_upload_ctrl.process_and_publish.return_value = (
-            {'key': "refugis-lliures/refugi_123/uuid.webp", 'url': "http://presigned"}, None
-        )
-        
-        controller = RefugiLliureController()
-        file = MagicMock()
-        file.name = 'file1.jpg'
-        file.content_type = 'image/jpeg'
-        file.read.return_value = b'\xff\xd8\xff' + b'0' * 100
-        result, error = controller.upload_refugi_media('refugi_123', [file], 'user_123')
-        
-        assert error is None
-        assert len(result['uploaded']) == 1
-        assert result['uploaded'][0]['key'] == "refugis-lliures/refugi_123/uuid.webp"
-        kwargs = mock_upload_ctrl.process_and_publish.call_args.kwargs
-        assert kwargs['refuge_id'] == 'refugi_123'
-        assert kwargs['uid'] == 'user_123'
-        assert kwargs['declared_content_type'] == 'image/jpeg'
-        assert kwargs['target'] == 'refuge'
-
     @patch('api.daos.experience_dao.ExperienceDAO')
     @patch('api.controllers.refugi_lliure_controller.r2_media_service.get_refugi_media_service')
     @patch('api.controllers.refugi_lliure_controller.RefugiLliureDAO')
@@ -456,57 +427,6 @@ class TestRefugiLliureControllerExtended:
         assert res is None
         assert "Internal server error" in error
 
-    @patch('api.controllers.media_upload_controller.MediaUploadController')
-    @patch('api.controllers.refugi_lliure_controller.r2_media_service')
-    @patch('api.controllers.refugi_lliure_controller.RefugiLliureDAO')
-    @patch('api.controllers.refugi_lliure_controller.UserDAO')
-    def test_upload_refugi_media_errors(self, mock_user_dao_class, mock_ref_dao_class, mock_r2, mock_upload_ctrl_class):
-        """Test upload_refugi_media errors (camí multipart antic)"""
-        from api.services.image_processing_service import IMAGE_MAX_BYTES
-        ctrl = RefugiLliureController()
-        mock_ref_dao = mock_ref_dao_class.return_value
-        mock_upload_ctrl = mock_upload_ctrl_class.return_value
-        
-        # Refugi not found
-        mock_ref_dao.refugi_exists.return_value = False
-        res, error = ctrl.upload_refugi_media("r1", [], "u1")
-        assert res is None
-        assert "not found" in error
-        
-        mock_ref_dao.refugi_exists.return_value = True
-        mock_file = MagicMock()
-        mock_file.name = "f1.jpg"
-        mock_file.content_type = "image/jpeg"
-        mock_file.read.return_value = b'not really an image'
-
-        # Fitxer rebutjat pel pipeline (tipus real)
-        mock_upload_ctrl.process_and_publish.return_value = (None, 'invalid_type')
-        res, error = ctrl.upload_refugi_media("r1", [mock_file], "u1")
-        assert res['failed'] == [{'filename': 'f1.jpg', 'error': 'invalid_type'}]
-        assert res['uploaded'] == []
-        
-        # Excepció inesperada → processing_error
-        mock_upload_ctrl.process_and_publish.side_effect = Exception("Upload Error")
-        res, error = ctrl.upload_refugi_media("r1", [mock_file], "u1")
-        assert res['failed'][0]['error'] == 'processing_error'
-        
-        # Massa gran: no arriba al pipeline
-        mock_upload_ctrl.process_and_publish.reset_mock()
-        mock_upload_ctrl.process_and_publish.side_effect = None
-        big_file = MagicMock()
-        big_file.name = "big.jpg"
-        big_file.content_type = "image/jpeg"
-        big_file.read.return_value = b'0' * (IMAGE_MAX_BYTES + 1)
-        res, error = ctrl.upload_refugi_media("r1", [big_file], "u1")
-        assert res['failed'] == [{'filename': 'big.jpg', 'error': 'too_large'}]
-        mock_upload_ctrl.process_and_publish.assert_not_called()
-        
-        # General exception
-        mock_ref_dao.refugi_exists.side_effect = Exception("Fatal Error")
-        res, error = ctrl.upload_refugi_media("r1", [], "u1")
-        assert res is None
-        assert "Fatal Error" in error
-
     @patch('api.controllers.refugi_lliure_controller.r2_media_service')
     @patch('api.controllers.refugi_lliure_controller.RefugiLliureDAO')
     @patch('api.controllers.refugi_lliure_controller.UserDAO')
@@ -567,31 +487,6 @@ class TestRefugiLliureControllerExtended:
         res, error = ctrl.delete_multiple_refugi_media("r1", ["k1"])
         assert res is False
         assert "Fatal Error" in error
-
-    @patch('api.controllers.media_upload_controller.MediaUploadController')
-    @patch('api.controllers.refugi_lliure_controller.r2_media_service')
-    @patch('api.controllers.refugi_lliure_controller.RefugiLliureDAO')
-    @patch('api.controllers.refugi_lliure_controller.UserDAO')
-    def test_upload_refugi_media_success(self, mock_user_dao_class, mock_ref_dao_class, mock_r2, mock_upload_ctrl_class):
-        """Test upload_refugi_media èxit amb experiència associada"""
-        ctrl = RefugiLliureController()
-        mock_ref_dao = mock_ref_dao_class.return_value
-        mock_ref_dao.refugi_exists.return_value = True
-        mock_upload_ctrl = mock_upload_ctrl_class.return_value
-        mock_upload_ctrl.process_and_publish.return_value = ({'key': 'k1'}, None)
-        
-        mock_file = MagicMock()
-        mock_file.name = "f1.jpg"
-        mock_file.content_type = "image/jpeg"
-        mock_file.read.return_value = b'\xff\xd8\xff....'
-        
-        res, error = ctrl.upload_refugi_media("r1", [mock_file], "u1", experience_id='exp1', uploaded_at='2025-01-01T00:00:00')
-        assert error is None
-        assert res == {'uploaded': [{'key': 'k1'}], 'failed': []}
-        kwargs = mock_upload_ctrl.process_and_publish.call_args.kwargs
-        assert kwargs['target'] == 'experience'
-        assert kwargs['experience_id'] == 'exp1'
-        assert kwargs['uploaded_at'] == '2025-01-01T00:00:00'
 
     @patch('api.controllers.refugi_lliure_controller.r2_media_service')
     @patch('api.controllers.refugi_lliure_controller.RefugiLliureDAO')

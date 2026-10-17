@@ -7,9 +7,10 @@ Flux nou (recomanat):
     3. confirm_upload_intents → descarrega de quarantine, valida, processa, modera,
        publica a la clau final UUID i esborra quarantine
 
-Flux antic (multipart): RefugiLliureController.upload_refugi_media i
-UserController.upload_user_avatar criden process_and_publish(), de manera que TOTS els
-camins passen pel mateix processament (neteja de metadades, compressió, tipus real).
+Única via de pujada: process_and_publish() és el processament compartit (neteja de
+metadades, compressió, tipus real, moderació) que crida confirm_upload_intents. Els camins
+multipart antics (POST refuges/{id}/media, PATCH users/{uid}/avatar, files[] a experiències)
+s'han eliminat.
 """
 import logging
 import uuid

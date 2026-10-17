@@ -38,7 +38,7 @@
 
 21. **NO publiquis bytes de l'usuari sense passar per `MediaUploadController.process_and_publish`** (tipus real per magic bytes, límits, recodificació sense EXIF/GPS, moderació, claus UUID). `upload_file` ja ignora `filename` i genera un UUID **[FET]**.
 22. `R2MediaService.delete_file` **retorna `False`, no llança**, en cas de `ClientError`. Comprova el booleà; un `try/except` al voltant no detectarà la fallada.
-23. El processament (`confirm` i multipart antic) és síncron: amb 1 worker gunicorn, molts vídeos de 50 MB a la vegada poden acostar-se al timeout **[INFERÈNCIA]**.
+23. El processament (`confirm`) és síncron: amb 1 worker gunicorn, molts vídeos de 50 MB a la vegada poden acostar-se al timeout **[INFERÈNCIA]**.
 23b. Per escriure una entrada de `media_metadata` usa `FieldPath('media_metadata', key).to_api_repr()` (les claus porten `/`, `.` i `-`) o `DELETE_FIELD` per esborrar-la; mai reescriguis el map sencer **[FET]**.
 23c. Els mitjans tenen `status` (`visible | hidden_pending_review | removed`): qualsevol lectura nova de `media_metadata` cap a l'API ha de filtrar amb `MediaMetadata.is_visible_to(viewer_uid, is_admin)` **[FET]**.
 23d. `audit_logs.expire_at` i `upload_intents.expire_at` són **datetime** (Timestamp), no strings ISO: la TTL de Firestore només funciona amb Timestamps **[FET]**.

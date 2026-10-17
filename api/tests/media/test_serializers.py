@@ -4,7 +4,6 @@ Tests dels serializers de mitjans (MediaItem i peticions noves)
 from unittest.mock import MagicMock, patch
 
 import pytest
-from django.core.files.uploadedfile import SimpleUploadedFile
 from rest_framework.test import APIRequestFactory, force_authenticate
 
 from api.models.media_metadata import MediaMetadata
@@ -62,20 +61,7 @@ class TestRequestSerializers:
 
 
 @pytest.mark.views
-class TestLegacyUploadBlocked:
-    @pytest.mark.real_permissions
-    @patch('api.permissions.get_user_for_permissions')
-    @patch('api.views.refugi_media_views.RefugiLliureController')
-    def test_blocked_user_cannot_use_legacy_multipart(self, mock_ctrl, mock_lookup):
-        from api.views.refugi_media_views import RefugiMediaAPIView
-        mock_lookup.return_value = User(uid='u1', username='u', is_blocked=True)
-        request = APIRequestFactory().post('/x', {'files': [SimpleUploadedFile('a.jpg', b'x', 'image/jpeg')]}, format='multipart')
-        force_authenticate(request, user=MagicMock(is_authenticated=True, uid='u1', claims={}))
-        request.user_uid = 'u1'
-        response = RefugiMediaAPIView.as_view()(request, id='ref_1')
-        assert response.status_code == 403 and response.data['error'] == 'user_blocked'
-        mock_ctrl.return_value.upload_refugi_media.assert_not_called()
-
+class TestMediaListBlockedUser:
     @pytest.mark.real_permissions
     @patch('api.permissions.get_user_for_permissions')
     @patch('api.views.refugi_media_views.RefugiLliureController')

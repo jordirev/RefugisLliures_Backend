@@ -70,7 +70,7 @@ urlpatterns = [
     path('refuges/<str:refuge_id>/visits/<str:visit_date>/', RefugeVisitDetailAPIView.as_view(), name='refuge_visit_detail'),  # POST + PATCH + DELETE /refuges/{id}/visits/{date}/
     
     # Refugi media endpoints
-    path('refuges/<str:id>/media/', RefugiMediaAPIView.as_view(), name='refugi_media'),  # GET + POST /refuges/{id}/media/
+    path('refuges/<str:id>/media/', RefugiMediaAPIView.as_view(), name='refugi_media'),  # GET /refuges/{id}/media/
     path('refuges/<str:id>/media/<path:key>/', RefugiMediaDeleteAPIView.as_view(), name='refugi_media_delete'),  # DELETE /refuges/{id}/media/{key}/
     
     # Pujada directa de mitjans (presigned PUT + confirm) i moderació
@@ -93,7 +93,7 @@ urlpatterns = [
     # Users endpoints
     path('users/', UsersCollectionAPIView.as_view(), name='users_collection'),  # POST /users/ (crear)
     path('users/<str:uid>/', UserDetailAPIView.as_view(), name='user_detail'),  # GET + PATCH + DELETE /users/{uid}/
-    path('users/<str:uid>/avatar/', UserAvatarAPIView.as_view(), name='user_avatar'),  # PATCH + DELETE /users/{uid}/avatar/
+    path('users/<str:uid>/avatar/', UserAvatarAPIView.as_view(), name='user_avatar'),  # DELETE /users/{uid}/avatar/
     path('users/<str:uid>/age-confirmation/', UserAgeConfirmationAPIView.as_view(), name='user_age_confirmation'),  # PATCH
     path('users/<str:uid>/moderation-notices/', UserModerationNoticesAPIView.as_view(), name='user_moderation_notices'),  # GET
     path('users/<str:uid>/favorite-refuges/', UserFavouriteRefugesAPIView.as_view(), name='user_refugis_preferits'),  # GET + POST /users/{uid}/favorite-refuges/

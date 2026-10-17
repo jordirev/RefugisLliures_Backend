@@ -2,7 +2,7 @@
 
 > **[FET]** comprovat al codi · **[INFERÈNCIA]** deducció · **[NO VERIFICAT]** depèn de config externa.
 
-Des de la feature *images* la pujada recomanada és **directa a R2 amb URL PUT prefirmada** + **confirmació** al backend, que fa el processament autoritatiu (neteja de metadades, compressió, tipus real, moderació). El multipart antic es manté per compatibilitat, però passa pel **mateix** processament. Denúncies i moderació: [flux 12](12-media-moderation.md). Avatar: [flux 2](02-user-avatar.md). Experiències: [flux 8](08-experiences.md).
+Des de la feature *images* l'única pujada és **directa a R2 amb URL PUT prefirmada** + **confirmació** al backend, que fa el processament autoritatiu (neteja de metadades, compressió, tipus real, moderació). És l'**única** via de pujada: els camins multipart antics s'han retirat (vegeu la nota «Retirat» més avall). Denúncies i moderació: [flux 12](12-media-moderation.md). Avatar: [flux 2](02-user-avatar.md). Experiències: [flux 8](08-experiences.md).
 
 ## Contracte d'API (compartit amb el frontend) [FET]
 
@@ -33,8 +33,7 @@ MediaItem = {key, url, thumb_url, media_type: "image"|"video", width, height, bl
 |---|---|---|---|---|
 | POST | `/api/media/upload-intents/` | `UploadIntentsAPIView` (`api/views/media_views.py:62`) | IsAuthenticated + IsNotBlocked + IsAgeConfirmed | JSON (contracte) |
 | POST | `/api/media/upload-intents/confirm/` | `UploadIntentsConfirmAPIView` (`:120`) | idem | JSON `{upload_ids}` |
-| GET | `/api/refuges/{id}/media/` | `RefugiMediaAPIView.get` | IsAuthenticated | — |
-| POST | `/api/refuges/{id}/media/` | `.post` (**legacy**) | IsAuthenticated + IsNotBlocked | multipart, llista `files` |
+| GET | `/api/refuges/{id}/media/` | `RefugiMediaAPIView.get` (només GET) | IsAuthenticated | — |
 | DELETE | `/api/refuges/{id}/media/{key}/` | `RefugiMediaDeleteAPIView.delete` | IsAuthenticated + IsMediaUploader | — (`key` és `path:`) |
 
 ## Model de dades [FET]
@@ -100,8 +99,8 @@ sequenceDiagram
 3. **Imatge**: `ImageOps.exif_transpose`, `DateTimeOriginal`(+`OffsetTimeOriginal`) → `taken_at`, còpia només amb píxels (`_strip_metadata`), WebP q80 màx. 2048 px + miniatura 400 px, blurhash (4×3), pHash i sha256 per a moderació.
 4. **Vídeo**: remux sense recodificar `-map 0:v:0 -map 0:a? -c copy -map_metadata -1 -map_chapters -1 -fflags +bitexact (-movflags +faststart)`; `creation_time` → `taken_at`; pòster = primer fotograma → WebP 400 px. Timeout ffmpeg 120 s → `processing_error`.
 
-## Diagrama — multipart antic (compatibilitat)
-`RefugiMediaAPIView.post` → `RefugiLliureController.upload_refugi_media` (`api/controllers/refugi_lliure_controller.py:180`) llegeix cada fitxer (≤ límit + 1 bytes) i crida `MediaUploadController.process_and_publish` (`api/controllers/media_upload_controller.py:273`). Resposta `200 {uploaded: [MediaItem], failed: [{filename, error}]}` amb `error` ∈ els mateixos `reason` del contracte.
+## Retirat: multipart antic
+Els camins multipart antics (`POST /api/refuges/{id}/media/`, `PATCH /api/users/{uid}/avatar/`, `files[]` a `POST`/`PATCH /api/experiences/`) s'han eliminat; ara responen **405** (les experiències només accepten JSON) **[FET]**. `MediaUploadController.process_and_publish` (`api/controllers/media_upload_controller.py:273`) només el crida `confirm`.
 
 ## Diagrama — esborrar
 
@@ -137,7 +136,7 @@ sequenceDiagram
 - Intents/confirm: `MediaUploadController.create_upload_intents` (L76), `confirm_upload_intents` (L159) → `_confirm_one` (L183) → `process_and_publish` (L273) → `_publish_refuge_media` (L321) / `_publish_avatar` (L376); bloqueig per moderació `_handle_moderation_block` (L431).
 - DAO: `RefugiLliureDAO.add_media_metadata` (`api/daos/refugi_lliure_dao.py:442`, FieldPath), `update_media_status` (L479), `delete_media_metadata` (L509, `DELETE_FIELD`), `delete_multiple_media_metadata` (L553), `get_media_metadata` (L402, filtra per status), `get_raw_media_metadata` (L368, cache-first), `get_media_entry` (L387, sense cache).
 - R2: `generate_presigned_put_url`, `head_object`, `get_object_bytes`, `put_bytes`, `copy_object`, `move_object`, `build_media_key` (`api/services/r2_media_service.py:368-480`).
-- Llistat: `RefugiLliureController.get_refugi_media` (L148) — registra l'accés a `audit_logs` (`media.list`).
+- Llistat: `RefugiLliureController.get_refugi_media` (L147) — registra l'accés a `audit_logs` (`media.list`).
 
 ## Errors
 | Cas | HTTP |
@@ -146,14 +145,14 @@ sequenceDiagram
 | Usuari bloquejat / edat no confirmada / no és el creador de l'experiència | 403 `user_blocked` / `age_not_confirmed` / `not_owner` |
 | Refugi o experiència no trobats | 404 |
 | Fitxer rebutjat en confirmar | 200 amb `failed[].reason` |
-| Sense fitxers (multipart) | 400 |
+| `POST`/`PATCH` a `/api/refuges/{id}/media/` o `/api/users/{uid}/avatar/` | 405 |
 | Media inexistent o d'un altre usuari (DELETE) | **403** (no 404) |
 | R2 no pot esborrar (DELETE) | 500 (amb rollback de Firestore) |
 
 ## Gotchas i bugs
 - Les claus R2 contenen `/`, `.` i `-`: per escriure una entrada del map cal `FieldPath('media_metadata', key).to_api_repr()` (escapa amb backticks). **Mai** `update({'media_metadata.' + key: ...})` **[FET]**.
 - El processament és **síncron** dins la petició de `confirm` (1 worker a Render): 10 vídeos de 50 MB poden acostar-se al timeout de gunicorn **[INFERÈNCIA]** — vegeu [TECH_DEBT](../TECH_DEBT.md).
-- El multipart antic no exigeix `IsAgeConfirmed` (per no trencar versions antigues de l'app) **[FET]**; l'app nova té la pantalla d'edat bloquejant.
+- Totes les pujades exigeixen `IsAgeConfirmed` (ja no hi ha camins que l'esquivin) **[FET]**.
 - `unquote` a la vista sobre un path que Django ja ha decodificat → doble decodificació de `%25` **[INFERÈNCIA]**.
 - Swagger documenta 204 per al DELETE però retorna 200 **[FET]**.
 - Configuració necessària al bucket (CORS per a PUT, lifecycle de `quarantine/`): [integrations/cloudflare-r2.md](../integrations/cloudflare-r2.md).

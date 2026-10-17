@@ -437,32 +437,10 @@ EXAMPLE_MEDIA_ITEM_LEGACY = {
     'experience_id': None,
 }
 
-EXAMPLE_AVATAR_UPLOAD_RESPONSE = {
-    'key': 'users-avatars/uid_123abc/0b1c2d3e-4f5a-4b6c-8d7e-9f0a1b2c3d4e.webp',
-    'url': f'{R2}/users-avatars/uid_123abc/0b1c2d3e-4f5a-4b6c-8d7e-9f0a1b2c3d4e.webp?X-Amz-Signature=...',
-    'thumb_url': f'{R2}/users-avatars/uid_123abc/0b1c2d3e-4f5a-4b6c-8d7e-9f0a1b2c3d4e.webp?X-Amz-Signature=...',
-    'media_type': 'image',
-    'width': 512,
-    'height': 512,
-    'blurhash': 'LKO2?U%2Tw=w]~RBVZRi};RPxuwH',
-    'creator_uid': 'uid_123abc',
-    'uploaded_at': '2025-12-09T14:30:00+01:00',
-    'taken_at': None,
-    'experience_id': None,
-}
-
 # ========== EXEMPLES DE MITJANS (REFUGIS) ==========
 
 EXAMPLE_REFUGI_MEDIA_LIST = {
     'media': [EXAMPLE_MEDIA_ITEM_IMAGE, EXAMPLE_MEDIA_ITEM_VIDEO, EXAMPLE_MEDIA_ITEM_LEGACY]
-}
-
-EXAMPLE_REFUGI_MEDIA_UPLOAD_RESPONSE = {
-    'uploaded': [EXAMPLE_MEDIA_ITEM_IMAGE],
-    'failed': [
-        {'filename': 'document.pdf', 'error': 'invalid_type'},
-        {'filename': 'huge.mov', 'error': 'too_large'},
-    ]
 }
 
 # ========== EXEMPLES DE PUJADA DIRECTA (upload-intents) ==========

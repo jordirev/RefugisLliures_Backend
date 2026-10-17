@@ -14,10 +14,9 @@
 3. Verifica:
    ```bash
    curl https://refugislliures-backend.onrender.com/api/health/
-   curl -X POST "https://refugislliures-backend.onrender.com/api/refuges/<id>/media/" \
-     -H "Authorization: Bearer <firebase-token>" -F "files=@test.jpg"
+   curl -X POST "https://refugislliures-backend.onrender.com/api/media/upload-intents/"      -H "Authorization: Bearer <firebase-token>" -H "Content-Type: application/json"      -d '{"target":"refuge","refuge_id":"<id>","rights_confirmed":true,"files":[{"content_type":"image/jpeg","size":12345}]}'
    ```
-   El health check torna 503 si falta config R2 ([flux 11](../flows/11-admin-cache-health.md)).
+   El health check torna 503 si falta config R2 ([flux 11](../flows/11-admin-cache-health.md)). La segona crida torna 201 amb `put_url` si el backend pot signar URLs R2 (l'usuari ha de tenir l'edat confirmada); la pujada completa (`PUT` + `confirm`) és al [flux 3](../flows/03-refuge-media-upload.md) **[INFERÈNCIA]**.
 
 ## 2. GitHub Actions
 El procés diari (`process-visits.yml`) necessita les mateixes `R2_*` com a **secrets** del repositori.

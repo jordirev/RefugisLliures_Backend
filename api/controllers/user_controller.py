@@ -4,7 +4,7 @@ Controller per a la gestió d'usuaris
 import logging
 from typing import List, Optional, Dict, Any, Tuple
 
-from api.models.media_metadata import MediaMetadata, RefugeMediaMetadata
+from api.models.media_metadata import RefugeMediaMetadata
 from ..daos.user_dao import UserDAO
 from ..daos.refugi_lliure_dao import RefugiLliureDAO
 from ..models.user import User
@@ -481,57 +481,6 @@ class UserController:
             tuple: (success, list_refugis_info, error_message)
         """
         return self._get_refugis_info_by_type(uid, 'visited_refuges')
-    
-    def upload_user_avatar(self, uid: str, file: Any) -> Tuple[bool, Optional[MediaMetadata], Optional[str]]:
-        """
-        Puja o actualitza l'avatar d'un usuari (camí multipart antic).
-        Passa pel mateix processament que el flux nou: tipus real, neteja de metadades,
-        WebP 512 px i clau UUID. L'avatar antic s'esborra NOMÉS quan el nou s'ha desat bé.
-        
-        Args:
-            uid: UID de l'usuari
-            file: Fitxer de l'avatar a pujar
-            
-        Returns:
-            tuple: (success, avatar_metadata, error_message)
-        """
-        try:
-            # Verificar que l'usuari existeix
-            user = self.user_dao.get_user_by_uid(uid)
-            if not user:
-                return False, None, f"Usuari amb UID {uid} no trobat"
-            
-            from .media_upload_controller import MediaUploadController
-            from ..services.image_processing_service import (
-                IMAGE_MAX_BYTES, REASON_TOO_LARGE, REASON_INVALID_TYPE, REASON_MODERATION_BLOCKED,
-            )
-            
-            data = file.read(IMAGE_MAX_BYTES + 1)
-            if len(data) > IMAGE_MAX_BYTES:
-                return False, None, f"Fitxer massa gran ({REASON_TOO_LARGE})"
-            
-            item, reason = MediaUploadController().process_and_publish(
-                data=data,
-                declared_content_type=getattr(file, 'content_type', None),
-                target='avatar',
-                uid=uid,
-            )
-            if item is None:
-                if reason == REASON_INVALID_TYPE:
-                    return False, None, f"Tipus de fitxer no permès ({REASON_INVALID_TYPE})"
-                if reason == REASON_MODERATION_BLOCKED:
-                    return False, None, f"Contingut bloquejat per la moderació ({REASON_MODERATION_BLOCKED})"
-                return False, None, f"Error intern processant l'avatar ({reason})"
-
-            logger.info(f"Avatar pujat correctament per l'usuari {uid}")
-            return True, MediaMetadata.from_dict(item), None
-            
-        except ValueError as e:
-            logger.warning(f"Error de validació pujant avatar: {str(e)}")
-            return False, None, str(e)
-        except Exception as e:
-            logger.error(f"Error pujant avatar per l'usuari {uid}: {str(e)}")
-            return False, None, f"Error intern: {str(e)}"
     
     def delete_user_avatar(self, uid: str) -> Tuple[bool, Optional[str]]:
         """

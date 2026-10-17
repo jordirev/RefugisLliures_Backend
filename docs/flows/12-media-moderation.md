@@ -90,12 +90,12 @@ sequenceDiagram
 
 ## Moderació automàtica (`api/services/moderation_service.py`)
 - `ModerationProvider` (interfície) → `HashBlocklistProvider` (actiu: sha256 exacte + pHash amb distància de Hamming ≤ 6), `PhotoDNAProvider` i `GoogleContentSafetyProvider` (stubs **desactivats** fins tenir accés).
-- `ModerationService.check` s'executa a cada pujada (nova i legacy) **abans** de publicar. Si un proveïdor falla → **fail-closed** (`processing_error`, no es publica).
+- `ModerationService.check` s'executa a cada pujada (`confirm`) **abans** de publicar. Si un proveïdor falla → **fail-closed** (`processing_error`, no es publica).
 - Coincidència (`MediaUploadController._handle_moderation_block`): el fitxer **no** es publica, l'original es mou a `moderation-hold/{uid}/{upload_id}`, `is_blocked=true`, denúncia `child_sexual_abuse` `priority=high` `source=automatic` (reporter `system`), avís `account_blocked` i dues entrades d'auditoria. L'admin **no** rep previsualització de l'evidència retinguda.
 - Futur (domini propi a Cloudflare + CSAM Scanning Tool + PhotoDNA/NCMEC): [guides/cloudflare-domain-csam.md](../guides/cloudflare-domain-csam.md).
 
 ## Permisos nous (`api/permissions.py`)
-- `IsNotBlocked` (L409): 403 `user_blocked` si `users/{uid}.is_blocked`. S'aplica a intents/confirm, denúncies, POST/PATCH/DELETE d'experiències, POST multipart de media i PATCH d'avatar.
+- `IsNotBlocked` (L409): 403 `user_blocked` si `users/{uid}.is_blocked`. S'aplica a intents/confirm, denúncies i POST/PATCH/DELETE d'experiències.
 - `IsAgeConfirmed` (L429): 403 `age_not_confirmed` si no hi ha `age_confirmed_at` (o no existeix `users/{uid}`). S'aplica a intents/confirm i denúncies.
 - Tots dos llegeixen l'usuari amb `get_user_for_permissions` (L397, `UserDAO.get_user_by_uid`, cache-first 10 min): un bloqueig pot trigar fins a 10 min a fer efecte si no s'invalida la cache **[INFERÈNCIA]** — `UserDAO.set_blocked` sí que invalida `user_detail`.
 
@@ -104,7 +104,7 @@ sequenceDiagram
 - `PATCH /api/users/{uid}/age-confirmation/`: mateixa regla. El càlcul (`api/utils/age_utils.py`) usa la data d'avui a Europe/Madrid. La data de naixement no es desa ni es registra a l'auditoria.
 
 ## Auditoria (`api/services/audit_log_service.py`)
-Accions: `media.upload_intent`, `media.upload_confirm`, `media.upload_legacy`, `avatar.upload`, `media.delete`, `media.list` (accés a la llista de mitjans), `media.report`, `moderation.auto_hide`, `moderation.hash_block`, `moderation.user_blocked`, `moderation.resolve`, `moderation.reports_list`, `user.age_confirmed`. `log()` mai llança (un error de Firestore només es registra al log).
+Accions: `media.upload_intent`, `media.upload_confirm`, `avatar.upload`, `media.delete`, `media.list` (accés a la llista de mitjans), `media.report`, `moderation.auto_hide`, `moderation.hash_block`, `moderation.user_blocked`, `moderation.resolve`, `moderation.reports_list`, `user.age_confirmed`. `log()` mai llança (un error de Firestore només es registra al log).
 
 ## Gotchas
 - `expire_at` és un **datetime** (Timestamp), no un string ISO: és l'única excepció a la convenció de dates perquè la TTL de Firestore només funciona amb Timestamps.

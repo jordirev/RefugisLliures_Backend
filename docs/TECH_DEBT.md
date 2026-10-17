@@ -61,7 +61,7 @@
 | # | Problema | Evidència | Tipus |
 |---|---|---|---|
 | I1 | El processament de `confirm` és síncron dins la petició (1 worker a Render); vídeos grans o 10 fitxers poden superar el timeout de gunicorn. Moure'l a una cua/worker. | `MediaUploadController.confirm_upload_intents` | INFERÈNCIA |
-| I2 | El multipart antic (`POST /api/refuges/{id}/media/`, experiències, avatar) no exigeix `IsAgeConfirmed` per compatibilitat amb versions antigues de l'app. Retirar quan totes les apps usin upload-intents. | `api/views/refugi_media_views.py`, `api/views/experience_views.py`, `api/views/user_views.py` | FET |
+| I2 | **RESOLT**: els camins multipart antics (`POST /api/refuges/{id}/media/`, `PATCH /api/users/{uid}/avatar/`, `files[]` a experiències) s'han eliminat (ara 405); l'única via de pujada és upload-intents, que exigeix `IsAgeConfirmed`. | `api/views/refugi_media_views.py`, `api/views/experience_views.py`, `api/views/user_views.py` | FET |
 | I3 | En esborrar un usuari no s'anonimitza `reporter_uid` a `media_reports` ni s'esborren `moderation_notices`; `audit_logs` caduca per TTL (12 mesos). Cal decidir la retenció (obligació legal vs. dret a l'oblit). | `UserController.delete_user` | FET |
 | I4 | `IsNotBlocked` llegeix l'usuari amb cache de 10 min: un bloqueig fet fora de `UserDAO.set_blocked` pot trigar a fer efecte. | `api/permissions.py:get_user_for_permissions` | INFERÈNCIA |
 | I5 | `moderation_hash_blocklist` es carrega sencera (pHash) a memòria/cache: no escala a llistes grans; caldria un índex BK-tree o un servei extern. | `HashBlocklistProvider._load_phashes` | FET |

@@ -24,7 +24,6 @@ AUDIT_RETENTION_DAYS = 365
 # Accions registrades
 ACTION_UPLOAD_INTENT = 'media.upload_intent'
 ACTION_UPLOAD_CONFIRM = 'media.upload_confirm'
-ACTION_UPLOAD_LEGACY = 'media.upload_legacy'
 ACTION_MEDIA_DELETE = 'media.delete'
 ACTION_MEDIA_LIST = 'media.list'
 ACTION_REPORT_CREATE = 'media.report'

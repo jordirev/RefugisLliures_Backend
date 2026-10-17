@@ -39,7 +39,7 @@ async function callAPI(path, options = {}) {
 
 const me = await callAPI(`/api/users/${auth.currentUser.uid}/`);
 ```
-Per a pujades (`/media/`, `/avatar/`, experiències) envia `multipart/form-data` i **no** fixis `Content-Type` a mà.
+Les pujades de fitxers (fotos de refugi, d'experiència i avatar) **no** passen pel backend en multipart: demana `POST /api/media/upload-intents/` (JSON), fes `PUT` a la URL prefirmada de R2 amb el `Content-Type` retornat i confirma amb `POST /api/media/upload-intents/confirm/` ([flux 3](../flows/03-refuge-media-upload.md)). Les experiències (`POST`/`PATCH /api/experiences/`) són només JSON.
 
 ## 3. Provar amb cURL
 ```bash

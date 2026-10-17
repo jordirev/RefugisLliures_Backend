@@ -21,7 +21,7 @@ On es defineixen **[FET]**:
 - `run_process_visits.sh` / `run_process_visits.bat`: placeholders.
 - A Render: **[NO VERIFICAT]** (s'han de configurar al dashboard).
 
-### Configuració del bucket (manual, al dashboard de Cloudflare) **[NO VERIFICAT]**
+### Configuració del bucket (manual, al dashboard de Cloudflare) **[JA FET]**
 1. **CORS** (necessari perquè l'app pugi directament amb PUT i per a l'app web, si n'hi ha):
    ```json
    [
@@ -41,7 +41,7 @@ On es defineixen **[FET]**:
 Dev vs prod: el codi no distingeix buckets; depèn de `R2_BUCKET_NAME` a cada entorn **[FET]**.
 
 ## Estratègies de path
-| Estratègia | Base path | Claus noves | Tipus (multipart antic, validació prèvia) |
+| Estratègia | Base path | Claus noves | Tipus acceptats (validació prèvia) |
 |---|---|---|---|
 | `RefugiMediaStrategy` | `refugis-lliures/{refuge_id}` | `{uuid}.webp` + `{uuid}_thumb.webp`; vídeo `{uuid}.mp4\|.mov\|.webm` + `{uuid}_thumb.webp` | image/jpeg, jpg, png, webp, heic, heif; video/mp4, quicktime, x-msvideo, webm |
 | `UserAvatarStrategy` | `users-avatars/{uid}` | `{uuid}.webp` (512 px, sense miniatura) | només imatges |
@@ -85,7 +85,7 @@ La llista blanca **autoritativa** és la d'`image_processing_service` (imatges j
 - La URL PUT signa `content-length`: el client ha d'enviar exactament la mida declarada a l'intent **[FET]**.
 
 ## Estendre el servei
-- **Nou format**: afegeix-lo a la llista blanca i als magic bytes d'`image_processing_service` (i, si cal, a l'estratègia per al multipart antic).
+- **Nou format**: afegeix-lo a la llista blanca i als magic bytes d'`image_processing_service` (i, si cal, a la validació de tipus de l'estratègia).
 - **Nou tipus de media**: nova subclasse de `MediaPathStrategy` i factory `get_<x>_service()`. Patró: [design/patterns.md §Strategy](../design/patterns.md#strategy).
 
 ## Guia de configuració

@@ -49,7 +49,7 @@ api/views  api/serializers  api/controllers  api/daos  api/services   + api/mapp
 4. No facis read-modify-write d'arrays/maps: usa `ArrayUnion`/`ArrayRemove`/`Increment` o `FieldPath('media_metadata', key).to_api_repr()` / `DELETE_FIELD` (les claus R2 porten `/` i `.`).
 5. Serializer i `__post_init__` han d'aplicar les mateixes regles (cas `ini_date == fin_date` a renovations).
 6. Cap `default=` en serializers d'update (PATCH d'usuari reseteja `language`).
-7. `R2MediaService.delete_file` retorna `False`, no llança: comprova el booleà. Tota pujada ha de passar per `MediaUploadController.process_and_publish` (neteja EXIF, tipus real, claus UUID); no facis `put_object` de bytes de l'usuari directament.
+7. `R2MediaService.delete_file` retorna `False`, no llança: comprova el booleà. Tota pujada (única via: upload-intents + `confirm`) ha de passar per `MediaUploadController.process_and_publish` (neteja EXIF, tipus real, claus UUID); no facis `put_object` de bytes de l'usuari directament.
 8. Variables `R2_*` es llegeixen amb `os.getenv`; `decouple` no omple `os.environ` → exporta-les a l'entorn.
 9. Canviar el text d'un error pot canviar el codi HTTP.
 10. Els tests de vistes muten `view.cls.permission_classes`; usa `patch.object`. `api/tests/conftest.py` bloqueja Firestore real i mocka `AuditLogService.log` i `get_user_for_permissions` (markers `real_audit_log`, `real_permissions` per desactivar-ho).
