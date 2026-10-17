@@ -4,17 +4,21 @@ Controller per a la gestió d'usuaris
 import logging
 from typing import List, Optional, Dict, Any, Tuple
 
-from api.models.media_metadata import MediaMetadata, RefugeMediaMetadata
+from api.models.media_metadata import RefugeMediaMetadata
 from ..daos.user_dao import UserDAO
 from ..daos.refugi_lliure_dao import RefugiLliureDAO
 from ..models.user import User
 from ..mappers.refugi_lliure_mapper import RefugiLliureMapper
 from ..utils.timezone_utils import get_madrid_now
 from ..services import r2_media_service
+from ..services import audit_log_service as audit
+from ..utils.age_utils import is_old_enough
+from ..models.user import AGE_THRESHOLD
 
 logger = logging.getLogger(__name__)
 
 UID_NOT_PROVIDED_ERROR = "UID no proporcionat"
+ERROR_UNDERAGE = "underage"
 
 class UserController:
     """Controller per gestionar operacions d'usuaris"""
@@ -42,6 +46,17 @@ class UserController:
             existing_user = self.user_dao.get_user_by_uid(uid)
             if existing_user:
                 return False, None, f"Usuari amb UID {uid} ja existeix"
+
+            # Edat: la data de naixement NOMÉS s'usa per calcular l'edat; mai es desa
+            user_data = dict(user_data)
+            birth_date = user_data.pop('birth_date', None)
+            if birth_date is not None:
+                if not is_old_enough(birth_date, AGE_THRESHOLD):
+                    return False, None, ERROR_UNDERAGE
+                user_data['age_confirmed_at'] = get_madrid_now().isoformat()
+                user_data['age_threshold'] = AGE_THRESHOLD
+            user_data.setdefault('moderation_strikes', 0)
+            user_data.setdefault('is_blocked', False)
             
             # Afegeix el UID a les dades de l'usuari
             user_data['uid'] = uid
@@ -467,71 +482,6 @@ class UserController:
         """
         return self._get_refugis_info_by_type(uid, 'visited_refuges')
     
-    def upload_user_avatar(self, uid: str, file: Any) -> Tuple[bool, Optional[MediaMetadata], Optional[str]]:
-        """
-        Puja o actualitza l'avatar d'un usuari
-        
-        Args:
-            uid: UID de l'usuari
-            file: Fitxer de l'avatar a pujar
-            
-        Returns:
-            tuple: (success, avatar_metadata, error_message)
-        """
-        try:
-            # Verificar que l'usuari existeix
-            user = self.user_dao.get_user_by_uid(uid)
-            if not user:
-                return False, None, f"Usuari amb UID {uid} no trobat"
-            
-            # Si ja té un avatar, eliminar-lo abans de pujar el nou
-            if user.avatar_metadata:
-                old_key = user.avatar_metadata.key
-                if old_key:
-                    try:
-                        self.avatar_service.delete_file(old_key)
-                        logger.info(f"Avatar anterior eliminat: {old_key}")
-                    except Exception as e:
-                        logger.warning(f"Error eliminant avatar anterior: {str(e)}")
-            
-            # Pujar nou avatar
-            content_type = file.content_type
-            result = self.avatar_service.upload_file(
-                file_content=file,
-                entity_id=uid,
-                content_type=content_type,
-                filename=file.name
-            )
-            
-            # Preparar metadades
-            media_metadata = {
-                'key': result['key'],
-                'uploaded_at': get_madrid_now().isoformat()
-            }
-            
-            # Actualitzar metadades a Firestore
-            success = self.user_dao.update_avatar_metadata(uid, media_metadata)
-            if not success:
-                # Si falla l'actualització a Firestore, intentar eliminar el fitxer pujat
-                try:
-                    self.avatar_service.delete_file(result['key'])
-                except:
-                    pass
-                return False, None, "Error actualitzant metadades de l'avatar"
-            else:
-                logger.info(f"Avatar pujat correctament per l'usuari {uid}")
-                #Generar objecte MediaMetadata per retornar
-                media_service = r2_media_service.get_user_avatar_service()
-                avatar_metadata = media_service.generate_media_metadata_from_dict(media_metadata)
-                return True, avatar_metadata, None
-            
-        except ValueError as e:
-            logger.warning(f"Error de validació pujant avatar: {str(e)}")
-            return False, None, str(e)
-        except Exception as e:
-            logger.error(f"Error pujant avatar per l'usuari {uid}: {str(e)}")
-            return False, None, f"Error intern: {str(e)}"
-    
     def delete_user_avatar(self, uid: str) -> Tuple[bool, Optional[str]]:
         """
         Elimina l'avatar d'un usuari
@@ -552,16 +502,22 @@ class UserController:
             if not media_metadata:
                 return False, "L'usuari no té cap avatar"
             
-            # Eliminar fitxer de R2
+            # Eliminar fitxer de R2 (delete_file retorna False, no llança: cal comprovar-ho)
             media_key = media_metadata.get('key')
             if media_key:
                 try:
-                    self.avatar_service.delete_file(media_key)
-                    logger.info(f"Avatar eliminat de R2: {media_key}")
+                    deleted = self.avatar_service.delete_file(media_key)
                 except Exception as e:
                     logger.error(f"Error eliminant avatar de R2: {str(e)}")
-                    # Tornar a afegir les metadades a l'usuari a Firestore ja que no s'ha pogut eliminar el fitxer
+                    deleted = False
+                if not deleted:
+                    # Rollback real: tornar a desar les metadades
                     self.user_dao.update_avatar_metadata(uid, media_metadata)
+                    return False, "Error eliminant l'avatar de l'emmagatzematge"
+                logger.info(f"Avatar eliminat de R2: {media_key}")
+                thumb_key = media_metadata.get('thumb_key')
+                if thumb_key and not self.avatar_service.delete_file(thumb_key):
+                    logger.warning(f"Miniatura d'avatar òrfena a R2: {thumb_key}")
             
             logger.info(f"Avatar eliminat correctament per l'usuari {uid}")
             return True, None
@@ -570,5 +526,48 @@ class UserController:
             logger.error(f"Error eliminant avatar per l'usuari {uid}: {str(e)}")
             return False, f"Error intern: {str(e)}"
     
+    # ------------------------------------------------------------------
+    # Edat i avisos de moderació
+    # ------------------------------------------------------------------
     
+    def confirm_age(self, uid: str, birth_date) -> tuple[bool, Optional[User], Optional[str]]:
+        """
+        Confirma l'edat d'un usuari existent (usuaris antics o registrats amb Google).
+        Es desa NOMÉS age_confirmed_at i age_threshold; la data de naixement es descarta.
     
+        Returns:
+            tuple: (success, user, error) amb error == 'underage' si < 16
+        """
+        try:
+            if not uid:
+                return False, None, UID_NOT_PROVIDED_ERROR
+            if not self.user_dao.user_exists(uid):
+                return False, None, f"Usuari amb UID {uid} no trobat"
+            if not is_old_enough(birth_date, AGE_THRESHOLD):
+                return False, None, ERROR_UNDERAGE
+
+            confirmed_at = get_madrid_now().isoformat()
+            if not self.user_dao.set_age_confirmed(uid, confirmed_at, AGE_THRESHOLD):
+                return False, None, "Error desant la confirmació d'edat"
+
+            audit.audit_log_service.log(uid, audit.ACTION_AGE_CONFIRMED, 'user', uid,
+                                        {'age_threshold': AGE_THRESHOLD})
+            user = self.user_dao.get_user_by_uid(uid)
+            return True, user, None
+        except Exception as e:
+            logger.error(f"Error en confirm_age: {str(e)}")
+            return False, None, f"Error intern: {str(e)}"
+
+    def get_moderation_notices(self, uid: str) -> tuple[bool, Optional[List[Dict[str, Any]]], Optional[str]]:
+        """Avisos de moderació (declaració de motius, art. 17 DSA) de l'usuari"""
+        try:
+            if not uid:
+                return False, None, UID_NOT_PROVIDED_ERROR
+            from .media_report_controller import MediaReportController
+            notices, error = MediaReportController().get_user_notices(uid)
+            if error:
+                return False, None, error
+            return True, notices, None
+        except Exception as e:
+            logger.error(f"Error en get_moderation_notices: {str(e)}")
+            return False, None, f"Error intern: {str(e)}"

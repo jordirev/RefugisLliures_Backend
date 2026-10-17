@@ -26,7 +26,16 @@ from .views.user_views import (
     UserFavouriteRefugesDetailAPIView,
     UserVisitedRefugesAPIView,
     UserVisitedRefugesDetailAPIView,
-    UserAvatarAPIView
+    UserAvatarAPIView,
+    UserAgeConfirmationAPIView,
+    UserModerationNoticesAPIView,
+)
+from .views.media_views import (
+    UploadIntentsAPIView,
+    UploadIntentsConfirmAPIView,
+    MediaReportsAPIView,
+    AdminMediaReportsAPIView,
+    AdminMediaReportDetailAPIView,
 )
 from .views.renovation_views import (
     RenovationListAPIView,
@@ -61,9 +70,16 @@ urlpatterns = [
     path('refuges/<str:refuge_id>/visits/<str:visit_date>/', RefugeVisitDetailAPIView.as_view(), name='refuge_visit_detail'),  # POST + PATCH + DELETE /refuges/{id}/visits/{date}/
     
     # Refugi media endpoints
-    path('refuges/<str:id>/media/', RefugiMediaAPIView.as_view(), name='refugi_media'),  # GET + POST /refuges/{id}/media/
+    path('refuges/<str:id>/media/', RefugiMediaAPIView.as_view(), name='refugi_media'),  # GET /refuges/{id}/media/
     path('refuges/<str:id>/media/<path:key>/', RefugiMediaDeleteAPIView.as_view(), name='refugi_media_delete'),  # DELETE /refuges/{id}/media/{key}/
     
+    # Pujada directa de mitjans (presigned PUT + confirm) i moderació
+    path('media/upload-intents/', UploadIntentsAPIView.as_view(), name='media_upload_intents'),  # POST
+    path('media/upload-intents/confirm/', UploadIntentsConfirmAPIView.as_view(), name='media_upload_intents_confirm'),  # POST
+    path('media/reports/', MediaReportsAPIView.as_view(), name='media_reports'),  # POST
+    path('admin/media-reports/', AdminMediaReportsAPIView.as_view(), name='admin_media_reports'),  # GET (admins)
+    path('admin/media-reports/<str:id>/', AdminMediaReportDetailAPIView.as_view(), name='admin_media_report_detail'),  # PATCH (admins)
+
     # Refuge experience endpoints
     path('experiences/', ExperienceListAPIView.as_view(), name='experience_list'),  # GET + POST /refuges/{refuge_id}/experiences/
     path('experiences/<str:experience_id>/', ExperienceDetailAPIView.as_view(), name='experience_detail'),  # PATCH + DELETE /refuges/{refuge_id}/experiences/{experience_id}/
@@ -77,7 +93,9 @@ urlpatterns = [
     # Users endpoints
     path('users/', UsersCollectionAPIView.as_view(), name='users_collection'),  # POST /users/ (crear)
     path('users/<str:uid>/', UserDetailAPIView.as_view(), name='user_detail'),  # GET + PATCH + DELETE /users/{uid}/
-    path('users/<str:uid>/avatar/', UserAvatarAPIView.as_view(), name='user_avatar'),  # PATCH + DELETE /users/{uid}/avatar/
+    path('users/<str:uid>/avatar/', UserAvatarAPIView.as_view(), name='user_avatar'),  # DELETE /users/{uid}/avatar/
+    path('users/<str:uid>/age-confirmation/', UserAgeConfirmationAPIView.as_view(), name='user_age_confirmation'),  # PATCH
+    path('users/<str:uid>/moderation-notices/', UserModerationNoticesAPIView.as_view(), name='user_moderation_notices'),  # GET
     path('users/<str:uid>/favorite-refuges/', UserFavouriteRefugesAPIView.as_view(), name='user_refugis_preferits'),  # GET + POST /users/{uid}/favorite-refuges/
     path('users/<str:uid>/favorite-refuges/<str:refuge_id>/', UserFavouriteRefugesDetailAPIView.as_view(), name='user_favourite_refuges_delete'),  # DELETE /users/{uid}/favorite-refuges/{refuge_id}/
     path('users/<str:uid>/visited-refuges/', UserVisitedRefugesAPIView.as_view(), name='user_visited_refuges'),  # GET + POST /users/{uid}/visited-refuges/

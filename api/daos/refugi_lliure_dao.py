@@ -4,6 +4,8 @@ DAO per a la gestió de refugis amb Firestore
 import logging
 from typing import List, Optional, Dict, Any, Tuple
 from firebase_admin import firestore
+from google.cloud.firestore_v1.field_path import FieldPath
+from google.cloud.firestore import DELETE_FIELD
 from ..services import firestore_service, cache_service, r2_media_service
 from ..models.refugi_lliure import Refugi, RefugiCoordinates, RefugiSearchFilters
 from ..mappers.refugi_lliure_mapper import RefugiLliureMapper
@@ -358,15 +360,58 @@ class RefugiLliureDAO:
             logger.error(f"Error eliminant visitant {uid} del refugi {refugi_id}: {str(e)}")
             return False
     
-    def get_media_metadata(self, refugi_id: str) -> Optional[Dict[str, Dict[str, Any]]]:
+    @staticmethod
+    def _media_field(media_key: str, *subfields: str) -> str:
+        """Ruta de camp escapada per a una entrada del map media_metadata (les claus R2 contenen '/', '.' i '-')"""
+        return FieldPath('media_metadata', media_key, *subfields).to_api_repr()
+
+    def get_raw_media_metadata(self, refugi_id: str) -> Optional[Dict[str, Dict[str, Any]]]:
         """
-        Obté el mapa de media_metadata d'un refugi
+        Retorna el map media_metadata tal com està desat (sense URLs), cache-first.
+        None si el refugi no existeix.
+        """
+        cache_key = cache_service.generate_key('refugi_detail', refugi_id=refugi_id)
+        cached_data = cache_service.get(cache_key)
+        if cached_data is not None:
+            return cached_data.get('media_metadata') or {}
+        db = firestore_service.get_db()
+        doc_ref = db.collection(self.collection_name).document(str(refugi_id))
+        logger.log(23, f"Firestore READ: collection={self.collection_name} document={refugi_id} (raw media_metadata)")
+        doc = doc_ref.get()
+        if not doc.exists:
+            return None
+        refugi_data = doc.to_dict()
+        cache_service.set(cache_key, refugi_data, cache_service.get_timeout('refugi_detail'))
+        return refugi_data.get('media_metadata') or {}
+
+    def get_media_entry(self, refugi_id: str, media_key: str) -> Tuple[bool, Optional[Dict[str, Any]]]:
+        """
+        Retorna (refugi_existeix, entrada desada del mitjà o None).
+        Llegeix directament de Firestore (sense cache) per decisions de permisos/moderació.
+        """
+        db = firestore_service.get_db()
+        doc_ref = db.collection(self.collection_name).document(str(refugi_id))
+        logger.log(23, f"Firestore READ: collection={self.collection_name} document={refugi_id} (media entry)")
+        doc = doc_ref.get()
+        if not doc.exists:
+            return False, None
+        media_metadata = (doc.to_dict() or {}).get('media_metadata') or {}
+        entry = media_metadata.get(media_key)
+        return True, (dict(entry) if entry is not None else None)
+
+    def get_media_metadata(self, refugi_id: str, viewer_uid: Optional[str] = None,
+                           is_admin: bool = False) -> Optional[List[Dict[str, Any]]]:
+        """
+        Obté la llista de mitjans (forma MediaItem) d'un refugi amb URLs prefirmades.
+        Els items amb status ≠ visible només es retornen al seu autor o a un admin.
         
         Args:
             refugi_id: ID del refugi
+            viewer_uid: UID de qui consulta
+            is_admin: si qui consulta és admin
             
         Returns:
-            Diccionari de media_metadata (clau: key, valor: metadata) o None si el refugi no existeix
+            Llista de diccionaris MediaItem o None si el refugi no existeix
         """
         try:
             db = firestore_service.get_db()
@@ -384,8 +429,11 @@ class RefugiLliureDAO:
             media_metadata = data.get('media_metadata', {})             
             media_metadata_objects = media_service.generate_media_metadata_list(media_metadata)
             
-            # Convertir objectes MediaMetadata a diccionaris
-            return [obj.to_dict() for obj in media_metadata_objects]
+            # Convertir objectes MediaMetadata a diccionaris (filtrant per status)
+            return [
+                obj.to_dict() for obj in media_metadata_objects
+                if not hasattr(obj, 'is_visible_to') or obj.is_visible_to(viewer_uid, is_admin)
+            ]
             
         except Exception as e:
             logger.error(f'Error obtenint media_metadata del refugi {refugi_id}: {str(e)}')
@@ -393,7 +441,8 @@ class RefugiLliureDAO:
     
     def add_media_metadata(self, refugi_id: str, media_metadata_dict: Dict[str, Dict[str, Any]]) -> bool:
         """
-        Afegeix nous media_metadata a un refugi
+        Afegeix nous media_metadata a un refugi de forma ATÒMICA: cada entrada s'escriu
+        amb la seva ruta de camp (FieldPath) i no es reescriu el map sencer.
         
         Args:
             refugi_id: ID del refugi
@@ -403,6 +452,8 @@ class RefugiLliureDAO:
             bool: True si s'ha afegit correctament
         """
         try:
+            if not media_metadata_dict:
+                return True
             db = firestore_service.get_db()
             doc_ref = db.collection(self.collection_name).document(str(refugi_id))
             doc = doc_ref.get()
@@ -411,12 +462,9 @@ class RefugiLliureDAO:
                 logger.warning(f"No es pot afegir media_metadata, refugi no trobat amb ID: {refugi_id}")
                 return False
             
-            # Obtenir media_metadata actuals i afegir les noves
-            current_metadata = doc.to_dict().get('media_metadata', {})
-            current_metadata.update(media_metadata_dict)
-            
-            # Actualitzar document
-            doc_ref.update({'media_metadata': current_metadata})
+            updates = {self._media_field(key): value for key, value in media_metadata_dict.items()}
+            logger.log(23, f"Firestore UPDATE: collection={self.collection_name} document={refugi_id} (add {len(updates)} media)")
+            doc_ref.update(updates)
             
             # Invalida cache del refugi
             cache_service.delete(cache_service.generate_key('refugi_detail', refugi_id=refugi_id))
@@ -428,9 +476,39 @@ class RefugiLliureDAO:
             logger.error(f'Error afegint media_metadata al refugi {refugi_id}: {str(e)}')
             return False
     
+    def update_media_status(self, refugi_id: str, media_key: str, new_status: str,
+                            only_if_status: Optional[List[str]] = None) -> bool:
+        """
+        Canvia el status d'un mitjà (visible | hidden_pending_review | removed) atòmicament.
+
+        Args:
+            only_if_status: si s'indica, només es canvia si l'estat actual és un d'aquests
+
+        Returns:
+            True si s'ha canviat, False si el refugi/mitjà no existeix o no calia canviar-lo
+        """
+        try:
+            exists, entry = self.get_media_entry(refugi_id, media_key)
+            if not exists or entry is None:
+                return False
+            current = entry.get('status') or 'visible'
+            if only_if_status is not None and current not in only_if_status:
+                return False
+            if current == new_status:
+                return False
+            db = firestore_service.get_db()
+            doc_ref = db.collection(self.collection_name).document(str(refugi_id))
+            logger.log(23, f"Firestore UPDATE: collection={self.collection_name} document={refugi_id} (media status -> {new_status})")
+            doc_ref.update({self._media_field(media_key, 'status'): new_status})
+            cache_service.delete(cache_service.generate_key('refugi_detail', refugi_id=refugi_id))
+            return True
+        except Exception as e:
+            logger.error(f'Error actualitzant status del mitjà {media_key} del refugi {refugi_id}: {str(e)}')
+            return False
+
     def delete_media_metadata(self, refugi_id: str, media_key: str) -> Tuple[bool, Optional[Dict[str, Any]]]:
         """
-        Elimina un media_metadata específic d'un refugi
+        Elimina un media_metadata específic d'un refugi (DELETE_FIELD atòmic)
         
         Args:
             refugi_id: ID del refugi
@@ -449,8 +527,8 @@ class RefugiLliureDAO:
                 logger.warning(f"No es pot eliminar media_metadata, refugi no trobat amb ID: {refugi_id}")
                 return False, None
             
-            # Obtenir media_metadata actuals
-            current_metadata = doc.to_dict().get('media_metadata', {})
+            # Obtenir media_metadata actuals (només per tenir còpia per al rollback)
+            current_metadata = doc.to_dict().get('media_metadata', {}) or {}
             
             # Verificar si el mitjà existeix
             if media_key not in current_metadata:
@@ -459,11 +537,8 @@ class RefugiLliureDAO:
             # Guardar metadada eliminada
             metadata_backup = current_metadata[media_key]
             
-            # Eliminar el mitjà del diccionari
-            del current_metadata[media_key]
-            
-            # Actualitzar document
-            doc_ref.update({'media_metadata': current_metadata})
+            # Eliminar només aquesta entrada
+            doc_ref.update({self._media_field(media_key): DELETE_FIELD})
             
             # Invalida cache del refugi
             cache_service.delete(cache_service.generate_key('refugi_detail', refugi_id=refugi_id))
@@ -477,7 +552,7 @@ class RefugiLliureDAO:
     
     def delete_multiple_media_metadata(self, refugi_id: str, media_keys: List[str]) -> Tuple[bool, List[Dict[str, Any]]]:
         """
-        Elimina múltiples media_metadata d'un refugi (bulk delete)
+        Elimina múltiples media_metadata d'un refugi (bulk delete atòmic amb DELETE_FIELD)
         
         Args:
             refugi_id: ID del refugi
@@ -498,21 +573,20 @@ class RefugiLliureDAO:
                 return False, []
             
             # Obtenir media_metadata actuals
-            current_metadata = doc.to_dict().get('media_metadata', {})
+            current_metadata = doc.to_dict().get('media_metadata', {}) or {}
             
-            # Guardar metadades eliminades i eliminar-les del diccionari
+            # Guardar metadades eliminades
             metadata_backup = []
             keys_not_found = []
+            updates = {}
             
             for media_key in media_keys:
                 if media_key in current_metadata:
                     # Guardar metadada amb la key
-                    backup_entry = current_metadata[media_key].copy()
+                    backup_entry = dict(current_metadata[media_key] or {})
                     backup_entry['key'] = media_key
                     metadata_backup.append(backup_entry)
-                    
-                    # Eliminar del diccionari
-                    del current_metadata[media_key]
+                    updates[self._media_field(media_key)] = DELETE_FIELD
                 else:
                     keys_not_found.append(media_key)
             
@@ -523,7 +597,7 @@ class RefugiLliureDAO:
             
             # Actualitzar document amb bulk update
             logger.log(23, f"Firestore UPDATE: collection={self.collection_name} document={refugi_id} (bulk delete {len(metadata_backup)} media)")
-            doc_ref.update({'media_metadata': current_metadata})
+            doc_ref.update(updates)
             
             # Invalida cache del refugi
             cache_service.delete(cache_service.generate_key('refugi_detail', refugi_id=refugi_id))

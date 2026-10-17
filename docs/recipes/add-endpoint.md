@@ -72,6 +72,9 @@ class RenovationSummaryAPIView(APIView):
 - **No** facis `{'error': ERROR_500_INTERNAL_ERROR}` (és un objecte `openapi.Response`, no un text); posa un string.
 - El mapatge error→HTTP es fa per subcadena del missatge: si en crees un de nou, documenta'l i fes-lo coincidir amb el controller.
 
+### Errors amb codi i permisos de moderació
+Si el client ha de distingir l'error, retorna `coded_error('<codi>', '<missatge>')` (`api/permissions.py`) → `{"error", "code", "message"}`. Per a endpoints que publiquen o denuncien contingut afegeix `IsNotBlocked` (i `IsAgeConfirmed` si és contingut nou) a `permission_classes`, després d'`IsAuthenticated`.
+
 ## 6. Tests — `api/tests/<domini>/`
 - Vista: mocka el controller **al mòdul de la vista**: `@patch('api.views.renovation_views.RenovationController')`; crea la request amb `APIRequestFactory` i posa `request.user_uid` (`api/tests/renovation/test_views.py:66-89`).
   - ⚠️ Els tests existents fan `view.cls.permission_classes = []` (`api/tests/renovation/test_views.py:101-102`), que **muta la classe** per a la resta del procés de test **[FET]**. Preferible `patch.object(View, 'permission_classes', [])`.

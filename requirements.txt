@@ -8,6 +8,14 @@ firebase-admin==6.5.0
 # Cloudflare R2 / AWS S3 compatible storage
 boto3==1.35.78
 
+# Processament de mitjans (feature images): recodificació, neteja de metadades,
+# miniatures, blurhash i hash perceptual per a moderació
+Pillow==11.2.1
+pillow-heif==0.22.0
+imageio-ffmpeg==0.6.0
+ImageHash==4.3.2
+blurhash==1.1.4
+
 # Gestió d'arxius estàtics
 whitenoise==6.6.0
 

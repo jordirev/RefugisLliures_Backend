@@ -47,6 +47,14 @@ api/tests/
 ```
 Dominis: `doubts`, `experiences`, `refuge_proposal`, `refuge_visit`, `refugi_lliure`, `renovation`, `user`.
 
+## Aïllament automàtic (feature images) [FET]
+`api/tests/conftest.py` té tres fixtures `autouse`:
+- `_block_real_firestore`: `FirestoreService._initialize_firebase` llança → cap test pot connectar-se a Firestore real encara que `env/` tingui credencials. Si un test peta amb "Els tests no poden connectar-se a Firestore real", et falta un mock.
+- `_mock_audit_log`: `AuditLogService.log` mockat. Marker `@pytest.mark.real_audit_log` per provar el servei.
+- `_mock_permission_user_lookup`: `get_user_for_permissions` retorna un usuari amb edat confirmada i no bloquejat. Marker `@pytest.mark.real_permissions` per provar `IsNotBlocked`/`IsAgeConfirmed` (i patcheja tu `api.permissions.get_user_for_permissions`).
+
+Domini `api/tests/media/`: processament real amb Pillow/ffmpeg (imatges JPEG amb GPS generades en memòria i MP4 generats amb el ffmpeg d'imageio-ffmpeg, marker `slow`) i `helpers.fake_r2_service()`, un `R2MediaService` real amb el client boto3 mockat sobre un dict.
+
 ## Escriure tests (resum)
 - DAO: `@patch('api.daos.<domini>_dao.FirestoreService')` + `@patch('api.daos.<domini>_dao.cache_service')`.
 - Vista: mocka el controller **al mòdul de la vista** (`@patch('api.views.<domini>_views.<X>Controller')`) i usa `APIRequestFactory`; posa `request.user_uid`.

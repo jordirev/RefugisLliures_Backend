@@ -2,6 +2,7 @@
 Serializers per a la gestió de refugis
 """
 from rest_framework import serializers
+from .media_serializer import MediaItemSerializer
 
 VALID_TYPES = ['non gardé', 'fermée', 'cabane ouverte mais ocupee par le berger l ete', 'orri', 'emergence', 'key_needed']
 
@@ -26,13 +27,8 @@ class InfoComplementariaSerializer(serializers.Serializer):
     lits = serializers.IntegerField(default=0)
     mezzanine_etage = serializers.IntegerField(default=0)
 
-class RefugeMediaMetadataSerializer(serializers.Serializer):
-    """Serializer per a metadades de mitjans"""
-    key = serializers.CharField()
-    url = serializers.URLField()
-    creator_uid = serializers.CharField(required=False, allow_null=True)
-    uploaded_at = serializers.CharField(required=False, allow_null=True)  # ISO 8601 format
-    experience_id = serializers.CharField(required=False, allow_null=True)
+class RefugeMediaMetadataSerializer(MediaItemSerializer):
+    """Serializer per a metadades de mitjans (forma MediaItem del contracte)"""
 
 class RefugiSerializer(serializers.Serializer):
     """Serializer per a refugi"""

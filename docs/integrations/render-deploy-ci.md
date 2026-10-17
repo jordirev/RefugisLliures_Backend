@@ -34,6 +34,9 @@ Variables (noms) a `env/.env.development` i `env/.env.production`: `SECRET_KEY, 
 | `CRONJOBS` amb django-crontab (`refugis_lliures/settings.py:275-278`) | Inactiu: ningú executa `manage.py crontab add` **[FET]** |
 | `run_process_visits.sh` / `.bat` | Manual, amb placeholders |
 
+## Dependències de mitjans (feature images) [FET]
+`requirements.txt` afegeix `Pillow`, `pillow-heif`, `imageio-ffmpeg` (porta el binari estàtic d'ffmpeg, ~70 MB; no cal apt), `ImageHash` (numpy/scipy/PyWavelets) i `blurhash` (pur Python). El build de Render les instal·la amb `build.sh`. El processament d'imatges/vídeos és síncron i usa ~50–100 MB de RAM per imatge **[INFERÈNCIA]**: vigila la memòria del pla de Render. CI (Python 3.10) executa també els tests reals amb ffmpeg.
+
 ## Gotchas
 - `RENDER="1"` vs `RENDER=='true'` a `api/firebase_config.py:21,27` **[NO VERIFICAT]** si Render el sobreescriu.
 - 1 worker sync + timeout 30 s + pujades sense límit → una pujada lenta bloqueja tot el servei **[INFERÈNCIA]**.

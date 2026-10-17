@@ -1,11 +1,13 @@
 """
 Model de refugi per a l'aplicació RefugisLliures
 """
-from asyncio.log import logger
+import logging
 from dataclasses import dataclass, field
 from typing import Optional, List, Dict, Any
 from .media_metadata import RefugeMediaMetadata
 from ..services import r2_media_service
+
+logger = logging.getLogger(__name__)
 
 @dataclass
 class Coordinates:
@@ -111,10 +113,14 @@ class Refugi:
         media_metadata = {}
         if self.images_metadata:
             for image in self.images_metadata:
-                media_metadata[image.key] = {
-                    'creator_uid': image.creator_uid,
-                    'uploaded_at': image.uploaded_at
-                }
+                # Es conserven tots els camps desats (experience_id, status, thumb_key...)
+                if hasattr(image, 'to_firestore_dict'):
+                    media_metadata[image.key] = image.to_firestore_dict()
+                else:
+                    media_metadata[image.key] = {
+                        'creator_uid': image.creator_uid,
+                        'uploaded_at': image.uploaded_at
+                    }
         
         # Convertir images_metadata a diccionaris per a la resposta JSON
         images_metadata_dicts = []

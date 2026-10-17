@@ -564,11 +564,14 @@ class TestRefugiLliureDAOExtended:
         mock_doc.exists = False
         mock_db.collection.return_value.document.return_value.get.return_value = mock_doc
         dao = RefugiLliureDAO()
-        assert dao.add_media_metadata("r1", {}) is False
+        assert dao.add_media_metadata("r1", {"k1": {}}) is False
+
+        # Diccionari buit: no cal escriure res
+        assert dao.add_media_metadata("r1", {}) is True
         
         # Exception
         mock_db.collection.side_effect = Exception("Add Media Error")
-        assert dao.add_media_metadata("r1", {}) is False
+        assert dao.add_media_metadata("r1", {"k1": {}}) is False
 
     @patch('api.daos.refugi_lliure_dao.firestore_service')
     @patch('api.daos.refugi_lliure_dao.cache_service')

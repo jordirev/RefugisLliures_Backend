@@ -14,10 +14,9 @@
 3. Verifica:
    ```bash
    curl https://refugislliures-backend.onrender.com/api/health/
-   curl -X POST "https://refugislliures-backend.onrender.com/api/refuges/<id>/media/" \
-     -H "Authorization: Bearer <firebase-token>" -F "files=@test.jpg"
+   curl -X POST "https://refugislliures-backend.onrender.com/api/media/upload-intents/"      -H "Authorization: Bearer <firebase-token>" -H "Content-Type: application/json"      -d '{"target":"refuge","refuge_id":"<id>","rights_confirmed":true,"files":[{"content_type":"image/jpeg","size":12345}]}'
    ```
-   El health check torna 503 si falta config R2 ([flux 11](../flows/11-admin-cache-health.md)).
+   El health check torna 503 si falta config R2 ([flux 11](../flows/11-admin-cache-health.md)). La segona crida torna 201 amb `put_url` si el backend pot signar URLs R2 (l'usuari ha de tenir l'edat confirmada); la pujada completa (`PUT` + `confirm`) és al [flux 3](../flows/03-refuge-media-upload.md) **[INFERÈNCIA]**.
 
 ## 2. GitHub Actions
 El procés diari (`process-visits.yml`) necessita les mateixes `R2_*` com a **secrets** del repositori.
@@ -35,6 +34,11 @@ Exporta-les a la shell abans de `runserver` (no n'hi ha prou amb `env/.env.devel
      "AllowedMethods": ["GET", "PUT", "POST", "DELETE"],
      "AllowedHeaders": ["*"], "ExposeHeaders": ["ETag"], "MaxAgeSeconds": 3600}]
    ```
+
+### 4b. Pujada directa i lifecycle (feature images) [NO VERIFICAT]
+- **CORS** del bucket: permetre `PUT`, `GET`, `HEAD` amb headers `Content-Type` i `Content-Length` (JSON a [integrations/cloudflare-r2.md](../integrations/cloudflare-r2.md#configuració-del-bucket-manual-al-dashboard-de-cloudflare-no-verificat)).
+- **Lifecycle**: esborrar el prefix `quarantine/` als 1 dia. No apliquis lifecycle a `moderation-hold/`.
+- El token d'API de R2 necessita permisos *Object Read & Write* (presigned PUT, HEAD, GET, COPY, DELETE).
 
 ## 5. Rotació de credencials
 1. Cloudflare: genera noves access keys i **revoca** les antigues.

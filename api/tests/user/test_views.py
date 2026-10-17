@@ -885,7 +885,6 @@ class TestUserVisitedRefugesDetailAPIViewDelete:
 # ==================== TESTS PER UserAvatarAPIView ====================
 
 from api.views.user_views import UserAvatarAPIView
-from django.core.files.uploadedfile import SimpleUploadedFile
 from rest_framework.test import APIRequestFactory
 from unittest.mock import MagicMock
 
@@ -900,112 +899,17 @@ class TestUserAvatarAPIView:
     @patch('rest_framework.permissions.IsAuthenticated.has_permission', return_value=True)
     @patch('api.permissions.IsSameUser.has_permission', return_value=True)
     @patch('api.views.user_views.UserController')
-    def test_patch_avatar_success(self, mock_controller_class, mock_same_user, mock_auth, factory):
-        """Test pujada d'avatar amb èxit"""
-        mock_controller = mock_controller_class.return_value
-        mock_controller.upload_user_avatar.return_value = (
-            True, 
-            {'key': 'avatar.jpg', 'url': 'http://example.com/avatar.jpg', 'uploaded_at': '2024-01-01'},
-            None
-        )
-        
-        file = SimpleUploadedFile("avatar.jpg", b"file_content", content_type="image/jpeg")
-        request = factory.patch('/api/users/test_uid/avatar/', {'file': file}, format='multipart')
-        request.user_uid = 'test_uid'
-        request.user = MagicMock(is_authenticated=True, uid='test_uid')
-        
-        view = UserAvatarAPIView.as_view()
-        response = view(request, uid='test_uid')
-        
-        assert response.status_code == status.HTTP_200_OK
-    
-    @patch('rest_framework.permissions.IsAuthenticated.has_permission', return_value=True)
-    @patch('api.permissions.IsSameUser.has_permission', return_value=True)
-    @patch('api.views.user_views.UserController')
-    def test_patch_avatar_no_file(self, mock_controller_class, mock_same_user, mock_auth, factory):
-        """Test pujada d'avatar sense fitxer (400)"""
+    def test_patch_avatar_not_allowed(self, mock_controller_class, mock_same_user, mock_auth, factory):
+        """PATCH multipart a l'avatar ja no existeix (la pujada va per upload-intents): 405"""
         request = factory.patch('/api/users/test_uid/avatar/', {}, format='multipart')
         request.user_uid = 'test_uid'
         request.user = MagicMock(is_authenticated=True, uid='test_uid')
-        
-        view = UserAvatarAPIView.as_view()
-        response = view(request, uid='test_uid')
-        
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
-        assert 'error' in response.data
-    
-    @patch('rest_framework.permissions.IsAuthenticated.has_permission', return_value=True)
-    @patch('api.permissions.IsSameUser.has_permission', return_value=True)
-    @patch('api.views.user_views.UserController')
-    def test_patch_avatar_user_not_found(self, mock_controller_class, mock_same_user, mock_auth, factory):
-        """Test pujada d'avatar amb usuari no trobat (404)"""
-        mock_controller = mock_controller_class.return_value
-        mock_controller.upload_user_avatar.return_value = (False, None, "Usuari no trobat")
-        
-        file = SimpleUploadedFile("avatar.jpg", b"file_content", content_type="image/jpeg")
-        request = factory.patch('/api/users/test_uid/avatar/', {'file': file}, format='multipart')
-        request.user_uid = 'test_uid'
-        request.user = MagicMock(is_authenticated=True, uid='test_uid')
-        
-        view = UserAvatarAPIView.as_view()
-        response = view(request, uid='test_uid')
-        
-        assert response.status_code == status.HTTP_404_NOT_FOUND
-    
-    @patch('rest_framework.permissions.IsAuthenticated.has_permission', return_value=True)
-    @patch('api.permissions.IsSameUser.has_permission', return_value=True)
-    @patch('api.views.user_views.UserController')
-    def test_patch_avatar_invalid_file_type(self, mock_controller_class, mock_same_user, mock_auth, factory):
-        """Test pujada d'avatar amb tipus de fitxer no permès (400)"""
-        mock_controller = mock_controller_class.return_value
-        mock_controller.upload_user_avatar.return_value = (False, None, "Tipus de fitxer no permès")
-        
-        file = SimpleUploadedFile("avatar.txt", b"file_content", content_type="text/plain")
-        request = factory.patch('/api/users/test_uid/avatar/', {'file': file}, format='multipart')
-        request.user_uid = 'test_uid'
-        request.user = MagicMock(is_authenticated=True, uid='test_uid')
-        
-        view = UserAvatarAPIView.as_view()
-        response = view(request, uid='test_uid')
-        
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
-    
-    @patch('rest_framework.permissions.IsAuthenticated.has_permission', return_value=True)
-    @patch('api.permissions.IsSameUser.has_permission', return_value=True)
-    @patch('api.views.user_views.UserController')
-    def test_patch_avatar_server_error(self, mock_controller_class, mock_same_user, mock_auth, factory):
-        """Test pujada d'avatar amb error de servidor (500)"""
-        mock_controller = mock_controller_class.return_value
-        mock_controller.upload_user_avatar.return_value = (False, None, "Error de connexió")
-        
-        file = SimpleUploadedFile("avatar.jpg", b"file_content", content_type="image/jpeg")
-        request = factory.patch('/api/users/test_uid/avatar/', {'file': file}, format='multipart')
-        request.user_uid = 'test_uid'
-        request.user = MagicMock(is_authenticated=True, uid='test_uid')
-        
-        view = UserAvatarAPIView.as_view()
-        response = view(request, uid='test_uid')
-        
-        assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
-    
-    @patch('rest_framework.permissions.IsAuthenticated.has_permission', return_value=True)
-    @patch('api.permissions.IsSameUser.has_permission', return_value=True)
-    @patch('api.views.user_views.UserController')
-    def test_patch_avatar_exception(self, mock_controller_class, mock_same_user, mock_auth, factory):
-        """Test pujada d'avatar amb excepció (500)"""
-        mock_controller = mock_controller_class.return_value
-        mock_controller.upload_user_avatar.side_effect = Exception("Unexpected error")
-        
-        file = SimpleUploadedFile("avatar.jpg", b"file_content", content_type="image/jpeg")
-        request = factory.patch('/api/users/test_uid/avatar/', {'file': file}, format='multipart')
-        request.user_uid = 'test_uid'
-        request.user = MagicMock(is_authenticated=True, uid='test_uid')
-        
-        view = UserAvatarAPIView.as_view()
-        response = view(request, uid='test_uid')
-        
-        assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
-    
+
+        response = UserAvatarAPIView.as_view()(request, uid='test_uid')
+
+        assert response.status_code == status.HTTP_405_METHOD_NOT_ALLOWED
+        mock_controller_class.return_value.assert_not_called()
+
     @patch('rest_framework.permissions.IsAuthenticated.has_permission', return_value=True)
     @patch('api.permissions.IsSameUser.has_permission', return_value=True)
     @patch('api.views.user_views.UserController')

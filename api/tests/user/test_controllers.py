@@ -1621,152 +1621,7 @@ class TestDeleteUserPhotosAndAvatarCoverage:
 
 @pytest.mark.controllers
 class TestUploadDeleteAvatarCoverage:
-    """Tests per cobrir upload_user_avatar i delete_user_avatar"""
-
-    @patch('api.controllers.user_controller.r2_media_service')
-    @patch('api.controllers.user_controller.RefugiLliureDAO')
-    @patch('api.controllers.user_controller.UserDAO')
-    def test_upload_avatar_success(self, mock_user_dao_class, mock_refugi_dao_class, mock_r2_service):
-        """Test upload_user_avatar amb èxit"""
-        user = User(uid='test_uid', username='test_user')
-        
-        mock_user_dao = mock_user_dao_class.return_value
-        mock_user_dao.get_user_by_uid.return_value = user
-        mock_user_dao.update_avatar_metadata.return_value = True
-        
-        controller = UserController()
-        controller.avatar_service = Mock()
-        controller.avatar_service.upload_file.return_value = {'key': 'avatars/test_uid/avatar.jpg'}
-        
-        mock_media_service = Mock()
-        mock_r2_service.get_user_avatar_service.return_value = mock_media_service
-        mock_media_service.generate_media_metadata_from_dict.return_value = Mock(key='avatars/test_uid/avatar.jpg')
-        
-        mock_file = Mock()
-        mock_file.content_type = 'image/jpeg'
-        mock_file.name = 'avatar.jpg'
-        
-        success, avatar_metadata, error = controller.upload_user_avatar('test_uid', mock_file)
-        
-        assert success is True
-        assert error is None
-
-    @patch('api.controllers.user_controller.RefugiLliureDAO')
-    @patch('api.controllers.user_controller.UserDAO')
-    def test_upload_avatar_user_not_found(self, mock_user_dao_class, mock_refugi_dao_class):
-        """Test upload_user_avatar amb usuari no trobat"""
-        mock_user_dao = mock_user_dao_class.return_value
-        mock_user_dao.get_user_by_uid.return_value = None
-        
-        controller = UserController()
-        
-        mock_file = Mock()
-        success, avatar_metadata, error = controller.upload_user_avatar('test_uid', mock_file)
-        
-        assert success is False
-        assert 'no trobat' in error.lower()
-
-    @patch('api.controllers.user_controller.RefugiLliureDAO')
-    @patch('api.controllers.user_controller.UserDAO')
-    def test_upload_avatar_with_existing_avatar(self, mock_user_dao_class, mock_refugi_dao_class):
-        """Test upload_user_avatar quan l'usuari ja té avatar"""
-        from api.models.media_metadata import MediaMetadata
-        user_with_avatar = User(
-            uid='test_uid',
-            username='test_user',
-            avatar_metadata=MediaMetadata(key='avatars/test_uid/old_avatar.jpg', url='http://example.com/old.jpg')
-        )
-        
-        mock_user_dao = mock_user_dao_class.return_value
-        mock_user_dao.get_user_by_uid.return_value = user_with_avatar
-        mock_user_dao.update_avatar_metadata.return_value = True
-        
-        controller = UserController()
-        controller.avatar_service = Mock()
-        controller.avatar_service.delete_file.return_value = True
-        controller.avatar_service.upload_file.return_value = {'key': 'avatars/test_uid/new_avatar.jpg'}
-        
-        with patch('api.controllers.user_controller.r2_media_service') as mock_r2:
-            mock_media_service = Mock()
-            mock_r2.get_user_avatar_service.return_value = mock_media_service
-            mock_media_service.generate_media_metadata_from_dict.return_value = Mock()
-            
-            mock_file = Mock()
-            mock_file.content_type = 'image/jpeg'
-            mock_file.name = 'new_avatar.jpg'
-            
-            success, avatar_metadata, error = controller.upload_user_avatar('test_uid', mock_file)
-            
-            assert success is True
-            controller.avatar_service.delete_file.assert_called_once_with('avatars/test_uid/old_avatar.jpg')
-
-    @patch('api.controllers.user_controller.RefugiLliureDAO')
-    @patch('api.controllers.user_controller.UserDAO')
-    def test_upload_avatar_firestore_fails(self, mock_user_dao_class, mock_refugi_dao_class):
-        """Test upload_user_avatar quan falla Firestore"""
-        user = User(uid='test_uid', username='test_user')
-        
-        mock_user_dao = mock_user_dao_class.return_value
-        mock_user_dao.get_user_by_uid.return_value = user
-        mock_user_dao.update_avatar_metadata.return_value = False  # Falla Firestore
-        
-        controller = UserController()
-        controller.avatar_service = Mock()
-        controller.avatar_service.upload_file.return_value = {'key': 'avatars/test_uid/avatar.jpg'}
-        controller.avatar_service.delete_file.return_value = True
-        
-        mock_file = Mock()
-        mock_file.content_type = 'image/jpeg'
-        mock_file.name = 'avatar.jpg'
-        
-        success, avatar_metadata, error = controller.upload_user_avatar('test_uid', mock_file)
-        
-        assert success is False
-        assert 'metadades' in error.lower()
-
-    @patch('api.controllers.user_controller.RefugiLliureDAO')
-    @patch('api.controllers.user_controller.UserDAO')
-    def test_upload_avatar_validation_error(self, mock_user_dao_class, mock_refugi_dao_class):
-        """Test upload_user_avatar amb error de validació"""
-        user = User(uid='test_uid', username='test_user')
-        
-        mock_user_dao = mock_user_dao_class.return_value
-        mock_user_dao.get_user_by_uid.return_value = user
-        
-        controller = UserController()
-        controller.avatar_service = Mock()
-        controller.avatar_service.upload_file.side_effect = ValueError("Format no permès")
-        
-        mock_file = Mock()
-        mock_file.content_type = 'application/pdf'
-        mock_file.name = 'file.pdf'
-        
-        success, avatar_metadata, error = controller.upload_user_avatar('test_uid', mock_file)
-        
-        assert success is False
-        assert 'Format no permès' in error
-
-    @patch('api.controllers.user_controller.RefugiLliureDAO')
-    @patch('api.controllers.user_controller.UserDAO')
-    def test_upload_avatar_exception(self, mock_user_dao_class, mock_refugi_dao_class):
-        """Test upload_user_avatar amb excepció"""
-        user = User(uid='test_uid', username='test_user')
-        
-        mock_user_dao = mock_user_dao_class.return_value
-        mock_user_dao.get_user_by_uid.return_value = user
-        
-        controller = UserController()
-        controller.avatar_service = Mock()
-        controller.avatar_service.upload_file.side_effect = Exception("Error R2")
-        
-        mock_file = Mock()
-        mock_file.content_type = 'image/jpeg'
-        mock_file.name = 'avatar.jpg'
-        
-        success, avatar_metadata, error = controller.upload_user_avatar('test_uid', mock_file)
-        
-        assert success is False
-        assert 'Error intern' in error
+    """Tests per cobrir delete_user_avatar"""
 
     @patch('api.controllers.user_controller.RefugiLliureDAO')
     @patch('api.controllers.user_controller.UserDAO')
@@ -1815,20 +1670,27 @@ class TestUploadDeleteAvatarCoverage:
     @patch('api.controllers.user_controller.RefugiLliureDAO')
     @patch('api.controllers.user_controller.UserDAO')
     def test_delete_avatar_r2_error(self, mock_user_dao_class, mock_refugi_dao_class):
-        """Test delete_user_avatar quan falla l'eliminació a R2"""
+        """Si R2 falla, es restauren les metadades i es retorna error (rollback real)"""
         mock_user_dao = mock_user_dao_class.return_value
         mock_user_dao.delete_avatar_metadata.return_value = (True, {'key': 'avatars/test_uid/avatar.jpg'})
-        mock_user_dao.update_avatar_metadata.return_value = True  # Restaurar metadades
+        mock_user_dao.update_avatar_metadata.return_value = True
         
         controller = UserController()
         controller.avatar_service = Mock()
+
+        # delete_file llança
         controller.avatar_service.delete_file.side_effect = Exception("Error R2")
-        
         success, error = controller.delete_user_avatar('test_uid')
+        assert success is False
+        assert 'emmagatzematge' in error
+        mock_user_dao.update_avatar_metadata.assert_called_once_with('test_uid', {'key': 'avatars/test_uid/avatar.jpg'})
         
-        # Hauria de tornar True perquè es restauren les metadades
-        assert success is True
-        # Verifica que s'han restaurat les metadades
+        # delete_file retorna False (comportament real de R2MediaService)
+        mock_user_dao.update_avatar_metadata.reset_mock()
+        controller.avatar_service.delete_file.side_effect = None
+        controller.avatar_service.delete_file.return_value = False
+        success, error = controller.delete_user_avatar('test_uid')
+        assert success is False
         mock_user_dao.update_avatar_metadata.assert_called_once()
 
     @patch('api.controllers.user_controller.RefugiLliureDAO')

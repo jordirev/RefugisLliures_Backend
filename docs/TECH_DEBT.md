@@ -1,13 +1,13 @@
 # Deute tècnic detectat
 
 > **[FET]** comprovat al codi · **[INFERÈNCIA]** deducció (carreres, comportament de llibreries) · **[NO VERIFICAT]** depèn de config externa.
-> Ordenat per severitat. Cap d'aquests punts s'ha corregit: és un inventari.
+> Ordenat per severitat. Els punts marcats **RESOLT** s'han corregit a la feature *images* (branca `feature/images`).
 
 ## Crític
 
 | # | Problema | Evidència | Tipus |
 |---|---|---|---|
-| C1 | **Permisos d'objecte inoperants**: `has_object_permission` mai s'executa. Qualsevol usuari autenticat pot fer PATCH/DELETE de **qualsevol experiència** (incloent esborrar les fotes del creador a R2) i DELETE de **qualsevol dubte o resposta**. Renovations se salva perquè el controller comprova el creador. | `api/permissions.py:104-190,279-373`; cap `check_object_permissions` a `api/`; `ExperienceController.update_experience/delete_experience` (`api/controllers/experience_controller.py:132,196`) i `DoubtController.delete_doubt` (`api/controllers/doubt_controller.py:144`) no reben l'UID de l'usuari | FET |
+| C1 | **(Parcialment RESOLT: experiències comproven la propietat al controller, 403 `not_owner`; dubtes i respostes pendents)** **Permisos d'objecte inoperants**: `has_object_permission` mai s'executa. Qualsevol usuari autenticat pot fer PATCH/DELETE de **qualsevol experiència** (incloent esborrar les fotes del creador a R2) i DELETE de **qualsevol dubte o resposta**. Renovations se salva perquè el controller comprova el creador. | `api/permissions.py:104-190,279-373`; cap `check_object_permissions` a `api/`; `ExperienceController.update_experience/delete_experience` (`api/controllers/experience_controller.py:132,196`) i `DoubtController.delete_doubt` (`api/controllers/doubt_controller.py:144`) no reben l'UID de l'usuari | FET |
 | C2 | **Invalidació de cache de propostes trencada**: després d'aprovar/rebutjar, la proposta segueix `pending` a cache fins a 600 s → es pot **aprovar dues vegades** (refugi duplicat, vot de condició comptat dos cops). | clau `proposal_detail:proposal_id:<id>` (`api/daos/refuge_proposal_dao.py:620`) vs patró `...:<id>:*` (`:770`, `:806`) embolcallat en `*…*` (`api/services/cache_service.py:159`) | FET (format) + INFERÈNCIA (efecte) |
 
 ## Alt
@@ -15,9 +15,9 @@
 | # | Problema | Evidència | Tipus |
 |---|---|---|---|
 | A1 | Renovation amb `ini_date == fin_date` passa el serializer, es desa a Firestore i després el model peta → `get_all_renovations` retorna `[]` per a tothom mentre existeixi. | `api/serializers/renovation_serializer.py:24`, `api/models/renovation.py:32-33`, `api/daos/renovation_dao.py:54,63,174-176` | FET |
-| A2 | Claus R2 amb el nom original del fitxer → col·lisions i sobreescriptura entre usuaris; `creator_uid` del media canvia de mans. | `api/services/r2_media_service.py:196-203` + crides amb `filename=file.name` | FET |
-| A3 | Read-modify-write sense transacció sobre `media_metadata`, `uploaded_photos_keys`, `visitors` (refugi i visita), `participants_uids`, `expelled_uids`, `coords_refugis/all_refugis_coords` → lost updates. | `api/daos/refugi_lliure_dao.py:394-539`, `api/daos/user_dao.py:218-264,367-535`, `api/daos/renovation_dao.py:404-507`, `api/daos/refuge_visit_dao.py:250-385`, `api/daos/refuge_proposal_dao.py:62-209` | FET (patró) + INFERÈNCIA (carrera) |
-| A4 | `delete_file` retorna `False` en lloc de llançar → els rollbacks dins `try/except` dels callers són codi mort; un esborrat fallit a R2 es reporta com a èxit (objecte orfe). | `api/services/r2_media_service.py:339-341` | FET |
+| A2 | **RESOLT** (claus UUID; `upload_file` ignora `filename`). Claus R2 amb el nom original del fitxer → col·lisions i sobreescriptura entre usuaris; `creator_uid` del media canvia de mans. | `api/services/r2_media_service.py:196-203` + crides amb `filename=file.name` | FET |
+| A3 | **Parcialment RESOLT** (`media_metadata` amb FieldPath/DELETE_FIELD i `uploaded_photos_keys` amb ArrayUnion/ArrayRemove; la resta pendent). Read-modify-write sense transacció sobre `media_metadata`, `uploaded_photos_keys`, `visitors` (refugi i visita), `participants_uids`, `expelled_uids`, `coords_refugis/all_refugis_coords` → lost updates. | `api/daos/refugi_lliure_dao.py:394-539`, `api/daos/user_dao.py:218-264,367-535`, `api/daos/renovation_dao.py:404-507`, `api/daos/refuge_visit_dao.py:250-385`, `api/daos/refuge_proposal_dao.py:62-209` | FET (patró) + INFERÈNCIA (carrera) |
+| A4 | **RESOLT als callers** (esborrat de mitjans, avatar i rollbacks comproven el booleà; l'avatar antic s'esborra després del nou). `delete_file` retorna `False` en lloc de llançar → els rollbacks dins `try/except` dels callers són codi mort; un esborrat fallit a R2 es reporta com a èxit (objecte orfe). | `api/services/r2_media_service.py:339-341` | FET |
 | A5 | Aprovar una proposta d'esborrat falla a mitges si totes les fotos del refugi eren d'experiències (claus llegides abans d'esborrar-les). | `api/daos/refuge_proposal_dao.py:409,486-498`, `api/daos/refugi_lliure_dao.py:520-522` | FET |
 | A6 | Escriptures multi-document no atòmiques a fluxos llargs: esborrat d'usuari (11 passos), aprovació de propostes, experiència + media + comptadors. | `api/controllers/user_controller.py:125-276`, `api/daos/refuge_proposal_dao.py:231-556` | FET |
 
@@ -47,7 +47,7 @@
 | B4 | Health check depèn de les variables R2 (el controller crea el client R2) i no comprova Redis. | `api/controllers/refugi_lliure_controller.py:22` | FET |
 | B5 | `get_visits_by_user` fa scan de tota la col·lecció `refuge_visits`; els documents processats mai s'esborren. | `api/daos/refuge_visit_dao.py:207-248` | FET |
 | B6 | DAOs de llistes d'usuari retornen tuples truthy → el controller no detecta fallades. | `api/daos/user_dao.py:199,235,245,260` | FET |
-| B7 | Imports `from venv import logger` / `from asyncio.log import logger` als models. | `api/models/user.py:6`, `api/models/experience.py:9`, `api/models/refugi_lliure.py:4` | FET |
+| B7 | **RESOLT** (models usen `logging`). Imports `from venv import logger` / `from asyncio.log import logger` als models. | `api/models/user.py:6`, `api/models/experience.py:9`, `api/models/refugi_lliure.py:4` | FET |
 | B8 | Codis HTTP diferents dels documentats a Swagger (media DELETE 200 vs 204, favorits POST 200 vs 201, visita DELETE 200). | vistes corresponents | FET (segons informe de fluxos) |
 | B9 | `verify_id_token` sense `check_revoked=True` → la branca `RevokedIdTokenError` mai s'activa. | `api/middleware/firebase_auth_middleware.py:60,86` | FET + INFERÈNCIA (SDK) |
 | B10 | Lògica d'autenticació duplicada entre middleware i `FirebaseAuthentication`. | `api/middleware/firebase_auth_middleware.py`, `api/authentication.py` | FET |
@@ -55,6 +55,16 @@
 | B12 | `settings.py` tria `.env.production` amb `RENDER`/`PRODUCTION` però `firebase_config` també considera `CI=true` com a producció → a CI s'usen settings de dev i Firebase de prod. | `refugis_lliures/settings.py:21`, `api/firebase_config.py:24-30` | FET |
 | B13 | `tox.ini` declara `envlist=py39`; CI usa Python 3.10 amb `tox -e py`. | `tox.ini`, `.github/workflows/django.yml:16,31` | FET |
 | B14 | Comentaris contradictoris d'horari del procés diari ("3:00 Madrid" a settings vs "3:00 UTC" al workflow). | `refugis_lliures/settings.py:276`, `.github/workflows/process-visits.yml:5-6` | FET |
+
+## Nou deute (feature images)
+
+| # | Problema | Evidència | Tipus |
+|---|---|---|---|
+| I1 | El processament de `confirm` és síncron dins la petició (1 worker a Render); vídeos grans o 10 fitxers poden superar el timeout de gunicorn. Moure'l a una cua/worker. | `MediaUploadController.confirm_upload_intents` | INFERÈNCIA |
+| I2 | **RESOLT**: els camins multipart antics (`POST /api/refuges/{id}/media/`, `PATCH /api/users/{uid}/avatar/`, `files[]` a experiències) s'han eliminat (ara 405); l'única via de pujada és upload-intents, que exigeix `IsAgeConfirmed`. | `api/views/refugi_media_views.py`, `api/views/experience_views.py`, `api/views/user_views.py` | FET |
+| I3 | En esborrar un usuari no s'anonimitza `reporter_uid` a `media_reports` ni s'esborren `moderation_notices`; `audit_logs` caduca per TTL (12 mesos). Cal decidir la retenció (obligació legal vs. dret a l'oblit). | `UserController.delete_user` | FET |
+| I4 | `IsNotBlocked` llegeix l'usuari amb cache de 10 min: un bloqueig fet fora de `UserDAO.set_blocked` pot trigar a fer efecte. | `api/permissions.py:get_user_for_permissions` | INFERÈNCIA |
+| I5 | `moderation_hash_blocklist` es carrega sencera (pHash) a memòria/cache: no escala a llistes grans; caldria un índex BK-tree o un servei extern. | `HashBlocklistProvider._load_phashes` | FET |
 
 ## Codi mort o sense ús aparent
 

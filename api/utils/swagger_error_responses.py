@@ -384,26 +384,6 @@ SUCCESS_200_CACHE_INVALIDATED = openapi.Response(
 
 # ========== ERRORS ESPECÍFICS DE MITJANS ==========
 
-ERROR_400_INVALID_FILE_TYPE = openapi.Response(
-    description="Tipus de fitxer no permès",
-    schema=ERROR_SCHEMA_SIMPLE,
-    examples={
-        "application/json": {
-            "error": "Content type 'application/pdf' no permès. Tipus permesos: ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/heic', 'image/heif']"
-        }
-    }
-)
-
-ERROR_400_NO_FILES = openapi.Response(
-    description="No s'han proporcionat fitxers",
-    schema=ERROR_SCHEMA_SIMPLE,
-    examples={
-        "application/json": {
-            "error": "No s'han proporcionat fitxers"
-        }
-    }
-)
-
 ERROR_404_MEDIA_NOT_FOUND = openapi.Response(
     description="Mitjà no trobat",
     schema=ERROR_SCHEMA_SIMPLE,
@@ -454,4 +434,65 @@ ERROR_409_PROPOSAL_ALREADY_REVIEWED = openapi.Response(
             'error': 'Proposal is already approved'
         }
     }
+)
+
+
+# ========== ERRORS AMB CODI EXPLÍCIT (feature images) ==========
+# Format: {"error": "<codi>", "code": "<codi>", "message": "<text>"}
+
+ERROR_SCHEMA_CODED = openapi.Schema(
+    type=openapi.TYPE_OBJECT,
+    properties={
+        'error': openapi.Schema(type=openapi.TYPE_STRING, description="Codi d'error"),
+        'code': openapi.Schema(type=openapi.TYPE_STRING, description="Codi d'error (mateix valor)"),
+        'message': openapi.Schema(type=openapi.TYPE_STRING, description="Missatge llegible"),
+    },
+    required=['error', 'code']
+)
+
+
+def _coded(code, message):
+    return {'error': code, 'code': code, 'message': message}
+
+
+ERROR_403_UPLOAD_FORBIDDEN = openapi.Response(
+    description="age_not_confirmed | user_blocked | not_owner",
+    schema=ERROR_SCHEMA_CODED,
+    examples={"application/json": _coded('user_blocked', "El teu compte està bloquejat per incompliment de les normes de la comunitat.")}
+)
+
+ERROR_403_REPORT_FORBIDDEN = openapi.Response(
+    description="age_not_confirmed | user_blocked | own_media (l'autor no pot denunciar el seu mitjà)",
+    schema=ERROR_SCHEMA_CODED,
+    examples={"application/json": _coded('own_media', "No pots denunciar un contingut que has publicat tu")}
+)
+
+ERROR_403_NOT_OWNER = openapi.Response(
+    description="No ets el creador del recurs",
+    schema=ERROR_SCHEMA_CODED,
+    examples={"application/json": _coded('not_owner', "No ets el creador d'aquesta experiència")}
+)
+
+ERROR_403_UNDERAGE = openapi.Response(
+    description="L'usuari té menys de 16 anys",
+    schema=ERROR_SCHEMA_CODED,
+    examples={"application/json": _coded('underage', "Cal tenir 16 anys o més per utilitzar l'aplicació")}
+)
+
+ERROR_404_REPORT_NOT_FOUND = openapi.Response(
+    description="Denúncia no trobada",
+    schema=ERROR_SCHEMA_SIMPLE,
+    examples={"application/json": {"error": "Report not found"}}
+)
+
+ERROR_409_ALREADY_REPORTED = openapi.Response(
+    description="Ja has denunciat aquest mitjà",
+    schema=ERROR_SCHEMA_CODED,
+    examples={"application/json": _coded('already_reported', "Ja has denunciat aquest contingut")}
+)
+
+ERROR_409_ALREADY_RESOLVED = openapi.Response(
+    description="La denúncia ja està resolta",
+    schema=ERROR_SCHEMA_CODED,
+    examples={"application/json": _coded('already_resolved', "La denúncia ja està resolta")}
 )

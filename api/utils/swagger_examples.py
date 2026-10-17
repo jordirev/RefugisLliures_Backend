@@ -268,6 +268,7 @@ EXAMPLE_RENOVATION_PARTICIPANT_REMOVED = {
 # ========== EXEMPLES DE REQUEST BODY ==========
 
 EXAMPLE_USER_CREATE_REQUEST = {
+    'birth_date': '2000-05-17',
     'username': 'joan_muntanyenc',
     'avatar': 'https://example.com/avatar.jpg',
     'language': 'ca'
@@ -390,64 +391,180 @@ EXAMPLE_HEALTH_CHECK_UNHEALTHY = {
 
 # ========== EXEMPLES D'AVATAR ==========
 
-EXAMPLE_AVATAR_UPLOAD_RESPONSE = {
-    'message': 'Avatar pujat correctament',
-    'avatar_metadata': {
-        'key': 'users-avatars/uid_123abc/avatar.jpg',
-        'url': 'https://r2-bucket.example.com/users-avatars/uid_123abc/avatar.jpg?presigned=true',
-        'creator_uid': 'uid_123abc',
-        'uploaded_at': '2025-12-09T14:30:00Z'
-    }
+# ========== EXEMPLES DE MITJANS (forma MediaItem del contracte) ==========
+
+R2 = 'https://test.r2.cloudflarestorage.com/bucket'
+
+EXAMPLE_MEDIA_ITEM_IMAGE = {
+    'key': 'refugis-lliures/refugi_colomers/3f2b8c1e-6a7d-4e0f-9b1a-2c3d4e5f6a7b.webp',
+    'url': f'{R2}/refugis-lliures/refugi_colomers/3f2b8c1e-6a7d-4e0f-9b1a-2c3d4e5f6a7b.webp?X-Amz-Signature=...',
+    'thumb_url': f'{R2}/refugis-lliures/refugi_colomers/3f2b8c1e-6a7d-4e0f-9b1a-2c3d4e5f6a7b_thumb.webp?X-Amz-Signature=...',
+    'media_type': 'image',
+    'width': 2048,
+    'height': 1536,
+    'blurhash': 'LEHV6nWB2yk8pyo0adR*.7kCMdnj',
+    'creator_uid': 'uid_123abc',
+    'uploaded_at': '2025-12-09T14:45:00+01:00',
+    'taken_at': '2025-08-14T09:12:33+02:00',
+    'experience_id': None,
+}
+
+EXAMPLE_MEDIA_ITEM_VIDEO = {
+    'key': 'refugis-lliures/refugi_colomers/9a8b7c6d-5e4f-4a3b-8c2d-1e0f9a8b7c6d.mp4',
+    'url': f'{R2}/refugis-lliures/refugi_colomers/9a8b7c6d-5e4f-4a3b-8c2d-1e0f9a8b7c6d.mp4?X-Amz-Signature=...',
+    'thumb_url': f'{R2}/refugis-lliures/refugi_colomers/9a8b7c6d-5e4f-4a3b-8c2d-1e0f9a8b7c6d_thumb.webp?X-Amz-Signature=...',
+    'media_type': 'video',
+    'width': 1280,
+    'height': 720,
+    'blurhash': 'L6PZfSi_.AyE_3t7t7R**0o#DgR4',
+    'creator_uid': 'uid_123abc',
+    'uploaded_at': '2025-12-09T14:46:00+01:00',
+    'taken_at': None,
+    'experience_id': 'exp_abc123',
+}
+
+EXAMPLE_MEDIA_ITEM_LEGACY = {
+    'key': 'refugis-lliures/refugi_colomers/IMG_0001.jpg',
+    'url': f'{R2}/refugis-lliures/refugi_colomers/IMG_0001.jpg?X-Amz-Signature=...',
+    'thumb_url': f'{R2}/refugis-lliures/refugi_colomers/IMG_0001.jpg?X-Amz-Signature=...',
+    'media_type': 'image',
+    'width': None,
+    'height': None,
+    'blurhash': None,
+    'creator_uid': 'uid_456def',
+    'uploaded_at': '2025-06-01T10:30:00+02:00',
+    'taken_at': None,
+    'experience_id': None,
 }
 
 # ========== EXEMPLES DE MITJANS (REFUGIS) ==========
 
 EXAMPLE_REFUGI_MEDIA_LIST = {
-    'media': [
+    'media': [EXAMPLE_MEDIA_ITEM_IMAGE, EXAMPLE_MEDIA_ITEM_VIDEO, EXAMPLE_MEDIA_ITEM_LEGACY]
+}
+
+# ========== EXEMPLES DE PUJADA DIRECTA (upload-intents) ==========
+
+EXAMPLE_UPLOAD_INTENT_REQUEST = {
+    'target': 'refuge',
+    'refuge_id': 'refugi_colomers',
+    'rights_confirmed': True,
+    'files': [
+        {'content_type': 'image/webp', 'size': 412345},
+        {'content_type': 'video/mp4', 'size': 18234567},
+    ]
+}
+
+EXAMPLE_UPLOAD_INTENT_RESPONSE = {
+    'uploads': [
         {
-            'key': 'refugis-lliures/refugi_colomers/photo1.jpg',
-            'url': 'https://r2-bucket.example.com/refugis-lliures/refugi_colomers/photo1.jpg?presigned=true',
-            'creator_uid': 'uid_123abc',
-            'uploaded_at': '2025-12-08T10:30:00Z'
+            'upload_id': 'Qm9yZGVyTGluZTEyMzQ1',
+            'put_url': f'{R2}/quarantine/Qm9yZGVyTGluZTEyMzQ1?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-SignedHeaders=content-length%3Bcontent-type%3Bhost&X-Amz-Expires=600&X-Amz-Signature=...',
+            'headers': {'Content-Type': 'image/webp'},
+            'expires_in': 600,
         },
         {
-            'key': 'refugis-lliures/refugi_colomers/photo2.jpg',
-            'url': 'https://r2-bucket.example.com/refugis-lliures/refugi_colomers/photo2.jpg?presigned=true',
-            'creator_uid': 'uid_456def',
-            'uploaded_at': '2025-12-09T12:15:00Z'
+            'upload_id': 'Vmlld1BvcnQ5ODc2NTQz',
+            'put_url': f'{R2}/quarantine/Vmlld1BvcnQ5ODc2NTQz?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Expires=600&X-Amz-Signature=...',
+            'headers': {'Content-Type': 'video/mp4'},
+            'expires_in': 600,
+        },
+    ]
+}
+
+EXAMPLE_UPLOAD_CONFIRM_REQUEST = {
+    'upload_ids': ['Qm9yZGVyTGluZTEyMzQ1', 'Vmlld1BvcnQ5ODc2NTQz']
+}
+
+EXAMPLE_UPLOAD_CONFIRM_RESPONSE = {
+    'uploaded': [EXAMPLE_MEDIA_ITEM_IMAGE],
+    'failed': [{'upload_id': 'Vmlld1BvcnQ5ODc2NTQz', 'reason': 'invalid_type'}]
+}
+
+# ========== EXEMPLES DE DENÚNCIES I MODERACIÓ ==========
+
+EXAMPLE_MEDIA_REPORT_REQUEST = {
+    'refuge_id': 'refugi_colomers',
+    'media_key': 'refugis-lliures/refugi_colomers/3f2b8c1e-6a7d-4e0f-9b1a-2c3d4e5f6a7b.webp',
+    'reason': 'my_image',
+    'details': 'Hi surto jo i no he donat permís.'
+}
+
+EXAMPLE_MEDIA_REPORT_RESPONSE = {
+    'id': '5d41402abc4b2a76b9719d911017c592a1b2c3d4',
+    'refuge_id': 'refugi_colomers',
+    'media_key': 'refugis-lliures/refugi_colomers/3f2b8c1e-6a7d-4e0f-9b1a-2c3d4e5f6a7b.webp',
+    'reason': 'my_image',
+    'details': 'Hi surto jo i no he donat permís.',
+    'status': 'pending',
+    'priority': 'high',
+    'created_at': '2025-12-10T09:00:00+01:00',
+    'media_hidden': True,
+}
+
+EXAMPLE_ADMIN_MEDIA_REPORTS_LIST = {
+    'count': 1,
+    'reports': [
+        {
+            'id': '5d41402abc4b2a76b9719d911017c592a1b2c3d4',
+            'refuge_id': 'refugi_colomers',
+            'media_key': 'refugis-lliures/refugi_colomers/3f2b8c1e-6a7d-4e0f-9b1a-2c3d4e5f6a7b.webp',
+            'reporter_uid': 'uid_reporter',
+            'reason': 'my_image',
+            'details': 'Hi surto jo i no he donat permís.',
+            'media_creator_uid': 'uid_123abc',
+            'status': 'pending',
+            'priority': 'high',
+            'created_at': '2025-12-10T09:00:00+01:00',
+            'resolved_at': None,
+            'resolved_by': None,
+            'action': None,
+            'statement': None,
+            'source': 'user',
+            'media': dict(EXAMPLE_MEDIA_ITEM_IMAGE, status='hidden_pending_review'),
         }
     ]
 }
 
-EXAMPLE_REFUGI_MEDIA_UPLOAD_RESPONSE = {
-    'uploaded': [
+EXAMPLE_ADMIN_MEDIA_REPORT_RESOLVE_REQUEST = {
+    'action': 'remove_and_strike',
+    'statement': "La foto mostra una persona identificable sense el seu consentiment (dret a la pròpia imatge)."
+}
+
+EXAMPLE_ADMIN_MEDIA_REPORT_RESOLVE_RESPONSE = {
+    'report': dict(EXAMPLE_ADMIN_MEDIA_REPORTS_LIST['reports'][0], status='resolved',
+                   resolved_at='2025-12-10T12:00:00+01:00', resolved_by='uid_admin',
+                   action='remove_and_strike',
+                   statement="La foto mostra una persona identificable sense el seu consentiment (dret a la pròpia imatge).",
+                   media=None),
+    'resolved_report_ids': ['5d41402abc4b2a76b9719d911017c592a1b2c3d4'],
+    'media_status': 'removed',
+    'strikes': 1,
+    'user_blocked': False,
+}
+
+EXAMPLE_MODERATION_NOTICES = {
+    'notices': [
         {
-            'key': 'refugis-lliures/refugi_colomers/photo3.jpg',
-            'url': 'https://r2-bucket.example.com/refugis-lliures/refugi_colomers/photo3.jpg?presigned=true',
-            'creator_uid': 'uid_123abc',
-            'uploaded_at': '2025-12-09T14:45:00Z'
-        },
-        {
-            'key': 'refugis-lliures/refugi_colomers/video1.mp4',
-            'url': 'https://r2-bucket.example.com/refugis-lliures/refugi_colomers/video1.mp4?presigned=true',
-            'creator_uid': 'uid_123abc',
-            'uploaded_at': '2025-12-09T14:46:00Z'
-        }
-    ],
-    'falied': [
-        {
-            'key': 'refugis-lliures/refugi_colomers/photo3.jpg',
-            'url': 'https://r2-bucket.example.com/refugis-lliures/refugi_colomers/photo3.jpg?presigned=true',
-            'creator_uid': 'uid_123abc',
-            'uploaded_at': '2025-12-09T14:45:00Z'
-        },
-        {
-            'key': 'refugis-lliures/refugi_colomers/video1.mp4',
-            'url': 'https://r2-bucket.example.com/refugis-lliures/refugi_colomers/video1.mp4?presigned=true',
-            'creator_uid': 'uid_123abc',
-            'uploaded_at': '2025-12-09T14:46:00Z'
+            'id': 'notice_001',
+            'uid': 'uid_123abc',
+            'type': 'strike',
+            'statement': "La foto mostra una persona identificable sense el seu consentiment (dret a la pròpia imatge).",
+            'created_at': '2025-12-10T12:00:00+01:00',
+            'refuge_id': 'refugi_colomers',
+            'media_key': 'refugis-lliures/refugi_colomers/3f2b8c1e-6a7d-4e0f-9b1a-2c3d4e5f6a7b.webp',
+            'reason': 'my_image',
+            'action': 'remove_and_strike',
+            'report_id': '5d41402abc4b2a76b9719d911017c592a1b2c3d4',
+            'automated': False,
+            'strikes': 1,
+            'redress': "Pots demanar la revisió d'aquesta decisió (art. 20 DSA) responent al correu de contacte indicat a la Política de privacitat i termes, en un termini de 6 mesos.",
         }
     ]
+}
+
+EXAMPLE_AGE_CONFIRMATION_REQUEST = {
+    'birth_date': '2000-05-17'
 }
 
 # ========== EXEMPLES DE PROPOSTES DE REFUGIS ==========

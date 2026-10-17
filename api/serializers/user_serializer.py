@@ -1,12 +1,25 @@
 """
 Serializers per a l'API d'usuaris
 """
+from datetime import date
 from rest_framework import serializers
+from .media_serializer import MediaItemSerializer
 from ..models.user import User
 
 USERNAME_HELPER_TEXT = "Nom d'usuari"
 URL_AVATAR_HELPER_TEXT = "URL de l'avatar de l'usuari"
 LANGUAGE_HELPER_TEXT = "Idioma preferit de l'usuari (codi ISO 639-1, ex: 'ca', 'es', 'en', 'fr')"
+
+def validate_birth_date_value(value):
+    """Rebutja dates futures o absurdes (abans de 1900)"""
+    if value is None:
+        return value
+    if value > date.today():
+        raise serializers.ValidationError("La data de naixement no pot ser futura")
+    if value.year < 1900:
+        raise serializers.ValidationError("Data de naixement no vàlida")
+    return value
+
 
 class UserValidatorMixin:
     """Mixin amb validadors comuns per a usuaris"""
@@ -42,11 +55,8 @@ class UserValidatorMixin:
             raise serializers.ValidationError("UID no pot estar buit")
         return value.strip()
 
-class MediaMetadataSerializer(serializers.Serializer):
-    """Serializer per a metadades de mitjans"""
-    key = serializers.CharField()
-    url = serializers.URLField()
-    uploaded_at = serializers.CharField()  # ISO 8601 formatelp_text="Data i hora de pujada (ISO 8601)"
+class MediaMetadataSerializer(MediaItemSerializer):
+    """Serializer per a metadades de mitjans (avatar) amb la forma MediaItem del contracte"""
 
 class UserSerializer(UserValidatorMixin, serializers.Serializer):
     """Serializer per a usuaris"""
@@ -99,6 +109,10 @@ class UserSerializer(UserValidatorMixin, serializers.Serializer):
         help_text="Data de creació de l'usuari",
         read_only=True
     )
+    age_confirmed = serializers.BooleanField(
+        help_text="Si l'usuari ha confirmat que té 16 anys o més (no es desa la data de naixement)",
+        read_only=True
+    )
 
     def validate_uid(self, value):
         return self.validate_uid_field(value)
@@ -135,6 +149,13 @@ class UserCreateSerializer(UserValidatorMixin, serializers.Serializer):
                                    help_text=USERNAME_HELPER_TEXT)
     language = serializers.CharField(default='ca', max_length=5, required=False,
                                 help_text=LANGUAGE_HELPER_TEXT)
+    birth_date = serializers.DateField(
+        required=False, input_formats=['%Y-%m-%d'],
+        help_text="Data de naixement (YYYY-MM-DD). Només s'usa per comprovar l'edat mínima (16); no es desa."
+    )
+
+    def validate_birth_date(self, value):
+        return validate_birth_date_value(value)
     
     def validate_username(self, value):
         return self.validate_username_field(value, required=False)
@@ -169,3 +190,14 @@ class UserRefugiSerializer(serializers.Serializer):
         max_length=255,
         help_text="Identificador únic del refugi"
     )
+
+
+class AgeConfirmationSerializer(serializers.Serializer):
+    """PATCH /api/users/{uid}/age-confirmation/"""
+    birth_date = serializers.DateField(
+        required=True, input_formats=['%Y-%m-%d'],
+        help_text="Data de naixement (YYYY-MM-DD). Només s'usa per comprovar l'edat mínima (16); no es desa."
+    )
+
+    def validate_birth_date(self, value):
+        return validate_birth_date_value(value)

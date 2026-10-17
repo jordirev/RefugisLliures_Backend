@@ -39,7 +39,7 @@ async function callAPI(path, options = {}) {
 
 const me = await callAPI(`/api/users/${auth.currentUser.uid}/`);
 ```
-Per a pujades (`/media/`, `/avatar/`, experiències) envia `multipart/form-data` i **no** fixis `Content-Type` a mà.
+Les pujades de fitxers (fotos de refugi, d'experiència i avatar) **no** passen pel backend en multipart: demana `POST /api/media/upload-intents/` (JSON), fes `PUT` a la URL prefirmada de R2 amb el `Content-Type` retornat i confirma amb `POST /api/media/upload-intents/confirm/` ([flux 3](../flows/03-refuge-media-upload.md)). Les experiències (`POST`/`PATCH /api/experiences/`) són només JSON.
 
 ## 3. Provar amb cURL
 ```bash
@@ -66,3 +66,6 @@ curl -X PATCH -H "Authorization: Bearer <token>" -H "Content-Type: application/j
 | 500 | — | Backend sense credencials de Firebase ([firebase-credentials.md](firebase-credentials.md)) |
 
 Llista completa i línies de codi: [flux 0 §Errors](../flows/00-auth-request-pipeline.md#errors).
+
+## Errors amb codi (feature images)
+Alguns 403/409 porten `{"error": "<codi>", "code": "<codi>", "message": "..."}` amb codi ∈ `user_blocked`, `age_not_confirmed`, `not_owner`, `underage`, `own_media`, `already_reported`, `already_resolved`, `moderation_blocked`. El client ha de decidir pel camp `code` (o `error`), no pel text.

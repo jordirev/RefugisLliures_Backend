@@ -4,7 +4,7 @@
 
 ## Seguretat i permisos
 
-1. **NO afegeixis un `Is*Creator` a `permission_classes` pensant que protegeix el recurs.** `has_object_permission` només el crida `GenericAPIView.get_object()` / `check_object_permissions()`, i aquí no s'usen enlloc **[FET]** (cap ocurrència de `check_object_permissions` a `api/`). A més, `IsExperienceCreator`/`IsRenovationCreator` fan `instance.get(...)` sobre una dataclass i petarien si s'executessin (`api/permissions.py:146`, `190`). **Fes la comprovació de propietat al controller**, com `RenovationController.update_renovation` (`api/controllers/renovation_controller.py:118-120`).
+1. **NO afegeixis un `Is*Creator` a `permission_classes` pensant que protegeix el recurs.** (Experiències ja comproven la propietat al controller des de la feature *images*; dubtes i respostes encara no.) `has_object_permission` només el crida `GenericAPIView.get_object()` / `check_object_permissions()`, i aquí no s'usen enlloc **[FET]** (cap ocurrència de `check_object_permissions` a `api/`). A més, `IsExperienceCreator`/`IsRenovationCreator` fan `instance.get(...)` sobre una dataclass i petarien si s'executessin (`api/permissions.py:146`, `190`). **Fes la comprovació de propietat al controller**, com `RenovationController.update_renovation` (`api/controllers/renovation_controller.py:118-120`).
 2. **NO assumeixis que una ruta sota `/api/refuges/` és privada.** El middleware exclou per prefix (`startswith`) `/api/refuges/`, i això inclou `media/`, `visits/` i `renovations/` (`api/middleware/firebase_auth_middleware.py:20-25,98-103`). La protecció depèn **només** de `permission_classes` de la vista. Si crees una vista nova sota aquest prefix sense `IsAuthenticated`, serà pública (el default és `AllowAny`, `refugis_lliures/settings.py:161-163`).
 3. **NO confiïs en el default de permisos**: és `AllowAny`. Declara sempre `permission_classes` o `get_permissions()`.
 4. Un token caducat o mal format en una ruta pública (p. ex. `GET /api/refuges/`) dona **401**, no accés anònim: si hi ha header `Authorization` mal format a ruta exclosa es deixa passar, però si és un Bearer invàlid es rebutja (`api/middleware/firebase_auth_middleware.py:49-96`) **[FET]**.
@@ -36,9 +36,13 @@
 
 ## R2 / media
 
-21. **NO passis `filename=file.name`** a `R2MediaService.upload_file`: la clau queda `refugis-lliures/<refuge_id>/<nom original>` i dues pujades amb el mateix nom se sobreescriuen (`api/services/r2_media_service.py:196-203`; crides a `api/controllers/refugi_lliure_controller.py` i `api/controllers/user_controller.py`) **[FET]**. Deixa `filename=None` perquè generi un UUID.
-22. `R2MediaService.delete_file` **retorna `False`, no llança**, en cas de `ClientError` (`api/services/r2_media_service.py:339-341`). Comprova el booleà; un `try/except` al voltant no detectarà la fallada.
-23. No hi ha límit de mida de pujada ni validació per magic bytes; amb 1 worker gunicorn i timeout 30 s, fitxers grans poden bloquejar el servei **[INFERÈNCIA]**.
+21. **NO publiquis bytes de l'usuari sense passar per `MediaUploadController.process_and_publish`** (tipus real per magic bytes, límits, recodificació sense EXIF/GPS, moderació, claus UUID). `upload_file` ja ignora `filename` i genera un UUID **[FET]**.
+22. `R2MediaService.delete_file` **retorna `False`, no llança**, en cas de `ClientError`. Comprova el booleà; un `try/except` al voltant no detectarà la fallada.
+23. El processament (`confirm`) és síncron: amb 1 worker gunicorn, molts vídeos de 50 MB a la vegada poden acostar-se al timeout **[INFERÈNCIA]**.
+23b. Per escriure una entrada de `media_metadata` usa `FieldPath('media_metadata', key).to_api_repr()` (les claus porten `/`, `.` i `-`) o `DELETE_FIELD` per esborrar-la; mai reescriguis el map sencer **[FET]**.
+23c. Els mitjans tenen `status` (`visible | hidden_pending_review | removed`): qualsevol lectura nova de `media_metadata` cap a l'API ha de filtrar amb `MediaMetadata.is_visible_to(viewer_uid, is_admin)` **[FET]**.
+23d. `audit_logs.expire_at` i `upload_intents.expire_at` són **datetime** (Timestamp), no strings ISO: la TTL de Firestore només funciona amb Timestamps **[FET]**.
+23e. **Mai** desis la data de naixement: només `age_confirmed_at` i `age_threshold` (minimització) **[FET]**.
 24. No desis URLs a Firestore: es desa la **clau** i la URL presignada (1 h) es genera en llegir (`api/services/r2_media_service.py:228-251`).
 
 ## Entorn i desplegament
@@ -52,4 +56,5 @@
 ## Tests
 
 30. Els tests de vistes fan `view.cls.permission_classes = []` i `view.cls.authentication_classes = []` (p. ex. `api/tests/renovation/test_views.py:101-102`), que **muta la classe** per a tota la sessió de pytest **[FET]**: un test posterior que comprovi permisos pot passar per error **[INFERÈNCIA]**. Usa `patch.object(Vista, 'permission_classes', [])`.
+30b. `api/tests/conftest.py` té fixtures `autouse` que **bloquegen la inicialització de Firebase real** (env/ pot tenir credencials de producció), mocken `AuditLogService.log` i `get_user_for_permissions` (usuari confirmat i no bloquejat). Per provar-los de veritat usa els markers `real_audit_log` / `real_permissions` **[FET]**.
 31. Fixa variables d'entorn (`TESTING`, `R2_*`) al `conftest.py` **arrel** abans de cap import de `api` (`conftest.py`); amb `TESTING=true` Firebase no s'inicialitza (`api/firebase_config.py:92-94`) i cal mockejar `FirestoreService`/`cache_service` al mòdul del DAO.

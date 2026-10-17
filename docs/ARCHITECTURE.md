@@ -76,17 +76,24 @@ Conseqüència: **canviar el text d'un missatge pot canviar el codi HTTP retorna
 | `refuges/<id>/renovations/` | `RefugeRenovationsAPIView` | GET | IsAuthenticated |
 | `refuges/<refuge_id>/visits/` | `RefugeVisitsAPIView` | GET | IsAuthenticated |
 | `refuges/<refuge_id>/visits/<visit_date>/` | `RefugeVisitDetailAPIView` | POST, PATCH, DELETE | IsAuthenticated |
-| `refuges/<id>/media/` | `RefugiMediaAPIView` | GET, POST | IsAuthenticated |
+| `refuges/<id>/media/` | `RefugiMediaAPIView` | GET | IsAuthenticated |
 | `refuges/<id>/media/<path:key>/` | `RefugiMediaDeleteAPIView` | DELETE | IsAuthenticated + IsMediaUploader |
-| `experiences/` | `ExperienceListAPIView` | GET, POST | IsAuthenticated |
-| `experiences/<experience_id>/` | `ExperienceDetailAPIView` | PATCH, DELETE | IsAuthenticated (*IsExperienceCreator no s'executa*) |
+| `media/upload-intents/` | `UploadIntentsAPIView` | POST | IsAuthenticated + IsNotBlocked + IsAgeConfirmed (+ propietat d'experiència al controller) |
+| `media/upload-intents/confirm/` | `UploadIntentsConfirmAPIView` | POST | IsAuthenticated + IsNotBlocked + IsAgeConfirmed |
+| `media/reports/` | `MediaReportsAPIView` | POST | IsAuthenticated + IsNotBlocked + IsAgeConfirmed |
+| `admin/media-reports/` | `AdminMediaReportsAPIView` | GET | IsAuthenticated + IsFirebaseAdmin |
+| `admin/media-reports/<id>/` | `AdminMediaReportDetailAPIView` | PATCH | IsAuthenticated + IsFirebaseAdmin |
+| `experiences/` | `ExperienceListAPIView` | GET, POST (només JSON) | GET: IsAuthenticated; POST: + IsNotBlocked |
+| `experiences/<experience_id>/` | `ExperienceDetailAPIView` | PATCH, DELETE | IsAuthenticated + IsNotBlocked; propietat comprovada al controller (403 `not_owner`, admins permesos) |
 | `doubts/` | `DoubtListAPIView` | GET, POST | IsAuthenticated |
 | `doubts/<doubt_id>/` | `DoubtDetailAPIView` | DELETE | IsAuthenticated (*IsDoubtCreator no s'executa*) |
 | `doubts/<doubt_id>/answers/` | `AnswerListAPIView` | POST | IsAuthenticated |
 | `doubts/<doubt_id>/answers/<answer_id>/` | `AnswerReplyAPIView` | POST, DELETE | IsAuthenticated (*IsAnswerCreator no s'executa*) |
 | `users/` | `UsersCollectionAPIView` | POST | IsAuthenticated |
 | `users/<uid>/` | `UserDetailAPIView` | GET, PATCH, DELETE | GET: IsAuthenticated; PATCH/DELETE: + IsSameUser |
-| `users/<uid>/avatar/` | `UserAvatarAPIView` | PATCH, DELETE | IsAuthenticated + IsSameUser |
+| `users/<uid>/avatar/` | `UserAvatarAPIView` | DELETE | IsAuthenticated + IsSameUser |
+| `users/<uid>/age-confirmation/` | `UserAgeConfirmationAPIView` | PATCH | IsAuthenticated + IsSameUser |
+| `users/<uid>/moderation-notices/` | `UserModerationNoticesAPIView` | GET | IsAuthenticated + IsSameUser |
 | `users/<uid>/favorite-refuges/` (+ `<refuge_id>/`) | `UserFavouriteRefuges*APIView` | GET, POST / DELETE | IsAuthenticated + IsSameUser |
 | `users/<uid>/visited-refuges/` (+ `<refuge_id>/`) | `UserVisitedRefuges*APIView` | GET, POST / DELETE | IsAuthenticated + IsSameUser |
 | `users/<uid>/visits/` | `UserVisitsAPIView` | GET | IsAuthenticated + IsSameUser |
@@ -112,7 +119,8 @@ Detall complet a [flows/00-auth-request-pipeline.md](flows/00-auth-request-pipel
 3. Permís per defecte: `AllowAny` (`refugis_lliures/settings.py:161-163`) — **cada vista ha de declarar els seus permisos**.
 4. Admin = custom claim `role == 'admin'` (`api/permissions.py:10-21`). Es gestiona amb `scripts/manage_admins.py`.
 5. Gestió d'admins: [guides/admin-management.md](guides/admin-management.md). Per què hi ha middleware **i** classe DRF: [design/decisions.md](design/decisions.md).
-6. **[FET]** Cap vista crida `check_object_permissions()`, i totes hereten d'`APIView` (no `GenericAPIView`) → **`has_object_permission` de `IsExperienceCreator`, `IsRenovationCreator`, `IsDoubtCreator`, `IsAnswerCreator`, `IsOwnerOrReadOnly` mai s'executa**. Només funcionen els permisos basats en `has_permission`: `IsSameUser`, `IsFirebaseAdmin`, `IsMediaUploader`.
+6. **[FET]** Permisos nous de la feature *images*: `IsNotBlocked` (403 `user_blocked`) i `IsAgeConfirmed` (403 `age_not_confirmed`), basats en `has_permission` i en `users/{uid}` (cache-first). Els errors amb codi tenen la forma `{error, code, message}` (`coded_error`, `api/permissions.py`). Detall: [flows/12-media-moderation.md](flows/12-media-moderation.md).
+7. **[FET]** Cap vista crida `check_object_permissions()`, i totes hereten d'`APIView` (no `GenericAPIView`) → **`has_object_permission` de `IsExperienceCreator`, `IsRenovationCreator`, `IsDoubtCreator`, `IsAnswerCreator`, `IsOwnerOrReadOnly` mai s'executa**. Només funcionen els permisos basats en `has_permission`: `IsSameUser`, `IsFirebaseAdmin`, `IsMediaUploader`.
 
 ## 6. Cache (resum)
 

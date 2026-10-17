@@ -888,7 +888,9 @@ class TestUserDAOExtended:
         
         dao = UserDAO()
         assert dao.add_uploaded_photos_keys("u1", ["k2"]) is True
-        mock_db.collection.return_value.document.return_value.update.assert_called_with({'uploaded_photos_keys': ['k1', 'k2']})
+        # Escriptura atòmica: ArrayUnion (sense read-modify-write)
+        from google.cloud.firestore import ArrayUnion
+        mock_db.collection.return_value.document.return_value.update.assert_called_with({'uploaded_photos_keys': ArrayUnion(['k2'])})
 
     @patch('api.daos.user_dao.FirestoreService')
     @patch('api.daos.user_dao.cache_service')
@@ -903,7 +905,9 @@ class TestUserDAOExtended:
         
         dao = UserDAO()
         assert dao.remove_uploaded_photos_keys("u1", ["k1"]) is True
-        mock_db.collection.return_value.document.return_value.update.assert_called_with({'uploaded_photos_keys': ['k2']})
+        # Escriptura atòmica: ArrayRemove (sense read-modify-write)
+        from google.cloud.firestore import ArrayRemove
+        mock_db.collection.return_value.document.return_value.update.assert_called_with({'uploaded_photos_keys': ArrayRemove(['k1'])})
 
     @patch('api.daos.user_dao.FirestoreService')
     @patch('api.daos.user_dao.cache_service')
@@ -1333,7 +1337,8 @@ class TestUserDAOExtended:
         
         dao = UserDAO()
         assert dao.add_uploaded_photos_keys("u1", ["k1"]) is True
-        mock_db.collection.return_value.document.return_value.update.assert_called_with({'uploaded_photos_keys': ['k1']})
+        from google.cloud.firestore import ArrayUnion
+        mock_db.collection.return_value.document.return_value.update.assert_called_with({'uploaded_photos_keys': ArrayUnion(['k1'])})
 
     @patch('api.daos.user_dao.FirestoreService')
     @patch('api.daos.user_dao.cache_service')
@@ -1348,7 +1353,8 @@ class TestUserDAOExtended:
         
         dao = UserDAO()
         assert dao.remove_uploaded_photos_keys("u1", ["k1"]) is True
-        mock_db.collection.return_value.document.return_value.update.assert_called_with({'uploaded_photos_keys': []})
+        from google.cloud.firestore import ArrayRemove
+        mock_db.collection.return_value.document.return_value.update.assert_called_with({'uploaded_photos_keys': ArrayRemove(['k1'])})
 
     @patch('api.daos.user_dao.FirestoreService')
     @patch('api.daos.user_dao.cache_service')
