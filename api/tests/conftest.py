@@ -468,7 +468,7 @@ def _block_real_firestore():
         raise RuntimeError("Els tests no poden connectar-se a Firestore real: mocka FirestoreService")
 
     with patch.object(FirestoreService, '_initialize_firebase', _forbidden), \
-            patch('api.services.firestore_service.firebase_admin.get_app', side_effect=ValueError('no app')):
+            patch('firebase_admin.get_app', side_effect=ValueError('no app')):
         FirestoreService._db = None
         yield
 
