@@ -30,6 +30,7 @@
 
 ## Registre
 - 2026-10-23 — Pla aprovat. Branca `migration` posada al dia amb `develop`. Iniciat el pas 0.
+- 2026-10-23 — Decisió: PK subrogades com a UUID v7 (comunicada a l’agent de disseny).
 
 ## Pendents / bloquejos
 - Cap.

@@ -8,6 +8,7 @@ El backend (Django 5.1 + DRF) desa tot el domini a Firestore amb DAOs/mappers fe
 ## Decisions preses amb l'usuari
 - **users** privat i minimitzat: uid (PK), language, created_at, age_confirmed_at, age_threshold, moderation_strikes, is_blocked, blocked_reason/at. Sense email ni data de naixement. **user_public_profiles**: uid, username, avatar (lectura oberta).
 - **RLS**: polítiques amb `migrations.RunSQL` (executades pel rol `migrator`, amb `reverse_sql`); a cada petició, dins la transacció, `SELECT set_config('app.uid', %s, true)` i `app.is_admin` (sempre local a la transacció pel pooler en mode transacció). El rol `app` no és propietari → sense `FORCE`. Se suma als permisos de Django.
+- **IDs**: totes les PK subrogades són **UUID v7** (timestamp dins l'UUID), exposades com a string a l'API; `users.uid` continua sent l'UID de Firebase (text).
 - **condition**: taula de vots `refuge_condition_votes` + agregació (AVG/COUNT, vista).
 - **Visitats**: taula d'unió única `user_visited_refuges` (fi de les còpies `visitors`/`visited_refuges`).
 - **Esborrat d'usuari**: CASCADE de denúncies, avisos de moderació i audit logs de l'usuari (propostes i reformes passades: SET NULL, com l'actual anonimització).
