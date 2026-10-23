@@ -28,3 +28,6 @@ htmlcov/
 
 # ── Graphify (graf de coneixement generat) ───────────────
 graphify-out/
+.neon
+node_modules/
+.env.local

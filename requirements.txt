@@ -5,6 +5,9 @@ python-dotenv==1.0.0
 django-cors-headers==4.4.0
 firebase-admin==6.5.0
 
+# Neon (Postgres + PostGIS)
+psycopg[binary]==3.2.9
+
 # Cloudflare R2 / AWS S3 compatible storage
 boto3==1.35.78
 

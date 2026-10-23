@@ -39,6 +39,7 @@ Les línies poden desplaçar-se amb canvis futurs; si una cita no quadra, busca 
 - [integrations/firebase-auth.md](integrations/firebase-auth.md)
 - [integrations/firestore.md](integrations/firestore.md)
 - [integrations/cloudflare-r2.md](integrations/cloudflare-r2.md)
+- [integrations/neon.md](integrations/neon.md) (Neon Postgres + PostGIS, en migració)
 - [integrations/redis-cache.md](integrations/redis-cache.md)
 - [integrations/render-deploy-ci.md](integrations/render-deploy-ci.md) (Render, GitHub Actions, SonarCloud, Codecov)
 

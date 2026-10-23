@@ -108,6 +108,43 @@ DATABASES = {
 }
 
 
+def _neon_database(url_var, pooled):
+    """Construeix la config d'una BD de Neon a partir d'una variable d'entorn amb la URL (o None)."""
+    from urllib.parse import urlparse, unquote
+
+    url = config(url_var, default='')
+    if not url:
+        return None
+    parsed = urlparse(url)
+    # GeoDjango (PostGIS) requereix GDAL/GEOS: a Cloud Run vénen a la imatge Docker.
+    # En locals sense GDAL es manté el backend postgresql estàndard (SQL pla amb PostGIS).
+    use_gis = config('NEON_USE_POSTGIS_ENGINE', default=False, cast=bool)
+    return {
+        'ENGINE': 'django.contrib.gis.db.backends.postgis' if use_gis else 'django.db.backends.postgresql',
+        'NAME': parsed.path.lstrip('/'),
+        'USER': unquote(parsed.username or ''),
+        'PASSWORD': unquote(parsed.password or ''),
+        'HOST': parsed.hostname,
+        'PORT': parsed.port or 5432,
+        'OPTIONS': {'sslmode': 'require'},
+        # Amb el pooler (PgBouncer, mode transacció) no es poden usar cursors de servidor.
+        'DISABLE_SERVER_SIDE_CURSORS': pooled,
+        'CONN_MAX_AGE': 60 if pooled else 0,
+        'CONN_HEALTH_CHECKS': pooled,
+        # Els tests no han de crear bases de dades de test a Neon: s'emmirallen a `default`.
+        'TEST': {'MIRROR': 'default'},
+    }
+
+
+# Neon (Postgres): variables a env/.env.development o env/.env.production (fora de git).
+# Alias `neon` = rol `app` pel pooler (només DML); `neon_migrator` = rol `migrator` per l'endpoint directe (DDL, migracions).
+# Firestore continua sent la BD de domini fins a la migració dels DAOs.
+for _alias, _var, _pooled in (('neon', 'DATABASE_URL_APP', True), ('neon_migrator', 'DATABASE_URL_MIGRATOR', False)):
+    _db = _neon_database(_var, _pooled)
+    if _db:
+        DATABASES[_alias] = _db
+
+
 # Password validation
 # https://docs.djangoproject.com/en/5.1/ref/settings/#auth-password-validators
 

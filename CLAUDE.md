@@ -63,7 +63,7 @@ api/views  api/serializers  api/controllers  api/daos  api/services   + api/mapp
 - `docs/ARCHITECTURE.md` — stack, capes, taula de rutes i permisos, auth, cache, convencions, excepcions, tests.
 - `docs/GOTCHAS.md` — què NO fer · `docs/TECH_DEBT.md` — bugs i deute per severitat.
 - `docs/flows/` — 00 auth · 01 perfil · 02 avatar · 03 fotos refugi · 04 cerca/detall · 05 propostes · 06 visites · 07 renovations · 08 experiències · 09 dubtes · 10 preferits/visitats · 11 admin cache/health · 12 denúncies/moderació/edat/auditoria.
-- `docs/integrations/` — firebase-auth · firestore · cloudflare-r2 · redis-cache · render-deploy-ci.
+- `docs/integrations/` — firebase-auth · firestore · cloudflare-r2 · neon · redis-cache · render-deploy-ci.
 - `docs/recipes/` — add-endpoint · add-service · add-model.
 - `docs/guides/` — passos per executar/configurar: local-setup · testing · firebase-credentials · r2-render-setup · admin-management · client-auth-usage · daily-visits-process · cloudflare-domain-csam (futur: domini + CSAM).
 - `docs/design/` — patterns (detall dels patrons) · decisions (ADR: APIView, auth DRF+middleware, custom claims).
