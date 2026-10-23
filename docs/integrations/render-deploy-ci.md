@@ -44,5 +44,8 @@ Variables (noms) a `env/.env.development` i `env/.env.production`: `SECRET_KEY, 
 - `process-visits.yml` no posa `REDIS_URL` → no invalida la cache de producció **[INFERÈNCIA]**.
 - Comentari "3:00 Madrid" a `refugis_lliures/settings.py:276` vs "3:00 UTC" al workflow: el que s'executa és el del workflow (UTC) **[FET]**; com que el procés calcula "ahir" en hora de Madrid, a les 3:00 UTC (4-5 h a Madrid) "ahir" és correcte **[INFERÈNCIA]**.
 
+## Neon (variables d'entorn) [FET]
+`DATABASE_URL_APP` (rol `app`, pooler), `DATABASE_URL_MIGRATOR` (rol `migrator`, directa), `NEON_BRANCH` i opcionalment `NEON_USE_POSTGIS_ENGINE`. Es llegeixen de `env/.env.*` (o de l'entorn) amb `decouple`. Només hi ha alias Django si són presents; CI no les defineix i els tests no toquen Neon. Detall: [neon.md](neon.md).
+
 ## Guies relacionades
 [firebase-credentials.md](../guides/firebase-credentials.md) · [r2-render-setup.md](../guides/r2-render-setup.md) · [daily-visits-process.md](../guides/daily-visits-process.md) · [testing.md](../guides/testing.md)

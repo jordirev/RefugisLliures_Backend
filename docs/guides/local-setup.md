@@ -34,6 +34,9 @@ Detall de credencials de Firebase: [firebase-credentials.md](firebase-credential
 
 > ⚠️ No llegeixis ni comparteixis els valors de `env/`. No es versiona mai.
 
+### Neon (opcional, migració en curs)
+Si vols provar Neon, afegeix a `env/.env.development` `DATABASE_URL_APP` (rol `app`, pooler) i `DATABASE_URL_MIGRATOR` (rol `migrator`, directa); `settings.py` hi afegeix els alias `neon` i `neon_migrator`. Verifica amb `python manage.py check_neon`. Requereix Node ≥ 22.20 per al CLI de Neon. Detall: [neon.md](../integrations/neon.md).
+
 ## 3. Exportar les variables R2
 Les `R2_*` es llegeixen amb `os.getenv` i **no** entren a `os.environ` des dels `.env` ([GOTCHAS #25](../GOTCHAS.md)). Exporta-les a la shell:
 ```bash
