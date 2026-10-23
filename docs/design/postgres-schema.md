@@ -1343,3 +1343,220 @@ Dues sentències en lloc d'un bucle de crides per visita/usuari. (Les visites pr
 | `GET /doubts/?refuge_id=` | 2 |
 | `GET /admin/media-reports/` | 1 |
 | `POST /refuges-proposals/{id}/approve/` | transacció única (bloqueig + escriptures) |
+
+---
+
+## 6. Apps Django i models
+
+### 6.1 Una app per domini (cap conflicte de migracions entre chunks paral·lels)
+
+Paquet nou **`domain/`** a l'arrel del repo (germà d'`api/` i `refugis_lliures/`), una app per domini amb `models.py`, `querysets.py` (substitueix el DAO), `migrations/`. Els controllers de `api/controllers/` hi criden; les vistes, serializers i permisos continuen a `api/`. Les classes `@dataclass` d'`api/models/` es mantenen fins al chunk 11 (no hi ha col·lisió: mòduls diferents).
+
+| App (`INSTALLED_APPS`) | Models → taula | Schema | Chunk |
+|---|---|---|---|
+| `domain.core` | — (funcions, rols, grants, helpers de migració) | `core` | 1 |
+| `domain.accounts` | `UserAccount` → `users.users`; `UserPublicProfile` → `users.user_public_profiles` (`0001`); `FavouriteRefuge`, `VisitedRefuge` (`0002`) | `users` | 2 / 3 |
+| `domain.refuges` | `Refuge`, `RefugeAmenities`, `RefugeLink`, `RefugeMedia`, `RefugeConditionVote`; no gestionats `RefugeCondition`, `RefugeMapPoint` | `refuges` | 2 (+7, +8) |
+| `domain.visits` | `RefugeVisit`, `VisitParticipant`; no gestionat `VisitTotal` | `activity` | 4 |
+| `domain.renovations` | `Renovation`, `RenovationParticipant`, `RenovationExpelled` | `activity` | 5 |
+| `domain.doubts` | `Doubt`, `Answer` | `activity` | 6 |
+| `domain.experiences` | `Experience` | `activity` | 7 |
+| `domain.uploads` | `UploadIntent` | `moderation` | 7 |
+| `domain.proposals` | `RefugeProposal` | `proposals` | 8 |
+| `domain.moderation` | `MediaReport`, `ModerationNotice`, `HashBlocklistEntry`, `MediaDeletionQueueItem` | `moderation` | 9 |
+| `domain.audit` | `AuditLog` | `audit` | 9 |
+
+També cal a `INSTALLED_APPS`: `django.contrib.gis` i `django.contrib.postgres` (`ExclusionConstraint`, `ArraySubquery`, `TrigramSimilarity`), i `DATABASES` amb el motor `django.contrib.gis.db.backends.postgis` (toggle `NEON_USE_POSTGIS_ENGINE` ja existent; Docker de proves amb GDAL/GEOS). Quin alias és `default` és decisió del chunk 1.
+
+### 6.2 Ordre de migracions (graf aciclic; evita dependències circulars entre apps)
+
+```
+core.0001  (schemas, funcions, grants base, helpers)
+  └─ accounts.0001  (users + user_public_profiles)            ← abans de refuges: refuge_media.creator_uid → users
+       └─ refuges.0001  (refuges, amenities, links, media SENSE experience_id, votes SENSE source_proposal_id, vistes, RLS)
+            ├─ accounts.0002   (favourites, visited)           ← chunk 3
+            ├─ visits.0001 · renovations.0001 · doubts.0001    ← chunks 4/5/6 (paral·lels)
+            └─ experiences.0001                                ← chunk 7
+                 ├─ refuges.0002  (refuge_media.experience_id → experiences + trigger de la cua d'R2)
+                 └─ uploads.0001  (upload_intents)
+            proposals.0001                                      ← chunk 8
+                 └─ refuges.0003  (refuge_condition_votes.source_proposal_id → proposals)
+            moderation.0001 (media_reports, notices, blocklist, deletion queue) · audit.0001   ← chunk 9
+```
+`accounts.0001` s'ha de crear al **començament del chunk 2** (o al final del 1): és l'únic tros del chunk 3 que el 2 necessita. Els chunks 4, 5 i 6 no toquen cap migració d'una altra app. Els chunks 7 i 8 afegeixen una migració a `refuges` (seqüencials, sense paral·lelisme).
+
+### 6.3 Els `ON DELETE` són del DDL, **no** de Django 5.1 (decisió crítica)
+
+A Django 5.1 `on_delete=CASCADE/SET_NULL` s'**emula en Python** (el *collector* fa `DELETE`/`UPDATE` des de l'aplicació, amb el rol `app`, **subjecte a RLS i a molts viatges**) i la FK que crea Django **no té `ON DELETE`** (`DEFERRABLE INITIALLY DEFERRED` simple). Aquest disseny necessita les cascades **a la BD** (atòmiques, amb els privilegis del propietari, reintentables, vàlides també per a un `DELETE` de SQL pla). Per tant, **a tots els models**:
+
+```python
+creator = models.ForeignKey(UserAccount, on_delete=models.DO_NOTHING, db_constraint=False,
+                            db_index=False, db_column='creator_uid', related_name='+')
+```
+i la restricció real es crea a la migració amb `RunSQL` (amb `reverse_sql`), p. ex.:
+`ALTER TABLE activity.experiences ADD CONSTRAINT experiences_creator_uid_fk FOREIGN KEY (creator_uid) REFERENCES users.users (uid) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED;` (les **accions** referencials no són diferibles: `CASCADE`/`SET NULL` s'executen immediatament; només el control d'integritat es difereix al `COMMIT`). Els índexs de FK es declaren a `Meta.indexes` amb nom explícit (§2). Amb `DO_NOTHING`, `UserAccount.objects.filter(pk=uid).delete()` emet **un sol `DELETE`** i la BD fa la resta; no es fan `pre/post_delete` signals ni es depèn d'`Collector`. Django 6 afegeix `DB_CASCADE`/`DB_SET_NULL` **[NO VERIFICAT]**, però no és utilitzable aquí (Python 3.10 a CI, Django pinat a 5.1).
+
+**Matriu completa de FK** (cada fila és una `RunSQL` `ADD CONSTRAINT`; nom `<taula>_<columna>_fk`; totes `DEFERRABLE INITIALLY DEFERRED`):
+
+| Taula · columna | → Destí | `ON DELETE` |
+|---|---|---|
+| `user_public_profiles.uid` | `users.users.uid` | CASCADE |
+| `user_favourite_refuges.user_uid` / `.refuge_id` | `users.users` / `refuges.refuges` | CASCADE / CASCADE |
+| `user_visited_refuges.user_uid` / `.refuge_id` | `users.users` / `refuges.refuges` | CASCADE / CASCADE |
+| `refuge_amenities.refuge_id`, `refuge_links.refuge_id` | `refuges.refuges` | CASCADE |
+| `refuge_media.refuge_id` / `.creator_uid` / `.experience_id` | `refuges.refuges` / `users.users` / `activity.experiences` | CASCADE / CASCADE / CASCADE |
+| `refuge_condition_votes.refuge_id` / `.source_proposal_id` / `.user_uid` | `refuges.refuges` / `proposals.refuge_proposals` / `users.users` | CASCADE / **SET NULL** / **SET NULL** |
+| `refuge_visits.refuge_id` | `refuges.refuges` | CASCADE |
+| `refuge_visit_participants.visit_id` / `.user_uid` | `activity.refuge_visits` / `users.users` | CASCADE / CASCADE |
+| `renovations.refuge_id` / `.creator_uid` | `refuges.refuges` / `users.users` | CASCADE / **SET NULL** |
+| `renovation_participants.renovation_id` / `.user_uid`; `renovation_expelled.…` | `activity.renovations` / `users.users` | CASCADE / CASCADE |
+| `experiences.refuge_id` / `.creator_uid` | `refuges.refuges` / `users.users` | CASCADE / CASCADE |
+| `doubts.refuge_id` / `.creator_uid` | `refuges.refuges` / `users.users` | CASCADE / CASCADE |
+| `answers.doubt_id` / `.creator_uid` | `activity.doubts` / `users.users` | CASCADE / CASCADE |
+| `answers (doubt_id, parent_answer_id)` | `activity.answers (doubt_id, id)` | CASCADE |
+| `refuge_proposals.refuge_id` / `.creator_uid` / `.reviewer_uid` | `refuges.refuges` / `users.users` / `users.users` | **SET NULL** ×3 |
+| `upload_intents.user_uid` / `.refuge_id` / `.experience_id` | `users.users` / `refuges.refuges` / `activity.experiences` | CASCADE ×3 |
+| `media_reports.refuge_id` / `.reporter_uid` / `.media_creator_uid` / `.resolved_by` | `refuges.refuges` / `users.users` ×3 | CASCADE / CASCADE / **SET NULL** / **SET NULL** |
+| `moderation_notices.user_uid` / `.refuge_id` / `.report_id` | `users.users` / `refuges.refuges` / `moderation.media_reports` | CASCADE / **SET NULL** / **SET NULL** |
+| `audit_logs.actor_uid` / `.subject_uid` | `users.users` | CASCADE / CASCADE |
+
+### 6.4 Tipus de camp i constraints a Django 5.1
+
+| Necessitat | Django |
+|---|---|
+| `geography(Point,4326)` | `gis_models.PointField(geography=True, srid=4326, spatial_index=False)` + `GistIndex(fields=['coord'], name='refuges_coord_gist')` |
+| `uuid` PK amb default de BD | `UUIDField(primary_key=True, default=uuid.uuid4, db_default=Func(function='gen_random_uuid'))` |
+| `timestamptz` / `date` | `DateTimeField(db_default=Now())` (amb `USE_TZ=True`) / `DateField` |
+| `boolean NOT NULL DEFAULT false` | `BooleanField(db_default=False)` |
+| enum | `CharField(max_length=n, choices=XChoices.choices)` + `CheckConstraint(condition=Q(col__in=XChoices.values), name=...)` (**Django 5.1 usa `condition=`; `check=` és obsolet**) |
+| jsonb | `JSONField` (CHECKs complexos per `RunSQL`, §2.18) |
+| `UNIQUE` parcial / amb `INCLUDE` / `NULLS NOT DISTINCT` | `UniqueConstraint(fields=…, condition=Q(...), include=[...], nulls_distinct=False, name=...)` |
+| `EXCLUDE USING gist` | `ExclusionConstraint` (+ `django.contrib.postgres`; la `btree_gist` la crea el propietari, §1.3, **no** `BtreeGistExtension()` perquè `migrator` no pot) |
+| GIN trigram sobre expressió | `GinIndex(OpClass(Func(F('name'), function='core.norm_name', output_field=TextField()), name='gin_trgm_ops'), name='refuges_name_trgm_gin')` |
+| Índex `INCLUDE` | `Index(fields=['refuge'], include=['value'], name=...)` |
+| FK composta (`answers`) | no suportada: `RunSQL` (§2.17), camp amb `db_constraint=False` |
+| Vistes | `managed = False`, `db_table = 'refuges"."refuge_condition'`, `on_delete=DO_NOTHING` |
+| Funcions, triggers, polítiques, grants, vistes | `migrations.RunSQL(sql, reverse_sql)`; les polítiques passen per un helper de `domain.core` que **expandeix les macros** `{U}/{ADM}/{SYS}` |
+
+Esbós de `Meta` (no és codi final; fixa noms i tipus):
+```python
+class Renovation(models.Model):
+    class Meta:
+        db_table = 'activity"."renovations'
+        constraints = [
+            models.CheckConstraint(condition=Q(ini_date__lt=F('fin_date')), name='renovations_dates_ck'),
+            models.CheckConstraint(condition=Q(group_link__isnull=False) | Q(creator__isnull=True), name='renovations_anonymized_ck'),
+            ExclusionConstraint(name='renovations_no_overlap',
+                expressions=[('refuge', RangeOperators.EQUAL),
+                             (Func(F('ini_date'), F('fin_date'), Value('[]'), function='daterange',
+                                   output_field=DateRangeField()), RangeOperators.OVERLAPS)]),
+        ]
+        indexes = [models.Index(fields=['refuge', 'fin_date', 'ini_date'], name='renovations_refuge_fin_idx'), ...]
+
+class MediaReport(models.Model):
+    class Meta:
+        db_table = 'moderation"."media_reports'
+        constraints = [models.UniqueConstraint(fields=['refuge', 'media_key', 'reporter'], nulls_distinct=False,
+                                               name='media_reports_unique_reporter_uq'), ...]
+```
+
+### 6.5 Convencions de migració i de transaccions
+
+- Cada migració que crea una taula inclou, **a la mateixa migració**, les `FK` (§6.3), els `GRANT` (matriu §7.2), la RLS (`ENABLE ROW LEVEL SECURITY` + polítiques) i els triggers; amb `reverse_sql` per a tot.
+- Un test d'arquitectura compara `information_schema.role_table_grants`, `pg_policies` i `pg_class.relrowsecurity` del rol `app` amb aquest document (falla si hi ha una taula sense RLS, un grant de més o de menys).
+- Les migracions s'apliquen amb `neon_migrator` (endpoint directe); l'aplicació s'executa amb `neon` (rol `app`, pooler). Les proves d'integració **han de** córrer com a `app` (si no, el propietari ignora la RLS).
+- `bulk_create(ignore_conflicts=True)` no retorna PK (no fa `RETURNING`): és el que es vol per a «ja existeix → ignora» sota RLS.
+- `select_for_update(of=('self',))` només dins `transaction.atomic()` (a PgBouncer de transacció, sempre és així).
+
+---
+
+## 7. Rols, grants i mecanisme de RLS
+
+### 7.1 Rols **[FET: ja creats a Neon, `integrations/neon.md`; aquí s'hi afegeixen els schemas nous]**
+
+| Rol | Atributs | Pot | No pot |
+|---|---|---|---|
+| `refugisdb_owner` | propietari de la BD (membre de `neon_superuser`) | `CREATE EXTENSION`, *bootstrap* (§1.3) | s'usa només per administrar |
+| `migrator` | `NOLOGIN`-no: `LOGIN`; sense `SUPERUSER`/`BYPASSRLS`; **propietari** de tots els objectes de domini | DDL, `ALTER TABLE … ENABLE RLS`, `CREATE POLICY/TRIGGER/FUNCTION/VIEW`, `GRANT` | `CREATE EXTENSION`; connectar pel pooler (només endpoint directe) |
+| `app` | `LOGIN`, `NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS`, **no propietari de res** | DML segons la matriu §7.2; `EXECUTE` de les funcions de §2.0 i `fn_hash_match` | DDL, `TRUNCATE`, `REFERENCES`, `TRIGGER`, llegir `moderation_hash_blocklist`; saltar la RLS |
+
+Com `app` no és propietari, **la RLS s'aplica sense `FORCE`**; i com `migrator` és propietari, les migracions, el *loader* i les accions referencials (cascades) **no** hi estan subjectes. Proves/CI que usin `migrator` **no** exerciten la RLS.
+
+Grants comuns (a `core.0001`, executats pel `migrator`):
+```sql
+GRANT USAGE ON SCHEMA core, refuges, users, activity, proposals, moderation, audit TO app;
+GRANT USAGE ON SCHEMA public TO app;                        -- ja concedit [FET]: PostGIS, pg_trgm, unaccent
+ALTER DEFAULT PRIVILEGES FOR ROLE migrator IN SCHEMA refuges, users, activity, proposals, moderation, audit
+  GRANT USAGE, SELECT ON SEQUENCES TO app;
+ALTER DEFAULT PRIVILEGES FOR ROLE migrator REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC;   -- les SECURITY DEFINER no han de ser cridables per PUBLIC
+-- No hi ha ALTER DEFAULT PRIVILEGES per a TAULES als schemas nous: cada migració concedeix explícitament el que toca (matriu).
+```
+(Els `ALTER DEFAULT PRIVILEGES` de `public` ja existents no afecten els schemas nous.)
+
+### 7.2 Matriu de grants per a `app` (mínim privilegi; coherent amb §2)
+
+| Taula / objecte | `SELECT` | `INSERT` | `UPDATE` | `DELETE` | Nota |
+|---|---|---|---|---|---|
+| `users.users` | ✔ | ✔ | ✔ | ✔ | |
+| `users.user_public_profiles` | ✔ | ✔ | ✔ | — | esborrat només per cascada |
+| `users.user_favourite_refuges`, `users.user_visited_refuges` | ✔ | ✔ | — | ✔ | |
+| `refuges.refuges`, `refuge_amenities`, `refuge_links` | ✔ | ✔ | ✔ | ✔ | escriure = només `{ADM}/{SYS}` per RLS |
+| `refuges.refuge_media` | ✔ | ✔ | ✔ | ✔ | |
+| `refuges.refuge_condition_votes` | ✔ | ✔ | — | — | |
+| vistes `refuge_condition`, `refuge_map`, `refuge_visit_totals` | ✔ | — | — | — | |
+| `activity.refuge_visits` | ✔ | ✔ | — | ✔ | |
+| `activity.refuge_visit_participants` | ✔ | ✔ | ✔ | ✔ | |
+| `activity.renovations`, `experiences` | ✔ | ✔ | ✔ | ✔ | |
+| `activity.renovation_participants` | ✔ | ✔ | — | ✔ | |
+| `activity.renovation_expelled` | ✔ | ✔ | — | — | |
+| `activity.doubts`, `activity.answers` | ✔ | ✔ | — | ✔ | |
+| `proposals.refuge_proposals` | ✔ | ✔ | ✔ | — | |
+| `moderation.upload_intents`, `moderation.media_reports` | ✔ | ✔ | ✔ | ✔ | |
+| `moderation.moderation_notices` | ✔ | ✔ | — | ✔ | |
+| `moderation.moderation_hash_blocklist` | — | — | — | — | només `EXECUTE moderation.fn_hash_match(...)` |
+| `moderation.media_deletion_queue` | ✔ | — | ✔ | ✔ | només `{SYS}`; l'omplen els triggers |
+| `audit.audit_logs` | ✔ | ✔ | — | ✔ | **sense `UPDATE`**: registre immutable |
+| funcions `core.*` | — | — | — | — | `EXECUTE` (§2.0) |
+
+Seqüències d'`identity`: `USAGE, SELECT` per defecte (els `INSERT` d'una columna *identity* no exigeixen privilegi sobre la seqüència, però es concedeix per seguretat davant `setval/currval`). Cap `TRUNCATE`: els tests fan servir `DELETE`/transaccions amb *rollback*.
+
+### 7.3 Context de la petició (per transacció, compatible amb PgBouncer en mode transacció)
+
+1. `ATOMIC_REQUESTS = True` a l'alias de l'aplicació (cada petició és **una transacció**; DRF també marca *rollback* amb el seu `set_rollback`, que només actua amb aquest paràmetre).
+2. A `APIView.initial()` (**després** de `perform_authentication`, ja dins de la transacció d'`ATOMIC_REQUESTS`) s'executa **una** sentència:
+   ```sql
+   SELECT set_config('app.uid',       %s, true),   -- request.user_uid o '' si anònima
+          set_config('app.is_admin',  %s, true),   -- 'true' si el token verificat té role == 'admin'
+          set_config('app.is_system', 'false', true);
+   ```
+   `is_local = true` ⇒ el valor mor al `COMMIT/ROLLBACK`: **mai** es filtra a una altra petició que reutilitzi la connexió del pooler. Les rutes anònimes (`/api/refuges/`, `/health/`) fixen `uid=''`; les polítiques de lectura pública `USING (true)` continuen funcionant.
+3. **Fail-closed**: sense context, `core.uid()` és `NULL` ⇒ tot el que no és `USING (true)` es denega (una vista que oblidi fixar el context falla en lloc de filtrar dades).
+4. Fora de peticions HTTP (comandes, tasques de Cloud Run, tests) s'usa el *context manager* `rls_context(uid=None, is_admin=False, system=False)` de `domain.core`, que obre `transaction.atomic()` i executa la mateixa sentència.
+5. Els instruments de comptatge de consultes (`django_assert_num_queries`) han d'excloure aquesta sentència (§5.3).
+6. `app.is_admin` es deriva **sempre** del token ja verificat pel middleware (`request.user_claims['role'] == 'admin'`), mai d'un camp de la petició.
+
+### 7.4 Context de sistema (`app.is_system`): quan i com
+
+`system_context()` posa `set_config('app.is_system','true', true)` dins la transacció en curs i el restableix a `'false'` en sortir (si la transacció es desfà, el valor local també). **Només s'usa en blocs curts, acotats i revisats** per a:
+
+| Cas | Per què no és «de l'usuari» |
+|---|---|
+| Jobs programats: `process_yesterday_visits`, purga d'`audit_logs` (`expire_at`), d'`upload_intents` (`expire_at`), de visites/denúncies/avisos caducats, cua d'R2 | No hi ha usuari |
+| Efectes creuats de moderació **en una petició d'un usuari**: auto-ocultar el mitjà d'un altre, comptar denunciants diferents, crear l'avís per a l'autor, `set_blocked` de l'usuari que puja contingut CSAM | Toquen files d'altres usuaris |
+| Entrades d'auditoria amb actor «sistema» | `actor_uid = NULL` només amb `{SYS}` |
+| Esborrat d'usuari reintentat per una tasca (Cloud Tasks) sense la petició de l'usuari | |
+
+Mai per llegir dades per a un usuari «per comoditat». Cada ús ha de tenir un test que n'acoti l'abast.
+
+**Alternatives per als jobs** (recomanació: usar `app` + `system_context()`): (a) executar-los amb l'alias `neon_migrator` (propietari ⇒ saltaria la RLS, però dóna credencials de DDL a un procés periòdic: **no recomanat**); (b) un tercer rol `app_jobs` amb `BYPASSRLS` i grants mínims **[NO VERIFICAT: cal comprovar que Neon permet crear rols amb `BYPASSRLS`]**. La càrrega inicial del JSON, les migracions i l'alta de hashes de la *blocklist* sí que van amb `neon_migrator` (són operacions d'administració puntuals).
+
+**Model d'amenaça (honest)**: la RLS per GUC protegeix contra **errors de lògica** (una vista que oblida comprovar la propietat, un IDOR com C1) i dona defensa en profunditat; **no** protegeix davant d'execució arbitrària de SQL amb el rol `app` (qui pot executar SQL pot fer `set_config('app.is_system','true',false)`). La defensa contra injecció és l'ORM/consultes parametritzades; la de la *blocklist* és que `app` ni la pot llegir (§2.22).
+
+### 7.5 Pla de proves de la RLS (rol `app`, Postgres Docker efímer)
+1. Per a cada taula: anònim, usuari propi, usuari aliè, admin, sistema × `SELECT/INSERT/UPDATE/DELETE` (taula de veritat generada des de §2).
+2. Cascades i `SET NULL` amb el rol `app`: `DELETE FROM users.users WHERE uid = …` esborra/anonimitza tot el previst **sense** que la RLS ho bloquegi (verifica la inferència de §2).
+3. Sense context (`app.uid` no fixat, o `''` després d'una transacció anterior) tot el que no és públic és invisible.
+4. `UPDATE users.users SET is_blocked = true` com a usuari normal falla (`fn_users_guard`).
+5. `moderation_hash_blocklist`: `SELECT` denegat, `fn_hash_match` funciona; `audit_logs`: `UPDATE` denegat.
+6. Reformes: dos `INSERT` que se solapen → `renovations_no_overlap`; `ini_date >= fin_date` → `renovations_dates_ck`; proposta `delete` amb `payload` → `refuge_proposals_shape_ck`.
+7. `ON CONFLICT`/`RETURNING` sota RLS per a cada flux d'escriptura (favorits, visites, denúncies, auditoria).
