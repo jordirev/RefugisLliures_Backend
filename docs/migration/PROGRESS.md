@@ -15,7 +15,7 @@
 ## Estat dels chunks
 | # | Chunk | Branca | Estat | Notes |
 |---|---|---|---|---|
-| 0 | Disseny BD | `migracio/disseny-bd` | en curs | Agent Sonnet redactant `docs/design/postgres-schema.md` |
+| 0 | Disseny BD | `migracio/disseny-bd` | esborrany fet, pendent de dubtes del PO | `docs/design/postgres-schema.md` (§11: 23 dubtes oberts) |
 | 1 | Infraestructura | `migracio/infraestructura` | pendent | |
 | 2 | Refugis | `migracio/refugis` | pendent | |
 | 3 | Usuaris | `migracio/usuaris` | pendent | |
@@ -31,6 +31,7 @@
 ## Registre
 - 2026-10-23 — Pla aprovat. Branca `migration` posada al dia amb `develop`. Iniciat el pas 0.
 - 2026-10-23 — Decisió: PK subrogades com a UUID v7 (comunicada a l’agent de disseny).
+- 2026-10-23 — Esborrany del disseny físic acabat (24 taules, 3 vistes, 6 schemas). Pendent: resposta del PO als dubtes de §11 abans de tancar el chunk 0.
 
 ## Pendents / bloquejos
 - Cap.
