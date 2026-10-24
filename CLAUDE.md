@@ -72,6 +72,8 @@ api/views  api/serializers  api/controllers  api/daos  api/services   + api/mapp
 10. El context de RLS (`set_config(..., true)`) és local a la transacció i només el posa el hook a peticions HTTP; en comandes/jobs usa `rls_context()`/`system_context()`. Migracions sempre `--database=migrator`. `ATOMIC_REQUESTS` no desfà escriptures a Firestore/R2.
 11. Els tests de vistes muten `view.cls.permission_classes`; usa `patch.object`. El `conftest.py` de l'arrel bloqueja Firestore real i mocka `AuditLogService.log` i `get_user_for_permissions` (markers `real_audit_log`, `real_permissions` per desactivar-ho).
 12. A les apps migrades les FK són `DO_NOTHING` + `db_constraint=False`: les cascades i `SET NULL` són del DDL (migració `RunSQL`), no de Django; no depenguis de `on_delete` ni de signals. `load_refuges` és d'un sol ús (sense `--overwrite`).
+13. **Estat intermedi (chunk 2 → 7)**: els dominis encara a Firestore comproven els refugis amb el `RefugiLliureDAO` legacy (catàleg antic, IDs diferents dels UUID de PostgreSQL); les fotos noves i les propostes aprovades escriuen a Firestore i no es veuen a `/api/refuges/`. No usis el DAO legacy en codi nou (GOTCHAS #41–42, TECH_DEBT R1–R7).
+14. Errors 500 a les apps migrades: sempre `server_error(...)` (`{error, error_id}`), mai `str(e)`.
 
 ## Seguretat
 - **No llegeixis ni imprimeixis** fitxers de `env/` (service accounts, `.env.*`, `api-keys.env`). No estan versionats; només se'n poden esmentar els noms de variables.

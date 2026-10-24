@@ -2,6 +2,8 @@
 
 > **[FET]** comprovat al codi · **[INFERÈNCIA]** deducció · **[NO VERIFICAT]** depèn de config externa.
 
+> **Estat intermedi (chunk 2 → chunk 3).** Els refugis ja viuen a PostgreSQL (IDs UUID v7), però aquest domini encara comprova i llegeix els refugis amb el `RefugiLliureDAO` legacy de Firestore, que ja no s'alimenta: les seves comprovacions d'existència de refugi miren el catàleg antic de Firestore (ids diferents dels UUID de PostgreSQL). Vegeu [GOTCHAS #41](../GOTCHAS.md) i [TECH_DEBT R1](../TECH_DEBT.md).
+
 ## Endpoints (`api/views/user_views.py`)
 | Mètode | URL | Vista | Controller |
 |---|---|---|---|
@@ -50,8 +52,8 @@ sequenceDiagram
 - Template method: `UserController._manage_refugi_list` (`api/controllers/user_controller.py:279-342`) + hook `_update_refugi_visitor_list` (L344-362).
 - Afegir: `UserDAO.add_refugi_to_list` (`api/daos/user_dao.py:182-216`) — atòmic amb `ArrayUnion`.
 - Treure: `UserDAO.remove_refugi_from_list` (`api/daos/user_dao.py:218-264`) — **no atòmic**, llegeix de cache (L232).
-- Visitants del refugi: `RefugiLliureDAO.add_visitor_to_refugi` / `remove_visitor_from_refugi` (`api/daos/refugi_lliure_dao.py:273-359`).
-- Llegir llista amb info: `UserDAO.get_refugis_info` (`api/daos/user_dao.py:266-332`), cache `user_refugis_info:list_name:L:uid:X` → `{count, results}`; format per `RefugiLliureMapper.dict_to_refugi_info_representation` (`api/mappers/refugi_lliure_mapper.py:39-71`).
+- Visitants del refugi: `RefugiLliureDAO.add_visitor_to_refugi` / `remove_visitor_from_refugi` (`api/daos/refugi_lliure_dao.py:105-192`).
+- Llegir llista amb info: `UserDAO.get_refugis_info` (`api/daos/user_dao.py:266-332`), cache `user_refugis_info:list_name:L:uid:X` → `{count, results}`; format per `RefugiLliureMapper.dict_to_refugi_info_representation` (`api/mappers/refugi_lliure_mapper.py:39-75`).
 
 ## Errors
 | Cas | HTTP |

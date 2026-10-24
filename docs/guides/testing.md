@@ -72,16 +72,18 @@ Script: `scripts/e2e/e2e_chunk1.sh` (health amb `database`, 401/403/404/200 amb 
 
 ## Estructura
 ```
+conftest.py                         (arrel) django_db_setup, app_db/migrator_db, bloqueig de Firestore, mocks d'audit i permisos
+apps/<feature>/tests/               tests de les features migrades (apps/core, apps/refuges: Postgres real, rol app)
 api/tests/
   conftest.py                       fixtures compartides i mocks
-  <domini>/test_{models,mappers,daos,serializers,controllers,views}.py   (+ test_integration.py a refugi_lliure, renovation, user)
+  <domini>/test_{models,mappers,daos,serializers,controllers,views}.py   (+ test_integration.py a renovation, user)
   test_auth_middleware_permissions.py, test_cache_views.py
   management_commands/
 ```
-Dominis: `doubts`, `experiences`, `refuge_proposal`, `refuge_visit`, `refugi_lliure`, `renovation`, `user`.
+Dominis: `doubts`, `experiences`, `refuge_proposal`, `refuge_visit`, `refugi_lliure` (només el codi legacy que queda a `api/`), `renovation`, `user`. Les comandes antigues de refugis (`assign_conditions`, `upload_refugis_to_firestore`, `extract_coords_to_firestore`, `verify_conditions`) i els seus tests s'han eliminat; `load_refuges` es prova a `apps/refuges/tests/test_load_refuges.py`.
 
 ## Aïllament automàtic (feature images) [FET]
-`api/tests/conftest.py` té tres fixtures `autouse`:
+El `conftest.py` de l'arrel (compartit per `api/tests` i `apps/*/tests`) té tres fixtures `autouse`:
 - `_block_real_firestore`: `FirestoreService._initialize_firebase` llança → cap test pot connectar-se a Firestore real encara que `env/` tingui credencials. Si un test peta amb "Els tests no poden connectar-se a Firestore real", et falta un mock.
 - `_mock_audit_log`: `AuditLogService.log` mockat. Marker `@pytest.mark.real_audit_log` per provar el servei.
 - `_mock_permission_user_lookup`: `get_user_for_permissions` retorna un usuari amb edat confirmada i no bloquejat. Marker `@pytest.mark.real_permissions` per provar `IsNotBlocked`/`IsAgeConfirmed` (i patcheja tu `api.permissions.get_user_for_permissions`).

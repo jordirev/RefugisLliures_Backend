@@ -37,6 +37,8 @@ MediaItem = {key, url, thumb_url, media_type: "image"|"video", width, height, bl
 | DELETE | `/api/refuges/{id}/media/{key}/` | `RefugeMediaDetailAPIView.delete` (`apps/refuges/views.py`; PostgreSQL) | IsAuthenticated; autor o admin (al service) | — (`key` és `path:`) |
 
 ## Model de dades [FET]
+- **PostgreSQL (lectura i esborrat, chunk 2)**: `refuges.refuge_media` (`apps/refuges/models.py: RefugeMedia`; PK = clau R2, `thumb_key`, `creator_uid` → `users.users`, `status`, mides, `blurhash`, `uploaded_at`, `taken_at`; sense `experience_id` fins al chunk 7). RLS: tothom veu els `visible`; l'autor veu els seus; l'admin tot. La **pujada** (intents/confirm) encara escriu només a Firestore (`media_metadata`, vegeu sota) i no a aquesta taula: els mitjans nous **no** surten a `GET /refuges/{id}/media/` ni a `images_metadata` fins al chunk 7 [GOTCHAS #42](../GOTCHAS.md). `MediaItem.experience_id` és sempre `null` en lectura des de PostgreSQL.
+- **Firestore (només pujada, legacy fins al chunk 7)**:
 - R2: `refugis-lliures/{refuge_id}/{uuid}.webp` (imatge, 2048 px de costat llarg) + `{uuid}_thumb.webp` (400 px); vídeo `{uuid}.mp4|.mov|.webm` + `{uuid}_thumb.webp` (pòster). Les claus són **UUID** (no previsibles; el nom original no s'usa mai). Temporals: `quarantine/{upload_id}`. Evidència retinguda: `moderation-hold/...`.
 - Firestore `data_refugis_lliures/{id}.media_metadata["<clau>"]` = `{creator_uid, uploaded_at, taken_at, experience_id, media_type, content_type, width, height, size, thumb_key, blurhash, status, rights_confirmed_at}`. `status ∈ visible | hidden_pending_review | removed`. `taken_at` (DateTimeOriginal de l'EXIF) **només** es desa aquí; al fitxer publicat no hi ha cap metadada.
 - Items antics (abans de la feature) només tenen `creator_uid`, `uploaded_at`, `experience_id`: es tracten com `status=visible`, `thumb_url = url`, `media_type` inferit de l'extensió i la resta `null` (`MediaMetadata.from_stored`, `api/models/media_metadata.py`).
@@ -63,7 +65,7 @@ sequenceDiagram
     V->>P: users/{uid}: is_blocked? age_confirmed_at?
     P-->>C: 403 user_blocked / age_not_confirmed
     V->>MC: create_upload_intents
-    MC->>RD: refugi_exists (404) / experiència + propietari (404/403)
+    MC->>RD: refugi_exists (Firestore legacy fins al chunk 7: 404 si l'ID no hi és) / experiència + propietari (404/403)
     MC->>R2: presign PUT quarantine/{id} (Content-Type + Content-Length, 600 s)
     MC->>ID: batch set upload_intents (expire_at +1 dia)
     V-->>C: 201 {uploads:[{upload_id, put_url, headers, expires_in}]}
@@ -123,20 +125,22 @@ sequenceDiagram
     else no és l'autor ni admin
         SV-->>C: 403
     end
-    SV->>DB: savepoint · DELETE FROM refuge_media WHERE key
+    SV->>DB: savepoint (transaction.atomic dins ATOMIC_REQUESTS) · DELETE FROM refuge_media WHERE key
     SV->>R2: delete_file(key) → bool
     alt False (o excepció)
         SV->>DB: ROLLBACK TO SAVEPOINT (la fila es conserva)
-        SV-->>C: 500 "Error deleting file from storage"
+        SV-->>C: 500 {"error":"Error en esborrar el fitxer a R2","error_id"}
     end
     SV->>R2: delete_file(thumb_key) (si falla: orfe + warning)
+    SV->>SV: audit_logs media.delete
     SV-->>C: 200 {success, message, key}
 ```
 
 ## Passos (amb línies)
 - Intents/confirm: `MediaUploadController.create_upload_intents` (L76), `confirm_upload_intents` (L159) → `_confirm_one` (L183) → `process_and_publish` (L273) → `_publish_refuge_media` (L321) / `_publish_avatar` (L376); bloqueig per moderació `_handle_moderation_block` (L431).
-- DAO (**pujada, encara Firestore fins al chunk 7**): `RefugiLliureDAO.add_media_metadata` (`api/daos/refugi_lliure_dao.py:442`, FieldPath), `update_media_status` (L479), `delete_media_metadata` (L509, `DELETE_FIELD`), `delete_multiple_media_metadata` (L553), `get_media_metadata` (L402, filtra per status), `get_raw_media_metadata` (L368, cache-first), `get_media_entry` (L387, sense cache).
+- DAO (**pujada, encara Firestore fins al chunk 7**): `RefugiLliureDAO.add_media_metadata` (`api/daos/refugi_lliure_dao.py:233`, FieldPath), `update_media_status` (L270), `delete_media_metadata` (L300, `DELETE_FIELD`), `delete_multiple_media_metadata` (L344), `get_raw_media_metadata` (L198, cache-first), `get_media_entry` (L217, sense cache). (`get_media_metadata` i la resta de lectures de refugi s'han eliminat al chunk 2.)
 - R2: `generate_presigned_put_url`, `head_object`, `get_object_bytes`, `put_bytes`, `copy_object`, `move_object`, `build_media_key` (`api/services/r2_media_service.py:368-480`).
+- Les rutes `GET/DELETE /refuges/{id}/media/…` són a `apps/refuges/urls.py` (UUID de refugi; un id que no és UUID → 404). L'esborrat **no** neteja `experiences.media_keys` ni `users.uploaded_photos_keys` (Firestore): arribarà amb els chunks 3 i 7. No hi ha trigger de cua d'R2 (és de `moderation.0001`, chunk 9): el service esborra el fitxer directament.
 - Llistat: `RefugeMediaListAPIView` (`apps/refuges/views.py`) — registra l'accés a `audit_logs` (`media.list`); esborrat: `audit_logs` `media.delete` des de `services.delete_media`.
 
 ## Errors

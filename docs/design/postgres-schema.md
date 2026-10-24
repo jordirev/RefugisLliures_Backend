@@ -480,7 +480,9 @@ Grants: `SELECT, INSERT, UPDATE, DELETE`.
 
 **Chunk 2 (implementat)**: `refuges.0001` crea `refuge_media` **sense** `experience_id` ni la clàusula `EXISTS (… experiences …)` de `media_insert` (la taula `activity.experiences` encara no existeix): la política queda `(creator_uid = {U} AND status = 'visible') OR {ADM} OR {SYS}`. `refuges.0002` (chunk 7) afegeix la columna, la FK i reescriu la política. Fins llavors, la pujada continua escrivint a Firestore (flux antic) i `GET/DELETE /refuges/{id}/media/` operen sobre una taula buida.
 
-Trigger de cua d'R2: `AFTER DELETE ... FOR EACH ROW` → `moderation.media_deletion_queue (r2_key, reason)` amb `OLD.key` i `OLD.thumb_key` (`fn_media_enqueue_r2()`, `SECURITY DEFINER`, `ON CONFLICT DO NOTHING`). **Excepció** (retenció d'evidència, `_hold_media`): si `current_setting('app.skip_r2_queue', true) = 'true'` no encua (el flux de retenció mou els fitxers a `moderation-hold/` en comptes d'esborrar-los; només `system_context()` pot posar-ho). Això cobreix **totes** les vies d'esborrat (usuari, experiència, refugi, moderació) sense codi a cada controller.
+**Chunk 2**: el trigger i `moderation.media_deletion_queue` encara no existeixen (són de `moderation.0001`, chunk 9); fins llavors `apps/refuges/services.py: delete_media` esborra el fitxer (i la miniatura) a R2 directament dins la mateixa transacció i, si R2 falla, desfà l'esborrat de la fila (500; decisió del PO).
+
+Trigger de cua d'R2 (a partir del chunk 7/9): `AFTER DELETE ... FOR EACH ROW` → `moderation.media_deletion_queue (r2_key, reason)` amb `OLD.key` i `OLD.thumb_key` (`fn_media_enqueue_r2()`, `SECURITY DEFINER`, `ON CONFLICT DO NOTHING`). **Excepció** (retenció d'evidència, `_hold_media`): si `current_setting('app.skip_r2_queue', true) = 'true'` no encua (el flux de retenció mou els fitxers a `moderation-hold/` en comptes d'esborrar-los; només `system_context()` pot posar-ho). Això cobreix **totes** les vies d'esborrat (usuari, experiència, refugi, moderació) sense codi a cada controller.
 
 ### 2.9 Condició del refugi (columnes de `refuges.refuges` + *trigger*; **no hi ha taula de vots**)
 
@@ -1476,7 +1478,7 @@ Les rutes d'una feature migrada s'inclouen des d'`api/urls.py` (`path('refuges/'
 | `apps.moderation` | `MediaReport`, `ModerationNotice`, `HashBlocklistEntry`, `MediaDeletionQueueItem` | `moderation` | 9 |
 | `apps.audit` | `AuditLog` | `audit` | 9 |
 
-També cal a `INSTALLED_APPS`: `django.contrib.gis` i `django.contrib.postgres` (`ExclusionConstraint`, `ArraySubquery`, `TrigramSimilarity`), i `DATABASES` amb el motor `django.contrib.gis.db.backends.postgis` (toggle `NEON_USE_POSTGIS_ENGINE` ja existent; Docker de proves amb GDAL/GEOS). Quin alias és `default` és decisió del chunk 1.
+També cal a `INSTALLED_APPS`: `django.contrib.gis` i `django.contrib.postgres` (`ExclusionConstraint`, `ArraySubquery`, `TrigramSimilarity`), i `DATABASES` amb el motor `django.contrib.gis.db.backends.postgis`. **Implementat (chunk 1)**: l'àlies `default` és el rol `app` (`ATOMIC_REQUESTS`) i `migrator` el del DDL; el toggle `NEON_USE_POSTGIS_ENGINE` s'ha eliminat; tests amb GDAL/GEOS en contenidor Linux. **Implementat (chunk 2)**: `INSTALLED_APPS` té `apps.core`, `apps.accounts` i `apps.refuges`; `accounts.0002` (favorits/visitats) encara no existeix (chunk 3).
 
 ### 6.2 Ordre de migracions (graf aciclic; evita dependències circulars entre apps)
 

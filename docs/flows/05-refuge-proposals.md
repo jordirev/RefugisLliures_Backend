@@ -2,6 +2,8 @@
 
 > **[FET]** comprovat al codi · **[INFERÈNCIA]** deducció · **[NO VERIFICAT]** depèn de config externa.
 
+> **Estat intermedi (chunk 2 → chunk 8).** Els refugis ja viuen a PostgreSQL (IDs UUID v7), però aquest domini encara comprova i llegeix els refugis amb el `RefugiLliureDAO` legacy de Firestore, que ja no s'alimenta: les seves comprovacions d'existència de refugi miren el catàleg antic de Firestore (ids diferents dels UUID de PostgreSQL). Vegeu [GOTCHAS #41](../GOTCHAS.md) i [TECH_DEBT R1](../TECH_DEBT.md).
+
 Els usuaris **no modifiquen refugis directament**: creen una *proposta* que un admin aprova o rebutja. En aprovar-la, una Strategy aplica el canvi a Firestore.
 
 ## Endpoints (`api/views/refuge_proposal_views.py`)

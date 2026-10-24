@@ -2,7 +2,7 @@
 
 > **[FET]** comprovat al codi · **[INFERÈNCIA]** deducció · **[NO VERIFICAT]** depèn de config externa.
 
-Firestore és la **base de dades real** de tot el domini. No hi ha ORM: els DAOs fan servir el client de `firebase_admin.firestore`.
+Firestore és la **base de dades real** del domini **excepte els refugis**, que des del chunk 2 viuen a PostgreSQL (`apps/refuges`). Les col·leccions `data_refugis_lliures` i `coords_refugis` són **legacy**: ja no s'alimenten (la càrrega inicial és `load_refuges` a PostgreSQL) i els dominis encara a Firestore (experiències, dubtes, visites, propostes, usuaris, pujada de mitjans) les segueixen llegint/escrivint amb el `RefugiLliureDAO` fins que els migri el seu chunk ([GOTCHAS #41](../GOTCHAS.md)). No hi ha ORM per a Firestore: els DAOs fan servir el client de `firebase_admin.firestore`.
 
 ## Client
 - `FirestoreService` singleton (`api/services/firestore_service.py:13-22`), instància global `firestore_service` (L78). `get_db()` (L24-38) reaprofita l'app de Firebase ja inicialitzada o la inicialitza.
@@ -12,8 +12,8 @@ Firestore és la **base de dades real** de tot el domini. No hi ha ORM: els DAOs
 ## Col·leccions [FET]
 | Col·lecció | DAO / definició | ID del document | Notes |
 |---|---|---|---|
-| `data_refugis_lliures` | `RefugiLliureDAO.collection_name` (`api/daos/refugi_lliure_dao.py:18`) | auto-ID (o el del JSON de seeding), també camp `id` | conté el map `media_metadata` i l'array `visitors` |
-| `coords_refugis` | `RefugiLliureDAO.coords_collection_name` (L19) | document únic `all_refugis_coords` | array `refugis_coordinates[]` amb `{id, coord, geohash, name}`, `total_refugis`, `last_updated` |
+| `data_refugis_lliures` **(legacy)** | `RefugiLliureDAO.collection_name` (`api/daos/refugi_lliure_dao.py:19`) | auto-ID (o el del JSON de seeding), també camp `id` | conté el map `media_metadata` i l'array `visitors` |
+| `coords_refugis` **(legacy)** | `RefugiLliureDAO.coords_collection_name` (L20) | document únic `all_refugis_coords` | array `refugis_coordinates[]` amb `{id, coord, geohash, name}`, `total_refugis`, `last_updated` |
 | `users` | `UserDAO.COLLECTION_NAME` (`api/daos/user_dao.py:19`) | UID de Firebase | |
 | `renovations` | `api/daos/renovation_dao.py:18` | auto-ID + camp `id` | |
 | `experiences` | `api/daos/experience_dao.py:18` | auto-ID + camp `id` | |
@@ -64,4 +64,4 @@ Ordre d'execució en una BD nova: [guides/local-setup.md §5](../guides/local-se
 ## Gotchas
 - Cap escriptura multi-document és atòmica; diversos arrays/maps es reescriuen sencers → vegeu [GOTCHAS](../GOTCHAS.md) #7-9.
 - Dates com a strings ISO; l'ordre lexicogràfic n'és l'ordre cronològic només si el format és homogeni (`YYYY-MM-DD`).
-- El document `coords_refugis/all_refugis_coords` creix amb cada refugi: límit d'1 MiB per document de Firestore **[INFERÈNCIA]**.
+- (Legacy) El document `coords_refugis/all_refugis_coords` creix amb cada refugi: límit d'1 MiB per document de Firestore **[INFERÈNCIA]**.

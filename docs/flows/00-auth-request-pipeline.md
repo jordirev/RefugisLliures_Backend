@@ -96,7 +96,7 @@ Com obtenir i enviar el token des del client, cURL o Swagger: [guides/client-aut
 - `has_object_permission` no s'executa mai → vegeu [GOTCHAS.md](../GOTCHAS.md) #1.
 - El middleware ja **no registra l'UID** en verificar un token (log `debug` sense identificadors personals) ni retorna `str(e)` en el 401 d'error inesperat; `api/authentication.py` (DRF) retorna també un missatge genèric però encara registra `str(e)` al log ([TECH_DEBT.md](../TECH_DEBT.md) P11) **[FET]**.
 - `request.user_uid` és la font de veritat de l'identitat a vistes i controllers; mai s'agafa l'UID del body. El mateix val per a la RLS: l'UID i el flag d'admin del context de Postgres surten només del token verificat.
-- Fora de les peticions HTTP (comandes com `process_yesterday_visits`, jobs, shell) **no hi ha hook**: el context s'ha de fixar amb `rls_context()` / `system_context()` (`domain/core/rls.py`); sense context `core.uid()` és `NULL` i `is_admin`/`is_system` són `false` **[FET sobre les funcions; INFERÈNCIA sobre l'efecte a les polítiques futures]**.
+- Fora de les peticions HTTP (comandes com `process_yesterday_visits`, jobs, shell) **no hi ha hook**: el context s'ha de fixar amb `rls_context()` / `system_context()` (`apps/core/rls.py`); sense context `core.uid()` és `NULL` i `is_admin`/`is_system` són `false` **[FET sobre les funcions; INFERÈNCIA sobre l'efecte a les polítiques futures]**.
 
 ## Permisos de moderació (feature images) [FET]
 Després de l'autenticació, alguns endpoints afegeixen `IsNotBlocked` (403 `{error:'user_blocked'}`) i `IsAgeConfirmed` (403 `{error:'age_not_confirmed'}`), que llegeixen `users/{uid}` (cache-first). Vegeu [flux 12](12-media-moderation.md).
