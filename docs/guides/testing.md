@@ -37,6 +37,13 @@ pytest --cov=api --cov-report=html              # informe a htmlcov/index.html
 
 Per a un test d'integració amb Firebase real caldria `TESTING=false` i credencials (no n'hi ha cap avui).
 
+## Tests contra PostgreSQL local (migració, chunk 1) [FET]
+- Bootstrap idempotent: `scripts/dev/setup_local_postgres.sh` (arrenca el clúster apt si cal; crea els rols `migrator` i `app` amb els atributs de `docs/design/postgres-schema.md` §1.3, la BD `refugisdb_test` i les extensions `postgis`, `pg_trgm`, `unaccent`, `btree_gist`). Imprimeix les dues URLs locals (no secretes); a CI es parametritza amb `PGHOST`, `PGPORT`, `PG_SUPERUSER`, `PGPASSWORD`, `PG_START_CLUSTER=0`.
+- Exporta-les: `eval "$(scripts/dev/setup_local_postgres.sh | grep ^export)"` → `TEST_DATABASE_URL_MIGRATOR` / `TEST_DATABASE_URL_APP`.
+- Marker `db_infra`: necessita aquestes variables i **se salta** (amb motiu) si falten; marker `rls`: tests del context RLS. Les migracions les aplica `migrator` i els tests corren com a `app` (la RLS només s'aplica a `app`).
+- Les fixtures `app_db` / `migrator_db` (`api/tests/conftest.py`) donen connexions en autocommit fora de la transacció de pytest-django, necessàries per provar contextos locals a la transacció.
+- Tests d'infraestructura a `api/tests/infra/` i `api/tests/core/`.
+
 ## Estructura
 ```
 api/tests/
