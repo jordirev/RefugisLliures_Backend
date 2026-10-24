@@ -16,7 +16,7 @@
 | # | Chunk | Branca | Estat | Notes |
 |---|---|---|---|---|
 | 0 | Disseny BD | `migracio/disseny-bd` | fet | `docs/design/postgres-schema.md` tancat (`e611fe3`), PR a `migration` |
-| 1 | Infraestructura | `migracio/infraestructura` | tests fets (fallen); **següent: implementador** | vegeu "Traspàs a sessió local" |
+| 1 | Infraestructura | `migracio/infraestructura` | implementat (`d32a301`, 1590 passen); **revisió, seguretat i docs en curs** | vegeu "Traspàs a sessió local" |
 | 2 | Refugis | `migracio/refugis` | pendent | |
 | 3 | Usuaris | `migracio/usuaris` | pendent | |
 | 4 | Visites | `migracio/visites` | pendent | paral·lel amb 5, 6 |
@@ -38,6 +38,9 @@
 
 - 2026-10-24 — Chunk 1: tests escrits i fallant pels motius esperats (commits `51c925b`, `7b9d666`). Línia base: 1331 passen; ara 1339 passen, 130 fallen, 115 errors (fixtures de BD: `default` encara és sqlite). La sessió cloud s'atura per passar a una sessió local (accés a Neon).
 
+- 2026-10-24 — Sessió local (Windows). Tests dins d'un contenidor Linux amb GDAL contra `rl-postgres` (`postgis/postgis:17-3.5`); línia base reproduïda (1339/130/115). El PO ha retirat D6 (sense workflow contra Neon). **Bootstrap SQL de Neon `dev` (§1.3: `btree_gist`, `GRANT CREATE`, timeouts) executat pel PO amb el rol propietari** (tanca D4). Implementador del chunk 1 en marxa.
+- 2026-10-24 — Chunk 1 implementat (`d32a301`): 1590 passen, 0 fallen, 0 errors (verificat per l'orquestrador). Desviacions: (a) `GRANT CREATE ON SCHEMA public TO migrator` necessari perquè Django creï `django_migrations` i les taules de `auth`/`admin`/`sessions` (PG15+); afegit a l'script local, **cal verificar-ho a Neon `dev` abans del primer `migrate`**; (b) `django.contrib.gis` sempre actiu: el runtime necessita GDAL/GEOS (Render/Cloud Run, fora de l'abast; queda com a pendent de desplegament); (c) middleware `HealthDatabaseErrorMiddleware` (503 a `/api/health/` si Postgres cau abans de la vista, per `ATOMIC_REQUESTS`). Àlies `neon`/`neon_migrator` i `NEON_USE_POSTGIS_ENGINE` eliminats (ara `default`/`migrator`). Tests executats amb un contenidor Linux (`python:3.13` + GDAL) perquè Windows no té GDAL.
+
 ## Traspàs a sessió local (24/10)
 Proper pas: **implementador del chunk 1** (brief a [`EQUIP.md`](EQUIP.md); abast al prompt de tests, resumit aquí).
 - Executar: venv amb `pip install -r requirements.txt` (a la cloud, `django-crontab` no compilava amb el setuptools del sistema: venv fora del repo); `eval "$(scripts/dev/setup_local_postgres.sh | grep ^export)"` (o Docker `postgis/postgis:17-3.5` + `PG_START_CLUSTER=0 PGHOST=... PGPASSWORD=...`); `pytest -q`.
@@ -53,4 +56,4 @@ Proper pas: **implementador del chunk 1** (brief a [`EQUIP.md`](EQUIP.md); abast
 - Després: revisor, seguretat i documentació en paral·lel; e2e (ara sí contra Neon `dev` si la sessió local hi té accés: cal el bootstrap SQL de §1.3 del disseny amb el rol propietari, D4); PR `migracio/infraestructura` → `migration`.
 
 ## Pendents / bloquejos
-- **Neon inaccessible des de l'entorn cloud** (el proxy no admet TCP de BD): e2e en local (D3). El PO ha d'executar `scripts/e2e/` i el bootstrap de §1.3 del disseny a Neon `dev` (D4).
+- **Neon inaccessible des de l'entorn cloud** (el proxy no admet TCP de BD): e2e en local (D3). El PO ha d'executar `scripts/e2e/` a Neon `dev`. Bootstrap de §1.3 ja fet (D4 tancat, 24/10).
