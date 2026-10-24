@@ -6,10 +6,9 @@ from typing import List, Optional, Dict, Any, Tuple
 from firebase_admin import firestore
 from google.cloud.firestore_v1.field_path import FieldPath
 from google.cloud.firestore import DELETE_FIELD
-from ..services import firestore_service, cache_service, r2_media_service
-from ..models.refugi_lliure import Refugi, RefugiCoordinates, RefugiSearchFilters
+from ..services import firestore_service, cache_service
+from ..models.refugi_lliure import Refugi
 from ..mappers.refugi_lliure_mapper import RefugiLliureMapper
-from .search_strategies import SearchStrategySelector
 
 logger = logging.getLogger(__name__)
 
@@ -53,179 +52,10 @@ class RefugiLliureDAO:
             logger.error(f'Error getting refugi by ID {refugi_id}: {str(e)}')
             raise
     
-    def search_refugis(self, filters: RefugiSearchFilters) -> Dict[str, Any]:
-        """Cercar refugis amb filtres optimitzats per índexs composats i cache amb estratègia ID caching
-        
-        Returns:
-            Dict amb 'results' (List[Refugi] o List[Dict] segons filtres) i 'has_filters' (bool)
-        """
-        # Check if any filters are applied (except limit)
-        has_filters = self._has_active_filters(filters)
-        
-        if not has_filters:
-            # No filters applied - use coordinate collection for efficiency (sense ID caching)
-            results = self._get_coordinates_as_refugi_list()
-            return {'results': results, 'has_filters': False}
-        
-        # Filters applied - usar estratègia ID caching
-        cache_key = cache_service.generate_key('refugi_search', **filters.to_dict())
-        
-        try:
-            # Funció per obtenir TOTES les dades completes d'una des de Firestore
-            def fetch_all():
-                db = firestore_service.get_db()
-                return self._build_optimized_query(db, filters)
-            
-            # Funció per obtenir un refugi individual per ID
-            def fetch_single(refugi_id: str):
-                db = firestore_service.get_db()
-                doc_ref = db.collection(self.collection_name).document(str(refugi_id))
-                logger.log(23, f"Firestore READ: collection={self.collection_name} document={refugi_id}")
-                doc = doc_ref.get()
-                if doc.exists:
-                    data = doc.to_dict()
-                    data['id'] = doc.id
-                    return data
-                return None
-            
-            # Funció per extreure l'ID d'un refugi
-            def get_id(refugi_data: Dict[str, Any]) -> str:
-                return refugi_data['id']
-            
-            # Usar estratègia ID caching del cache_service
-            results_data = cache_service.get_or_fetch_list(
-                list_cache_key=cache_key,
-                detail_key_prefix='refugi_detail',
-                fetch_all_fn=fetch_all,
-                fetch_single_fn=fetch_single,
-                get_id_fn=get_id,
-                list_timeout=cache_service.get_timeout('refugi_search'),
-                detail_timeout=cache_service.get_timeout('refugi_detail'),
-                id_param_name='refugi_id'
-            )
-            
-            # Convertir a models
-            results = self.mapper.firestore_list_to_models(results_data)
-            
-            return {'results': results, 'has_filters': True}
-            
-        except Exception as e:
-            logger.error(f'Error searching refugis: {str(e)}')
-            raise
     
-    def _get_coordinates_as_refugi_list(self) -> List[Dict[str, Any]]:
-        """Get refugi data from coordinates collection when no filters are applied amb cache"""
-        # Clau de cache per coordenades
-        cache_key = cache_service.generate_key('refugi_coords', document='all')
-        
-        # Intenta obtenir de cache
-        cached_data = cache_service.get(cache_key)
-        if cached_data is not None:
-            return cached_data
-        
-        try:
-            db = firestore_service.get_db()
-            
-            # Get coordinates document
-            doc_ref = db.collection(self.coords_collection_name).document(self.coords_document_name)
-            logger.log(23, f"Firestore READ: collection={self.coords_collection_name} document={self.coords_document_name} (coordinates) ")
-            doc = doc_ref.get()
-            
-            if not doc.exists:
-                return []
-            
-            data = doc.to_dict()
-            all_coordinates = data.get('refugis_coordinates', [])
-            
-            # Convert coordinates format to refugi format (all coordinates)
-            refugis = []
-            for coord_data in all_coordinates:
-                # Convert coordinate data to refugi format
-                refugi_data = {
-                    'id': coord_data.get('id', ''),
-                    'name': coord_data.get('name', ''),
-                    'coord': coord_data.get('coord', {}),
-                    'geohash': coord_data.get('geohash', None)
-                }
-                
-                # Add surname if available
-                if 'surname' in coord_data and coord_data['surname']:
-                    refugi_data['surname'] = coord_data['surname']
-                    
-                refugis.append(refugi_data)
-            
-            # Guarda a cache (timeout llarg per coordenades)
-            timeout = cache_service.get_timeout('refugi_coords')
-            cache_service.set(cache_key, refugis, timeout)
-            
-            return refugis
-            
-        except Exception as e:
-            logger.error(f'Error getting coordinates as refugi list: {str(e)}')
-            # Fallback to empty list if coordinates collection fails
-            return []
     
-    def _has_active_filters(self, filters: RefugiSearchFilters) -> bool:
-        """Comprova si hi ha filtres actius (exclou limit)"""
-        # Cerca per name sempre és un filtre actiu
-        if filters.name and filters.name.strip():
-            return True
-        
-        # Comprova altres filtres - només compte si té valors no buits
-        has_type = bool(filters.type and len(filters.type) > 0 and any(t.strip() for t in filters.type if isinstance(t, str)))
-        has_condition = bool(filters.condition and len(filters.condition) > 0)
-        has_places = filters.places_min is not None or filters.places_max is not None
-        has_altitude = filters.altitude_min is not None or filters.altitude_max is not None
-        
-        return has_type or has_condition or has_places or has_altitude
     
-    def _build_optimized_query(self, db, filters: RefugiSearchFilters) -> List[Dict[str, Any]]:
-        """
-        Construeix i executa una query optimitzada segons els filtres utilitzant el patró Strategy
-        
-        Args:
-            db: Client de Firestore
-            filters: Filtres de cerca
-            
-        Returns:
-            Llista de dades de refugis
-        """
-        # Cas especial: cerca per name (només retorna un refugi)
-        if filters.name and filters.name.strip():
-            return self._search_by_name(db, filters.name.strip())
-        
-        # Selecciona l'estratègia òptima segons els filtres
-        strategy = SearchStrategySelector.select_strategy(filters)
-        logger.info(f"Using search strategy: {strategy.get_strategy_name()}")
-        
-        # Executa la query amb l'estratègia seleccionada
-        results = strategy.execute_query(db, self.collection_name, filters)
-        
-        return results
     
-    def _search_by_name(self, db, name: str) -> List[Dict[str, Any]]:
-        """
-        Cerca un refugi pel seu nom exacte
-        
-        Args:
-            db: Client de Firestore
-            name: Nom del refugi a cercar
-            
-        Returns:
-            Llista amb un sol refugi si es troba, llista buida si no
-        """
-        try:
-            query = db.collection(self.collection_name).where(filter=firestore.FieldFilter('name', '==', name))
-            logger.log(23, f"Firestore QUERY: collection={self.collection_name} filters=name")
-            docs = query.stream()
-            results = [doc.to_dict() for doc in docs]
-            
-            # Només hauria de retornar un refugi ja que el name és únic
-            return results
-            
-        except Exception as e:
-            logger.error(f'Error searching refugi by name {name}: {str(e)}')
-            return []
 
     
     def health_check(self) -> Dict[str, Any]:
@@ -399,45 +229,6 @@ class RefugiLliureDAO:
         entry = media_metadata.get(media_key)
         return True, (dict(entry) if entry is not None else None)
 
-    def get_media_metadata(self, refugi_id: str, viewer_uid: Optional[str] = None,
-                           is_admin: bool = False) -> Optional[List[Dict[str, Any]]]:
-        """
-        Obté la llista de mitjans (forma MediaItem) d'un refugi amb URLs prefirmades.
-        Els items amb status ≠ visible només es retornen al seu autor o a un admin.
-        
-        Args:
-            refugi_id: ID del refugi
-            viewer_uid: UID de qui consulta
-            is_admin: si qui consulta és admin
-            
-        Returns:
-            Llista de diccionaris MediaItem o None si el refugi no existeix
-        """
-        try:
-            db = firestore_service.get_db()
-            doc_ref = db.collection(self.collection_name).document(str(refugi_id))
-            logger.log(23, f"Firestore READ: collection={self.collection_name} document={refugi_id} (media_metadata)")
-            doc = doc_ref.get()
-            
-            if not doc.exists:
-                return None
-            
-            data = doc.to_dict()
-
-            # Generem les metadades amb URLs prefirmades
-            media_service = r2_media_service.get_refugi_media_service()
-            media_metadata = data.get('media_metadata', {})             
-            media_metadata_objects = media_service.generate_media_metadata_list(media_metadata)
-            
-            # Convertir objectes MediaMetadata a diccionaris (filtrant per status)
-            return [
-                obj.to_dict() for obj in media_metadata_objects
-                if not hasattr(obj, 'is_visible_to') or obj.is_visible_to(viewer_uid, is_admin)
-            ]
-            
-        except Exception as e:
-            logger.error(f'Error obtenint media_metadata del refugi {refugi_id}: {str(e)}')
-            raise
     
     def add_media_metadata(self, refugi_id: str, media_metadata_dict: Dict[str, Dict[str, Any]]) -> bool:
         """

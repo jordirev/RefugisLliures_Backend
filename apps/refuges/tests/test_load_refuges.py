@@ -10,7 +10,6 @@ sempre el passen explícit. Fa `COMMIT` de debò (connexió `migrator`), per aix
 neteja abans i després.
 """
 import json
-from collections import Counter
 from io import StringIO
 
 import pytest
@@ -315,3 +314,11 @@ def test_comanda_amb_el_rol_app_no_pot_escriure(wipe_catalog, json_file):
         call_command('load_refuges', '--database', 'default', '--json', str(json_file([record('A')])),
                      stdout=StringIO(), stderr=StringIO())
     assert counts(wipe_catalog)['refuges'] == 0
+
+
+def test_l_alias_per_defecte_es_migrator_i_no_hi_ha_overwrite():
+    """Resposta 2 del PO: per defecte el rol propietari (`migrator`); sense `--overwrite`."""
+    from apps.refuges.management.commands.load_refuges import Command
+    parser = Command().create_parser('manage.py', 'load_refuges')
+    args = parser.parse_args([])
+    assert args.database == 'migrator' and args.dry_run is False and not hasattr(args, 'overwrite')

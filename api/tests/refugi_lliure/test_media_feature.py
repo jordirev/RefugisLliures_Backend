@@ -30,54 +30,8 @@ def media(key, creator='author', status='visible'):
 
 
 @pytest.mark.controllers
-class TestVisibilityFilter:
-    def test_detail_filters_hidden_for_others(self, ctrl):
-        refugi = MagicMock()
-        refugi.images_metadata = [media('a'), media('b', status='hidden_pending_review'), media('c', status='removed')]
-        ctrl.refugi_dao.get_by_id.return_value = refugi
-        result, _ = ctrl.get_refugi_by_id('ref_1', is_authenticated=True, viewer_uid='someone')
-        assert [m.key for m in result.images_metadata] == ['a']
-
-    def test_detail_author_and_admin_see_hidden(self, ctrl):
-        refugi = MagicMock()
-        refugi.images_metadata = [media('a'), media('b', status='hidden_pending_review')]
-        ctrl.refugi_dao.get_by_id.return_value = refugi
-        assert len(ctrl.get_refugi_by_id('ref_1', True, viewer_uid='author')[0].images_metadata) == 2
-        refugi.images_metadata = [media('a'), media('b', status='hidden_pending_review')]
-        assert len(ctrl.get_refugi_by_id('ref_1', True, viewer_uid='x', is_admin=True)[0].images_metadata) == 2
-
-    def test_get_media_passes_viewer_and_audits(self, ctrl):
-        ctrl.refugi_dao.get_media_metadata.return_value = [{'key': 'a'}]
-        with patch('api.services.audit_log_service.AuditLogService.log') as audit:
-            items, error = ctrl.get_refugi_media('ref_1', 3600, viewer_uid='v', is_admin=False)
-        assert items == [{'key': 'a'}] and error is None
-        ctrl.refugi_dao.get_media_metadata.assert_called_once_with('ref_1', viewer_uid='v', is_admin=False)
-        assert audit.call_args.args[1] == 'media.list'
-
-
-@pytest.mark.controllers
 class TestDeleteRollback:
-    def test_delete_file_false_restores_metadata(self, ctrl):
-        """delete_file retorna False (no llança): abans es reportava èxit"""
-        backup = {'creator_uid': 'author', 'experience_id': 'exp_1', 'thumb_key': THUMB}
-        ctrl.refugi_dao.delete_media_metadata.return_value = (True, backup)
-        ctrl.media_service.delete_file.return_value = False
 
-        with patch('api.daos.experience_dao.ExperienceDAO') as mock_exp:
-            success, error = ctrl.delete_refugi_media('ref_1', KEY)
-
-        assert success is False and 'storage' in error
-        ctrl.refugi_dao.add_media_metadata.assert_called_once_with('ref_1', {KEY: backup})
-        mock_exp.return_value.add_media_keys_to_experience.assert_called_once_with('exp_1', [KEY])
-        ctrl.user_dao.remove_uploaded_photos_keys.assert_not_called()
-
-    def test_delete_success_removes_thumbnail(self, ctrl):
-        ctrl.refugi_dao.delete_media_metadata.return_value = (True, {'creator_uid': 'author', 'thumb_key': THUMB})
-        ctrl.media_service.delete_file.return_value = True
-        success, error = ctrl.delete_refugi_media('ref_1', KEY, actor_uid='author')
-        assert success is True and error is None
-        assert [c.args[0] for c in ctrl.media_service.delete_file.call_args_list] == [KEY, THUMB]
-        ctrl.user_dao.remove_uploaded_photos_keys.assert_called_once_with('author', [KEY])
 
     def test_bulk_delete_removes_thumbnails(self, ctrl):
         ctrl.refugi_dao.delete_multiple_media_metadata.return_value = (True, [

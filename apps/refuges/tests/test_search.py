@@ -5,7 +5,7 @@ condició sobre `core.round_half_even(condition)` (0-3) i ús dels índexs GIN/G
 import pytest
 from django.db import connection
 
-from apps.refuges.tests.helpers import QueryCounter, api_get, make_media, make_refuge, make_user, user_claims
+from apps.refuges.tests.helpers import QueryCounter, api_get, make_refuge
 
 pytestmark = [pytest.mark.db_infra, pytest.mark.django_db, pytest.mark.views, pytest.mark.integration]
 

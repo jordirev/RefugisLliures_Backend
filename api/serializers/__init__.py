@@ -7,10 +7,7 @@ from .user_serializer import (
     MediaMetadataSerializer
 )
 from .refugi_lliure_serializer import (
-    RefugiSerializer,
-    RefugiSearchResponseSerializer,
     HealthCheckResponseSerializer,
-    RefugiSearchFiltersSerializer,
     CoordinatesSerializer,
     InfoComplementariaSerializer,
     UserRefugiInfoSerializer,
@@ -32,10 +29,7 @@ __all__ = [
     'UserSerializer', 
     'UserCreateSerializer', 
     'UserUpdateSerializer',
-    'RefugiSerializer',
-    'RefugiSearchResponseSerializer',
     'HealthCheckResponseSerializer',
-    'RefugiSearchFiltersSerializer',
     'CoordinatesSerializer',
     'InfoComplementariaSerializer',
     'UserRefugiSerializer',
