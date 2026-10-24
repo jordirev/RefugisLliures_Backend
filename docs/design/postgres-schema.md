@@ -5,6 +5,8 @@
 > Revisat amb les decisions del product owner (`PLAN.md`, secció «Decisions sobre els dubtes del disseny», 24/10). Document **normatiu** per als agents que implementen la migració Firestore → PostgreSQL (chunks 1–11 de [`../migration/PLAN.md`](../migration/PLAN.md)). Les decisions de l'usuari del PLAN són vinculants; aquí s'hi afegeixen les decisions de disseny que el PLAN deixava obertes i la llista de [decisions preses i dubtes oberts](#11-decisions-preses-tot-decidit) per al product owner.
 > Entrades: [`PLAN.md`](../migration/PLAN.md), [`arquitectura-neon-cloudrun-upstash.md`](../migration/arquitectura-neon-cloudrun-upstash.md) (§4.1, 4.4, 4.6, 5.1, 5.2), [`uml-conceptual.md`](../migration/uml-conceptual.md) (completat des del codi), [`integrations/neon.md`](../integrations/neon.md).
 > Cap secret ni valor de variable d'entorn apareix aquí; només noms de rols i d'objectes.
+>
+> **Revisió del PO (24/10, tarda)**: catàlegs `users.languages` i `refuges.refuge_types` amb FK (en lloc de `CHECK`), idioma per defecte `'en'`, avatar a una taula pròpia `users.user_avatars` (PK `key`), `refuge_links` amb PK `url`, `refuges.remarque` nullable, fora la vista `refuge_map` i la columna `participants_count`. Les PK compostes (preferits, visitats, participants, expulsats, visites) **no** s'apliquen amb Django 5.1: es mantenen `id uuid` + `UNIQUE` fins a pujar a Django 5.2 (`TECH_DEBT` R14).
 
 ## Índex
 0. [Resum de decisions](#0-resum-de-decisions)
@@ -27,16 +29,16 @@
 
 | # | Decisió | On |
 |---|---|---|
-| 1 | **24 taules + 2 vistes** (`refuge_map`, `refuge_visit_totals`) en 6 schemas de domini (`users`, `refuges`, `activity`, `proposals`, `moderation`, `audit`) + schema `core` només de funcions (context RLS, `unaccent` immutable, arrodoniment). | §1.1 |
-| 2 | **Totes les PK substitutes són `uuid` v7** (ordenat per temps, generat per l'app amb un únic helper `uuid7()`; decisió del product owner); `users.uid` (text, UID de Firebase) i `refuge_media.key` (clau R2) són PK naturals. L'API continua exposant IDs com a *string* opac (UUID canònic en minúscules). | §1.4 |
+| 1 | **27 taules + 1 vista** (`refuge_visit_totals`) en 6 schemas de domini (`users`, `refuges`, `activity`, `proposals`, `moderation`, `audit`) + schema `core` només de funcions (context RLS, `unaccent` immutable, arrodoniment). | §1.1 |
+| 2 | **Totes les PK substitutes són `uuid` v7** (ordenat per temps, generat per l'app amb un únic helper `uuid7()`; decisió del product owner); `users.uid` (text, UID de Firebase), `refuge_media.key` i `user_avatars.key` (claus R2), `refuge_links.url` i els codis dels catàlegs (`languages.code`, `refuge_types.code`) són PK naturals. L'API continua exposant IDs com a *string* opac (UUID canònic en minúscules). | §1.4 |
 | 3 | Mapatge de schema a Django amb **`db_table = 'schema"."taula'`** (no `search_path`): és independent de la connexió i funciona amb PgBouncer en mode transacció. | §1.5 |
-| 4 | **`type` = `text` + `CHECK`** (no `ENUM` natiu); tots els enums del domini són `CHECK ... IN (...)` + `models.TextChoices`. | §3 |
+| 4 | **Catàlegs oberts = taula + FK** (`users.languages`, `refuges.refuge_types`): afegir un idioma o un tipus és un `INSERT` (migració de dades), sense tocar el codi (decisió del PO, obert-tancat). Els estats interns (màquines d'estat lligades al codi) continuen sent `CHECK ... IN (...)` + `models.TextChoices`. | §3 |
 | 5 | `refuge_amenities` 1–1 amb 12 `boolean NOT NULL DEFAULT false`; `info_couchage`/`info_eau` s'ignoren; l'API continua emetent **0/1 enters** a `info_comp` (el frontend espera `number`). | §2.6 |
 | 6 | **Comptadors derivats, no desats**: `num_shared_experiences`, `num_renovated_refuges`, `answers_count`, `total_visitors`, `uploaded_photos_keys` i `visitors` (agregació; la vista `refuge_visit_totals` perquè la RLS amagaria files aliens a un `SUM` directe). **Única excepció desada** (decisió del PO): `refuges.condition` i `refuges.num_contributed_conditions`. | §4 |
 | 7 | **`condition` és una mitjana desada al refugi** (`double precision`, 0–3, nullable) amb `num_contributed_conditions` (n) i `condition_reset_at`; **no hi ha entitat vot** (cap taula `refuge_condition_votes`, cap vista). L'alimenta l'atribut obligatori `experiences.condition` mitjançant un *trigger* `SECURITY DEFINER` (POST: `c=(c·n+v)/(n+1)`; PATCH: `c=c+(v'−v)/n`; esborrar no toca el refugi) i la proposta aprovada amb `condition` (`c=valor`, `n=1`). Arrodoniment **només en serialitzar** (half-to-even, `round()` de Python); el filtre usa `core.round_half_even(condition)`. | §2.5, §2.15, §4 |
 | 8 | Reformes: `CHECK (ini_date <= fin_date)` (es permeten reformes d'un dia) + **`EXCLUDE USING gist (refuge_id WITH =, daterange(ini_date, fin_date, '[]') WITH &&)`** sobre **totes** les files (el predicat «només actives» no es pot expressar en un índex perquè `CURRENT_DATE` no és immutable, i no cal). `group_link` viu a una taula pròpia amb RLS (només creador i participants). | §2.12 |
 | 9 | Aprovar/rebutjar propostes: `SELECT ... FOR UPDATE` amb `status='pending'` + `UPDATE ... WHERE status='pending'` → la doble aprovació (C2) és impossible a la BD. Regles `create/update/delete` del payload com a `CHECK` (inclosa la llista tancada de claus del JSONB). | §2.18 |
-| 10 | **RLS activada a les 24 taules** (rol `app`, sense `FORCE`); context per **`set_config(..., true)`** (local a la transacció) dins una transacció per petició. Lectura pública (`USING (true)`) a refugis, perfils públics, experiències, dubtes i respostes; mitjans: `visible` per a tothom, la resta autor/admin. Les crides «de sistema» (jobs, efectes creuats de moderació) usen un `system_context()` explícit. **Perfil obligatori**: tot endpoint autenticat llevat de `POST /users/` retorna 403 `profile_required` si no hi ha fila a `users`. | §7 |
+| 10 | **RLS activada a les 27 taules** (rol `app`, sense `FORCE`); context per **`set_config(..., true)`** (local a la transacció) dins una transacció per petició. Lectura pública (`USING (true)`) a refugis, perfils públics, experiències, dubtes i respostes; mitjans: `visible` per a tothom, la resta autor/admin. Les crides «de sistema» (jobs, efectes creuats de moderació) usen un `system_context()` explícit. **Perfil obligatori**: tot endpoint autenticat llevat de `POST /users/` retorna 403 `profile_required` si no hi ha fila a `users`. | §7 |
 | 11 | Esborrat d'usuari en **una transacció** amb `ON DELETE` (CASCADE / SET NULL segons el PLAN) + una **cua d'esborrat de R2** alimentada per triggers (`moderation.media_deletion_queue`). **Excepció CSAM**: les denúncies i les entrades d'auditoria marcades `legal_hold` es **conserven anonimitzades** (un *trigger* `BEFORE DELETE` les desvincula de l'usuari abans de la cascada); `moderation-hold/` a R2 es conserva. | §2.20, §2.23, §2.24, §8 |
 | 12 | `users` privada i minimitzada; dades públiques a `user_public_profiles`. Cap email ni data de naixement. `audit_logs` caduca a 365 dies, `upload_intents` a 1 dia (jobs de purga). | §2.1, §8 |
 | 13 | Càrrega **d'un sol ús** del JSON (`load_refuges`, sense `--overwrite`; si ja hi ha refugis a la BD, `CommandError` sense escriure res); 1.542 refugis, 1.542 `refuge_amenities`, 2.075 enllaços; `condition` inicial = `puntua_refugi(info_comp)` amb `n = 0`; la comanda i `puntua_refugi` viuen a `apps/refuges/management/commands/load_refuges.py`. | §9 |
@@ -51,18 +53,18 @@
 | Schema | Taules / vistes | App Django | Chunk |
 |---|---|---|---|
 | `core` | Només funcions: `uid()`, `is_admin()`, `is_system()`, `immutable_unaccent()`, `norm_name()`, `round_half_even()` | `core` | 1 |
-| `users` | `users`, `user_public_profiles`, `user_favourite_refuges`, `user_visited_refuges` | `accounts` | 2 (`0001`: `users` + perfils, perquè `refuges` hi depèn) i 3 (`0002`: llistes) |
-| `refuges` | `refuges`, `refuge_amenities`, `refuge_links`, `refuge_media`; vista `refuge_map` | `refuges` | 2 (+7: FK `refuge_media.experience_id`) |
+| `users` | `languages` (catàleg), `users`, `user_public_profiles`, `user_avatars`, `user_favourite_refuges`, `user_visited_refuges` | `accounts` | 2 (`0001`: `users` + perfils, perquè `refuges` hi depèn) i 3 (`0002`: llistes) |
+| `refuges` | `refuge_types` (catàleg), `refuges`, `refuge_amenities`, `refuge_links`, `refuge_media` | `refuges` | 2 (+7: FK `refuge_media.experience_id`) |
 | `activity` | `refuge_visits`, `refuge_visit_participants` (+ vista `refuge_visit_totals`), `renovations`, `renovation_group_links`, `renovation_participants`, `renovation_expelled`, `experiences`, `doubts`, `answers` | `visits` (4), `renovations` (5), `doubts` (6), `experiences` (7) | 4–7 |
 | `proposals` | `refuge_proposals` | `proposals` | 8 |
 | `moderation` | `upload_intents` (app `uploads`, chunk 7); `media_reports`, `moderation_notices`, `moderation_hash_blocklist`, `media_deletion_queue` (app `moderation`, chunk 9) | `uploads`, `moderation` | 7, 9 |
 | `audit` | `audit_logs` | `audit` | 9 |
 
-`coords_refugis` **no té taula**: és la vista `refuges.refuge_map` (§4). El `visitors` del refugi i `visited_refuges` de l'usuari són **la mateixa** taula `users.user_visited_refuges` (decisió del PLAN).
+`coords_refugis` **no té taula ni vista**: és una consulta directa a `refuges.refuges` (§5.3, recepta 5). El `visitors` del refugi i `visited_refuges` de l'usuari són **la mateixa** taula `users.user_visited_refuges` (decisió del PLAN).
 
 ### 1.2 Convencions
 
-- Noms `snake_case`; taules en plural; PK `id`; FK cap a usuaris com a `<rol>_uid` (`creator_uid`, `reporter_uid`, `user_uid`…), la resta `<entitat>_id`.
+- Noms `snake_case`; taules en plural; PK `id` (les taules d'unió també, amb `UNIQUE` sobre la clau natural, mentre siguem a Django 5.1: `TECH_DEBT` R14); FK cap a usuaris com a `<rol>_uid` (`creator_uid`, `reporter_uid`, `user_uid`…), la resta `<entitat>_id`.
 - Tots els instants són **`timestamptz`** (UTC, `DEFAULT now()` / Django `db_default=Now()`); les dates de negoci (`ini_date`, `fin_date`, `visit_date`, `modified_at` del refugi) són **`date`** i les calcula l'aplicació amb `get_madrid_today()`. L'API continua emetent *strings* ISO amb la zona `Europe/Madrid` com ara **[FET]** (`api/utils/timezone_utils.py`): el serializer fa `astimezone(Madrid)`.
 - **Sentinelles fora de la BD**: `'unknown'` (creador anonimitzat) i `'system'` (actor/denunciant automàtic) es desen com a **`NULL`**; l'API els torna a emetre com a `'unknown'`/`'system'` per mantenir el contracte.
 - Text lliure: `CHECK (btrim(col) <> '')` quan és obligatori i límit de longitud igual al del serializer (`char_length(col) <= N`).
@@ -96,7 +98,7 @@ Les extensions viuen a `public` (on les espera `django.contrib.gis` i on resolen
 
 ### 1.4 Identificadors: **UUID v7** (decisió vinculant del product owner)
 
-Totes les **PK substitutes** són `uuid` **versió 7** (RFC 9562: 48 bits de timestamp en mil·lisegons + bits aleatoris), exposades a l'API com a *string* canònic en minúscules (36 car.; el frontend les tracta com a opaques i els serializers actuals accepten `max_length` 100/255). Excepcions (PK **natural**): `users.users.uid` (`varchar(128)`, UID de Firebase, `CHECK (char_length(uid) BETWEEN 1 AND 128 AND uid NOT IN ('system','unknown'))`) i `refuge_media.key` (clau R2, ja única). Això inclou les taules d'unió i de registre (`user_favourite_refuges`, participants, vots, `audit_logs`, cua d'R2, `moderation_hash_blocklist`…), que per tant **no** usen `identity`.
+Totes les **PK substitutes** són `uuid` **versió 7** (RFC 9562: 48 bits de timestamp en mil·lisegons + bits aleatoris), exposades a l'API com a *string* canònic en minúscules (36 car.; el frontend les tracta com a opaques i els serializers actuals accepten `max_length` 100/255). Excepcions (PK **natural**): `users.users.uid` (`varchar(128)`, UID de Firebase, `CHECK (char_length(uid) BETWEEN 1 AND 128 AND uid NOT IN ('system','unknown'))`), `refuge_media.key` i `user_avatars.key` (claus R2, ja úniques), `refuge_links.url` (decisió del PO) i els codis dels catàlegs `users.languages.code` i `refuges.refuge_types.code`. Això inclou les taules d'unió i de registre (`user_favourite_refuges`, participants, `audit_logs`, cua d'R2, `moderation_hash_blocklist`…), que per tant **no** usen `identity`. **PK compostes (decisió del PO, ajornada)**: el PO vol PK `(user_uid, refuge_id)` a preferits i visitats, `(renovation_id, user_uid)` a participants i expulsats de reformes, `(refuge_id, visit_date)` a visites i `(refuge_id, visit_date, user_uid)` a participants de visites. Django 5.1 no les suporta (`CompositePrimaryKey` és de la 5.2); es mantenen `id` + `UNIQUE` sobre aquestes columnes fins a la pujada (`TECH_DEBT` R14).
 
 **Generació.** Postgres 16 (Docker de proves) **no** té `uuidv7()` (arriba a Postgres 18); Neon és Postgres 17 **[FET, `integrations/neon.md`]**, de manera que tampoc. Estratègia:
 1. **Un únic helper** `api/utils/ids.py: uuid7() -> uuid.UUID`, usat com a `default=uuid7` de **tots** els models (cap altre generador d'ID al codi). Python 3.14 té `uuid.uuid7`, però CI usa 3.10: s'implementa una funció petita segons RFC 9562 (48 bits de `time.time_ns() // 1_000_000`, versió 7, variant RFC 4122, 74 bits aleatoris de `os.urandom`) **o** es fixa una dependència (`uuid6`/`uuid-utils`) a `requirements.txt`. Recomanació: implementació pròpia de ~15 línies amb **monotonicitat dins del mateix mil·lisegon** (comptador de 12 bits `rand_a` incrementat si el timestamp no avança) i un test que comprovi versió/variant, ordre creixent en un bucle i unicitat.
@@ -104,7 +106,7 @@ Totes les **PK substitutes** són `uuid` **versió 7** (RFC 9562: 48 bits de tim
 3. **Ids mal formats a la URL** han de donar **404**, no 500: convertidor `<uuid:...>` a `api/urls.py` o captura de `ValidationError`/`DataError`.
 
 **Conseqüències**
-- **Localitat de l'índex B-tree de la PK**: els v7 s'inserixen sempre «a la dreta» de l'índex (com un `bigserial`), sense la fragmentació i el mal ús de la *buffer cache* dels v4 aleatoris. A ~1,5 mil refugis és irrellevant, però escala bé per a `audit_logs`, vots i participants.
+- **Localitat de l'índex B-tree de la PK**: els v7 s'inserixen sempre «a la dreta» de l'índex (com un `bigserial`), sense la fragmentació i el mal ús de la *buffer cache* dels v4 aleatoris. A ~1,5 mil refugis és irrellevant, però escala bé per a `audit_logs` i participants.
 - **Paginació per cursor (*keyset*)**: com que l'ordre de `id` és (aproximadament) l'ordre de creació, `ORDER BY id [DESC]` i `WHERE id < :cursor` poden **substituir** `(created_at, id)` a les llistes ordenades per creació (preferits, visitats, dubtes, propostes per creador, avisos, denúncies). **Es mantenen les columnes `created_at`** per a lectura humana, filtres per data i les llistes que ordenen per altra cosa (`experiences` per `modified_at`, `refuge_media` per `uploaded_at`). Els índexs `(…, created_at DESC, id DESC)` de §2 es poden simplificar a `(…, id DESC)` allà on l'ordre sigui per creació; es mantenen tal com estan fins que el chunk corresponent ho decideixi (no és un canvi de contracte). Cal tenir present que dues files del mateix mil·lisegon només queden ordenades gràcies a la monotonicitat de l'helper dins d'un mateix procés; entre processos l'ordre és «aproximat»: per a ordre estricte de negoci, `created_at, id`.
 - **El timestamp és dins de l'ID** (fuga de l'instant de creació): acceptat; ja s'exposa a l'API (`created_at`/`uploaded_at`…).
 - **Mida**: 16 B per valor (vs ≥ 21 B del text de Firestore) a totes les FK i índexs.
@@ -194,7 +196,7 @@ Dades **privades i minimitzades** (decisió del PLAN): sense email ni data de na
 | Columna | Tipus → Django | Null | Default | Notes |
 |---|---|---|---|---|
 | `uid` | `varchar(128)` → `CharField(max_length=128, primary_key=True)` | NO | — | UID de Firebase |
-| `language` | `varchar(2)` → `CharField(choices=Language)` | NO | `'ca'` | `ca/es/en/fr` |
+| `language` | `varchar(8)` → `ForeignKey(Language, to_field='code', db_column='language')` | NO | `'en'` | FK → `users.languages(code)` `ON DELETE RESTRICT`; valor per defecte anglès (decisió del PO) |
 | `created_at` | `timestamptz` → `DateTimeField` | NO | `now()` | |
 | `age_confirmed_at` | `timestamptz` | SÍ | — | només es desa si s'ha confirmat; mai la data de naixement |
 | `age_threshold` | `smallint` | SÍ | — | llindar vigent en confirmar (avui 16) |
@@ -205,12 +207,12 @@ Dades **privades i minimitzades** (decisió del PLAN): sense email ni data de na
 
 Restriccions:
 - `users_uid_ck`: `char_length(uid) BETWEEN 1 AND 128 AND uid NOT IN ('system','unknown')`
-- `users_language_ck`: `language IN ('ca','es','en','fr')`
+- `users_language_fk`: `FOREIGN KEY (language) REFERENCES users.languages(code) ON DELETE RESTRICT` (substitueix el `CHECK`; índex `users_language_idx` per a l'esborrat d'un idioma)
 - `users_age_pair_ck`: `(age_confirmed_at IS NULL) = (age_threshold IS NULL)`; `users_age_threshold_ck`: `age_threshold IS NULL OR age_threshold BETWEEN 13 AND 21`
 - `users_strikes_ck`: `moderation_strikes >= 0`
 - `users_blocked_ck`: `is_blocked OR (blocked_reason IS NULL AND blocked_at IS NULL)`; `users_blocked_reason_ck`: `blocked_reason IS NULL OR blocked_reason IN ('csam_confirmed','strikes','moderation_hash_match')`
 
-Índexs: només la PK (totes les consultes són per `uid`: `UserDAO.get_user_by_uid`, `user_exists`, `IsNotBlocked`, `IsAgeConfirmed`).
+Índexs: la PK (totes les consultes són per `uid`: `UserDAO.get_user_by_uid`, `user_exists`, `IsNotBlocked`, `IsAgeConfirmed`) i `users_language_idx` (`language`, només per a la FK).
 
 RLS:
 ```sql
@@ -264,24 +266,27 @@ CREATE TRIGGER users_detach_legal_hold BEFORE DELETE ON users.users
 
 Nota: el bloqueig automàtic per coincidència de hash (`_handle_moderation_block`) bloqueja **el mateix usuari** dins la seva petició: s'ha de fer dins `system_context()` (el *trigger* ho impediria altrament).
 
+#### 2.1.1 `users.languages` (app `accounts`; catàleg; **RLS sí**, lectura oberta)
+
+Catàleg dels idiomes acceptats (decisió del PO: obert-tancat). Afegir-ne un és **un `INSERT` en una migració de dades**; el serializer valida contra aquesta taula (cap llista al codi).
+
+| Columna | Tipus | Null | Notes |
+|---|---|---|---|
+| `code` | `varchar(8)` | NO | **PK**; codi ISO 639-1 en minúscules (o BCP 47 curt, p. ex. `pt-br`); `CHECK (code ~ '^[a-z]{2}(-[a-z0-9]{2,4})?$')` |
+
+Files inicials (migració): `ca`, `es`, `en`, `fr`. RLS: `languages_select … FOR SELECT TO app USING (true)`; sense cap altra política (només el `migrator` hi escriu). Grants: `SELECT`.
+
 ### 2.2 `users.user_public_profiles` (app `accounts`; **RLS sí**, lectura oberta)
 
-1–1 amb `users`; creada a la mateixa transacció que l'usuari. Substitueix `username` i `media_metadata` (avatar) del document de Firestore.
+1–1 amb `users`; creada a la mateixa transacció que l'usuari. Substitueix `username` del document de Firestore; l'avatar (`media_metadata`) és a [`user_avatars`](#221-usersuser_avatars-app-accounts-rls-sí-lectura-oberta).
 
 | Columna | Tipus | Null | Default | Notes |
 |---|---|---|---|---|
 | `uid` | `varchar(128)` | NO | — | **PK i FK** → `users.users(uid)` `ON DELETE CASCADE` (`OneToOneField(primary_key=True)`) |
 | `username` | `varchar(255)` | NO | `''` | el serializer permet buit; si no és buit ≥2 car. |
-| `avatar_key` | `text` | SÍ | — | clau R2 `users-avatars/{uid}/{uuid}.webp` |
-| `avatar_thumb_key` | `text` | SÍ | — | |
-| `avatar_content_type` | `varchar(100)` | SÍ | — | |
-| `avatar_width`, `avatar_height` | `integer` | SÍ | — | `> 0` |
-| `avatar_size_bytes` | `bigint` | SÍ | — | `> 0` |
-| `avatar_blurhash` | `varchar(100)` | SÍ | — | |
-| `avatar_uploaded_at` | `timestamptz` | SÍ | — | |
 | `updated_at` | `timestamptz` | NO | `now()` | |
 
-Restriccions: `upp_username_ck`: `username = '' OR char_length(btrim(username)) >= 2`; `upp_avatar_all_or_none_ck`: `(avatar_key IS NULL) = (avatar_uploaded_at IS NULL)` i `avatar_thumb_key IS NULL OR avatar_key IS NOT NULL`; `upp_avatar_dims_ck`: dimensions i mida `> 0` si no són `NULL`. `UNIQUE (avatar_key)` parcial `WHERE avatar_key IS NOT NULL`.
+Restriccions: `upp_username_ck`: `username = '' OR char_length(btrim(username)) >= 2`.
 Índexs: PK. (Futur: `gin (core.norm_name(username) gin_trgm_ops)` per cercar usuaris; no hi ha cap consulta avui.)
 
 RLS:
@@ -296,7 +301,34 @@ CREATE POLICY upp_update ON users.user_public_profiles FOR UPDATE TO app
 ```
 Grants: `SELECT, INSERT, UPDATE ON users.user_public_profiles TO app`.
 
-Trigger de neteja d'R2 (àvatar canviat/esborrat): `AFTER UPDATE OF avatar_key, avatar_thumb_key` i `AFTER DELETE` → insereix les claus antigues a `moderation.media_deletion_queue` (§2.23) quan canvien o desapareixen (`fn_profile_enqueue_r2()`, `SECURITY DEFINER`).
+#### 2.2.1 `users.user_avatars` (app `accounts`; **RLS sí**, lectura oberta)
+
+Avatar de l'usuari (decisió del PO: taula pròpia, amb la clau R2 com a PK, com `refuge_media`). 0..1 per usuari. Substitueix `media_metadata` del document de Firestore i elimina el `CHECK` «tot o res» de les columnes `avatar_*` (no tenir avatar = no tenir fila).
+
+| Columna | Tipus | Null | Default | Notes |
+|---|---|---|---|---|
+| `key` | `text` | NO | — | **PK**; clau R2 `users-avatars/{uid}/{uuid}.webp`; `CHECK (key <> '')` |
+| `user_uid` | `varchar(128)` | NO | — | FK → `users.users(uid)` `CASCADE`; **`UNIQUE`** (`user_avatars_user_uq`: un avatar per usuari; també índex de la FK) |
+| `thumb_key` | `text` | SÍ | — | `UNIQUE` parcial `WHERE thumb_key IS NOT NULL`; `thumb_key <> key` |
+| `content_type` | `varchar(100)` | NO | — | |
+| `width`, `height` | `integer` | SÍ | — | `> 0` |
+| `size_bytes` | `bigint` | SÍ | — | `> 0` |
+| `blurhash` | `varchar(100)` | SÍ | — | |
+| `uploaded_at` | `timestamptz` | NO | `now()` | |
+
+Canviar d'avatar = `DELETE` de la fila antiga + `INSERT` de la nova a la mateixa transacció (la PK és la clau R2, no s'actualitza).
+
+RLS:
+```sql
+ALTER TABLE users.user_avatars ENABLE ROW LEVEL SECURITY;
+CREATE POLICY avatars_select ON users.user_avatars FOR SELECT TO app USING (true);   -- lectura oberta (perfil públic)
+CREATE POLICY avatars_insert ON users.user_avatars FOR INSERT TO app WITH CHECK (user_uid = {U} OR {SYS});
+CREATE POLICY avatars_delete ON users.user_avatars FOR DELETE TO app USING (user_uid = {U} OR {ADM} OR {SYS});
+-- sense UPDATE: es reemplaça amb DELETE + INSERT
+```
+Grants: `SELECT, INSERT, DELETE ON users.user_avatars TO app`.
+
+Trigger de neteja d'R2: `AFTER DELETE` → insereix `OLD.key` i `OLD.thumb_key` a `moderation.media_deletion_queue` (§2.23) (`fn_avatar_enqueue_r2()`, `SECURITY DEFINER`, a partir del chunk 9; abans, el servei esborra a R2 dins la transacció com fa `delete_media` al chunk 2).
 
 ### 2.3 `users.user_favourite_refuges` (app `accounts`; **RLS sí**, privada)
 
@@ -355,11 +387,11 @@ Grants: `SELECT, INSERT, DELETE`.
 | `id` | `uuid` | NO | `uuid7()` (app) | PK |
 | `name` | `varchar(255)` | NO | — | màx. real 61 |
 | `surname` | `varchar(255)` | SÍ | — | àlies; 487 refugis en tenen. **Es desa i s'usa només per a la cerca; l'API no l'emet de moment** (decisió del PO) |
-| `type` | `varchar(64)` → `CharField(choices=RefugeType)` | NO | `'non gardé'` | vegeu §3 |
+| `type` | `varchar(64)` → `ForeignKey(RefugeType, to_field='code', db_column='type')` | NO | `'non gardé'` | FK → `refuges.refuge_types(code)` `ON DELETE RESTRICT` (§2.5.1) |
 | `coord` | `geography(Point,4326)` → `PointField(geography=True, srid=4326, spatial_index=False)` | NO | — | **x = long, y = lat** |
 | `altitude` | `integer` | SÍ | — | m |
 | `places` | `integer` | SÍ | — | 405 refugis sense dada → `NULL` (no 0) |
-| `remarque` | `text` | NO | `''` | |
+| `remarque` | `text` | SÍ | — | `NULL` = sense observacions (decisió del PO; els 1.542 refugis del JSON no en tenen) |
 | `description` | `text` | NO | `''` | 39 buides al JSON |
 | `region` | `varchar(255)` | SÍ | — | `''` → `NULL` |
 | `departement` | `varchar(255)` | SÍ | — | `''` → `NULL` |
@@ -371,8 +403,8 @@ Grants: `SELECT, INSERT, DELETE`.
 
 Restriccions:
 - `refuges_condition_ck`: `condition IS NULL OR condition BETWEEN 0 AND 3`; `refuges_condition_n_ck`: `num_contributed_conditions >= 0 AND (num_contributed_conditions = 0 OR condition IS NOT NULL)`
-- `refuges_name_ck`: `btrim(name) <> ''`; `refuges_surname_ck`: `surname IS NULL OR btrim(surname) <> ''`
-- `refuges_type_ck`: `type IN ('non gardé','fermée','cabane ouverte mais ocupee par le berger l ete','orri','emergence','key_needed')` **[FET: `VALID_TYPES`/`ALLOWED_REFUGE_TYPES`; el JSON només usa els 4 primers]**
+- `refuges_name_ck`: `btrim(name) <> ''`; `refuges_surname_ck`: `surname IS NULL OR btrim(surname) <> ''`; `refuges_remarque_ck`: `remarque IS NULL OR btrim(remarque) <> ''` (el buit es desa com a `NULL`)
+- `refuges_type_fk`: `FOREIGN KEY (type) REFERENCES refuges.refuge_types(code) ON DELETE RESTRICT` (substitueix el `CHECK`; el filtre `type IN (...)` usa `refuges_type_idx`, que també serveix a la FK)
 - `refuges_altitude_ck`: `altitude IS NULL OR altitude BETWEEN 0 AND 8848`
 - `refuges_places_ck`: `places IS NULL OR places >= 0`
 - `refuges_coord_ck`: `NOT (ST_X(coord::geometry) = 0 AND ST_Y(coord::geometry) = 0)` (el tipus `geography` ja limita els rangs; això evita el punt 0,0 per defecte)
@@ -399,7 +431,17 @@ CREATE POLICY refuges_insert ON refuges.refuges FOR INSERT TO app WITH CHECK ({A
 CREATE POLICY refuges_update ON refuges.refuges FOR UPDATE TO app USING ({ADM} OR {SYS}) WITH CHECK ({ADM} OR {SYS});
 CREATE POLICY refuges_delete ON refuges.refuges FOR DELETE TO app USING ({ADM} OR {SYS});
 ```
-Grants: `SELECT, INSERT, UPDATE, DELETE`. Vista `refuge_map`: §4. L'`UPDATE` de `condition`/`num_contributed_conditions` dels usuaris **no** passa per aquesta política sinó pel *trigger* `SECURITY DEFINER` d'§2.9.
+Grants: `SELECT, INSERT, UPDATE, DELETE`. Punts del mapa: consulta directa (§5.3, recepta 5). L'`UPDATE` de `condition`/`num_contributed_conditions` dels usuaris **no** passa per aquesta política sinó pel *trigger* `SECURITY DEFINER` d'§2.9.
+
+#### 2.5.1 `refuges.refuge_types` (app `refuges`; catàleg; **RLS sí**, lectura pública)
+
+Catàleg dels tipus de refugi (decisió del PO: obert-tancat). **Com s'avaluava abans**: `CHECK (type IN (...6 valors...))`, comprovat a cada `INSERT`/`UPDATE` de la fila; afegir un tipus obligava a refer el `CHECK` amb una migració **i** a canviar `TextChoices` i el serializer. Ara afegir-ne un és **un `INSERT` en una migració de dades**; el serializer i els filtres de cerca validen contra aquesta taula.
+
+| Columna | Tipus | Null | Notes |
+|---|---|---|---|
+| `code` | `varchar(64)` | NO | **PK**; el valor que viatja a l'API (el frontend en tradueix l'etiqueta); `CHECK (btrim(code) <> '')` |
+
+Files inicials (migració): `('non gardé'),('fermée'),('cabane ouverte mais ocupee par le berger l ete'),('orri'),('emergence'),('key_needed')` **[FET: `VALID_TYPES`/`ALLOWED_REFUGE_TYPES`; el JSON només usa els 4 primers]**. RLS: `refuge_types_select … FOR SELECT TO app USING (true)`; cap altra política (només el `migrator` hi escriu). Grants: `SELECT`.
 
 ### 2.6 `refuges.refuge_amenities` (app `refuges`; **RLS sí**, lectura pública)
 
@@ -418,13 +460,12 @@ RLS: igual que `refuges` (`USING (true)` per a `SELECT`; `INSERT/UPDATE/DELETE` 
 
 | Columna | Tipus | Null | Notes |
 |---|---|---|---|
-| `id` | `uuid` | NO | PK (`uuid7()` app) |
+| `url` | `text` | NO | **PK** (decisió del PO: un enllaç identifica un sol refugi); `CHECK (url ~* '^https?://' AND char_length(url) <= 2048)`; el JSON té màx. 171 car. i **cap URL repetida, ni dins d'un refugi ni entre refugis** (2.075 enllaços, 2.075 diferents) **[FET]** |
 | `refuge_id` | `uuid` | NO | FK → `refuges.refuges` `CASCADE` |
 | `position` | `smallint` | NO | ordre (0..n); `CHECK (position >= 0)` |
-| `url` | `text` | NO | `CHECK (url ~* '^https?://' AND char_length(url) <= 2048)`; el JSON té màx. 171 car., 0 duplicats per refugi, 2.075 enllaços |
 
-Restriccions: `UNIQUE (refuge_id, position) DEFERRABLE INITIALLY DEFERRED` (permet reordenar a la mateixa transacció) i `UNIQUE (refuge_id, url)` (sense enllaços duplicats).
-Índexs: els dos `UNIQUE` (el primer serveix també com a índex de la FK i per a `ORDER BY position`).
+Restriccions: PK `(url)` (implica que **dos refugis no poden compartir el mateix enllaç**: un `INSERT` repetit dona `IntegrityError` → 409/400 al servei; vegeu `TECH_DEBT` R12) i `UNIQUE (refuge_id, position) DEFERRABLE INITIALLY DEFERRED` (permet reordenar a la mateixa transacció).
+Índexs: la PK i el `UNIQUE (refuge_id, position)` (serveix també com a índex de la FK i per a `ORDER BY position`).
 RLS: com `refuges` (`links_select/insert/update/delete`). Grants: `SELECT, INSERT, UPDATE, DELETE`.
 
 ### 2.8 `refuges.refuge_media` (app `refuges`; **RLS sí**)
@@ -576,11 +617,11 @@ Substitueix `visitors[{uid, num_visitors}]`.
 | `num_visitors` | `integer` | NO | — | `CHECK (num_visitors >= 1)` (el serializer ja té `min_value=1`; **afegir `max_value`** al serializer per evitar valors absurds) |
 | `created_at` | `timestamptz` | NO | `now()` | |
 
-Restriccions: **`UNIQUE (visit_id, user_uid) INCLUDE (num_visitors)`** (`participants_visit_user_uq`).
+Restriccions: **`UNIQUE (visit_id, user_uid)`** (`participants_visit_user_uq`): com que una visita és un `(refuge_id, visit_date)` únic, equival a «una fila per participant, refugi i data» (decisió del PO). `num_visitors` **no** forma part de la clau (abans hi era només com a columna `INCLUDE` de l'índex, que no participa en la unicitat; es treu per claredat).
 Índexs:
 | Índex | Consulta |
 |---|---|
-| `(visit_id, user_uid) INCLUDE (num_visitors)` UNIQUE | `total_visitors = SUM(num_visitors)` per *index-only scan*; «ja estàs registrat»; `is_visitor`/`num_visitors` de l'usuari; PATCH/DELETE de la seva fila |
+| `(visit_id, user_uid)` UNIQUE | `total_visitors = SUM(num_visitors)` de la vista; «ja estàs registrat»; `is_visitor`/`num_visitors` de l'usuari; PATCH/DELETE de la seva fila |
 | `(user_uid) INCLUDE (visit_id, num_visitors)` | `GET /users/{uid}/visits/` (B5: ja no cal recórrer tota la col·lecció); esborrat d'usuari; FK |
 
 RLS (privada: només l'usuari veu **la seva** fila; els totals passen per la vista `activity.refuge_visit_totals`, §4):
@@ -886,13 +927,11 @@ ALTER TABLE proposals.refuge_proposals
   ADD CONSTRAINT refuge_proposals_payload_keys_ck CHECK (payload IS NULL OR
         (payload - ARRAY['name','coord','altitude','places','remarque','info_comp','description',
                          'links','type','region','departement','condition']) = '{}'::jsonb),
-  ADD CONSTRAINT refuge_proposals_payload_type_ck CHECK (payload IS NULL OR payload->>'type' IS NULL OR
-        payload->>'type' IN ('non gardé','fermée','cabane ouverte mais ocupee par le berger l ete','orri','emergence','key_needed')),
   ADD CONSTRAINT refuge_proposals_payload_coord_ck CHECK (payload IS NULL OR NOT (payload ? 'coord') OR
         (jsonb_typeof(payload->'coord') = 'object' AND payload->'coord' ?& ARRAY['lat','long'])),
   ADD CONSTRAINT refuge_proposals_size_ck CHECK (pg_column_size(payload) < 65536 AND pg_column_size(refuge_snapshot) < 65536);
 ```
-Les validacions de valor (rang d'`altitude`/`places`/`condition`, URLs, 0/1 d'`info_comp`) continuen al serializer: el `CHECK` cobreix l'**estructura** (acció, forma, claus, tipus) i evita que una escriptura que salti el serializer deixi una proposta que després no es pugui aprovar (M9). Aquesta restricció (`refuge_proposals_refuge_ref_ck`) implica un **ordre obligatori** en esborrar un refugi: primer es **rebutgen** les propostes pendents d'aquell refugi (`UPDATE … SET status='rejected', reviewed_at=now(), rejection_reason='refuge has been deleted', reviewer_uid=NULL WHERE refuge_id=:id AND status='pending' AND id<>:esta`) i després s'esborra el refugi; altrament el `SET NULL` violaria el `CHECK` i la transacció falla (és el comportament desitjat: cap proposta pendent apunta a un refugi inexistent).
+Les validacions de valor (rang d'`altitude`/`places`/`condition`, URLs, 0/1 d'`info_comp`, `type` contra el catàleg `refuges.refuge_types`: un `CHECK` no pot consultar una taula, i en aprovar la FK de `refuges.type` ho garanteix) continuen al serializer: el `CHECK` cobreix l'**estructura** (acció, forma, claus, tipus) i evita que una escriptura que salti el serializer deixi una proposta que després no es pugui aprovar (M9). Aquesta restricció (`refuge_proposals_refuge_ref_ck`) implica un **ordre obligatori** en esborrar un refugi: primer es **rebutgen** les propostes pendents d'aquell refugi (`UPDATE … SET status='rejected', reviewed_at=now(), rejection_reason='refuge has been deleted', reviewer_uid=NULL WHERE refuge_id=:id AND status='pending' AND id<>:esta`) i després s'esborra el refugi; altrament el `SET NULL` violaria el `CHECK` i la transacció falla (és el comportament desitjat: cap proposta pendent apunta a un refugi inexistent).
 
 Índexs:
 | Índex | Consulta |
@@ -1161,12 +1200,12 @@ Grants: `SELECT, INSERT, DELETE` (**cap `UPDATE`**: registre immutable).
 
 ## 3. Enumeracions
 
-Tots els enums són **`varchar` + `CHECK ... IN (...)`** amb el seu `models.TextChoices` (un `ENUM` natiu de Postgres obliga a `ALTER TYPE … ADD VALUE` i no es pot treure un valor; el `CHECK` es canvia amb una migració normal). Els valors són els del codi **[FET]**.
+Els **catàlegs oberts** (idiomes i tipus de refugi) són **taules amb FK** (§2.1.1, §2.5.1; decisió del PO): un valor nou és un `INSERT`, sense canvi de codi. La resta d'enums són estats interns lligats al codi i queden com a **`varchar` + `CHECK ... IN (...)`** amb el seu `models.TextChoices` (un `ENUM` natiu de Postgres obliga a `ALTER TYPE … ADD VALUE` i no es pot treure un valor; el `CHECK` es canvia amb una migració normal). Els valors són els del codi **[FET]**.
 
 | Enum (`TextChoices`) | Columna(es) | Valors | Origen |
 |---|---|---|---|
-| `Language` | `users.language` | `ca`, `es`, `en`, `fr` | `UserValidatorMixin.VALID_LANGUAGES` |
-| `RefugeType` | `refuges.type`, `payload.type` | `non gardé`, `fermée`, `cabane ouverte mais ocupee par le berger l ete`, `orri`, `emergence`, `key_needed` | `VALID_TYPES` / `ALLOWED_REFUGE_TYPES` (el JSON només porta els 4 primers). Equivalència amb l'UML: `non gardé` = *No guardat*, `fermée` = *Tancat*, `cabane ouverte…` = *Ocupat als estius per pastor*, `orri` = *Orri*, `emergence` = *Emergència*; `key_needed` (refugi amb clau) **no és a l'UML** |
+| *(catàleg `users.languages`)* | `users.language` (FK) | `ca`, `es`, `en`, `fr` (files inicials) | `UserValidatorMixin.VALID_LANGUAGES` |
+| *(catàleg `refuges.refuge_types`)* | `refuges.type` (FK), `payload.type` (validat pel serializer contra la taula) | `non gardé`, `fermée`, `cabane ouverte mais ocupee par le berger l ete`, `orri`, `emergence`, `key_needed` | `VALID_TYPES` / `ALLOWED_REFUGE_TYPES` (el JSON només porta els 4 primers). Equivalència amb l'UML: `non gardé` = *No guardat*, `fermée` = *Tancat*, `cabane ouverte…` = *Ocupat als estius per pastor*, `orri` = *Orri*, `emergence` = *Emergència*; `key_needed` (refugi amb clau) **no és a l'UML** |
 | (smallint) `condition` | `experiences.condition`; `refuges.condition` (double) | `0` pobre, `1` correcte, `2` bé, `3` excel·lent | `ConditionService.validate_condition_value` |
 | `MediaStatus` | `refuge_media.status` | `visible`, `hidden_pending_review`, `removed` | `media_metadata.MEDIA_STATUSES` |
 | `MediaType` | `refuge_media.media_type` | `image`, `video` | `MEDIA_TYPE_*` |
@@ -1201,30 +1240,21 @@ Aquests valors no es desen (l'única excepció és `condition`/`num_contributed_
 | `favourite_refuges` / `visited_refuges` (usuari, només el propi) | `array_agg(refuge_id ORDER BY created_at, id)` | `UNIQUE (user_uid, refuge_id)` + `(user_uid, created_at DESC, id DESC)` |
 | `visitors` (refugi; només admins, decisió 5) | `array_agg(user_uid) FROM users.user_visited_refuges WHERE refuge_id = :id` | `user_visited_refuges (refuge_id, user_uid)` |
 | `answers_count` (dubte) | `count(*)` d'`answers` del dubte | `answers (doubt_id, created_at, id)` |
-| `total_visitors` (visita) | vista `activity.refuge_visit_totals` (a baix) | `UNIQUE (visit_id, user_uid) INCLUDE (num_visitors)` |
+| `total_visitors` (visita) | vista `activity.refuge_visit_totals` (a baix) | `UNIQUE (visit_id, user_uid)` |
 | `is_visitor`, `num_visitors` (visita, de l'usuari actual) | `EXISTS`/`SELECT num_visitors` a `refuge_visit_participants` amb `user_uid = :me` (la RLS ja filtra) | `UNIQUE (visit_id, user_uid)` |
-| `geohash` (llista de coordenades) | `ST_GeoHash(coord::geometry, 5)` (mateixa base32 i precisió 5 que `generate_simple_geohash`) **[INFERÈNCIA: comprovar amb els 1.542 punts]** | — |
+| `geohash` (llista de coordenades) | `ST_GeoHash(coord::geometry, 5)` com a anotació de la consulta directa a `refuges` (recepta 5) (mateixa base32 i precisió 5 que `generate_simple_geohash`) **[INFERÈNCIA: comprovar amb els 1.542 punts]** | — |
 | `age_confirmed` (usuari) | `age_confirmed_at IS NOT NULL` | — |
 | `images_metadata` (refugi/experiència/preferits) | `refuge_media` filtrat per estat visible (o autor/admin) + URLs prefirmades generades a l'aplicació | `refuge_media (refuge_id, uploaded_at, key)`, `(experience_id)` |
 
 ### 4.1 Vistes
 
-Hi ha **dues** vistes (`refuge_map`, `refuge_visit_totals`). Les vistes s'executen amb els privilegis del **propietari** (`migrator`, no subjecte a la RLS; sense `security_invoker`). Això és **intencionat**: exposen només agregats o dades ja públiques. Qualsevol vista nova s'ha de revisar amb aquest criteri. Cada una es mapeja a Django com un model **`managed = False`** amb `db_table = 'schema"."vista'` i `OneToOneField(primary_key=True)` cap a l'entitat.
+Hi ha **una** vista (`refuge_visit_totals`). La vista `refuge_map` del primer disseny **s'ha eliminat** (decisió del PO): el mapa és una consulta directa a `refuges.refuges` (recepta 5 de §5.3), sense model `managed=False` ni el risc d'una vista que salta la RLS. Les vistes s'executen amb els privilegis del **propietari** (`migrator`, no subjecte a la RLS; sense `security_invoker`). Això és **intencionat**: exposen només agregats o dades ja públiques. Qualsevol vista nova s'ha de revisar amb aquest criteri. Cada una es mapeja a Django com un model **`managed = False`** amb `db_table = 'schema"."vista'` i `OneToOneField(primary_key=True)` cap a l'entitat.
 
 ```sql
--- Substitueix coords_refugis/all_refugis_coords (cap document d'1 MiB, cap escriptura de sincronització)
-CREATE VIEW refuges.refuge_map AS
-SELECT r.id, r.name,
-       ST_Y(r.coord::geometry) AS lat, ST_X(r.coord::geometry) AS lng,
-       ST_GeoHash(r.coord::geometry, 5) AS geohash, r.coord
-  FROM refuges.refuges r;
-GRANT SELECT ON refuges.refuge_map TO app;
-
 -- Totals de visitants sense exposar qui hi va (els participants són privats per RLS)
 CREATE VIEW activity.refuge_visit_totals AS
 SELECT p.visit_id,
-       sum(p.num_visitors)::integer AS total_visitors,
-       count(*)::integer            AS participants_count
+       sum(p.num_visitors)::integer AS total_visitors   -- l'únic total que usa el frontend (participants_count eliminat, decisió del PO)
   FROM activity.refuge_visit_participants p
  GROUP BY p.visit_id;
 GRANT SELECT ON activity.refuge_visit_totals TO app;
@@ -1245,7 +1275,7 @@ GRANT SELECT ON activity.refuge_visit_totals TO app;
 | `username` | `user_public_profiles.username` | `''` permès |
 | `language` | `users.language` | |
 | `created_at` (ISO) | `users.created_at` | |
-| `media_metadata` `{key, uploaded_at, width, height, blurhash, size, content_type, thumb_key}` (avatar) | `user_public_profiles.avatar_key`, `avatar_uploaded_at`, `avatar_width`, `avatar_height`, `avatar_blurhash`, `avatar_size_bytes`, `avatar_content_type`, `avatar_thumb_key` | tot o res |
+| `media_metadata` `{key, uploaded_at, width, height, blurhash, size, content_type, thumb_key}` (avatar) | fila de `users.user_avatars` (`key`, `uploaded_at`, `width`, `height`, `blurhash`, `size_bytes`, `content_type`, `thumb_key`) | sense avatar = sense fila |
 | `favourite_refuges[]` | `user_favourite_refuges` (una fila per refugi) | |
 | `visited_refuges[]` | `user_visited_refuges` | també cobreix `data_refugis_lliures.visitors[]` |
 | `uploaded_photos_keys[]` | **derivat** de `refuge_media` (`creator_uid`) | |
@@ -1258,18 +1288,18 @@ GRANT SELECT ON activity.refuge_visit_totals TO app;
 | Firestore | SQL | Nota |
 |---|---|---|
 | `id` (auto-ID) | `refuges.id` (`uuid`) | UUIDv7 (`uuid7()`) |
-| `name`, `surname`, `type`, `altitude`, `places`, `remarque`, `description`, `region`, `departement` | columnes homònimes de `refuges.refuges` | `region`/`departement`/`surname` blancs → `NULL`; `remarque`/`description` `NULL` → `''` |
+| `name`, `surname`, `type`, `altitude`, `places`, `remarque`, `description`, `region`, `departement` | columnes homònimes de `refuges.refuges` | `region`/`departement`/`surname`/`remarque` blancs → `NULL`; `description` `NULL` → `''` |
 | `coord {lat, long}` | `refuges.coord` `geography(Point,4326)` | `Point(long, lat)` |
 | `modified_at` (string `YYYY-MM-DD`) | `refuges.modified_at` (`date`) | |
 | `info_comp {12 claus 0/1}` | `refuge_amenities` (12 `boolean`) | `0/1` → `false/true`; clau absent → `false` |
 | `info_couchage`, `info_eau` | — | **s'ignoren** |
-| `links[]` | `refuge_links` (`position`, `url`) | |
+| `links[]` | `refuge_links` (`url` PK, `position`) | |
 | `condition` (float), `num_contributed_conditions` | `refuges.condition`, `refuges.num_contributed_conditions` (columnes directes; **nou** `condition_reset_at`) | el valor inicial de la càrrega el calcula `puntua_refugi` (§9) amb `n = 0` |
 | `visitors[]` | `user_visited_refuges` | |
 | `media_metadata{<key>: {creator_uid, uploaded_at, taken_at, experience_id, media_type, content_type, width, height, size, thumb_key, blurhash, status, rights_confirmed_at}}` | `refuge_media` (`key` = clau del map; la resta de camps, columnes) | `size` → `size_bytes` |
 | `images_metadata` (només sortida) | derivat de `refuge_media` + URL prefirmada | |
 
-**`coords_refugis/all_refugis_coords`** → vista `refuges.refuge_map` (cap taula, cap sincronització; desapareixen `add/update/delete_refuge_from/to_coords_refugis`, A3 per a aquesta col·lecció i el límit d'1 MiB).
+**`coords_refugis/all_refugis_coords`** → consulta directa a `refuges.refuges` (cap taula ni vista, cap sincronització; desapareixen `add/update/delete_refuge_from/to_coords_refugis`, A3 per a aquesta col·lecció i el límit d'1 MiB).
 
 **`refuge_visits/{id}`** → `activity.refuge_visits` + `refuge_visit_participants`
 | Firestore | SQL |
@@ -1324,10 +1354,10 @@ GRANT SELECT ON activity.refuge_visit_totals TO app;
 
 | Resposta | Com es reconstrueix | Diferències respecte a avui |
 |---|---|---|
-| **Refugi** (detall/cerca) `{id, name, coord:{lat,long}, altitude, places, remarque, info_comp, description, links, type, modified_at, region, departement, condition, visitors, images_metadata}` | `coord` ← `refuge.coord.y/x`; **`info_comp` ← les 12 columnes de `refuge_amenities` com a enters `0/1`** (`int(bool)`: el DTO del frontend és `number`); `links` ← `refuge_links` ordenats per `position`; `condition` ← `round(refuges.condition)` en serialitzar (Python, half-to-even; `null` si és `NULL`); `modified_at` ← `date.isoformat()`; `visitors` (només admins) ← `user_visited_refuges`; `images_metadata` (només autenticats) ← `refuge_media` visibles (+ propis/admin) amb URL prefirmada | `surname` **no s'emet** (decisió del PO). `visitors`: només admins (decisió 5 acceptat). `remarque`/`description` mai `null` |
-| **Llista sense filtres** `{count, results:[{id, name, coord, geohash}]}` | vista `refuge_map` | **ja no porta `surname`** (avui l'emetia si existia) |
+| **Refugi** (detall/cerca) `{id, name, coord:{lat,long}, altitude, places, remarque, info_comp, description, links, type, modified_at, region, departement, condition, visitors, images_metadata}` | `coord` ← `refuge.coord.y/x`; **`info_comp` ← les 12 columnes de `refuge_amenities` com a enters `0/1`** (`int(bool)`: el DTO del frontend és `number`); `links` ← `refuge_links` ordenats per `position`; `condition` ← `round(refuges.condition)` en serialitzar (Python, half-to-even; `null` si és `NULL`); `modified_at` ← `date.isoformat()`; `visitors` (només admins) ← `user_visited_refuges`; `images_metadata` (només autenticats) ← `refuge_media` visibles (+ propis/admin) amb URL prefirmada | `surname` **no s'emet** (decisió del PO). `visitors`: només admins (decisió 5 acceptat). `remarque` pot ser `null`; `description` mai `null` |
+| **Llista sense filtres** `{count, results:[{id, name, coord, geohash}]}` | consulta directa a `refuges` (recepta 5) | **ja no porta `surname`** (avui l'emetia si existia) |
 | **Llista amb filtres** `{count, results:[Refugi]}` | consulta única de §5.3 | el filtre `condition` accepta `0–3` sobre el valor arrodonit; la cerca per nom és parcial i sense accents (B2) |
-| **Usuari** `{uid, username, avatar_metadata, language, favourite_refuges[], visited_refuges[], uploaded_photos_keys[], num_shared_experiences, num_renovated_refuges, created_at, age_confirmed}` | `users` + `user_public_profiles` (avatar → `MediaItem` amb URL prefirmada) + subconsultes de §4. NOTA: el serializer declara `num_uploaded_photos` però `to_representation` torna `uploaded_photos_keys` **[FET]** | **Perfil d'un altre usuari**: només `{uid, username, avatar_metadata}` (decisió del PO); el propi, sense canvis |
+| **Usuari** `{uid, username, avatar_metadata, language, favourite_refuges[], visited_refuges[], uploaded_photos_keys[], num_shared_experiences, num_renovated_refuges, created_at, age_confirmed}` | `users` + `user_public_profiles` + `user_avatars` (avatar → `MediaItem` amb URL prefirmada) + subconsultes de §4. NOTA: el serializer declara `num_uploaded_photos` però `to_representation` torna `uploaded_photos_keys` **[FET]** | **Perfil d'un altre usuari**: només `{uid, username, avatar_metadata}` (decisió del PO); el propi, sense canvis |
 | **Refugis d'una llista d'usuari** `{count, results:[{id, name, region, places, coord, images_metadata:[1a foto visible]\|null}]}` | `user_favourite_refuges`/`user_visited_refuges` JOIN `refuges` + 1a imatge visible per `LATERAL`/`Prefetch` | `places` `null` si no hi ha dada (avui el mapper posava `0`) |
 | **Visita** `{date, refuge_id?, total_visitors, is_visitor, num_visitors}` | `refuge_visits` + `refuge_visit_totals` + fila de l'usuari | idèntic |
 | **Reforma** `{id, creator_uid, refuge_id, ini_date, fin_date, description, materials_needed, group_link?, participants_uids[]}` | `renovations` + `ArraySubquery` de participants; `creator_uid` `NULL` → `'unknown'`; `group_link` ← `LEFT JOIN renovation_group_links` (només creador/participants; **clau absent** per als altres); **`expelled_uids` no s'emet mai** | `group_link` opcional, `expelled_uids` absent |
@@ -1341,7 +1371,7 @@ Camps de text `region`/`departement` que avui poden ser `''` (38 refugis) passar
 
 ### 5.3 Receptes de consulta (esbós ORM; objectiu: cap N+1)
 
-Convencions: `RefugeMapPoint` i `VisitTotal` són els models `managed=False` de les vistes; `VisitTotal.visit = OneToOneField(RefugeVisit, primary_key=True, db_column='visit_id', related_name='totals', on_delete=DO_NOTHING)`. **La RLS filtra les files abans d'agregar**: mai usar `Sum/Count` sobre taules privades (`participants`, `votes`) per obtenir un total global; es fa servir la vista.
+Convencions: `VisitTotal` és el model `managed=False` de la vista; `VisitTotal.visit = OneToOneField(RefugeVisit, primary_key=True, db_column='visit_id', related_name='totals', on_delete=DO_NOTHING)`. **La RLS filtra les files abans d'agregar**: mai usar `Sum/Count` sobre taules privades (`participants`) per obtenir un total global; es fa servir la vista.
 
 **1. Detall de refugi (2 consultes; 3 per a admin)**
 ```python
@@ -1366,7 +1396,7 @@ user = (UserAccount.objects.select_related('public_profile').annotate(
           n_renovations=sub_count(Renovation, creator=OuterRef('pk')) + sub_count(RenovationParticipant, user=OuterRef('pk')),
         ).get(pk=uid))
 ```
-Per a un perfil **aliè**: només `UserPublicProfile` (`uid`, `username`, `avatar_*`); cap comptador ni llista (decisió del PO).
+Per a un perfil **aliè**: només `UserPublicProfile` (`uid`, `username`) + `UserAvatar`; cap comptador ni llista (decisió del PO).
 
 **3. Dubtes d'un refugi amb respostes (2 consultes)**
 ```python
@@ -1396,7 +1426,11 @@ SQL equivalent de la part de nom (usa `refuges_name_trgm_gin`; `similarity_thres
 
 **5. Llista de coordenades per al mapa (1 consulta, sense joins)**
 ```python
-RefugeMapPoint.objects.order_by('name', 'id').values('id', 'name', 'lat', 'lng', 'geohash')
+def geom(f): return Cast(F(f), GeometryField(srid=4326))
+Refuge.objects.annotate(lat=Func(geom('coord'), function='ST_Y', output_field=FloatField()),
+                        lng=Func(geom('coord'), function='ST_X', output_field=FloatField()),
+                        geohash=Func(geom('coord'), Value(5), function='ST_GeoHash', output_field=CharField())
+                        ).order_by('name', 'id').values('id', 'name', 'lat', 'lng', 'geohash')
 # per vista de mapa: .filter(coord__intersects=Polygon.from_bbox((w, s, e, n)))  (usa refuges_coord_gist)
 ```
 
@@ -1467,8 +1501,8 @@ Les rutes d'una feature migrada s'inclouen des d'`api/urls.py` (`path('refuges/'
 | App (`INSTALLED_APPS`) | Models → taula | Schema | Chunk |
 |---|---|---|---|
 | `apps.core` | — (funcions, rols, grants, helpers de migració) | `core` | 1 |
-| `apps.accounts` | `UserAccount` → `users.users`; `UserPublicProfile` → `users.user_public_profiles` (`0001`); `FavouriteRefuge`, `VisitedRefuge` (`0002`) | `users` | 2 / 3 |
-| `apps.refuges` | `Refuge`, `RefugeAmenities`, `RefugeLink`, `RefugeMedia`; no gestionat `RefugeMapPoint` | `refuges` | 2 (+7) |
+| `apps.accounts` | `Language` → `users.languages`; `UserAccount` → `users.users`; `UserPublicProfile` → `users.user_public_profiles`; `UserAvatar` → `users.user_avatars` (`0001`); `FavouriteRefuge`, `VisitedRefuge` (`0002`) | `users` | 2 / 3 |
+| `apps.refuges` | `RefugeType`, `Refuge`, `RefugeAmenities`, `RefugeLink`, `RefugeMedia` | `refuges` | 2 (+7) |
 | `apps.visits` | `RefugeVisit`, `VisitParticipant`; no gestionat `VisitTotal` | `activity` | 4 |
 | `apps.renovations` | `Renovation`, `RenovationGroupLink`, `RenovationParticipant`, `RenovationExpelled` | `activity` | 5 |
 | `apps.doubts` | `Doubt`, `Answer` | `activity` | 6 |
@@ -1484,8 +1518,8 @@ També cal a `INSTALLED_APPS`: `django.contrib.gis` i `django.contrib.postgres` 
 
 ```
 core.0001  (schemas, funcions, grants base, helpers)
-  └─ accounts.0001  (users + user_public_profiles)            ← abans de refuges: refuge_media.creator_uid → users
-       └─ refuges.0001  (refuges amb `condition`, amenities, links, media SENSE experience_id, vista refuge_map, RLS)
+  └─ accounts.0001  (languages + users + user_public_profiles + user_avatars)   ← abans de refuges: refuge_media.creator_uid → users
+       └─ refuges.0001  (refuge_types, refuges amb `condition`, amenities, links, media SENSE experience_id, RLS)
             ├─ accounts.0002   (favourites, visited)           ← chunk 3
             ├─ visits.0001 · renovations.0001 · doubts.0001    ← chunks 4/5/6 (paral·lels)
             └─ experiences.0001                                ← chunk 7
@@ -1515,6 +1549,8 @@ i la restricció real es crea a la migració amb `RunSQL` (amb `reverse_sql`), p
 | `user_favourite_refuges.user_uid` / `.refuge_id` | `users.users` / `refuges.refuges` | CASCADE / CASCADE |
 | `user_visited_refuges.user_uid` / `.refuge_id` | `users.users` / `refuges.refuges` | CASCADE / CASCADE |
 | `refuge_amenities.refuge_id`, `refuge_links.refuge_id` | `refuges.refuges` | CASCADE |
+| `user_avatars.user_uid` | `users.users` | CASCADE |
+| `users.language`, `refuges.type` | catàlegs `users.languages`, `refuges.refuge_types` | RESTRICT (no es pot treure un valor en ús) |
 | `refuge_media.refuge_id` / `.creator_uid` / `.experience_id` | `refuges.refuges` / `users.users` / `activity.experiences` | CASCADE / CASCADE / CASCADE |
 | `refuge_visits.refuge_id` | `refuges.refuges` | CASCADE |
 | `refuge_visit_participants.visit_id` / `.user_uid` | `activity.refuge_visits` / `users.users` | CASCADE / CASCADE |
@@ -1546,7 +1582,7 @@ i la restricció real es crea a la migració amb `RunSQL` (amb `reverse_sql`), p
 | GIN trigram sobre expressió | `GinIndex(OpClass(Func(F('name'), function='core.norm_name', output_field=TextField()), name='gin_trgm_ops'), name='refuges_name_trgm_gin')` |
 | Índex `INCLUDE` | `Index(fields=['refuge'], include=['value'], name=...)` |
 | FK composta (`answers`) | no suportada: `RunSQL` (§2.17), camp amb `db_constraint=False` |
-| Vistes | `managed = False`, `db_table = 'refuges"."refuge_map'` (idem `'activity"."refuge_visit_totals'`), `on_delete=DO_NOTHING` |
+| Vistes | `managed = False`, `db_table = 'activity"."refuge_visit_totals'`, `on_delete=DO_NOTHING` |
 | Funcions, triggers, polítiques, grants, vistes | `migrations.RunSQL(sql, reverse_sql)`; les polítiques passen per un helper de `apps.core` que **expandeix les macros** `{U}/{ADM}/{SYS}` |
 
 Esbós de `Meta` (no és codi final; fixa noms i tipus):
@@ -1611,10 +1647,12 @@ ALTER DEFAULT PRIVILEGES FOR ROLE migrator REVOKE EXECUTE ON FUNCTIONS FROM PUBL
 |---|---|---|---|---|---|
 | `users.users` | ✔ | ✔ | ✔ | ✔ | |
 | `users.user_public_profiles` | ✔ | ✔ | ✔ | — | esborrat només per cascada |
+| `users.user_avatars` | ✔ | ✔ | — | ✔ | canvi = `DELETE` + `INSERT` |
+| catàlegs `users.languages`, `refuges.refuge_types` | ✔ | — | — | — | només el `migrator` hi escriu |
 | `users.user_favourite_refuges`, `users.user_visited_refuges` | ✔ | ✔ | — | ✔ | |
 | `refuges.refuges`, `refuge_amenities`, `refuge_links` | ✔ | ✔ | ✔ | ✔ | escriure = només `{ADM}/{SYS}` per RLS |
 | `refuges.refuge_media` | ✔ | ✔ | ✔ | ✔ | |
-| vistes `refuge_map`, `refuge_visit_totals` | ✔ | — | — | — | |
+| vista `refuge_visit_totals` | ✔ | — | — | — | |
 | `activity.refuge_visits` | ✔ | ✔ | — | ✔ | |
 | `activity.refuge_visit_participants` | ✔ | ✔ | ✔ | ✔ | |
 | `activity.renovations`, `experiences` | ✔ | ✔ | ✔ | ✔ | |
@@ -1696,7 +1734,7 @@ Mai per llegir dades per a un usuari «per comoditat». Cada ús ha de tenir un 
 | `users.created_at` | data d'alta | prestació/auditoria | propi/admin | cascada |
 | `users.age_confirmed_at`, `age_threshold` | prova d'haver superat l'edat mínima (16) | obligació legal (art. 8 RGPD / LOPDGDD 7); **sense data de naixement** | propi/admin | cascada |
 | `users.moderation_strikes`, `is_blocked`, `blocked_reason`, `blocked_at` | estat de moderació | interès legítim / DSA (seguretat de la comunitat) | propi/admin | cascada |
-| `user_public_profiles.username`, `avatar_*` | nom d'usuari lliure (pot ser nom real) i imatge | consentiment/contracte; **lectura oberta per disseny** | públic | cascada + R2 via cua |
+| `user_public_profiles.username`, `user_avatars.*` | nom d'usuari lliure (pot ser nom real) i imatge | consentiment/contracte; **lectura oberta per disseny** | públic | cascada + R2 via cua |
 | `user_favourite_refuges`, `user_visited_refuges` | preferències i historial de llocs visitats (comportament/ubicació aproximada) | servei | només propi (visitats: + admin) | cascada |
 | `refuge_visit_participants` | dia previst i refugi on serà (dada de ubicació futura) | servei (ocupació) | només propi; totals anònims via vista | cascada; purga a 12 mesos (decisió 13) |
 | `renovations.creator_uid`; `renovation_group_links.group_link`; `renovation_participants`, `renovation_expelled` | autoria, enllaç a un grup privat (WhatsApp/Telegram), qui participa/ha estat expulsat | servei | `group_link`: només creador i participants (RLS); `expelled`: creador, expulsat, admin; autoria/participants: autenticats | vigents: **esborrar**; passades: `SET NULL` i el *trigger* **esborra** la fila de `renovation_group_links` |
@@ -1759,7 +1797,7 @@ COMMIT;
 **En esborrar un refugi** (aprovar una proposta `delete`; dins la mateixa transacció que el bloqueig de la proposta, després de **rebutjar** les altres propostes pendents d'aquell refugi):
 | Efecte | Taules |
 |---|---|
-| **Cascada** | `refuge_amenities`, `refuge_links`, `refuge_media` (→ cua d'R2), `refuge_visits` (→ participants), `renovations` (→ participants/expulsats), `experiences`, `doubts` (→ `answers`), `user_favourite_refuges`, `user_visited_refuges`, `upload_intents`, `media_reports` |
+| **Cascada** | `user_avatars` (→ cua d'R2), `refuge_amenities`, `refuge_links`, `refuge_media` (→ cua d'R2), `refuge_visits` (→ participants), `renovations` (→ participants/expulsats), `experiences`, `doubts` (→ `answers`), `user_favourite_refuges`, `user_visited_refuges`, `upload_intents`, `media_reports` |
 | **`SET NULL`** | `refuge_proposals.refuge_id`, `moderation_notices.refuge_id` |
 
 Això resol A5 (esborrar un refugi amb fotos d'experiències) i A6 (no atòmic).
@@ -1817,13 +1855,13 @@ def puntua_refugi(info):
 | `coord.long`, `coord.lat` | 1.542 `float`; lat 42,21–43,35, long −1,88–3,22 | `coord` | `Point(long, lat, srid=4326)` (**x = long**) |
 | `altitude` | 1.542 enters (30–3250) | `altitude` | directe (`CHECK 0–8848`) |
 | `places` | 1.137 enters (0–30), **405 `null`** | `places` | `null` → `NULL` (no 0) |
-| `type` | `non gardé` 1.143 · `fermée` 201 · `cabane ouverte mais ocupee par le berger l ete` 102 · `orri` 96 | `type` | directe (valida contra l'enum) |
+| `type` | `non gardé` 1.143 · `fermée` 201 · `cabane ouverte mais ocupee par le berger l ete` 102 · `orri` 96 | `type` | directe (FK al catàleg `refuges.refuge_types`) |
 | `description` | 1.542 `str` (39 buides) | `description` | `''` es manté; `null` → `''` |
-| `remarque` | **absent** | `remarque` | `''` |
+| `remarque` | **absent** als 1.542 | `remarque` | `NULL` |
 | `region`, `departement` | 1.369 `str` (38 `''`), 173 `null` | `region`, `departement` | `NULLIF(btrim(x), '')` ⇒ 211 `NULL` |
 | `modified_at` | 657 `'YYYY-MM-DD'`, **885 `null`** | `modified_at` | `date.fromisoformat`; `null` → `NULL` |
 | `info_comp` | 658 amb 12 claus, **884 amb només 8** (falten `couvertures`, `latrines`, `manque_un_mur`, `poele`); valors enters `0`/`1` | `refuge_amenities` (12 `boolean`) | `bool(v)`; clau absent → `false`; valor fora de {0,1} → registre invàlid |
-| `links` | 1.051×1, 449×2, 42×3 = **2.075** URLs (màx. 171 car., cap duplicat per refugi) | `refuge_links` | `position = índex` |
+| `links` | 1.051×1, 449×2, 42×3 = **2.075** URLs (màx. 171 car., cap URL repetida enlloc) | `refuge_links` | `url` PK, `position = índex` |
 | `info_couchage` (485), `info_eau` (139) | text lliure | — | **s'ignoren** (decisió del PLAN) |
 | *(condició)* | no és al JSON | `refuges.condition`, `num_contributed_conditions = 0` | `puntua_refugi(info_comp)` → **0 → 605 · 1 → 565 · 2 → 332 · 3 → 40** refugis (recalculat sobre el JSON; total màxim possible 9,5) |
 
@@ -1847,7 +1885,7 @@ classDiagram
         class users {
             <<table RLS>>
             varchar128 uid PK
-            varchar2 language NN default ca
+            varchar8 language FK NN default en
             timestamptz created_at NN
             timestamptz age_confirmed_at
             smallint age_threshold
@@ -1855,7 +1893,6 @@ classDiagram
             boolean is_blocked NN default false
             varchar blocked_reason
             timestamptz blocked_at
-            CHECK language in ca es en fr
             CHECK age_confirmed_at and age_threshold both null or both set
             CHECK strikes gte 0
             CHECK blocked reason and at only if is_blocked
@@ -1864,16 +1901,23 @@ classDiagram
             <<table RLS public read>>
             varchar128 uid PK FK
             varchar255 username NN default empty
-            text avatar_key UQ
-            text avatar_thumb_key
-            varchar avatar_content_type
-            int avatar_width
-            int avatar_height
-            bigint avatar_size_bytes
-            varchar avatar_blurhash
-            timestamptz avatar_uploaded_at
             timestamptz updated_at NN
-            CHECK avatar columns all or none
+        }
+        class languages {
+            <<catalog RLS public read>>
+            varchar8 code PK
+        }
+        class user_avatars {
+            <<table RLS public read>>
+            text key PK
+            varchar128 user_uid FK NN UQ
+            text thumb_key UQ
+            varchar content_type NN
+            int width
+            int height
+            bigint size_bytes
+            varchar blurhash
+            timestamptz uploaded_at NN
         }
         class user_favourite_refuges {
             <<table RLS>>
@@ -1899,11 +1943,11 @@ classDiagram
             uuid id PK
             varchar255 name NN
             varchar255 surname
-            varchar64 type NN default non gardé
+            varchar64 type FK NN default non gardé
             geography_Point_4326 coord NN GIST
             int altitude
             int places
-            text remarque NN
+            text remarque
             text description NN
             varchar255 region
             varchar255 departement
@@ -1912,7 +1956,6 @@ classDiagram
             int num_contributed_conditions NN default 0
             timestamptz condition_reset_at
             timestamptz created_at NN
-            CHECK type in 6 values
             CHECK condition 0 to 3
             CHECK n gte 0 and n gt 0 implies condition set
             CHECK altitude 0 to 8848
@@ -1935,14 +1978,16 @@ classDiagram
             boolean lits NN default false
             boolean mezzanine_etage NN default false
         }
+        class refuge_types {
+            <<catalog RLS public read>>
+            varchar64 code PK
+        }
         class refuge_links {
             <<table RLS public read>>
-            uuid id PK
+            text url PK
             uuid refuge_id FK NN
             smallint position NN
-            text url NN
             UQ refuge_id position deferred
-            UQ refuge_id url
             CHECK url http or https
         }
         class refuge_media {
@@ -1965,14 +2010,6 @@ classDiagram
             CHECK status in visible hidden_pending_review removed
             CHECK media_type in image video
         }
-        class refuge_map {
-            <<view>>
-            uuid id
-            varchar name
-            float lat
-            float lng
-            text geohash
-        }
     }
 
     namespace activity_schema {
@@ -1991,14 +2028,13 @@ classDiagram
             varchar128 user_uid FK NN
             int num_visitors NN
             timestamptz created_at NN
-            UQ visit_id user_uid include num_visitors
+            UQ visit_id user_uid
             CHECK num_visitors gte 1
         }
         class refuge_visit_totals {
             <<view>>
             uuid visit_id
             int total_visitors
-            int participants_count
         }
         class renovations {
             <<table RLS>>
@@ -2195,6 +2231,9 @@ classDiagram
     }
 
     users "1" --> "1" user_public_profiles : uid CASCADE
+    users "1" --> "0..1" user_avatars : user_uid CASCADE
+    languages "1" --> "0..*" users : language RESTRICT
+    refuge_types "1" --> "0..*" refuges : type RESTRICT
     users "1" --> "0..*" user_favourite_refuges : user_uid CASCADE
     users "1" --> "0..*" user_visited_refuges : user_uid CASCADE
     refuges "1" --> "0..*" user_favourite_refuges : refuge_id CASCADE
@@ -2205,7 +2244,6 @@ classDiagram
     refuges "1" --> "0..*" refuge_media : refuge_id CASCADE
     users "1" --> "0..*" refuge_media : creator_uid CASCADE
     experiences "0..1" --> "0..*" refuge_media : experience_id CASCADE
-    refuges ..> refuge_map : projected by
     refuge_visit_participants ..> refuge_visit_totals : aggregated by
 
     refuges "1" --> "0..*" refuge_visits : refuge_id CASCADE
@@ -2287,6 +2325,19 @@ Resposta del product owner a la primera versió d'aquesta secció (`PLAN.md`, «
 - **N2.** Les files `legal_hold` (denúncies i auditoria) es conserven **5 anys** després de la resolució/creació i després es purguen (§8.3); **pendent d'assessorament legal**.
 - **N3.** Les denúncies `legal_hold` **no** cauen en cascada en esborrar un refugi: *trigger* `BEFORE DELETE` a `refuges` (`refuge_id := NULL`, es conserva `media_key`); la resta continuen en cascada (§2.20).
 
+### Revisió de les taules pel PO (24/10, tarda)
+| # | Tema | Decisió |
+|---|---|---|
+| R-1 | Idioma | catàleg `users.languages` + FK (obert-tancat); valor per defecte `'en'` (§2.1, §2.1.1). |
+| R-2 | Tipus de refugi | catàleg `refuges.refuge_types` + FK, en lloc del `CHECK` (§2.5.1). Els estats interns continuen amb `CHECK`. |
+| R-3 | Avatar | taula pròpia `users.user_avatars`, PK `key`, `UNIQUE (user_uid)` (§2.2.1). |
+| R-4 | Enllaços | `refuge_links` amb PK `url`, sense `id` (§2.7). |
+| R-5 | `remarque` | nullable; el buit es desa com a `NULL` (§2.5). |
+| R-6 | Vista `refuge_map` | eliminada: consulta directa a `refuges` (§4.1, §5.3). |
+| R-7 | `participants_count` | eliminat de `refuge_visit_totals` (el frontend només usa `total_visitors`). |
+| R-8 | Participants de visites | `UNIQUE (visit_id, user_uid)` sense `INCLUDE (num_visitors)`. |
+| R-9 | PK compostes | **ajornades** fins a Django 5.2 (`TECH_DEBT` R14): preferits, visitats, participants i expulsats de reformes, visites i participants de visites mantenen `id` + `UNIQUE`. Preferits i visitats **conserven `created_at`** (ordre d'afegit). |
+
 ---
 
 ## 12. Canvis de contracte per al frontend
@@ -2296,9 +2347,10 @@ Resum dels canvis de l'API respecte a l'actual (els que no hi són, es mantenen)
 2. **`GET /users/{uid}/` d'un altre usuari**: només `uid`, `username`, `avatar_metadata` (chunk 3).
 3. **Experiències**: `condition` (enter 0–3) **obligatòria** al `POST` (opcional al `PATCH`, el client l'envia sempre) i present a les respostes (chunk 7).
 4. **Reformes**: `group_link` només present per a creador i participants (clau absent per als altres); **`expelled_uids` no es retorna mai**; unir-se a una reforma on s'ha estat expulsat retorna error sense revelar la llista; es permeten reformes d'un sol dia (chunk 5).
-5. **Refugis**: `surname` **no s'emet** (tampoc a la llista de coordenades); `condition` continua sent un enter arrodonit o `null`; el filtre `condition` accepta 0–3; `visitors` només per a admins (`[]` per als altres); `remarque`/`description` mai `null`; `region`/`departement` buits passen a `null`; `places` pot ser `null` a les llistes de preferits/visitats; la cerca per nom és parcial i sense accents.
+5. **Refugis**: `surname` **no s'emet** (tampoc a la llista de coordenades); `condition` continua sent un enter arrodonit o `null`; el filtre `condition` accepta 0–3; `visitors` només per a admins (`[]` per als altres); `remarque` pot ser `null` (cap refugi carregat en té); `description` mai `null`; `region`/`departement` buits passen a `null`; `places` pot ser `null` a les llistes de preferits/visitats; la cerca per nom és parcial i sense accents.
 6. **Identificadors**: tots els IDs són UUID v7 en forma de *string* opac (inclosos els de denúncies); un id mal format dona 404.
 7. **Límits nous**: `info_comp` només 0/1; `num_visitors` ≤ 500; `comment` de proposta ≤ 4000; `rejection_reason` ≤ 2000.
 8. **Propostes aprovades amb `condition`** reinicien la mitjana (`c = valor`); esborrar una experiència o un compte no la modifica; esborrar una resposta esborra les seves filles.
 9. **Visites**: les de més de 12 mesos desapareixen de `GET /users/{uid}/visits/`.
 10. Format de dates i resta de formes JSON sense canvis (`Europe/Madrid`).
+11. **Usuaris**: si `POST /users/` no porta `language`, el valor per defecte passa de `'ca'` a `'en'` (el frontend ja l'envia sempre en registrar-se); els idiomes vàlids són els del catàleg `users.languages` (chunk 3).
