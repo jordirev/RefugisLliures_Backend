@@ -7,9 +7,9 @@ import uuid
 import pytest
 from django.contrib.gis.geos import Point
 from django.contrib.gis.measure import D
-from django.db import IntegrityError, connection, transaction
+from django.db import DataError, IntegrityError, connection, transaction
 
-from api.tests.refuges.helpers import (
+from apps.refuges.tests.helpers import (
     AMENITY_FIELDS, REFUGE_TYPES, QueryCounter, account_models, make_media, make_refuge, make_user, refuge_models)
 from apps.core.rls import rls_context, system_context
 
@@ -168,14 +168,16 @@ def test_mateixa_url_en_refugis_diferents_es_permesa(RM):
 # ---------- FK reals ----------
 
 def test_amenities_amb_refugi_inexistent_falla_en_comprovar_les_fk(RM):
+    orphan = uuid.uuid4()
     with system_context():
-        RM.RefugeAmenities.objects.create(refuge_id=uuid.uuid4())
+        RM.RefugeAmenities.objects.create(refuge_id=orphan)
         with pytest.raises(IntegrityError):
             with transaction.atomic():
                 with connection.cursor() as cur:
                     cur.execute('SET CONSTRAINTS ALL IMMEDIATE')
         with connection.cursor() as cur:
             cur.execute('SET CONSTRAINTS ALL DEFERRED')
+        RM.RefugeAmenities.objects.filter(pk=orphan).delete()    # el teardown de pytest-django comprova les FK
 
 
 def test_media_amb_creador_inexistent_falla(RM):
@@ -232,7 +234,7 @@ def test_esborrar_un_usuari_cascadeja_el_perfil_i_els_seus_mitjans_sense_que_la_
 def _media(RM, refuge, **kw):
     base = dict(key=f'k/{uuid.uuid4()}.webp', refuge=refuge, creator_id='u1', media_type='image',
                 content_type='image/webp', status='visible')
-    from api.tests.refuges.helpers import T0
+    from apps.refuges.tests.helpers import T0
     base.update(uploaded_at=T0, rights_confirmed_at=T0)
     base.update(kw)
     with system_context():
@@ -297,7 +299,10 @@ def test_check_constraints_d_usuaris(kw):
     def go():
         with system_context():
             am.UserAccount.objects.create(**kw)
-    _fails(go)
+    # `uid` de 129 caràcters: el `varchar(128)` el rebutja abans que el CHECK (DataError, no IntegrityError)
+    with pytest.raises((IntegrityError, DataError)):
+        with transaction.atomic():
+            go()
 
 
 def test_usuari_per_defecte():

@@ -1,12 +1,13 @@
 """
-Comanda `load_refuges` (§9): càrrega idempotent de `api/utils/final_data_refuges.json` amb el rol propietari.
+Comanda `load_refuges` (§9): càrrega **d'un sol ús** de `api/utils/final_data_refuges.json` amb el rol propietari.
 
-    python manage.py load_refuges [--json PATH] [--dry-run] [--overwrite] [--database ALIAS]
+    python manage.py load_refuges [--json PATH] [--dry-run] [--database ALIAS]
 
-Contracte: comanda a `api/management/commands/load_refuges.py` (la resta de comandes viuen a `api/`), amb el codi de
-domini a `domain/refuges/loader.py` (`puntua_refugi`). L'alias per defecte és `migrator` (el disseny deia
-`neon_migrator`, ara renomenat); aquests tests sempre el passen explícit. Fa `COMMIT` de debò (connexió
-`migrator`), per això usen la fixture `wipe_catalog`, que neteja abans i després.
+Contracte (respostes del PO): la comanda i `puntua_refugi` viuen a `apps/refuges/management/commands/load_refuges.py`;
+**no hi ha `--overwrite`** i, si ja hi ha refugis a la BD, acaba amb `CommandError` sense escriure res (els antics
+tests d'idempotència i d'`--overwrite` ara proven aquest error). L'alias per defecte és `migrator`; aquests tests
+sempre el passen explícit. Fa `COMMIT` de debò (connexió `migrator`), per això usen la fixture `wipe_catalog`, que
+neteja abans i després.
 """
 import json
 from collections import Counter
@@ -16,8 +17,8 @@ import pytest
 from django.core.management import call_command
 from django.core.management.base import CommandError
 
-from api.tests.conftest import fetch_all, fetch_one
-from api.tests.refuges.helpers import AMENITY_FIELDS, JSON_PATH, load_json
+from apps.core.testing import fetch_all, fetch_one
+from apps.refuges.tests.helpers import AMENITY_FIELDS, JSON_PATH, load_json
 
 pytestmark = [pytest.mark.db_infra, pytest.mark.integration]
 
@@ -102,7 +103,7 @@ def test_condicio_inicial_amb_n_zero_i_distribucio_del_disseny(full, mig):
 
 def test_cada_refugi_es_correspon_amb_el_json(full, mig):
     """Compara camp a camp tots els refugis, amenities i enllaços amb el JSON (clau natural nom+coord)."""
-    from apps.refuges.loader import puntua_refugi
+    from apps.refuges.management.commands.load_refuges import puntua_refugi
     cols = ', '.join(f'a.{f}' for f in AMENITY_FIELDS)
     rows = fetch_all(mig, f"""
         SELECT r.name, ST_Y(r.coord::geometry), ST_X(r.coord::geometry), r.surname, r.type, r.altitude, r.places,
@@ -162,13 +163,14 @@ def test_geohash_de_la_vista_coincideix_amb_generate_simple_geohash(full, mig):
     assert bad == [], f'{len(bad)} geohash difereixen, p. ex. {bad[:3]}'
 
 
-def test_segona_execucio_es_idempotent(full, mig):
+def test_segona_execucio_es_rebutjada_sense_escriure_res(full, mig):
+    """Càrrega d'un sol ús (resposta 1 del PO): amb refugis a la BD, `CommandError` i cap canvi."""
     before = counts(mig)
     ids_before = {r[0] for r in fetch_all(mig, 'SELECT id FROM refuges.refuges')}
-    report = run()
+    with pytest.raises(CommandError, match='ja té refugis'):
+        run()
     assert counts(mig) == before
     assert {r[0] for r in fetch_all(mig, 'SELECT id FROM refuges.refuges')} == ids_before, 'els ids no canvien'
-    assert '0' in report                                               # «0 nous»
 
 
 def test_els_ids_son_uuid_v7(full, mig):
@@ -188,10 +190,10 @@ def test_dry_run_no_escriu_res(wipe_catalog, json_file):
     assert '2' in report                                               # informa del que carregaria
 
 
-def test_dry_run_despres_de_carregar_no_canvia_res(wipe_catalog, json_file):
-    p = json_file([record('A')])
-    run(json_path=p)
-    run('--dry-run', json_path=json_file([record('A'), record('B', lat=43)], 'b.json'))
+def test_dry_run_amb_refugis_a_la_bd_tambe_es_rebutjat(wipe_catalog, json_file):
+    run(json_path=json_file([record('A')]))
+    with pytest.raises(CommandError, match='ja té refugis'):
+        run('--dry-run', json_path=json_file([record('A'), record('B', lat=43)], 'b.json'))
     assert counts(wipe_catalog)['refuges'] == 1
 
 
@@ -215,16 +217,15 @@ def test_amenities_absents_valen_fals_i_valors_0_1_es_conserven(wipe_catalog, js
     assert got == (True, False, False)
 
 
-def test_no_duplica_un_refugi_ja_existent_per_clau_natural(wipe_catalog, json_file):
-    """La clau és (nom, lat, long) arrodonida a 6 decimals; l'id preexistent es manté."""
+def test_un_refugi_preexistent_bloqueja_la_carrega_sense_escriure_res(wipe_catalog, json_file):
+    """Ja no es identifiquen refugis per clau natural: qualsevol refugi a la BD atura la càrrega."""
     from apps.refuges.models import Refuge
     from django.contrib.gis.geos import Point
     pre = Refuge.objects.using('migrator').create(name='Cabane A', coord=Point(1.5, 42.5, srid=4326))
-    report = run(json_path=json_file([record('Cabane A'), record('Cabane B', lat=43)]))
-    ids = [r[0] for r in fetch_all(wipe_catalog, "SELECT id FROM refuges.refuges WHERE name = 'Cabane A'")]
-    assert ids == [pre.pk]
-    assert counts(wipe_catalog)['refuges'] == 2
-    assert counts(wipe_catalog)['refuge_links'] == 2, 'enllaços només per als refugis nous'
+    with pytest.raises(CommandError, match='ja té refugis'):
+        run(json_path=json_file([record('Cabane A'), record('Cabane B', lat=43)]))
+    assert [r[0] for r in fetch_all(wipe_catalog, 'SELECT id FROM refuges.refuges')] == [pre.pk]
+    assert counts(wipe_catalog) == {'refuges': 1, 'refuge_amenities': 0, 'refuge_links': 0, 'refuge_media': 0}
 
 
 def test_mateix_nom_i_altres_coordenades_son_refugis_diferents(wipe_catalog, json_file):
@@ -232,40 +233,23 @@ def test_mateix_nom_i_altres_coordenades_son_refugis_diferents(wipe_catalog, jso
     assert counts(wipe_catalog)['refuges'] == 2
 
 
-def test_per_defecte_no_trepitja_els_canvis_fets_via_propostes(wipe_catalog, json_file):
-    p = json_file([record('A')])
-    run(json_path=p)
-    with wipe_catalog.cursor() as cur:
-        cur.execute("UPDATE refuges.refuges SET altitude = 9, description = 'editat', "
-                    "condition = 2, num_contributed_conditions = 5")
-        cur.execute("DELETE FROM refuges.refuge_links")
-    run(json_path=p)
-    assert fetch_one(wipe_catalog, 'SELECT altitude, description, condition, num_contributed_conditions '
-                                   'FROM refuges.refuges') == (9, 'editat', 2.0, 5)
-    assert counts(wipe_catalog)['refuge_links'] == 0, 'només es creen enllaços per als refugis nous'
+def test_la_comanda_no_accepta_overwrite(wipe_catalog, json_file):
+    """Resposta 1 del PO: no hi ha `--overwrite` (no es poden trepitjar les edicions fetes via propostes)."""
+    with pytest.raises(CommandError):
+        run('--overwrite', json_path=json_file([record('A')]))
+    assert counts(wipe_catalog)['refuges'] == 0
 
 
-def test_overwrite_restaura_els_camps_del_loader_sense_duplicar_ni_canviar_l_id(wipe_catalog, json_file):
-    p = json_file([record('A')])
-    run(json_path=p)
-    pk = fetch_one(wipe_catalog, 'SELECT id FROM refuges.refuges')[0]
-    with wipe_catalog.cursor() as cur:
-        cur.execute("UPDATE refuges.refuges SET altitude = 9, description = 'editat'")
-    run('--overwrite', json_path=p)
-    assert fetch_one(wipe_catalog, 'SELECT id, altitude, description FROM refuges.refuges') == (pk, 1500, 'desc')
-    assert counts(wipe_catalog)['refuges'] == 1
-
-
-def test_no_toca_els_mitjans_existents(wipe_catalog, json_file):
-    from api.tests.refuges.helpers import T0
-    p = json_file([record('A')])
-    run(json_path=p)
+def test_no_toca_els_mitjans_ni_els_usuaris_existents_si_la_carrega_es_rebutjada(wipe_catalog, json_file):
+    from apps.refuges.tests.helpers import T0
+    run(json_path=json_file([record('A')]))
     with wipe_catalog.cursor() as cur:
         cur.execute("INSERT INTO users.users (uid) VALUES ('u1')")
         cur.execute("INSERT INTO refuges.refuge_media (key, refuge_id, creator_uid, media_type, content_type, "
                     "status, uploaded_at, rights_confirmed_at) SELECT 'k.webp', id, 'u1', 'image', 'image/webp', "
                     "'visible', %s, %s FROM refuges.refuges", [T0, T0])
-    run('--overwrite', json_path=p)
+    with pytest.raises(CommandError):
+        run(json_path=json_file([record('B', lat=43)], 'b.json'))
     assert counts(wipe_catalog)['refuge_media'] == 1
 
 

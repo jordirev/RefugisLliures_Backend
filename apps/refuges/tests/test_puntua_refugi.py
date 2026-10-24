@@ -2,7 +2,8 @@
 `puntua_refugi(info_comp)` (§9.1): valor inicial de la condició del refugi en la càrrega (substitueix
 `assign_conditions`/`determine_condition`). Funció pura, sense BD.
 
-Contracte: `apps.refuges.loader.puntua_refugi(info) -> (nota, total)` amb `nota` enter 0-3 i `total` el punt brut
+Contracte: `puntua_refugi(info) -> (nota, total)` viu al mòdul de la comanda
+(`apps.refuges.management.commands.load_refuges`, decisió del PO), amb `nota` enter 0-3 i `total` el punt brut
 (màxim 9,5). Les claus que falten valen 0.
 """
 import importlib
@@ -10,14 +11,14 @@ from collections import Counter
 
 import pytest
 
-from api.tests.refuges.helpers import AMENITY_FIELDS, load_json
+from apps.refuges.tests.helpers import AMENITY_FIELDS, load_json
 
 pytestmark = [pytest.mark.unit]
 
 
 @pytest.fixture(scope='module')
 def puntua():
-    return importlib.import_module('apps.refuges.loader').puntua_refugi
+    return importlib.import_module('apps.refuges.management.commands.load_refuges').puntua_refugi
 
 
 FULL = {'lits': 1, 'matelas': 1, 'couvertures': 1, 'eau': 1, 'latrines': 1, 'poele': 1, 'bois': 1}
@@ -29,7 +30,7 @@ FULL = {'lits': 1, 'matelas': 1, 'couvertures': 1, 'eau': 1, 'latrines': 1, 'poe
     ({'cheminee': 1}, 0, 1),
     ({'cheminee': 1, 'bois': 1}, 0, 1.5),            # la llenya suma 0,5 només si hi ha foc
     ({'bois': 1}, 0, 0),                             # llenya sense foc: no suma
-    ({'poele': 1, 'cheminee': 1, 'bois': 1}, 0, 2),  # escalfor topa a 2
+    ({'poele': 1, 'cheminee': 1, 'bois': 1}, 1, 2),  # escalfor topa a 2 → 2/9,5·3 = 0,63 → 1
     ({'couchage': 1, 'eau': 1}, 1, 4),               # 1,5 + 2,5 = 4 → 1,26 → 1
     ({'lits': 1}, 1, 3),                             # 3/9,5·3 = 0,95 → 1
     ({'bas_flancs': 1, 'matelas': 1}, 1, 3),

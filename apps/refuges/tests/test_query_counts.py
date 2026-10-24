@@ -6,7 +6,7 @@ constants: no depenen del nombre de refugis, enllaços o mitjans.
 """
 import pytest
 
-from api.tests.refuges.helpers import (
+from apps.refuges.tests.helpers import (
     QueryCounter, admin_claims, api_delete, api_get, make_media, make_refuge, make_user, user_claims)
 
 pytestmark = [pytest.mark.db_infra, pytest.mark.django_db, pytest.mark.views, pytest.mark.integration]

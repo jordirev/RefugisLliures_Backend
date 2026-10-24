@@ -3,7 +3,7 @@ from unittest.mock import patch
 
 import pytest
 
-from api.tests.refuges.helpers import refuge_models
+from apps.refuges.tests.helpers import refuge_models
 
 
 @pytest.fixture(autouse=True)

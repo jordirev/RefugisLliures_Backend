@@ -3,13 +3,13 @@ Contracte HTTP del domini refugi contra Postgres real (rol `app`, RLS activa): `
 `GET /api/refuges/{id}/`, `GET /api/refuges/{id}/media/` i `DELETE /api/refuges/{id}/media/{key}/`.
 
 La forma JSON és la d'avui (IDs string, `coord: {lat, long}`, `info_comp` com a enters 0/1…): el frontend no canvia.
-Les vistes continuen a `api/views` i criden el domini nou; no hi ha cap accés a Firestore (el conftest el bloqueja).
+Les vistes viuen a `apps/refuges/views.py`; no hi ha cap accés a Firestore (el conftest el bloqueja).
 """
 import uuid
 
 import pytest
 
-from api.tests.refuges.helpers import (
+from apps.refuges.tests.helpers import (
     AMENITY_FIELDS, BASE_KEYS, MEDIA_ITEM_KEYS, admin_claims, api_delete, api_get, make_media, make_refuge,
     make_user, user_claims)
 from apps.core.rls import rls_context
@@ -92,7 +92,7 @@ def test_detall_autenticat_afegeix_images_metadata(client, refuge):
     (item,) = d['images_metadata']
     assert set(item) == MEDIA_ITEM_KEYS
     assert item['key'].endswith('a.webp') and item['url'].startswith('https://r2.test/')
-    assert item['thumb_url'].endswith('a_thumb.webp')
+    assert item['thumb_url'].endswith('a_thumb.webp?sig=1')
     assert (item['media_type'], item['width'], item['height'], item['blurhash']) == ('image', 800, 600, 'LEHV6n')
     assert item['creator_uid'] == 'u1' and item['experience_id'] is None and item['taken_at'] is None
     assert item['uploaded_at'] is not None

@@ -7,8 +7,8 @@ es prova a `test_constraints.py` i `test_rls.py` amb el rol `app`.
 """
 import pytest
 
-from api.tests.conftest import fetch_all, fetch_one
-from api.tests.refuges.helpers import AMENITY_FIELDS, account_models
+from apps.core.testing import fetch_all, fetch_one
+from apps.refuges.tests.helpers import AMENITY_FIELDS, account_models
 
 pytestmark = [pytest.mark.db_infra, pytest.mark.integration]
 
@@ -33,7 +33,7 @@ def test_migracions_0001_aplicades_pel_migrator(migrator_db, app):
                      [app])[0] == 1
 
 
-def test_apps_declarades_com_a_domain(settings):
+def test_apps_declarades_a_installed_apps(settings):
     assert 'apps.accounts' in settings.INSTALLED_APPS
     assert 'apps.refuges' in settings.INSTALLED_APPS
 
@@ -47,8 +47,8 @@ def test_la_migracio_de_refuges_depen_d_accounts():
     assert any(app == 'accounts' for app, _ in parents)
 
 
-def test_models_i_migracions_sincronitzats():
-    """`makemigrations --check`: cap canvi de model pendent de migrar."""
+def test_models_i_migracions_sincronitzats(migrator_db):
+    """`makemigrations --check`: cap canvi de model pendent de migrar (llegeix `django_migrations`: cal la BD)."""
     from django.core.management import call_command
     try:
         call_command('makemigrations', 'accounts', 'refuges', check=True, dry_run=True, verbosity=0)

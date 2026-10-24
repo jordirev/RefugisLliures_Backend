@@ -5,7 +5,7 @@ condició sobre `core.round_half_even(condition)` (0-3) i ús dels índexs GIN/G
 import pytest
 from django.db import connection
 
-from api.tests.refuges.helpers import QueryCounter, api_get, make_media, make_refuge, make_user, user_claims
+from apps.refuges.tests.helpers import QueryCounter, api_get, make_media, make_refuge, make_user, user_claims
 
 pytestmark = [pytest.mark.db_infra, pytest.mark.django_db, pytest.mark.views, pytest.mark.integration]
 
@@ -188,7 +188,7 @@ def _explain(sql, params=None):
 
 
 def test_el_gin_trigram_s_usa_per_a_la_similitud_del_nom(named):
-    plan = _explain("SELECT id FROM refuges.refuges WHERE core.norm_name(name) % core.norm_name(%s)", ['colomers'])
+    plan = _explain("SELECT id FROM refuges.refuges WHERE core.norm_name(name) %% core.norm_name(%s)", ['colomers'])
     assert 'refuges_name_trgm_gin' in plan, plan
 
 

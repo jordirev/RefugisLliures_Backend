@@ -4,8 +4,8 @@ forma de `coord`/`info_comp`, camps ocults per a anònims i filtres de cerca (la
 """
 import pytest
 
-from api.serializers.refugi_lliure_serializer import RefugiSearchFiltersSerializer, RefugiSerializer
-from api.tests.refuges.helpers import AMENITY_FIELDS, BASE_KEYS
+from apps.refuges.serializers import RefugiSearchFiltersSerializer, RefugiSerializer
+from apps.refuges.tests.helpers import AMENITY_FIELDS, BASE_KEYS
 
 pytestmark = [pytest.mark.unit, pytest.mark.serializers]
 
@@ -85,7 +85,7 @@ def test_filtre_type_llista_i_validacio():
 
 
 def test_filtre_type_accepta_tots_els_valors_del_disseny():
-    from api.tests.refuges.helpers import REFUGE_TYPES
+    from apps.refuges.tests.helpers import REFUGE_TYPES
     ok, s = validate(type=','.join(REFUGE_TYPES))
     assert ok, s.errors
 
