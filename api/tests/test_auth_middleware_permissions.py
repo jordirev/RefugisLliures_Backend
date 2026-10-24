@@ -16,7 +16,7 @@ from api.authentication import FirebaseAuthentication
 from api.permissions import (
     is_firebase_admin, IsOwnerOrReadOnly, IsSameUser, SafeMethodsOnly,
     IsFirebaseAdmin, IsExperienceCreator, IsRenovationCreator,
-    IsMediaUploader, IsDoubtCreator, IsAnswerCreator
+    IsDoubtCreator, IsAnswerCreator
 )
 
 
@@ -708,67 +708,6 @@ class TestPermissionsExtended:
             
             mock_dao.get_renovation_by_id.return_value = {'creator_uid': 'user_2'}
             assert perm.has_object_permission(request, view, obj) is False
-
-    @patch('api.permissions.firestore_service')
-    def test_is_media_uploader(self, mock_firestore):
-        """Test IsMediaUploader"""
-        perm = IsMediaUploader()
-        request = MagicMock()
-        view = MagicMock()
-        
-        # Not authenticated
-        request.user.is_authenticated = False
-        assert perm.has_permission(request, view) is False
-        
-        # Authenticated, Safe Method
-        request.user.is_authenticated = True
-        request.method = 'GET'
-        assert perm.has_permission(request, view) is True
-        
-        # Non-safe method, missing params
-        request.method = 'DELETE'
-        view.kwargs = {}
-        assert perm.has_permission(request, view) is True
-        
-        # Admin
-        view.kwargs = {'id': 'ref_1', 'key': 'media_1'}
-        request.user.uid = 'admin_1'
-        request.user_claims = {'role': 'admin'}
-        assert perm.has_permission(request, view) is True
-        
-        # Owner check
-        request.user_claims = {}
-        request.user.claims = {}
-        request.user.uid = 'user_1'
-        
-        mock_db = mock_firestore.get_db.return_value
-        mock_doc = mock_db.collection.return_value.document.return_value.get.return_value
-        mock_doc.exists = True
-        mock_doc.to_dict.return_value = {
-            'media_metadata': {
-                'media_1': {'creator_uid': 'user_1'}
-            }
-        }
-        assert perm.has_permission(request, view) is True
-        
-        mock_doc.to_dict.return_value = {
-            'media_metadata': {
-                'media_1': {'creator_uid': 'user_2'}
-            }
-        }
-        assert perm.has_permission(request, view) is False
-        
-        # Refugi without media_metadata
-        mock_doc.to_dict.return_value = {'media_metadata': {}}
-        assert perm.has_permission(request, view) is False
-        
-        # Media key not in metadata
-        mock_doc.to_dict.return_value = {'media_metadata': {'other_media': {}}}
-        assert perm.has_permission(request, view) is False
-        
-        # Exception in IsMediaUploader
-        mock_db.collection.side_effect = Exception("DB Error")
-        assert perm.has_permission(request, view) is False
 
     @patch('api.controllers.doubt_controller.DoubtController')
     def test_is_doubt_creator(self, mock_controller_class):

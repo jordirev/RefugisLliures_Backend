@@ -13,12 +13,12 @@ jobs:
     strategy:
       max-parallel: 4
       matrix:
-        python-version: ["3.10"]
+        python-version: ["3.14"]
 
-    # PostgreSQL + PostGIS efímer per als tests (mateixa versió major que Neon).
+    # PostgreSQL + PostGIS efímer per als tests (mateixa versió major que Neon: 18, per a DEFAULT uuidv7()).
     services:
       postgres:
-        image: postgis/postgis:17-3.5
+        image: postgis/postgis:18-3.6
         env:
           POSTGRES_PASSWORD: postgres
         ports:
@@ -32,7 +32,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v3
+      uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
 

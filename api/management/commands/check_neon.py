@@ -1,9 +1,17 @@
 """
 Management command per verificar la connexió a Neon (Postgres) i el funcionament de PostGIS.
 Només fa servir una taula temporal: no deixa res a la base de dades.
+
+Es connecta sempre a les URL de Neon (`DATABASE_URL_APP` / `DATABASE_URL_MIGRATOR`), encara que hi hagi
+`TEST_DATABASE_URL_*` definides: aquestes tenen prioritat a `DATABASES` (apunten al Postgres local de proves) i,
+si la comanda usés `connections[alias]`, comprovaria el Docker local en lloc de Neon.
 """
+import psycopg
 from django.core.management.base import BaseCommand, CommandError
-from django.db import connections
+
+from refugis_lliures import settings as project_settings
+
+NEON_URL_VARS = {'default': 'DATABASE_URL_APP', 'migrator': 'DATABASE_URL_MIGRATOR'}
 
 
 class Command(BaseCommand):
@@ -11,14 +19,24 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument('--alias', default='migrator', choices=['default', 'migrator'],
-                            help="Alias de DATABASES a provar (per defecte el rol migrator, endpoint directe)")
+                            help="Rol a provar: default = app (pooler), migrator = migrator (endpoint directe; per defecte)")
 
     def handle(self, *args, **options):
         alias = options['alias']
-        if alias not in connections.databases:
-            raise CommandError(f"L'alias '{alias}' no existeix: falta DATABASE_URL_APP / DATABASE_URL_MIGRATOR a env/.env.*")
+        url_var = NEON_URL_VARS[alias]
+        db = project_settings._postgres_database((url_var,), pooled=alias == 'default', atomic_requests=False)
+        if not db:
+            raise CommandError(f'Falta {url_var} a env/.env.*')
 
-        with connections[alias].cursor() as cur:
+        params = {k: v for k, v in db['OPTIONS'].items() if k != 'prepare_threshold'}
+        try:
+            conn = psycopg.connect(dbname=db['NAME'], user=db['USER'], password=db['PASSWORD'], host=db['HOST'],
+                                   port=db['PORT'], prepare_threshold=None, autocommit=True, **params)
+        except psycopg.Error as exc:
+            raise CommandError(f"No s'ha pogut connectar a {db['HOST']} ({url_var}): {type(exc).__name__}") from None
+
+        with conn, conn.cursor() as cur:
+            self.stdout.write(f"Servidor: {db['HOST']} ({url_var})")
             cur.execute('SHOW server_version')
             self.stdout.write(f'Postgres: {cur.fetchone()[0]}')
 
@@ -66,8 +84,11 @@ class Command(BaseCommand):
             db_create, public_create = cur.fetchone()
         else:
             db_create = public_create = False
+        cur.execute("SHOW server_version_num")
+        pg18 = int(cur.fetchone()[0]) >= 180000
         for ok, msg in ((not missing, f'extensions que falten: {sorted(missing)}'),
                         (db_create, 'falta GRANT CREATE ON DATABASE (core.0001 no podra crear els schemas)'),
-                        (public_create, 'falta GRANT CREATE ON SCHEMA public (PG15+: Django no podra crear django_migrations)')):
+                        (public_create, 'falta GRANT CREATE ON SCHEMA public (PG15+: Django no podra crear django_migrations)'),
+                        (pg18, 'cal Postgres 18 (DEFAULT uuidv7(), postgres-schema.md §1.4)')):
             if not ok:
                 self.stdout.write(self.style.WARNING(f'Bootstrap incomplet: {msg}'))

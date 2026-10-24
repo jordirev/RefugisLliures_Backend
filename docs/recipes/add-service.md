@@ -1,5 +1,8 @@
 # Recepta — Afegir un servei nou (`api/services/`)
 
+> ## Features migrades a PostgreSQL: `services.py` per feature
+> A les apps `apps/<feature>/` el **service** de la feature (`services.py`) és el lloc de la lògica d'escriptura (substitueix el controller): funcions amb arguments *keyword-only* i `transaction.atomic()`, que llancen excepcions de domini; les lectures van a `selectors.py`. Exemple: `apps/refuges/services.py: delete_media` (fila + R2; si `R2MediaService.delete_file` retorna `False`, es desfà l'esborrat de la fila amb el `savepoint`). Els serveis **transversals** (R2, Firestore, audit) continuen a `api/services/` i es criden des del service de la feature; no hi posis cache de dades.
+
 > Un "servei" aquí és una peça transversal o una integració externa (Firestore, cache, R2, càlcul de condició). La lògica de negoci d'un domini va al **controller**, no a un servei.
 
 ## Patrons existents [FET]

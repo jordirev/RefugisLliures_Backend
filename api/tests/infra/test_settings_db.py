@@ -43,7 +43,7 @@ def test_sense_urls_es_manté_sqlite_per_als_tests_amb_mocks():
 @pytest.mark.unit
 def test_apps_de_domini_i_gis_a_installed_apps():
     r = _settings_en_subproces({})
-    for app in ('domain.core', 'django.contrib.gis', 'django.contrib.postgres'):
+    for app in ('apps.core', 'django.contrib.gis', 'django.contrib.postgres'):
         assert app in r['apps']
 
 

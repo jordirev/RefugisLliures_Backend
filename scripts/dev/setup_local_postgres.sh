@@ -73,6 +73,18 @@ ALTER ROLE app      LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBY
 ALTER ROLE app SET statement_timeout = '20s';
 ALTER ROLE app SET lock_timeout = '5s';
 ALTER ROLE app SET idle_in_transaction_session_timeout = '30s';
+-- NOMÉS a les BD de proves (mai a Neon): rol test_fixtures per preparar dades que app no pot escriure (el catàleg
+-- de refugis no té grants d'escriptura per a app fins al chunk 8). Els tests hi fan SET ROLE test_fixtures dins la
+-- seva transacció (apps/refuges/tests/helpers.py: as_owner). INHERIT FALSE: app no n'hereta cap privilegi, de
+-- manera que la RLS i els grants d'app que proven els tests no canvien; tampoc pot assumir migrator (PG16+).
+DO \$\$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'test_fixtures') THEN
+    CREATE ROLE test_fixtures NOLOGIN;
+  END IF;
+END \$\$;
+ALTER ROLE test_fixtures NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE BYPASSRLS;
+GRANT test_fixtures TO app WITH INHERIT FALSE, SET TRUE;
 SQL
 
 # --- Base de dades (propietat del superusuari) ---
@@ -92,6 +104,11 @@ GRANT CONNECT ON DATABASE ${TEST_DB_NAME} TO migrator;
 GRANT USAGE ON SCHEMA public TO app, migrator;
 -- PG15+ treu CREATE a PUBLIC: el migrator ha de poder crear django_migrations i les taules de Django a public.
 GRANT CREATE ON SCHEMA public TO migrator;
+-- Rol de proves test_fixtures (vegeu més amunt): els schemas i les taules els crea el migrator a les migracions,
+-- per això s'hi donen privilegis per defecte (són per BD).
+ALTER DEFAULT PRIVILEGES FOR ROLE migrator GRANT USAGE ON SCHEMAS TO test_fixtures;
+ALTER DEFAULT PRIVILEGES FOR ROLE migrator GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO test_fixtures;
+ALTER DEFAULT PRIVILEGES FOR ROLE migrator GRANT EXECUTE ON FUNCTIONS TO test_fixtures;   -- p. ex. core.norm_name dels índexs
 SQL
 
 HOST_URL="${PGHOST:-localhost}"

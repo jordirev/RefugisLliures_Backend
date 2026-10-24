@@ -11,16 +11,8 @@ from .user_views import UsersCollectionAPIView, UserDetailAPIView
 # Views de health check
 from .health_check_views import HealthCheckAPIView
 
-# Views de refugis
-from .refugi_lliure_views import (
-	RefugiLliureCollectionAPIView,
-	RefugiLliureDetailAPIView,
-)
-
 __all__ = [
 	'UsersCollectionAPIView',
 	'UserDetailAPIView',
 	'HealthCheckAPIView',
-	'RefugiLliureCollectionAPIView',
-	'RefugiLliureDetailAPIView',
 ]

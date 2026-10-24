@@ -11,7 +11,7 @@ from api.models.user import User
 from api.serializers.media_serializer import (
     MediaItemSerializer, UploadIntentCreateSerializer, MediaReportCreateSerializer, MediaReportResolveSerializer,
 )
-from api.serializers.refugi_lliure_serializer import RefugiSerializer
+from apps.refuges.serializers import RefugiSerializer
 
 PUBLIC_FIELDS = {'key', 'url', 'thumb_url', 'media_type', 'width', 'height', 'blurhash',
                  'creator_uid', 'uploaded_at', 'taken_at', 'experience_id'}
@@ -64,11 +64,12 @@ class TestRequestSerializers:
 class TestMediaListBlockedUser:
     @pytest.mark.real_permissions
     @patch('api.permissions.get_user_for_permissions')
-    @patch('api.views.refugi_media_views.RefugiLliureController')
-    def test_blocked_user_can_still_list(self, mock_ctrl, mock_lookup):
-        from api.views.refugi_media_views import RefugiMediaAPIView
+    @patch('apps.refuges.views.selectors')
+    def test_blocked_user_can_still_list(self, mock_selectors, mock_lookup):
+        from apps.refuges.views import RefugeMediaListAPIView
         mock_lookup.return_value = User(uid='u1', username='u', is_blocked=True)
-        mock_ctrl.return_value.get_refugi_media.return_value = ([], None)
+        mock_selectors.refuge_exists.return_value = True
+        mock_selectors.get_refuge_media.return_value = []
         request = APIRequestFactory().get('/x')
         force_authenticate(request, user=MagicMock(is_authenticated=True, uid='u1', claims={}))
-        assert RefugiMediaAPIView.as_view()(request, id='ref_1').status_code == 200
+        assert RefugeMediaListAPIView.as_view()(request, id='ref_1').status_code == 200

@@ -101,9 +101,9 @@ Detall de cada pas (`api/controllers/user_controller.py:125-276`). Criteri esbor
 | 4 | Anonimitza propostes (`creator_uid='unknown'`) | `api/daos/refuge_proposal_dao.py:814-849` |
 | 5 | Esborra renovations vigents creades per l'usuari; decrementa comptadors de participants | `api/daos/renovation_dao.py:509-562` |
 | 6 | Anonimitza renovations passades (`creator_uid='unknown'`, `group_link=None`); `ArrayRemove` a `participants_uids` i `expelled_uids` | `api/daos/renovation_dao.py:564-696` |
-| 7 | Esborra fotos pujades (R2 + `media_metadata` + `media_keys`) | `api/controllers/refugi_lliure_controller.py:296-370` |
+| 7 | Esborra fotos pujades (R2 + `media_metadata` + `media_keys`) | `api/controllers/refugi_lliure_controller.py:80-159` (`delete_multiple_refugi_media`) |
 | 8 | Esborra avatar | `api/controllers/user_controller.py:243-249` |
-| 9 | Treu l'UID de `visitors` dels refugis visitats | `api/daos/refugi_lliure_dao.py:577-622` |
+| 9 | Treu l'UID de `visitors` dels refugis visitats | `api/daos/refugi_lliure_dao.py:442-487` (`remove_visitor_from_all_refuges`, Firestore legacy) |
 | 10 | Treu l'usuari de visites planificades | `api/controllers/refuge_visit_controller.py:314-340` |
 | 11 | Esborra `users/{uid}` | `api/daos/user_dao.py:128-160` |
 

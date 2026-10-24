@@ -2,6 +2,8 @@
 
 > **[FET]** comprovat al codi · **[INFERÈNCIA]** deducció · **[NO VERIFICAT]** depèn de config externa.
 
+> **Estat intermedi (chunk 2 → chunk 4).** Els refugis ja viuen a PostgreSQL (IDs UUID v7), però aquest domini encara comprova i llegeix els refugis amb el `RefugiLliureDAO` legacy de Firestore, que ja no s'alimenta: les seves comprovacions d'existència de refugi miren el catàleg antic de Firestore (ids diferents dels UUID de PostgreSQL). Vegeu [GOTCHAS #41](../GOTCHAS.md) i [TECH_DEBT R1](../TECH_DEBT.md).
+
 Un usuari indica que anirà a un refugi en una data (amb `num_visitors`). Cada nit, un procés converteix les visites d'ahir en "refugis visitats".
 
 ## Endpoints (`api/views/refuge_visit_views.py`)
@@ -88,7 +90,7 @@ sequenceDiagram
 - Sortir: `delete_visit` (controller L210-240) → `remove_visitor_from_visit` (DAO L328-385). Retorna 200, no 204.
 - Llistar per refugi: ID caching `refuge_visits_list:from_date:<avui>:refuge_id:X`, query `refuge_id==, date>=avui, order_by date`.
 - Llistar per usuari: `get_visits_by_user` (DAO L207-248) fa **stream de tota la col·lecció** i filtra en Python **[FET]**.
-- Procés diari: `api/management/commands/process_yesterday_visits.py:15-38` → `RefugeVisitController.process_yesterday_visits` (controller L242-312); `RefugiLliureDAO.update_refugi_visitors` (`api/daos/refugi_lliure_dao.py:541-575`).
+- Procés diari: `api/management/commands/process_yesterday_visits.py:15-38` → `RefugeVisitController.process_yesterday_visits` (controller L242-312); `RefugiLliureDAO.update_refugi_visitors` (`api/daos/refugi_lliure_dao.py:406-440`).
 - Com executar-lo (Actions, manual, crontab): [guides/daily-visits-process.md](../guides/daily-visits-process.md).
 - Planificació real: `.github/workflows/process-visits.yml:1-37` (cron `0 3 * * *` UTC, `PRODUCTION='true'`). Alternatives no actives: `CRONJOBS` a `refugis_lliures/settings.py:275-278` (django-crontab, mai instal·lat) i `run_process_visits.sh` / `run_process_visits.bat` (manual) **[FET]**.
 

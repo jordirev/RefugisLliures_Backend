@@ -20,7 +20,7 @@ Variables (noms) a `env/.env.development` i `env/.env.production`: `SECRET_KEY, 
 ## GitHub Actions (`.github/workflows/`)
 | Workflow | Disparador | Què fa |
 |---|---|---|
-| `django.yml` | push/PR a `main`, `develop`, `migration` | Servei `postgis/postgis:17-3.5` → `apt-get install gdal-bin libgdal-dev postgresql-client` → Python 3.10 → `pip install tox` → *bootstrap* de la BD de proves (`scripts/dev/setup_local_postgres.sh`, amb `PGHOST=localhost`, `PG_START_CLUSTER=0`; exporta `TEST_DATABASE_URL_*` a `$GITHUB_ENV`) → `tox -e py` (pytest + coverage XML) → Codecov (`CODECOV_TOKEN`) → SonarQube scan (`SONAR_TOKEN`) |
+| `django.yml` | push/PR a `main`, `develop`, `migration` | Servei `postgis/postgis:18-3.6` → `apt-get install gdal-bin libgdal-dev postgresql-client` → Python 3.14 (`actions/setup-python@v5`) → `pip install tox` → *bootstrap* de la BD de proves (`scripts/dev/setup_local_postgres.sh`, amb `PGHOST=localhost`, `PG_START_CLUSTER=0`; exporta `TEST_DATABASE_URL_*` a `$GITHUB_ENV`) → `tox -e py` (pytest + coverage XML) → Codecov (`CODECOV_TOKEN`) → SonarQube scan (`SONAR_TOKEN`) |
 | `ping-website.yml` | cron `*/9 * * * *` + manual | `curl` a `/swagger/`; falla si no és 200/301/302 |
 | `process-visits.yml` | cron `0 3 * * *` (UTC) + manual | `pip install -r requirements.txt` → `python manage.py process_yesterday_visits` amb secrets `R2_*`, `FIREBASE_SERVICE_ACCOUNT_KEY` i `PRODUCTION='true'` |
 
@@ -32,7 +32,7 @@ Variables (noms) a `env/.env.development` i `env/.env.production`: `SECRET_KEY, 
 - La branca d'integració `migration` és als dos disparadors (`push` i `pull_request`) perquè les PR de cada chunk (`migracio/<chunk>` → `migration`) passin la CI.
 
 ## SonarCloud (`sonar-project.properties`)
-`projectKey=jordirev_RefugisLliures_Backend`, `organization=jordirev`, `sources=api`, coverage de `coverage.xml`. Exclou tests, settings, urls, `__init__`, i del coverage també `services/**` i `utils/**`.
+`projectKey=jordirev_RefugisLliures_Backend`, `organization=jordirev`, `sources=api,apps`, coverage de `coverage.xml` (tox: `--cov=api --cov=apps`; `.coveragerc` també amb `source = api, apps`). Exclou tests, settings, urls, `__init__`, i del coverage també `services/**` i `utils/**`.
 
 ## Tasques programades: què està actiu
 | Mecanisme | Estat |
@@ -47,7 +47,7 @@ Variables (noms) a `env/.env.development` i `env/.env.production`: `SECRET_KEY, 
 ## Gotchas
 - `RENDER="1"` vs `RENDER=='true'` a `api/firebase_config.py:21,27` **[NO VERIFICAT]** si Render el sobreescriu.
 - 1 worker sync + timeout 30 s + pujades sense límit → una pujada lenta bloqueja tot el servei **[INFERÈNCIA]**.
-- `tox.ini` declara `py39` però CI executa `tox -e py` amb 3.10 **[FET]**. (Als tests locals en contenidor s'usa Python 3.13: vegeu [guides/testing.md](../guides/testing.md).)
+- `tox.ini` declara `py314` i CI executa `tox -e py` amb Python 3.14 **[FET]**; `process-visits.yml` també fixa 3.14. `.python-version` (`3.14`) fixa la versió de Python de Render **[INFERÈNCIA: Render llegeix `.python-version`]**. Els tests locals en contenidor i l'entorn `.venv` també són 3.14 ([guides/testing.md](../guides/testing.md)).
 - `process-visits.yml` no posa `REDIS_URL` → no invalida la cache de producció **[INFERÈNCIA]**.
 - Comentari "3:00 Madrid" a `refugis_lliures/settings.py:276` vs "3:00 UTC" al workflow: el que s'executa és el del workflow (UTC) **[FET]**; com que el procés calcula "ahir" en hora de Madrid, a les 3:00 UTC (4-5 h a Madrid) "ahir" és correcte **[INFERÈNCIA]**.
 

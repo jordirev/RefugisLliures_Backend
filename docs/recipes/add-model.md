@@ -1,5 +1,13 @@
 # Recepta — Afegir un model nou (entitat persistida a Firestore)
 
+> ## Features migrades a PostgreSQL (`apps/<feature>/models.py`) — patró nou
+> Referència: `apps/refuges/models.py`, `apps/accounts/models.py` i les seves migracions `0001_initial.py`. El patró de sota (`@dataclass` + Firestore) és el **legacy**. Un model de Postgres:
+> - És un `django.db.models.Model` a `apps/<feature>/models.py` (nova app: `apps.py` amb `name='apps.<feature>'`, `label='<feature>'`, i afegir-la a `INSTALLED_APPS`).
+> - `db_table = 'schema"."taula'` (el schema ve de `docs/design/postgres-schema.md`), PK `UUIDField(primary_key=True, db_default=Func(function='uuidv7', output_field=UUIDField()))` (UUID v7 generat per la BD amb `uuidv7()` de Postgres 18; l'helper `api/utils/ids.py` s'ha eliminat; disseny §1.4), `CompositePrimaryKey` (Django 5.2) a les taules d'unió sense FK entrant, `db_default=` per als valors per defecte (`Now()`, `False`, `''`), `TextChoices` + `CheckConstraint` per als estats interns (els catàlegs oberts, com idiomes i tipus de refugi, són taula + FK), noms explícits de constraints/índexs (`<taula>_<cols>_ck|uq|idx|gist|gin`).
+> - **FK**: `ForeignKey(..., on_delete=models.DO_NOTHING, db_constraint=False, db_index=False, db_column='x_uid')`; la restricció real (`ON DELETE CASCADE/SET NULL`, `DEFERRABLE INITIALLY DEFERRED`) es crea a la migració amb `RunSQL` (§6.3), i l'índex de la FK a `Meta.indexes`.
+> - **Migració**: `makemigrations` genera el DDL; hi afegeixes, a la **mateixa** migració i amb `reverse_sql`, un `PostgresRunSQL` (`apps.core.migration_utils`) amb les FK reals, `ENABLE ROW LEVEL SECURITY` + polítiques (`create_policy_sql` amb les macros `{U}`, `{ADM}`, `{SYS}`), els `GRANT` mínims per a `app`, triggers i vistes (models `managed = False`). S'aplica sempre amb `migrate --database=migrator`. Si hi ha una PK o un camp únic de text, afegeix `DropDjangoLikeIndexes([...])` amb els índexs `*_like` que hagi generat Django (noms a `pg_indexes`). Comprova `makemigrations --check` net i forward/reverse/forward.
+> - Escriptures de dades de prova i de comandes: amb `system_context()`/`rls_context()` (o l'àlies `migrator`).
+
 > Els "models" **no** són models de Django: són `@dataclass` persistits a Firestore via DAO. No hi ha migracions.
 
 ## 1. Model — `api/models/<entitat>.py`

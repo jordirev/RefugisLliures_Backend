@@ -1,20 +1,20 @@
 # Integració — Neon (Postgres + PostGIS)
 
 > **[FET]** comprovat al codi o a Neon · **[INFERÈNCIA]** deducció · **[NO VERIFICAT]** depèn de config externa.
-> Estat: **migració Firestore → PostgreSQL, chunk 1 (Infraestructura) fet**. Postgres/PostGIS ja és la BD `default` de Django amb el rol `app`, però **Firestore continua sent la BD de domini** fins als chunks següents: cap DAO llegeix ni escriu a Postgres encara **[FET]**. Pla: [migration/PLAN.md](../migration/PLAN.md); disseny físic: [design/postgres-schema.md](../design/postgres-schema.md) §1 i §7.
+> Estat: **migració Firestore → PostgreSQL, chunks 1 (Infraestructura) i 2 (Refugis) fets**. Postgres/PostGIS és la BD `default` de Django amb el rol `app`; els **refugis** (catàleg, serveis, enllaços i mitjans) i el mínim d'`accounts` viuen a PostgreSQL (`apps/refuges`, `apps/accounts`), mentre que **Firestore continua sent la BD de la resta del domini** fins als chunks següents **[FET]**. El **projecte Neon és ara el de Postgres 18** (`refugislliures`, 25/10/2026): té el *bootstrap* fet a `production` i `dev`, però **cap migració ni càrrega de refugis** (`migrate --database=migrator` i `load_refuges` s'han de tornar a executar a cada branca) **[FET]**. El projecte antic de PG17 existeix encara a Neon i les seves credencials ja no són a `env/` **[FET]**. Pla: [migration/PLAN.md](../migration/PLAN.md); disseny físic: [design/postgres-schema.md](../design/postgres-schema.md) §1 i §7.
 
 ## Projecte
-- Projecte `refugislliures`, regió AWS Frankfurt (`aws-eu-central-1`), BD `refugisdb`, **Postgres 17** (Django 5.1 no dona suport oficial a la 18) **[FET]**.
+- Projecte `refugislliures`, regió AWS Frankfurt (`aws-eu-central-1`), BD `refugisdb`, **Postgres 18.6**, PostGIS 3.6.4 (projecte `jolly-wind-01114119`; el de PG17, `calm-sun-72437063`, queda abandonat) **[FET]**.
 - Branques: `production` (per defecte) i `dev` (creada amb `neon checkout dev --create`, sense caducitat: `neon.ts` n'exclou `dev` del TTL de 7 dies i s'ha tret l'expiració amb `neon branches set-expiration dev`) **[FET]**.
 - Només el servei Postgres; Auth/Storage/Functions/AI gateway/Realtime desactivats (Firebase Auth, R2 i Cloud Run els cobreixen) **[FET]**.
-- Extensions a `production` i `dev`: `postgis` 3.5, `pg_trgm`, `unaccent`, `pg_stat_statements` **[FET]**. El *bootstrap* de §1.3 del disseny (`btree_gist`, `GRANT CREATE ON DATABASE`, timeouts dels rols) s'ha executat a `dev` pel PO amb el rol propietari (24/10/2026; [migration/PROGRESS.md](../migration/PROGRESS.md)); a `production` encara no **[NO VERIFICAT]**.
+- Extensions a `production` i `dev` (projecte PG18): `postgis` 3.6.4, `pg_trgm` 1.6, `unaccent` 1.1, `btree_gist` 1.8, `pg_stat_statements` **[FET]**. Al projecte PG18 s'ha executat el *bootstrap* de §1.3 del disseny a `production` i `dev` (25/10/2026): extensions (`postgis` 3.6.4, `pg_trgm`, `unaccent`, `btree_gist` 1.8, `pg_stat_statements`), `GRANT CREATE ON DATABASE` i `GRANT CREATE ON SCHEMA public` a `migrator`, i `statement_timeout=20s`, `lock_timeout=5s`, `idle_in_transaction_session_timeout=30s` a `app`. La branca `dev` es va crear a partir de `production` **[FET]**.
 
 ## Rols (least privilege) [FET]
 Creats amb SQL (no amb el CLI, que els faria membres de `neon_superuser`) a `production` i `dev`, cadascuna amb contrasenyes pròpies. El propietari (`refugisdb_owner`) queda només per a administració.
 - `app`: `CONNECT`, `USAGE` a `public` i als schemas de domini, DML (`SELECT/INSERT/UPDATE/DELETE`) i seqüències de les taules creades pel `migrator` (via `ALTER DEFAULT PRIVILEGES` executat com a `migrator`), `SELECT` a `spatial_ref_sys`. Sense DDL ni `CREATE ROLE`. **Subjecte a RLS** (la RLS només s'aplica a `app`: el propietari la salta, per això els tests corren com a `app`).
-- `migrator`: `USAGE, CREATE` a `public` (DDL). Només per a migracions, amb endpoint directe. No pot fer `CREATE EXTENSION` (ho fa el propietari).
+- `migrator`: `USAGE, CREATE` a `public` i `CREATE` sobre la BD (DDL, `CREATE SCHEMA`). Només per a migracions, amb endpoint directe. No pot instal·lar extensions no *trusted*, però **sí les *trusted*** (p. ex. `hstore`) pel `GRANT CREATE ON DATABASE`: les extensions les gestiona el propietari **[FET]**. A PG16+ el propietari no pot fer `ALTER ROLE … NOSUPERUSER`; els rols creats per SQL ja són `NOSUPERUSER/NOBYPASSRLS` i es verifica a `pg_roles` **[FET]**.
 - Verificat a totes dues branques: `app` no pot fer `CREATE/DROP TABLE` ni `CREATE ROLE`; sí pot fer DML a taules del `migrator` i consultes PostGIS.
-- **`GRANT CREATE ON SCHEMA public TO migrator` (PG15+)**: PG15 treu `CREATE` a `PUBLIC` sobre `public`, i Django ha de crear-hi `django_migrations` i les taules de `auth`/`admin`/`sessions`. L'script local (`scripts/dev/setup_local_postgres.sh`) ja ho fa **[FET]**; a Neon `dev` **encara no s'ha verificat** que `migrator` pugui crear-hi taules abans del primer `migrate` **[NO VERIFICAT]** (vegeu [TECH_DEBT.md](../TECH_DEBT.md) P2).
+- **`GRANT CREATE ON SCHEMA public TO migrator` (PG15+)**: PG15 treu `CREATE` a `PUBLIC` sobre `public`, i Django ha de crear-hi `django_migrations` i les taules de `auth`/`admin`/`sessions`. L'script local (`scripts/dev/setup_local_postgres.sh`) ja ho fa **[FET]**; al projecte PG18 s'ha verificat (`dev` i `production`) que `migrator` pot crear-hi taules i schemas **[FET]** (vegeu [TECH_DEBT.md](../TECH_DEBT.md) P2).
 
 ## Fitxers i variables
 - `neon.ts` (política de branques), `.neon` (branca activa, ignorat per git), `package.json` (només per al CLI de Neon), `.claude/skills/neon*` i `skills-lock.json`.
@@ -30,30 +30,36 @@ Creats amb SQL (no amb el CLI, que els faria membres de `neon_superuser`) a `pro
 - **`connect_timeout=10`** a `OPTIONS`: libpq no té cap timeout de connexió per defecte; sense límit, un host inabastable (o un *cold start* de Neon fallit) deixaria el worker penjat, també el health check **[FET]**.
 - **`prepare_threshold=None`** (sense sentències preparades) i **cap `options`** a l'arrencada: el pooler de Neon (PgBouncer, mode transacció) no admet ni les preparades ni el paràmetre d'arrencada `options` (§1.5 del disseny) **[FET]**. Per això el context RLS es fixa amb `set_config(..., true)` dins la transacció, no amb `options`.
 - **Sense cap URL definida**, `default` continua sent SQLite (`db.sqlite3`): només perquè els tests amb mocks (que no toquen la BD) puguin carregar la configuració. Qualsevol petició real sense URL fallaria en el `set_config` del hook de RLS **[FET sobre la configuració; INFERÈNCIA sobre la fallada del hook]** (vegeu [TECH_DEBT.md](../TECH_DEBT.md) P3).
-- `INSTALLED_APPS` afegeix `django.contrib.gis`, `django.contrib.postgres` i `domain.core` **[FET]**. **`django.contrib.gis` sempre és actiu: el runtime necessita GDAL/GEOS** (a Windows local no hi són; s'executa en un contenidor Linux, [guides/local-setup.md](../guides/local-setup.md)). Instal·lar-los a Render/Cloud Run és **pendent de desplegament** ([TECH_DEBT.md](../TECH_DEBT.md) P1).
+- `INSTALLED_APPS` afegeix `django.contrib.gis`, `django.contrib.postgres` i `apps.core` **[FET]**. **`django.contrib.gis` sempre és actiu: el runtime necessita GDAL/GEOS** (a Windows local no hi són; s'executa en un contenidor Linux, [guides/local-setup.md](../guides/local-setup.md)). Instal·lar-los a Render/Cloud Run és **pendent de desplegament** ([TECH_DEBT.md](../TECH_DEBT.md) P1).
 - Dependència: `psycopg[binary]==3.2.9`.
 
 ## Migracions (sempre amb `--database=migrator`) [FET]
 ```bash
 python manage.py migrate --database=migrator
 ```
-El rol `app` no té permisos de DDL: un `migrate` sense `--database=migrator` fallaria (i, si algú li donés DDL, deixaria objectes que no són del propietari). `domain/core` (`core.0001`) crea els schemas (`core`, `refuges`, `users`, `activity`, `proposals`, `moderation`, `audit`), les funcions de `core` (`uid()`, `is_admin()`, `is_system()`, `immutable_unaccent`, `norm_name`, `round_half_even`; disseny §2.0) i els grants base de `app` (§7.1), amb `reverse_sql`. Requereix el *bootstrap* previ del propietari (§1.3).
+El rol `app` no té permisos de DDL: un `migrate` sense `--database=migrator` fallaria (i, si algú li donés DDL, deixaria objectes que no són del propietari). `apps/core` (`core.0001`, `core.0002`) crea els schemas (`core`, `refuges`, `users`, `activity`, `proposals`, `moderation`, `audit`), les funcions de `core` (`uid()`, `is_admin()`, `is_system()`, `immutable_unaccent`, `norm_name`, `round_half_even`; disseny §2.0) i els grants base de `app` (§7.1), amb `reverse_sql`. Requereix el *bootstrap* previ del propietari (§1.3).
 
 ## RLS i context de la petició [FET]
-- `domain/core/rls.py`: `rls_context(uid, is_admin, system, using)` i `system_context()` (reexportats a `domain.core`) i helpers de polítiques (`expand_macros`, `create_policy_sql`, `drop_policy_sql`) per a les migracions dels chunks següents.
+- `apps/core/rls.py`: `rls_context(uid, is_admin, system, using)` i `system_context()` (reexportats a `apps.core`) i helpers de polítiques (`expand_macros`, `create_policy_sql`, `drop_policy_sql`) per a les migracions dels chunks següents.
 - El context (`app.uid`, `app.is_admin`, `app.is_system`) es fixa **sempre amb `set_config(..., true)`**, és a dir, **local a la transacció**: mor al `COMMIT`/`ROLLBACK` i no es filtra a altres clients quan el pooler reutilitza la connexió. Per a peticions HTTP el fixa el hook de `api/rls_hook.py` ([flux 00](../flows/00-auth-request-pipeline.md)); fora d'HTTP (comandes, jobs, tests) s'usa `rls_context`.
 
+## Apps i migracions actuals [FET]
+`core.0001` (schemas, funcions, grants) i `core.0002` (SELECT de `app` a `django_migrations`) → `accounts.0001` (`users.languages`, `users.users`, `users.user_public_profiles`, `users.user_avatars`) → `refuges.0001` (`refuges.refuge_types`, `refuges.refuges`, `refuge_amenities`, `refuge_links`, `refuge_media`; sense vista `refuge_map`; índexs GIN trigram, RLS, grants). Les taules les crea `migrator`; `app` només fa DML subjecte a RLS.
+
+## Càrrega inicial del catàleg [FET]
+`python manage.py load_refuges [--dry-run]` (rol `migrator` per defecte) carrega `api/utils/final_data_refuges.json` (1.542 refugis) **una sola vegada**: si ja hi ha refugis acaba amb `CommandError` sense escriure res. A Neon `dev`/`production` el PO l'ha d'executar un cop després del primer `migrate` **[NO VERIFICAT]**.
+
 ## Identificadors
-`api/utils/ids.py: uuid7()` genera els UUID v7 (RFC 9562) de les claus primàries substitutes (disseny §1.4): monòton dins el procés i thread-safe **[FET]**. Encara no hi ha cap model que l'usi.
+Les PK substitutes són UUID v7 (RFC 9562) generats per la BD amb `DEFAULT uuidv7()` de Postgres 18 (`db_default` a Django 5.2; disseny §1.4; l'helper `api/utils/ids.py` s'ha eliminat, chunk 2) **[FET]**. `Refuge` n'és un exemple; `RefugeLink` té PK `url`, `RefugeAmenities` reutilitza la PK del refugi, `RefugeMedia` i `UserAvatar` tenen la clau R2 i `UserAccount` l'UID de Firebase; les taules d'unió sense FK entrant tenen PK composta (disseny §1.4) **[FET]**. L'API exposa els UUID com a *string* opac; **no coincideixen** amb els IDs de Firestore.
 
 ## Verificació
 ```bash
 python manage.py check_neon --alias migrator   # rol migrator, endpoint directe (per defecte)
 python manage.py check_neon --alias default    # rol app, endpoint amb pooler
 ```
-Mostra la versió de Postgres i PostGIS, `similarity` amb `unaccent` i una consulta `ST_DWithin`; usa una taula temporal i la neteja **[FET]**. Els àlies vàlids són `default` i `migrator` (abans `neon`/`neon_migrator`). A més comprova el *bootstrap* del propietari (§1.3 del disseny) i **avisa** (`Bootstrap incomplet: ...`) si falten extensions (`postgis`, `pg_trgm`, `unaccent`, `btree_gist`), `GRANT CREATE ON DATABASE` o `GRANT CREATE ON SCHEMA public`: **executa'l amb `--alias migrator` abans del primer `migrate` a Neon** **[FET]**.
+Mostra la versió de Postgres i PostGIS, `similarity` amb `unaccent` i una consulta `ST_DWithin`; usa una taula temporal i la neteja **[FET]**. Els àlies vàlids són `default` i `migrator` (abans `neon`/`neon_migrator`). **Es connecta sempre a Neon** amb `DATABASE_URL_APP` / `DATABASE_URL_MIGRATOR` (ignora `TEST_DATABASE_URL_*`, que apunten al Docker local i tenen prioritat a `DATABASES`), mostra el host i la versió, i **avisa si el servidor és < Postgres 18** **[FET]**. A més comprova el *bootstrap* del propietari (§1.3 del disseny) i **avisa** (`Bootstrap incomplet: ...`) si falten extensions (`postgis`, `pg_trgm`, `unaccent`, `btree_gist`), `GRANT CREATE ON DATABASE` o `GRANT CREATE ON SCHEMA public`: **executa'l amb `--alias migrator` abans del primer `migrate` a Neon** **[FET]**.
 
 ## Pendent
 - Executar `check_neon --alias migrator` (avisa del *bootstrap* incomplet), verificar el `GRANT CREATE ON SCHEMA public` a Neon `dev` i executar el primer `migrate --database=migrator` **[NO VERIFICAT]**.
-- Validar contra Neon (pooler PgBouncer, PG17) el que només s'ha provat en local (Postgres 16/17 sense pooler): el PO ha d'executar `scripts/e2e/` des d'una màquina amb accés TCP ([migration/DECISIONS_AUTONOMES.md](../migration/DECISIONS_AUTONOMES.md) D3) **[NO VERIFICAT]**.
+- Validar contra Neon (pooler PgBouncer, PG18) el que només s'ha provat en local (Postgres 18 en Docker, sense pooler): el PO ha d'executar `scripts/e2e/` des d'una màquina amb accés TCP ([migration/DECISIONS_AUTONOMES.md](../migration/DECISIONS_AUTONOMES.md) D3) **[NO VERIFICAT]**.
 - Imatge/entorn de desplegament amb GDAL/GEOS, pas a Launch i compute 0,25–2 CU **[NO VERIFICAT]**.

@@ -49,16 +49,3 @@ def test_el_controller_no_crea_el_servei_r2_en_construir_se():
         assert controller.media_service is get_service.return_value
         assert controller.media_service is get_service.return_value
         get_service.assert_called_once()
-
-
-def test_uuid7_segueix_el_rellotge_si_retrocedeix_molt(monkeypatch):
-    """Un salt enrere gran (canvi de rellotge) no deixa els ID encallats al futur."""
-    import time
-    from api.utils.ids import uuid7
-    base = 1_800_000_000_000
-    monkeypatch.setattr(time, 'time_ns', lambda: base * 1_000_000)
-    a = uuid7()
-    monkeypatch.setattr(time, 'time_ns', lambda: (base - 3_600_000) * 1_000_000)
-    b = uuid7()
-    assert (a.int >> 80) == base
-    assert (b.int >> 80) == base - 3_600_000

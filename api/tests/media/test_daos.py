@@ -190,23 +190,6 @@ class TestRefugiMediaAtomicWrites:
         doc_ref.get.return_value = doc(None, exists=False)
         assert dao.update_media_status('ref_1', KEY, 'removed') is False
 
-    @patch('api.daos.refugi_lliure_dao.r2_media_service')
-    @patch('api.daos.refugi_lliure_dao.firestore_service')
-    def test_get_media_metadata_filters_hidden(self, mock_fs, mock_r2):
-        from api.tests.media.helpers import fake_r2_service
-        mock_r2.get_refugi_media_service.return_value = fake_r2_service()
-        db = mock_fs.get_db.return_value
-        db.collection.return_value.document.return_value.get.return_value = doc({'media_metadata': {
-            'k_visible.webp': {'creator_uid': 'a'},
-            'k_hidden.webp': {'creator_uid': 'author', 'status': 'hidden_pending_review'},
-            'k_removed.webp': {'creator_uid': 'author', 'status': 'removed'},
-        }})
-        dao = RefugiLliureDAO()
-        keys = lambda items: sorted(i['key'] for i in items)
-        assert keys(dao.get_media_metadata('ref_1')) == ['k_visible.webp']
-        assert keys(dao.get_media_metadata('ref_1', viewer_uid='author')) == ['k_hidden.webp', 'k_removed.webp', 'k_visible.webp']
-        assert len(dao.get_media_metadata('ref_1', viewer_uid='x', is_admin=True)) == 3
-
     @patch('api.daos.refugi_lliure_dao.firestore_service')
     @patch('api.daos.refugi_lliure_dao.cache_service')
     def test_raw_metadata_cache_first(self, mock_cache, mock_fs):

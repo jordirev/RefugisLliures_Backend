@@ -87,79 +87,9 @@ class TestRefugiMapper:
         assert len(firestore_list) == 2
         assert all(isinstance(r, dict) for r in firestore_list)
     
-    def test_format_search_response(self, refugi_mapper):
-        """Test formatació de resposta de cerca"""
-        refugis = [
-            Refugi(
-                id='test_001',
-                name='Test 1',
-                coord=Coordinates(1.5, 42.5),
-                info_comp=InfoComplementaria()
-            )
-        ]
-        filters = {'region': 'Pirineus'}
-        
-        response = refugi_mapper.format_search_response(refugis)
-        
-        assert 'count' in response
-        assert 'results' in response
-        assert response['count'] == 1
     
-    def test_format_search_response_with_visitors(self, refugi_mapper):
-        """Test formatació de resposta amb visitants inclosos - ara els visitants sempre s'inclouen"""
-        refugis = [
-            Refugi(
-                id='test_001',
-                name='Test 1',
-                coord=Coordinates(1.5, 42.5),
-                info_comp=InfoComplementaria(),
-                visitors=['uid_001', 'uid_002', 'uid_003']
-            )
-        ]
-        
-        response = refugi_mapper.format_search_response(refugis)
-        
-        assert 'count' in response
-        assert 'results' in response
-        assert response['count'] == 1
-        # Verificar que els visitants estan presents (ara sempre s'inclouen)
-        assert 'visitors' in response['results'][0]
-        assert len(response['results'][0]['visitors']) == 3
     
-    def test_format_search_response_empty_visitors(self, refugi_mapper):
-        """Test formatació de resposta amb llista de visitants buida"""
-        refugis = [
-            Refugi(
-                id='test_001',
-                name='Test 1',
-                coord=Coordinates(1.5, 42.5),
-                info_comp=InfoComplementaria(),
-                visitors=[]  # Llista buida de visitants
-            )
-        ]
-        
-        response = refugi_mapper.format_search_response(refugis)
-        
-        assert 'count' in response
-        assert 'results' in response
-        assert response['count'] == 1
-        # Verificar que la clau visitors existeix però buida
-        assert 'visitors' in response['results'][0]
-        assert len(response['results'][0]['visitors']) == 0
     
-    def test_format_search_response_from_raw_data(self, refugi_mapper):
-        """Test formatació de resposta des de dades raw"""
-        raw_data = [
-            {'id': 'test_001', 'name': 'Test 1'},
-            {'id': 'test_002', 'name': 'Test 2'}
-        ]
-        filters = {}
-        
-        response = refugi_mapper.format_search_response_from_raw_data(raw_data)
-        
-        assert 'count' in response
-        assert 'results' in response
-        assert response['count'] == 2
 
 
 # ==================== TESTS DE DAOs ====================

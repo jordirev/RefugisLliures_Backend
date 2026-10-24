@@ -16,7 +16,7 @@ from collections.abc import Mapping
 from django.db import connections
 from rest_framework.views import APIView
 
-from domain.core.rls import DEFAULT_ALIAS, apply_context
+from apps.core.rls import DEFAULT_ALIAS, apply_context
 
 logger = logging.getLogger(__name__)
 

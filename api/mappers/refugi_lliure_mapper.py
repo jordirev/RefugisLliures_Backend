@@ -79,34 +79,5 @@ class RefugiLliureMapper:
         return [RefugiLliureMapper.dict_to_refugi_info_representation(data) for data in data_list]
     
     
-    @staticmethod
-    def format_search_response(refugis: List[Refugi]) -> Dict[str, Any]:
-        """
-        Formatea la resposta de cerca
-        Args:
-            refugis: Llista de refugis
-            include_visitors: Si True, inclou la llista de visitants. Si False, l'omet.
-            include_media_metadata: Si True, inclou media_metadata i images_metadata. Si False, els omet.
-        """
-        results = []
-        for refugi in refugis:
-            refugi_dict = refugi.to_dict()
-            if 'media_metadata' in refugi_dict:
-                refugi_dict.pop('media_metadata', None)
-            results.append(refugi.to_dict())
-        
-        return {
-            'count': len(refugis),
-            'has_filters': True,
-            'results': results
-        }
     
-    @staticmethod
-    def format_search_response_from_raw_data(refugis_data: List[Dict[str, Any]]) -> Dict[str, Any]:
-        """Formatea la resposta de cerca des de dades raw (per coordenades)"""
-        return {
-            'count': len(refugis_data),
-            'has_filters': False,
-            'results': refugis_data
-        }
     

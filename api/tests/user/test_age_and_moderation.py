@@ -12,11 +12,12 @@ from api.controllers.user_controller import UserController, ERROR_UNDERAGE
 from api.models.user import User
 from api.serializers.user_serializer import UserCreateSerializer, AgeConfirmationSerializer, UserSerializer
 from api.utils.age_utils import compute_age, is_old_enough
+from api.utils.timezone_utils import get_madrid_today
 from api.views.user_views import UsersCollectionAPIView, UserAgeConfirmationAPIView, UserModerationNoticesAPIView
 
 
 def years_ago(years, days_offset=0):
-    today = date.today()
+    today = get_madrid_today()          # com `is_old_enough`: avui a Madrid (prop de mitjanit, UTC és un altre dia)
     try:
         d = today.replace(year=today.year - years)
     except ValueError:  # 29 de febrer

@@ -3,6 +3,7 @@ Tests per renovations
 """
 import pytest
 from datetime import datetime, date, timedelta
+from api.utils.timezone_utils import get_madrid_today
 from api.models.renovation import Renovation
 from api.serializers.renovation_serializer import (
     RenovationSerializer,
@@ -15,7 +16,7 @@ from api.serializers.renovation_serializer import (
 @pytest.fixture
 def sample_renovation_data():
     """Dades de prova per a una renovation"""
-    today = date.today()
+    today = get_madrid_today()
     return {
         'id': 'test_renovation_id',
         'creator_uid': 'test_creator_uid',
@@ -44,7 +45,7 @@ def sample_renovation(sample_renovation_data):
 @pytest.fixture
 def minimal_renovation_data():
     """Dades mínimes per crear una renovation"""
-    today = date.today()
+    today = get_madrid_today()
     return {
         'refuge_id': 'test_refuge_id',
         'ini_date': (today + timedelta(days=1)).strftime('%Y-%m-%d'),
@@ -63,7 +64,7 @@ class TestRenovationSerializers:
     
     def test_date_validation_mixin_valid_dates(self):
         """Test validació de dates vàlides"""
-        today = date.today()
+        today = get_madrid_today()
         ini_date = today + timedelta(days=1)
         fin_date = today + timedelta(days=5)
         
@@ -73,7 +74,7 @@ class TestRenovationSerializers:
     def test_date_validation_mixin_invalid_dates(self):
         """Test validació amb dates invàlides"""
         from rest_framework import serializers
-        today = date.today()
+        today = get_madrid_today()
         ini_date = today + timedelta(days=5)
         fin_date = today + timedelta(days=1)
         
@@ -83,7 +84,7 @@ class TestRenovationSerializers:
     def test_date_validation_mixin_equal_dates(self):
         """Test validació amb dates iguals - dates iguals són permeses"""
         from rest_framework import serializers
-        today = date.today()
+        today = get_madrid_today()
         same_date = today + timedelta(days=1)
         
         # Equal dates should not raise an error according to current implementation
@@ -96,14 +97,14 @@ class TestRenovationSerializers:
     def test_date_validation_mixin_past_date(self):
         """Test validació data passada"""
         from rest_framework import serializers
-        yesterday = date.today() - timedelta(days=1)
+        yesterday = get_madrid_today() - timedelta(days=1)
         
         with pytest.raises(serializers.ValidationError):
             DateValidationMixin.validate_ini_date_is_current_or_future(yesterday)
     
     def test_date_validation_mixin_today_valid(self):
         """Test validació data d'avui (vàlida)"""
-        today = date.today()
+        today = get_madrid_today()
         
         # No hauria de llançar error
         DateValidationMixin.validate_ini_date_is_current_or_future(today)
@@ -144,7 +145,7 @@ class TestRenovationSerializers:
     
     def test_renovation_create_serializer_invalid_dates(self):
         """Test serializer de creació amb dates invàlides"""
-        today = date.today()
+        today = get_madrid_today()
         data = {
             'refuge_id': 'test_refuge',
             'ini_date': (today + timedelta(days=5)).strftime('%Y-%m-%d'),
@@ -158,7 +159,7 @@ class TestRenovationSerializers:
     
     def test_renovation_create_serializer_past_date(self):
         """Test serializer de creació amb data passada"""
-        yesterday = date.today() - timedelta(days=1)
+        yesterday = get_madrid_today() - timedelta(days=1)
         data = {
             'refuge_id': 'test_refuge',
             'ini_date': yesterday.strftime('%Y-%m-%d'),
@@ -172,7 +173,7 @@ class TestRenovationSerializers:
     
     def test_renovation_create_serializer_invalid_url(self):
         """Test serializer de creació amb URL invàlida"""
-        today = date.today()
+        today = get_madrid_today()
         data = {
             'refuge_id': 'test_refuge',
             'ini_date': (today + timedelta(days=1)).strftime('%Y-%m-%d'),
@@ -195,7 +196,7 @@ class TestRenovationSerializers:
     
     def test_renovation_update_serializer_all_fields(self):
         """Test serializer d'actualització amb tots els camps"""
-        today = date.today()
+        today = get_madrid_today()
         data = {
             'ini_date': (today + timedelta(days=2)).strftime('%Y-%m-%d'),
             'fin_date': (today + timedelta(days=6)).strftime('%Y-%m-%d'),
@@ -262,7 +263,7 @@ class TestRenovationSerializers:
 
     def test_renovation_serializer_to_representation_non_renovation(self):
         """Test to_representation amb una instància que NO és Renovation"""
-        today = date.today()
+        today = get_madrid_today()
         # Crear un diccionari (no una instància de Renovation)
         dict_data = {
             'id': 'test_id',

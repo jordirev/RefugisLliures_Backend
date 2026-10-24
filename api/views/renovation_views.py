@@ -574,3 +574,68 @@ class RenovationParticipantDetailAPIView(APIView):
             return Response({
                 'error': ERROR_500_INTERNAL_ERROR
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+# ========== REFUGE RENOVATIONS ENDPOINT: /refuges/{id}/renovations/ ==========
+
+class RefugeRenovationsAPIView(APIView):
+    """
+    Gestiona operacions sobre les renovations d'un refugi:
+    - GET: Obtenir totes les renovations actives d'un refugi (requereix autenticació)
+    """
+    permission_classes = [IsAuthenticated]
+    
+    @swagger_auto_schema(
+        tags=['Refuges'],
+        operation_description=(
+            "Obté totes les renovations d'un refugi específic. "
+            "Requereix autenticació amb token JWT de Firebase."
+        ),
+        manual_parameters=[
+            openapi.Parameter(
+                'id',
+                openapi.IN_PATH,
+                description="Identificador únic del refugi",
+                type=openapi.TYPE_STRING,
+                required=True
+            ),
+            openapi.Parameter(
+                'active_only',
+                openapi.IN_QUERY,
+                description="Filtrar només renovations actives",
+                type=openapi.TYPE_BOOLEAN,
+                required=False
+            )
+        ],
+        responses={
+            200: openapi.Response(
+                description='Renovations actives del refugi',
+                schema=RenovationSerializer(many=True),
+                examples={
+                    'application/json': EXAMPLE_RENOVATIONS_LIST
+                }
+            ),
+            401: ERROR_401_UNAUTHORIZED,
+            500: ERROR_500_INTERNAL_ERROR
+        }
+    )
+    def get(self, request, id, active_only: bool = False):
+        """Obtenir renovations d'un refugi"""
+        try:
+            controller = RenovationController()
+            success, renovations, error_message = controller.get_renovations_by_refuge(id, active_only)
+            
+            if not success:
+                return Response({
+                    'error': error_message
+                }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            
+            # Serialitzar les renovations
+            serializer = RenovationSerializer([r.to_dict() for r in renovations], many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+            
+        except Exception as e:
+            logger.error(f'Error getting refuge renovations: {str(e)}')
+            return Response({
+                'error': ERROR_500_INTERNAL_ERROR
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
