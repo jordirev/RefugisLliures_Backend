@@ -36,6 +36,7 @@ class TestAgeUtils:
 
 
 @pytest.mark.serializers
+@pytest.mark.legacy_firestore_users  # chunk 3: substituït per apps/accounts/tests
 class TestAgeSerializers:
     def test_create_accepts_optional_birth_date(self):
         assert UserCreateSerializer(data={'username': 'joan'}).is_valid()
@@ -125,6 +126,7 @@ class TestAgeController:
 
 
 @pytest.mark.daos
+@pytest.mark.legacy_firestore_users  # chunk 3: substituït per apps/accounts/tests
 class TestUserDaoModeration:
     @patch('api.daos.user_dao.cache_service')
     @patch('api.daos.user_dao.FirestoreService')

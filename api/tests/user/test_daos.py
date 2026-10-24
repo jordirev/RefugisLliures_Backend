@@ -7,6 +7,13 @@ from unittest.mock import MagicMock, patch
 from api.daos.user_dao import UserDAO
 from api.models.user import User
 
+# --- chunk 3 (Usuaris): TESTS LEGACY SOBRE FIRESTORE ---------------------------------------------------------------
+# Aquest mòdul prova el flux d'usuaris amb Firestore (controller/DAO/vistes mockejats). Les parts migrades a PostgreSQL
+# (perfil, preferits, visitats, avatar, edat, moderació d'usuari) ara es proven a `apps/accounts/tests/`. L'implementador
+# ha d'ESBORRAR aquest mòdul (o la part migrada) quan el codi legacy desaparegui: `pytest -m legacy_firestore_users`.
+pytestmark = pytest.mark.legacy_firestore_users
+
+
 
 @pytest.mark.daos
 class TestUserDAO:

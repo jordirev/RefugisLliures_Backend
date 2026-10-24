@@ -100,17 +100,42 @@ def make_media(refuge, creator_uid, key=None, status='visible', minutes=0, **fie
 
 # ---------- HTTP ----------
 
-def api_get(client, path, claims=None, **extra):
-    """GET com a anònim (`claims=None`) o amb un token de Firebase simulat (el middleware el verifica)."""
+ENSURE_TAG = '/*ensure_profile*/'
+
+
+def ensure_profile(uid):
+    """Crea (si no hi és) la fila `users` + el perfil públic de `uid` (idempotent, rol `app` + `system_context()`).
+
+    Des del chunk 3 tot endpoint autenticat retorna 403 `profile_required` si l'UID no té fila a `users` (§7.3.6):
+    els tests del chunk 2 (que no proven això) deixen que els helpers HTTP creïn el perfil de qui fa la petició.
+    Les sentències porten `ENSURE_TAG` perquè `QueryCounter` no les compti.
+    """
+    from apps.core.rls import system_context
+    with system_context():
+        with connection.cursor() as cur:
+            cur.execute(f'{ENSURE_TAG} INSERT INTO users.users (uid) VALUES (%s) ON CONFLICT (uid) DO NOTHING', [uid])
+            cur.execute(f'{ENSURE_TAG} INSERT INTO users.user_public_profiles (uid) VALUES (%s) '
+                        'ON CONFLICT (uid) DO NOTHING', [uid])
+
+
+def api_get(client, path, claims=None, *, ensure=True, **extra):
+    """GET com a anònim (`claims=None`) o amb un token de Firebase simulat (el middleware el verifica).
+
+    `ensure=False` no crea el perfil de qui fa la petició (per provar `profile_required`).
+    """
     if claims is None:
         return client.get(path, **extra)
+    if ensure:
+        ensure_profile(claims['uid'])
     with patch(VERIFY, return_value=claims):
         return client.get(path, HTTP_AUTHORIZATION='Bearer tok', **extra)
 
 
-def api_delete(client, path, claims=None, **extra):
+def api_delete(client, path, claims=None, *, ensure=True, **extra):
     if claims is None:
         return client.delete(path, **extra)
+    if ensure:
+        ensure_profile(claims['uid'])
     with patch(VERIFY, return_value=claims):
         return client.delete(path, HTTP_AUTHORIZATION='Bearer tok', **extra)
 
@@ -125,7 +150,7 @@ def admin_claims(uid='adm'):
 
 # ---------- Comptatge de consultes (sense el soroll de transacció/context) ----------
 
-_NOISE = ('set_config', 'SAVEPOINT', 'RELEASE SAVEPOINT', 'ROLLBACK TO SAVEPOINT')
+_NOISE = ('set_config', "current_setting('app.", 'SAVEPOINT', 'RELEASE SAVEPOINT', 'ROLLBACK TO SAVEPOINT', ENSURE_TAG)
 
 
 class QueryCounter:
