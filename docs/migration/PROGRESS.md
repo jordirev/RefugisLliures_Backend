@@ -15,7 +15,7 @@
 ## Estat dels chunks
 | # | Chunk | Branca | Estat | Notes |
 |---|---|---|---|---|
-| 0 | Disseny BD | `migracio/disseny-bd` | esborrany fet, pendent de dubtes del PO | `docs/design/postgres-schema.md` (§11: 23 dubtes oberts) |
+| 0 | Disseny BD | `migracio/disseny-bd` | fet | `docs/design/postgres-schema.md` tancat (`e611fe3`), PR a `migration` |
 | 1 | Infraestructura | `migracio/infraestructura` | pendent | |
 | 2 | Refugis | `migracio/refugis` | pendent | |
 | 3 | Usuaris | `migracio/usuaris` | pendent | |
@@ -33,6 +33,8 @@
 - 2026-10-23 — Decisió: PK subrogades com a UUID v7 (comunicada a l’agent de disseny).
 - 2026-10-23 — Esborrany del disseny físic acabat (24 taules, 3 vistes, 6 schemas). Pendent: resposta del PO als dubtes de §11 abans de tancar el chunk 0.
 - 2026-10-24 — PO ha respost els dubtes de §11 (vegeu PLAN.md, "Decisions sobre els dubtes"). Condition passa a ser atribut de l’experiència (sense taula de vots); llavor amb `puntua_refugi`, n=0. Tests locals: Postgres 16 natiu + PostGIS (apt), no Docker (daemon no disponible). Agent de disseny revisant el doc.
+
+- 2026-10-24 — Disseny tancat (N1–N3 resolts pel PO). El PO delega les decisions: registre a [`DECISIONS_AUTONOMES.md`](DECISIONS_AUTONOMES.md).
 
 ## Pendents / bloquejos
 - Cap.
