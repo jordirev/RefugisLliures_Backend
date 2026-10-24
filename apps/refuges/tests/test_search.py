@@ -220,5 +220,7 @@ def test_la_consulta_real_de_la_cerca_per_nom_usa_els_dos_gin_trigram(named):
     """No només el SQL a mà: el `QuerySet` que executa la vista fa `BitmapOr` sobre els GIN del nom i de l'àlies."""
     from apps.refuges import selectors
     sql, params = selectors.search_queryset({'name': 'colomers'}).query.sql_with_params()
+    with connection.cursor() as cur:
+        cur.execute('SET LOCAL enable_indexscan = off')    # amb estadístiques velles el planificador triaria la PK: només bitmap
     plan = _explain(sql, params)
     assert 'refuges_name_trgm_gin' in plan and 'refuges_surname_trgm_gin' in plan, plan
