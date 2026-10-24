@@ -125,6 +125,9 @@ def _postgres_database(url_vars, pooled, atomic_requests):
         # El pooler de Neon (PgBouncer, mode transacció) no admet sentències preparades ni el paràmetre
         # d'arrencada `options` (§1.5): per això no hi ha `options` i es desactiven les preparades.
         'prepare_threshold': None,
+        # Sense límit, un host inabastable (o un cold start de Neon fallit) deixaria el worker penjat (també el
+        # health check): libpq no té cap timeout de connexió per defecte.
+        'connect_timeout': 10,
     }
     sslmode = (parse_qs(parsed.query).get('sslmode') or [None])[0]
     if not sslmode and host not in _LOCAL_DB_HOSTS and not host.endswith('.localhost'):

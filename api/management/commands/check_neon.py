@@ -28,6 +28,8 @@ class Command(BaseCommand):
             cur.execute("SELECT similarity(unaccent('Refugi de Cap de Llauset'), 'refugi cap llauset')")
             self.stdout.write(f'pg_trgm + unaccent: similarity = {cur.fetchone()[0]:.2f}')
 
+            self._check_bootstrap(cur)
+
             cur.execute(
                 'CREATE TEMP TABLE _check_refuges '
                 '(id serial PRIMARY KEY, name text, coord geography(Point, 4326))'
@@ -50,3 +52,16 @@ class Command(BaseCommand):
         if len(rows) != 1 or rows[0][0] != 'Refugi de prova A':
             raise CommandError('ST_DWithin no ha retornat el resultat esperat')
         self.stdout.write(self.style.SUCCESS(f"Neon OK (alias '{alias}')"))
+
+    def _check_bootstrap(self, cur):
+        """Avisa si falta algun requisit del bootstrap del propietari (§1.3 del disseny)."""
+        cur.execute("SELECT extname FROM pg_extension WHERE extname IN ('postgis', 'pg_trgm', 'unaccent', 'btree_gist')")
+        missing = {'postgis', 'pg_trgm', 'unaccent', 'btree_gist'} - {row[0] for row in cur.fetchall()}
+        cur.execute("SELECT has_database_privilege(current_user, current_database(), 'CREATE'), "
+                    "has_schema_privilege(current_user, 'public', 'CREATE')")
+        db_create, public_create = cur.fetchone()
+        for ok, msg in ((not missing, f'extensions que falten: {sorted(missing)}'),
+                        (db_create, 'falta GRANT CREATE ON DATABASE (core.0001 no podra crear els schemas)'),
+                        (public_create, 'falta GRANT CREATE ON SCHEMA public (PG15+: Django no podra crear django_migrations)')):
+            if not ok:
+                self.stdout.write(self.style.WARNING(f'Bootstrap incomplet: {msg}'))

@@ -565,6 +565,11 @@ def django_db_setup(django_test_environment, django_db_blocker):
     from django.db import connections
 
     if 'migrator' in settings.DATABASES:
+        # Els grants de sota només són per a la BD efímera de proves: mai contra un Postgres remot (p. ex. Neon).
+        from refugis_lliures.settings import _LOCAL_DB_HOSTS
+        host = settings.DATABASES['migrator'].get('HOST') or ''
+        if host not in _LOCAL_DB_HOSTS and not host.endswith('.localhost'):
+            pytest.exit(f'Els tests només poden córrer contra un Postgres local (HOST={host!r}).', returncode=2)
         with django_db_blocker.unblock():
             call_command('migrate', database='migrator', interactive=False, verbosity=0)
             # Només per als tests: alguns creen un `django.contrib.auth.User` per a `force_authenticate`. Aquestes

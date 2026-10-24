@@ -52,7 +52,11 @@ jobs:
         PGPASSWORD: postgres
         PG_START_CLUSTER: "0"
       run: |
-        eval "$(scripts/dev/setup_local_postgres.sh | grep '^export ')"
+        # Primer a un fitxer: si el bootstrap falla, el pas falla (dins d'`eval "$(...)"` l'error s'ignoraria
+        # i els tests caurien a SQLite sense avisar).
+        scripts/dev/setup_local_postgres.sh > "$RUNNER_TEMP/pg.env"
+        eval "$(grep '^export ' "$RUNNER_TEMP/pg.env")"
+        test -n "$TEST_DATABASE_URL_APP" && test -n "$TEST_DATABASE_URL_MIGRATOR"
         echo "TEST_DATABASE_URL_APP=$TEST_DATABASE_URL_APP" >> "$GITHUB_ENV"
         echo "TEST_DATABASE_URL_MIGRATOR=$TEST_DATABASE_URL_MIGRATOR" >> "$GITHUB_ENV"
 
