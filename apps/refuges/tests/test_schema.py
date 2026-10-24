@@ -194,6 +194,14 @@ def test_no_es_crea_index_sobre_la_condicio_arrodonida(migrator_db):
     assert rows == []
 
 
+def test_cap_index_like_de_django_a_les_taules_del_domini(migrator_db):
+    """Decisió del PO: Django crea un índex `*_like` (`*_pattern_ops`) a cada PK de text, però cap consulta fa
+    cerques per prefix sobre aquestes columnes; les migracions l'esborren. Fora de `public` (taules de Django)."""
+    rows = fetch_all(migrator_db, "SELECT schemaname, indexname FROM pg_indexes "
+                                  "WHERE schemaname NOT IN ('public', 'pg_catalog') AND indexname LIKE '%%\_like'")
+    assert rows == []
+
+
 def test_indexs_parcials_de_places_i_altitud(migrator_db):
     for name, col in (('refuges_places_idx', 'places'), ('refuges_altitude_idx', 'altitude')):
         d = fetch_one(migrator_db, "SELECT indexdef FROM pg_indexes WHERE indexname = %s", [name])[0]

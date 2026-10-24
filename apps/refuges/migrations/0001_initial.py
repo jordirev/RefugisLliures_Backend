@@ -12,7 +12,7 @@ import django.db.models.lookups
 from django.db import migrations, models
 
 from apps.core.migration_utils import (
-    PostgresRunSQL, disable_rls_sql, drop_policy_sql, enable_rls_sql)
+    DropDjangoLikeIndexes, PostgresRunSQL, disable_rls_sql, drop_policy_sql, enable_rls_sql)
 from apps.core.rls import create_policy_sql
 
 
@@ -321,4 +321,8 @@ class Migration(migrations.Migration):
             constraint=models.UniqueConstraint(condition=models.Q(('thumb_key__isnull', False)), fields=('thumb_key',), name='refuge_media_thumb_key_uq'),
         ),
         PostgresRunSQL(sql=FORWARD_SQL, reverse_sql=REVERSE_SQL),
+        # Índexs `*_like` de Django a les PK de text: no s'usen (vegeu DropDjangoLikeIndexes).
+        DropDjangoLikeIndexes([
+            ('refuges', 'refuge_media_key_e184c11f_like', 'refuge_media', 'key', 'text_pattern_ops'),
+        ]),
     ]

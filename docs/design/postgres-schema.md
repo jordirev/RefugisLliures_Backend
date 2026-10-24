@@ -1576,6 +1576,7 @@ class MediaReport(models.Model):
 ### 6.5 Convencions de migració i de transaccions
 
 - Cada migració que crea una taula inclou, **a la mateixa migració**, les `FK` (§6.3), els `GRANT` (matriu §7.2), la RLS (`ENABLE ROW LEVEL SECURITY` + polítiques) i els triggers; amb `reverse_sql` per a tot.
+- Si la taula té una PK o un camp únic de **text**, Django hi crea un índex extra `*_like` (`varchar/text_pattern_ops`, només útil per a `LIKE 'x%'`). Cap consulta en fa ús: la mateixa migració l'esborra amb `DropDjangoLikeIndexes` (`apps.core.migration_utils`) i un test de l'esquema comprova que no n'hi ha cap fora de `public` (decisió del PO, chunk 2).
 - Un test d'arquitectura compara `information_schema.role_table_grants`, `pg_policies` i `pg_class.relrowsecurity` del rol `app` amb aquest document (falla si hi ha una taula sense RLS, un grant de més o de menys).
 - Les migracions s'apliquen amb `neon_migrator` (endpoint directe); l'aplicació s'executa amb `neon` (rol `app`, pooler). Les proves d'integració **han de** córrer com a `app` (si no, el propietari ignora la RLS).
 - `bulk_create(ignore_conflicts=True)` no retorna PK (no fa `RETURNING`): és el que es vol per a «ja existeix → ignora» sota RLS.
