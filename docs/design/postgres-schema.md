@@ -2,7 +2,7 @@
 
 > **[FET]** comprovat al codi, a les dades (`api/utils/final_data_refuges.json`) o a la documentació del projecte · **[INFERÈNCIA]** deducció raonada, no executada · **[NO VERIFICAT]** depèn de Neon, del pooler o d'una decisió pendent. Vegeu la [llegenda del README](../README.md).
 >
-> Revisat amb les decisions del product owner (`PLAN.md`, secció «Decisions sobre els dubtes del disseny», 24/10). Document **normatiu** per als agents que implementen la migració Firestore → PostgreSQL (chunks 1–11 de [`../migration/PLAN.md`](../migration/PLAN.md)). Les decisions de l'usuari del PLAN són vinculants; aquí s'hi afegeixen les decisions de disseny que el PLAN deixava obertes i la llista de [decisions preses i dubtes oberts](#11-decisions-preses-i-dubtes-oberts) per al product owner.
+> Revisat amb les decisions del product owner (`PLAN.md`, secció «Decisions sobre els dubtes del disseny», 24/10). Document **normatiu** per als agents que implementen la migració Firestore → PostgreSQL (chunks 1–11 de [`../migration/PLAN.md`](../migration/PLAN.md)). Les decisions de l'usuari del PLAN són vinculants; aquí s'hi afegeixen les decisions de disseny que el PLAN deixava obertes i la llista de [decisions preses i dubtes oberts](#11-decisions-preses-tot-decidit) per al product owner.
 > Entrades: [`PLAN.md`](../migration/PLAN.md), [`arquitectura-neon-cloudrun-upstash.md`](../migration/arquitectura-neon-cloudrun-upstash.md) (§4.1, 4.4, 4.6, 5.1, 5.2), [`uml-conceptual.md`](../migration/uml-conceptual.md) (completat des del codi), [`integrations/neon.md`](../integrations/neon.md).
 > Cap secret ni valor de variable d'entorn apareix aquí; només noms de rols i d'objectes.
 
@@ -18,7 +18,7 @@
 8. [RGPD](#8-rgpd)
 9. [Pla de càrrega de `final_data_refuges.json`](#9-pla-de-càrrega-de-final_data_refugesjson)
 10. [UML físic (Mermaid)](#10-uml-físic-mermaid)
-11. [Decisions preses i dubtes oberts](#11-decisions-preses-i-dubtes-oberts)
+11. [Decisions preses (tot decidit)](#11-decisions-preses-tot-decidit)
 12. [Canvis de contracte per al frontend](#12-canvis-de-contracte-per-al-frontend)
 
 ---
@@ -1019,6 +1019,19 @@ CREATE POLICY reports_update ON moderation.media_reports FOR UPDATE TO app      
 CREATE POLICY reports_delete ON moderation.media_reports FOR DELETE TO app USING ({SYS}); -- purga de retenció
 ```
 Grants: `SELECT, INSERT, UPDATE, DELETE`.
+**Esborrat d'un refugi (decisió N3).** Les denúncies `legal_hold` **no** cauen en cascada amb el refugi: un *trigger* `BEFORE DELETE` sobre `refuges.refuges` (`SECURITY DEFINER`) posa `refuge_id := NULL` (es conserva `media_key`); les no `legal_hold` continuen amb `ON DELETE CASCADE`. Les entrades d'`audit_logs` no tenen FK al refugi i no es veuen afectades.
+```sql
+CREATE FUNCTION refuges.fn_refuges_detach_legal_hold() RETURNS trigger
+  LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, moderation AS $$
+BEGIN
+  UPDATE moderation.media_reports SET refuge_id = NULL WHERE refuge_id = OLD.id AND legal_hold;
+  RETURN OLD;
+END $$;
+CREATE TRIGGER refuges_detach_legal_hold BEFORE DELETE ON refuges.refuges
+  FOR EACH ROW EXECUTE FUNCTION refuges.fn_refuges_detach_legal_hold();
+```
+(Es crea a `moderation.0001`.) Això requereix que `refuge_id` sigui nul·lable (ja ho és).
+
 **Conservació CSAM (`legal_hold`)**: en esborrar un usuari, un *trigger* `BEFORE DELETE` (§2.1) desvincula les denúncies `legal_hold` on és denunciant (`reporter_uid := NULL, anonymized_at := now()`) abans que la cascada esborri la resta; les on és `media_creator_uid` ja són `SET NULL`. La purga de retenció (§8.3) no esborra files `legal_hold`.
 
 ⚠ **Efectes creuats de moderació** (la petició del denunciant ha de tocar files d'altres usuaris): auto-ocultar el mitjà (`refuge_media.status`), comptar denunciants **diferents** (la RLS només deixaria veure les pròpies), inserir l'avís (`moderation_notices`) a l'autor. Han d'executar-se dins un únic bloc `system_context()` curt i acotat (§7.4); l'admin que resol (`{ADM}`) ja ho veu tot.
@@ -1123,7 +1136,7 @@ Registre d'accés i accions (art. 32 RGPD / DSA). Només s'hi escriu (cap endpoi
 | `target_id` | `varchar(500)` | SÍ | — | |
 | `metadata` | `jsonb` | NO | `'{}'` | `CHECK (jsonb_typeof(metadata) = 'object' AND pg_column_size(metadata) < 16384)`; **sense dades personals** (ni `uid`, ni bytes, ni URLs, ni dates de naixement) |
 | `created_at` | `timestamptz` | NO | `now()` | (Firestore: `timestamp`) |
-| `expire_at` | `timestamptz` | NO | `now() + interval '365 days'` | `CHECK (expire_at > created_at)`; substitueix el TTL de Firestore. Les files `legal_hold` porten un `expire_at` molt posterior (període legal: dubte N2) |
+| `expire_at` | `timestamptz` | NO | `now() + interval '365 days'` | `CHECK (expire_at > created_at)`; substitueix el TTL de Firestore. Les files `legal_hold` porten `expire_at = created_at + 5 anys` (decisió N2, pendent d'assessorament legal) |
 | `legal_hold` | `boolean` | NO | `false` | `true` en entrades relacionades amb CSAM (`moderation.hash_block`, `moderation.user_blocked` amb motiu CSAM, `moderation.resolve`/`media.report` de CSAM): en esborrar l'usuari es **desvinculen** (`actor_uid`/`subject_uid := NULL`) en lloc de cascadar-se |
 
 Índexs: `(expire_at) WHERE NOT legal_hold` (purga diària `DELETE … WHERE expire_at < now() AND NOT legal_hold` en lots, `system_context()`); `(actor_uid, created_at DESC)` (FK; consulta forense per actor); `(subject_uid) WHERE subject_uid IS NOT NULL` (FK). No hi ha índex per `target_*`: cap consulta de l'aplicació el necessita (si l'admin ho vol cercar, `BRIN (created_at)` o un índex en aquell moment).
@@ -1502,9 +1515,9 @@ i la restricció real es crea a la migració amb `RunSQL` (amb `reverse_sql`), p
 | `answers (doubt_id, parent_answer_id)` | `activity.answers (doubt_id, id)` | CASCADE |
 | `refuge_proposals.refuge_id` / `.creator_uid` / `.reviewer_uid` | `refuges.refuges` / `users.users` / `users.users` | **SET NULL** ×3 |
 | `upload_intents.user_uid` / `.refuge_id` / `.experience_id` | `users.users` / `refuges.refuges` / `activity.experiences` | CASCADE ×3 |
-| `media_reports.refuge_id` / `.reporter_uid` / `.media_creator_uid` / `.resolved_by` | `refuges.refuges` / `users.users` ×3 | CASCADE / CASCADE / **SET NULL** / **SET NULL** |
+| `media_reports.refuge_id` (CASCADE, llevat de `legal_hold`: *trigger* → NULL) / `.reporter_uid` / `.media_creator_uid` / `.resolved_by` | `refuges.refuges` / `users.users` ×3 | CASCADE / CASCADE / **SET NULL** / **SET NULL** |
 | `moderation_notices.user_uid` / `.refuge_id` / `.report_id` | `users.users` / `refuges.refuges` / `moderation.media_reports` | CASCADE / **SET NULL** / **SET NULL** |
-| `audit_logs.actor_uid`, `subject_uid`, `metadata` | qui va fer/rebre una acció | art. 32 RGPD | propi/admin | cascada; **purga a 365 dies**; **`legal_hold` (CSAM): desvinculat i conservat** (període: dubte N2); `metadata` sense dades personals |
+| `audit_logs.actor_uid`, `subject_uid`, `metadata` | qui va fer/rebre una acció | art. 32 RGPD | propi/admin | cascada; **purga a 365 dies**; **`legal_hold` (CSAM): desvinculat i conservat** (5 anys, decisió N2); `metadata` sense dades personals |
 
 ### 6.4 Tipus de camp i constraints a Django 5.1
 
@@ -1688,11 +1701,11 @@ Mai per llegir dades per a un usuari «per comoditat». Cada ús ha de tenir un 
 
 | Taula | Regla | Freqüència |
 |---|---|---|
-| `audit.audit_logs` | `DELETE … WHERE expire_at < now() AND NOT legal_hold` (lots de 5.000) — **365 dies** (decisió del PLAN) | diària |
+| `audit.audit_logs` | `DELETE … WHERE expire_at < now()` (lots de 5.000): 365 dies (decisió del PLAN); les `legal_hold` tenen `expire_at = created_at + 5 anys` i s'esborren llavors (**pendent d'assessorament legal**) | diària |
 | `moderation.upload_intents` | `DELETE … WHERE expire_at < now()` — **1 dia** | cada hora |
 | `moderation.media_deletion_queue` | buidar (R2) amb *backoff*; alerta si `attempts >= 20` | cada 5 min |
 | `activity.refuge_visits` | processar ahir (§5.3 recepta 9) i esborrar les **visites de data concreta** amb `visit_date < avui − 12 mesos` (decisió 13; els participants cauen en cascada). **`user_visited_refuges` no es purga mai** | diària |
-| `moderation.media_reports` (resoltes, **no** `legal_hold`) i `moderation_notices` | purgar 24 mesos després de la resolució (decisió 9) | mensual |
+| `moderation.media_reports` i `moderation_notices` | no `legal_hold`: 24 mesos després de la resolució (decisió 9); **`legal_hold`: 5 anys després de la resolució** (o de la creació si no s'han resolt), llavors es purguen (**pendent d'assessorament legal**, decisió N2) | mensual |
 | `refuge_proposals` | es conserven (historial); creador anonimitzat en esborrar el compte | — |
 
 ### 8.4 Procediment d'esborrat d'usuari (substitueix els 11 passos de `UserController.delete_user`)
@@ -1742,7 +1755,7 @@ Això resol A5 (esborrar un refugi amb fotos d'experiències) i A6 (no atòmic).
 - `GET /users/{uid}/` amb dades privades per a qualsevol usuari autenticat és B3: un altre usuari només rep `uid`, `username` i `avatar_metadata` (decisió 4).
 - `refuge.visitors` exposa UIDs de visitants a tot usuari autenticat; el frontend no l'usa: es limita a admins (decisió 5).
 - Els camps de text lliure (`comment`, `details`, `statement`, `username`, `message`) poden contenir dades personals: no es copien a logs ni a `audit_logs.metadata`.
-- CSAM: la conservació anonimitzada (`legal_hold`) resol el conflicte amb la cascada, però **el període de conservació i el contingut mínim a guardar** són una qüestió legal oberta (dubte N2).
+- CSAM: la conservació anonimitzada (`legal_hold`) resol el conflicte amb la cascada d'usuari i de refugi; període de 5 anys (decisió N2, **pendent d'assessorament legal**).
 
 ---
 
@@ -2211,7 +2224,7 @@ classDiagram
     users "1" --> "0..*" upload_intents : user_uid CASCADE
     refuges "0..1" --> "0..*" upload_intents : refuge_id CASCADE
     experiences "0..1" --> "0..*" upload_intents : experience_id CASCADE
-    refuges "0..1" --> "0..*" media_reports : refuge_id CASCADE
+    refuges "0..1" --> "0..*" media_reports : refuge_id CASCADE except legal_hold set null by trigger
     users "0..1" --> "0..*" media_reports : reporter_uid CASCADE except legal_hold detached by trigger
     users "0..1" --> "0..*" media_reports : media_creator_uid SET NULL
     users "0..1" --> "0..*" media_reports : resolved_by SET NULL
@@ -2227,7 +2240,7 @@ classDiagram
 
 ---
 
-## 11. Decisions preses i dubtes oberts
+## 11. Decisions preses (tot decidit)
 
 Resposta del product owner a la primera versió d'aquesta secció (`PLAN.md`, «Decisions sobre els dubtes del disseny», 24/10). **Les decisions són vinculants** i ja estan aplicades a tot el document; els números són els de la llista original (de la qual els textos de §2–§9 diuen «decisió N»).
 
@@ -2257,10 +2270,10 @@ Resposta del product owner a la primera versió d'aquesta secció (`PLAN.md`, «
 | 22 | Jobs i RLS | rol `app` + `system_context()`. |
 | 23 | `uuidv7()` a la BD | només app (`api/utils/ids.py: uuid7()`); Neon és PG17 i el local, PG16. |
 
-### Dubtes nous oberts (valor per defecte entre parèntesis)
-- **N1. Regla del «vot antic» d'una experiència.** El PO ha dit que una experiència creada abans del reset de la mitjana que després canvia la condició compta com a vot nou. Per no recomptar-la a cada PATCH posterior, el disseny compara `condition_counted_at` (no `created_at`) amb `condition_reset_at` i el *trigger* la posa a `now()` en comptar-la. A més: un PATCH que **no canvia** el valor no fa res; `condition` és obligatòria al `POST` i opcional al `PATCH`. *(Per defecte: tal com està descrit a §2.9.)*
-- **N2. Conservació CSAM.** Quant de temps es conserven les files `legal_hold` (denúncies i auditoria anonimitzades) i què és el mínim a guardar? *(Per defecte: `expire_at` d'auditoria `legal_hold` = 5 anys i les denúncies `legal_hold` no es purguen automàticament fins a nova indicació; cal consulta legal.)*
-- **N3. Esborrar un refugi amb denúncies CSAM.** `media_reports.refuge_id` és `CASCADE` (cascada de refugi del PLAN), de manera que esborrar el refugi esborraria també l'evidència anonimitzada. *(Per defecte: mantenir `CASCADE`; si es vol protegir-la, canviar-la a `SET NULL` per a totes les denúncies i deixar que la purga de retenció les esborri.)*
+### Dubtes nous: **tots decidits** (no en queda cap d'obert)
+- **N1 (confirmat pel PO).** Una experiència és «antiga» si `condition_counted_at < condition_reset_at`: aleshores un PATCH amb valor nou compta com a vot nou i el *trigger* actualitza `condition_counted_at`; un PATCH amb el mateix valor no fa res; `condition` és obligatòria al `POST` i opcional al `PATCH` (§2.9).
+- **N2.** Les files `legal_hold` (denúncies i auditoria) es conserven **5 anys** després de la resolució/creació i després es purguen (§8.3); **pendent d'assessorament legal**.
+- **N3.** Les denúncies `legal_hold` **no** cauen en cascada en esborrar un refugi: *trigger* `BEFORE DELETE` a `refuges` (`refuge_id := NULL`, es conserva `media_key`); la resta continuen en cascada (§2.20).
 
 ---
 
