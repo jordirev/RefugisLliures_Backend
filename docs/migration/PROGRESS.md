@@ -16,7 +16,7 @@
 | # | Chunk | Branca | Estat | Notes |
 |---|---|---|---|---|
 | 0 | Disseny BD | `migracio/disseny-bd` | fet | `docs/design/postgres-schema.md` tancat (`e611fe3`), PR a `migration` |
-| 1 | Infraestructura | `migracio/infraestructura` | revisat, e2e local 12/12; **següent: PR a `migration`** | 1666 tests; pendent confirmar D9 a Neon `dev` |
+| 1 | Infraestructura | `migracio/infraestructura` | PR [#42](https://github.com/jordirev/RefugisLliures_Backend/pull/42) oberta; **següent: CI verd → merge → chunk 2** | 1666 tests; pendent confirmar D9 a Neon `dev` |
 | 2 | Refugis | `migracio/refugis` | pendent | |
 | 3 | Usuaris | `migracio/usuaris` | pendent | |
 | 4 | Visites | `migracio/visites` | pendent | paral·lel amb 5, 6 |
