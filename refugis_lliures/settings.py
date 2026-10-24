@@ -62,7 +62,7 @@ INSTALLED_APPS = [
     'corsheaders',
     'drf_yasg',
     'django_crontab',
-    'domain.core',
+    'apps.core',
     'api',
 ]
 

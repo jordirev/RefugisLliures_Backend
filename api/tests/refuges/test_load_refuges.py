@@ -102,7 +102,7 @@ def test_condicio_inicial_amb_n_zero_i_distribucio_del_disseny(full, mig):
 
 def test_cada_refugi_es_correspon_amb_el_json(full, mig):
     """Compara camp a camp tots els refugis, amenities i enllaços amb el JSON (clau natural nom+coord)."""
-    from domain.refuges.loader import puntua_refugi
+    from apps.refuges.loader import puntua_refugi
     cols = ', '.join(f'a.{f}' for f in AMENITY_FIELDS)
     rows = fetch_all(mig, f"""
         SELECT r.name, ST_Y(r.coord::geometry), ST_X(r.coord::geometry), r.surname, r.type, r.altitude, r.places,
@@ -217,7 +217,7 @@ def test_amenities_absents_valen_fals_i_valors_0_1_es_conserven(wipe_catalog, js
 
 def test_no_duplica_un_refugi_ja_existent_per_clau_natural(wipe_catalog, json_file):
     """La clau és (nom, lat, long) arrodonida a 6 decimals; l'id preexistent es manté."""
-    from domain.refuges.models import Refuge
+    from apps.refuges.models import Refuge
     from django.contrib.gis.geos import Point
     pre = Refuge.objects.using('migrator').create(name='Cabane A', coord=Point(1.5, 42.5, srid=4326))
     report = run(json_path=json_file([record('Cabane A'), record('Cabane B', lat=43)]))

@@ -1457,9 +1457,9 @@ Paquet nou **`domain/`** a l'arrel del repo (germà d'`api/` i `refugis_lliures/
 
 | App (`INSTALLED_APPS`) | Models → taula | Schema | Chunk |
 |---|---|---|---|
-| `domain.core` | — (funcions, rols, grants, helpers de migració) | `core` | 1 |
-| `domain.accounts` | `UserAccount` → `users.users`; `UserPublicProfile` → `users.user_public_profiles` (`0001`); `FavouriteRefuge`, `VisitedRefuge` (`0002`) | `users` | 2 / 3 |
-| `domain.refuges` | `Refuge`, `RefugeAmenities`, `RefugeLink`, `RefugeMedia`; no gestionat `RefugeMapPoint` | `refuges` | 2 (+7) |
+| `apps.core` | — (funcions, rols, grants, helpers de migració) | `core` | 1 |
+| `apps.accounts` | `UserAccount` → `users.users`; `UserPublicProfile` → `users.user_public_profiles` (`0001`); `FavouriteRefuge`, `VisitedRefuge` (`0002`) | `users` | 2 / 3 |
+| `apps.refuges` | `Refuge`, `RefugeAmenities`, `RefugeLink`, `RefugeMedia`; no gestionat `RefugeMapPoint` | `refuges` | 2 (+7) |
 | `domain.visits` | `RefugeVisit`, `VisitParticipant`; no gestionat `VisitTotal` | `activity` | 4 |
 | `domain.renovations` | `Renovation`, `RenovationGroupLink`, `RenovationParticipant`, `RenovationExpelled` | `activity` | 5 |
 | `domain.doubts` | `Doubt`, `Answer` | `activity` | 6 |
@@ -1538,7 +1538,7 @@ i la restricció real es crea a la migració amb `RunSQL` (amb `reverse_sql`), p
 | Índex `INCLUDE` | `Index(fields=['refuge'], include=['value'], name=...)` |
 | FK composta (`answers`) | no suportada: `RunSQL` (§2.17), camp amb `db_constraint=False` |
 | Vistes | `managed = False`, `db_table = 'refuges"."refuge_map'` (idem `'activity"."refuge_visit_totals'`), `on_delete=DO_NOTHING` |
-| Funcions, triggers, polítiques, grants, vistes | `migrations.RunSQL(sql, reverse_sql)`; les polítiques passen per un helper de `domain.core` que **expandeix les macros** `{U}/{ADM}/{SYS}` |
+| Funcions, triggers, polítiques, grants, vistes | `migrations.RunSQL(sql, reverse_sql)`; les polítiques passen per un helper de `apps.core` que **expandeix les macros** `{U}/{ADM}/{SYS}` |
 
 Esbós de `Meta` (no és codi final; fixa noms i tipus):
 ```python
@@ -1633,7 +1633,7 @@ Ja no hi ha columnes *identity* (totes les PK són `uuid`): els `ALTER DEFAULT P
    ```
    `is_local = true` ⇒ el valor mor al `COMMIT/ROLLBACK`: **mai** es filtra a una altra petició que reutilitzi la connexió del pooler. Les rutes anònimes (`/api/refuges/`, `/health/`) fixen `uid=''`; les polítiques de lectura pública `USING (true)` continuen funcionant.
 3. **Fail-closed**: sense context, `core.uid()` és `NULL` ⇒ tot el que no és `USING (true)` es denega (una vista que oblidi fixar el context falla en lloc de filtrar dades).
-4. Fora de peticions HTTP (comandes, tasques de Cloud Run, tests) s'usa el *context manager* `rls_context(uid=None, is_admin=False, system=False)` de `domain.core`, que obre `transaction.atomic()` i executa la mateixa sentència.
+4. Fora de peticions HTTP (comandes, tasques de Cloud Run, tests) s'usa el *context manager* `rls_context(uid=None, is_admin=False, system=False)` de `apps.core`, que obre `transaction.atomic()` i executa la mateixa sentència.
 5. Els instruments de comptatge de consultes (`django_assert_num_queries`) han d'excloure aquesta sentència (§5.3).
 6. **Perfil obligatori (decisió del PO)**: una única classe de permís DRF (`HasProfile`, afegida a **tots** els endpoints autenticats llevat de `POST /users/`) comprova que existeix la fila `users.users` de l'UID (la RLS ja deixa llegir la pròpia) i, si no, retorna **403 `{error: 'profile_required'}`**; el frontend fa *logout* i el flux de login crea el perfil. S'ha d'integrar amb `IsNotBlocked`/`IsAgeConfirmed` perquè facin **una sola** lectura de `users` per petició (cache d'objecte a `request`, no a Redis). Les lectures públiques no canvien. `scripts/manage_admins.py add` ha d'assegurar la fila de l'admin.
 7. `app.is_admin` es deriva **sempre** del token ja verificat pel middleware (`request.user_claims['role'] == 'admin'`), mai d'un camp de la petició.

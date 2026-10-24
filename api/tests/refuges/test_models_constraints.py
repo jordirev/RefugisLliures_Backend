@@ -1,5 +1,5 @@
 """
-Models `domain.refuges` / `domain.accounts` i restriccions de la BD (§2.5-2.8), provats amb el rol `app`
+Models `apps.refuges` / `apps.accounts` i restriccions de la BD (§2.5-2.8), provats amb el rol `app`
 dins `system_context()` (l'escriptura de refugis és d'admin/sistema per RLS).
 """
 import uuid
@@ -11,7 +11,7 @@ from django.db import IntegrityError, connection, transaction
 
 from api.tests.refuges.helpers import (
     AMENITY_FIELDS, REFUGE_TYPES, QueryCounter, account_models, make_media, make_refuge, make_user, refuge_models)
-from domain.core.rls import rls_context, system_context
+from apps.core.rls import rls_context, system_context
 
 pytestmark = [pytest.mark.db_infra, pytest.mark.django_db, pytest.mark.models, pytest.mark.integration]
 

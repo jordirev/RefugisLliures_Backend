@@ -6,7 +6,7 @@ propietari de la BD (§1.3): extensions `postgis`, `pg_trgm`, `unaccent`, `btree
 """
 from django.db import migrations
 
-from domain.core.migration_utils import PostgresRunSQL
+from apps.core.migration_utils import PostgresRunSQL
 
 SCHEMAS = ('core', 'refuges', 'users', 'activity', 'proposals', 'moderation', 'audit')
 

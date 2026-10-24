@@ -6,7 +6,7 @@ from django.db import transaction
 from django.test import RequestFactory
 
 from api.tests.conftest import fetch_one
-from domain.core.rls import rls_context, system_context
+from apps.core.rls import rls_context, system_context
 
 pytestmark = [pytest.mark.db_infra, pytest.mark.rls]
 

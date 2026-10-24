@@ -6,7 +6,7 @@ per avisar de migracions pendents; sense el grant, `runserver` no arrenca (`perm
 """
 from django.db import migrations
 
-from domain.core.migration_utils import PostgresRunSQL
+from apps.core.migration_utils import PostgresRunSQL
 
 
 class Migration(migrations.Migration):

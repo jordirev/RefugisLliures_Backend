@@ -20,7 +20,7 @@ def r2_sense_xarxa():
 
 @pytest.fixture
 def RM():
-    """Mòdul `domain.refuges.models` (falla amb ModuleNotFoundError fins que l'implementador el creï)."""
+    """Mòdul `apps.refuges.models` (falla amb ModuleNotFoundError fins que l'implementador el creï)."""
     return refuge_models()
 
 

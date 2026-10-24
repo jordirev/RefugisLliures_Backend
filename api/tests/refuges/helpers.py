@@ -1,9 +1,9 @@
 """
 Ajudes de test del domini refugis (chunk 2).
 
-Els models de producció (`domain.refuges`, `domain.accounts`) encara no existeixen quan s'escriuen els tests:
+Els models de producció (`apps.refuges`, `apps.accounts`) encara no existeixen quan s'escriuen els tests:
 s'importen **de manera mandrosa** (`refuge_models()`, `account_models()`) perquè cada test falli pel seu propi motiu
-(`ModuleNotFoundError: domain.refuges`) en lloc de trencar la col·lecció de tota la suite.
+(`ModuleNotFoundError: apps.refuges`) en lloc de trencar la col·lecció de tota la suite.
 
 Les dades de prova s'escriuen amb el rol `app` dins `system_context()` (la RLS d'escriptura és `{ADM} OR {SYS}`),
 de manera que les mateixes eines que farà servir l'aplicació queden provades.
@@ -34,11 +34,11 @@ T0 = datetime(2025, 1, 1, 10, 0, tzinfo=dt_timezone.utc)
 
 
 def refuge_models():
-    return importlib.import_module('domain.refuges.models')
+    return importlib.import_module('apps.refuges.models')
 
 
 def account_models():
-    return importlib.import_module('domain.accounts.models')
+    return importlib.import_module('apps.accounts.models')
 
 
 def load_json():
@@ -49,7 +49,7 @@ def load_json():
 
 def make_user(uid='u1', username='', **fields):
     """Fila de `users.users` + `user_public_profiles` (es creen a la mateixa transacció, com a l'alta real)."""
-    from domain.core.rls import system_context
+    from apps.core.rls import system_context
     am = account_models()
     with system_context():
         user = am.UserAccount.objects.create(uid=uid, **fields)
@@ -60,7 +60,7 @@ def make_user(uid='u1', username='', **fields):
 def make_refuge(name='Refugi Test', lat=42.5, long=1.5, amenities=None, links=None, **fields):
     """Refugi + amenities (sempre, invariant §2.6) + enllaços ordenats."""
     from django.contrib.gis.geos import Point
-    from domain.core.rls import system_context
+    from apps.core.rls import system_context
     rm = refuge_models()
     fields.setdefault('type', 'non gardé')
     with system_context():
@@ -72,7 +72,7 @@ def make_refuge(name='Refugi Test', lat=42.5, long=1.5, amenities=None, links=No
 
 
 def make_media(refuge, creator_uid, key=None, status='visible', minutes=0, **fields):
-    from domain.core.rls import system_context
+    from apps.core.rls import system_context
     rm = refuge_models()
     key = key or f'refugis-lliures/{refuge.pk}/{creator_uid}-{minutes}-{status}.webp'
     fields.setdefault('media_type', 'image')

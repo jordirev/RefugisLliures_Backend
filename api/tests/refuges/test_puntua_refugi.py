@@ -2,7 +2,7 @@
 `puntua_refugi(info_comp)` (§9.1): valor inicial de la condició del refugi en la càrrega (substitueix
 `assign_conditions`/`determine_condition`). Funció pura, sense BD.
 
-Contracte: `domain.refuges.loader.puntua_refugi(info) -> (nota, total)` amb `nota` enter 0-3 i `total` el punt brut
+Contracte: `apps.refuges.loader.puntua_refugi(info) -> (nota, total)` amb `nota` enter 0-3 i `total` el punt brut
 (màxim 9,5). Les claus que falten valen 0.
 """
 import importlib
@@ -17,7 +17,7 @@ pytestmark = [pytest.mark.unit]
 
 @pytest.fixture(scope='module')
 def puntua():
-    return importlib.import_module('domain.refuges.loader').puntua_refugi
+    return importlib.import_module('apps.refuges.loader').puntua_refugi
 
 
 FULL = {'lits': 1, 'matelas': 1, 'couvertures': 1, 'eau': 1, 'latrines': 1, 'poele': 1, 'bois': 1}

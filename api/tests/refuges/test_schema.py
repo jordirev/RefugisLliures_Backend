@@ -34,8 +34,8 @@ def test_migracions_0001_aplicades_pel_migrator(migrator_db, app):
 
 
 def test_apps_declarades_com_a_domain(settings):
-    assert 'domain.accounts' in settings.INSTALLED_APPS
-    assert 'domain.refuges' in settings.INSTALLED_APPS
+    assert 'apps.accounts' in settings.INSTALLED_APPS
+    assert 'apps.refuges' in settings.INSTALLED_APPS
 
 
 def test_la_migracio_de_refuges_depen_d_accounts():

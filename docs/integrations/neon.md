@@ -30,7 +30,7 @@ Creats amb SQL (no amb el CLI, que els faria membres de `neon_superuser`) a `pro
 - **`connect_timeout=10`** a `OPTIONS`: libpq no té cap timeout de connexió per defecte; sense límit, un host inabastable (o un *cold start* de Neon fallit) deixaria el worker penjat, també el health check **[FET]**.
 - **`prepare_threshold=None`** (sense sentències preparades) i **cap `options`** a l'arrencada: el pooler de Neon (PgBouncer, mode transacció) no admet ni les preparades ni el paràmetre d'arrencada `options` (§1.5 del disseny) **[FET]**. Per això el context RLS es fixa amb `set_config(..., true)` dins la transacció, no amb `options`.
 - **Sense cap URL definida**, `default` continua sent SQLite (`db.sqlite3`): només perquè els tests amb mocks (que no toquen la BD) puguin carregar la configuració. Qualsevol petició real sense URL fallaria en el `set_config` del hook de RLS **[FET sobre la configuració; INFERÈNCIA sobre la fallada del hook]** (vegeu [TECH_DEBT.md](../TECH_DEBT.md) P3).
-- `INSTALLED_APPS` afegeix `django.contrib.gis`, `django.contrib.postgres` i `domain.core` **[FET]**. **`django.contrib.gis` sempre és actiu: el runtime necessita GDAL/GEOS** (a Windows local no hi són; s'executa en un contenidor Linux, [guides/local-setup.md](../guides/local-setup.md)). Instal·lar-los a Render/Cloud Run és **pendent de desplegament** ([TECH_DEBT.md](../TECH_DEBT.md) P1).
+- `INSTALLED_APPS` afegeix `django.contrib.gis`, `django.contrib.postgres` i `apps.core` **[FET]**. **`django.contrib.gis` sempre és actiu: el runtime necessita GDAL/GEOS** (a Windows local no hi són; s'executa en un contenidor Linux, [guides/local-setup.md](../guides/local-setup.md)). Instal·lar-los a Render/Cloud Run és **pendent de desplegament** ([TECH_DEBT.md](../TECH_DEBT.md) P1).
 - Dependència: `psycopg[binary]==3.2.9`.
 
 ## Migracions (sempre amb `--database=migrator`) [FET]
@@ -40,7 +40,7 @@ python manage.py migrate --database=migrator
 El rol `app` no té permisos de DDL: un `migrate` sense `--database=migrator` fallaria (i, si algú li donés DDL, deixaria objectes que no són del propietari). `domain/core` (`core.0001`) crea els schemas (`core`, `refuges`, `users`, `activity`, `proposals`, `moderation`, `audit`), les funcions de `core` (`uid()`, `is_admin()`, `is_system()`, `immutable_unaccent`, `norm_name`, `round_half_even`; disseny §2.0) i els grants base de `app` (§7.1), amb `reverse_sql`. Requereix el *bootstrap* previ del propietari (§1.3).
 
 ## RLS i context de la petició [FET]
-- `domain/core/rls.py`: `rls_context(uid, is_admin, system, using)` i `system_context()` (reexportats a `domain.core`) i helpers de polítiques (`expand_macros`, `create_policy_sql`, `drop_policy_sql`) per a les migracions dels chunks següents.
+- `domain/core/rls.py`: `rls_context(uid, is_admin, system, using)` i `system_context()` (reexportats a `apps.core`) i helpers de polítiques (`expand_macros`, `create_policy_sql`, `drop_policy_sql`) per a les migracions dels chunks següents.
 - El context (`app.uid`, `app.is_admin`, `app.is_system`) es fixa **sempre amb `set_config(..., true)`**, és a dir, **local a la transacció**: mor al `COMMIT`/`ROLLBACK` i no es filtra a altres clients quan el pooler reutilitza la connexió. Per a peticions HTTP el fixa el hook de `api/rls_hook.py` ([flux 00](../flows/00-auth-request-pipeline.md)); fora d'HTTP (comandes, jobs, tests) s'usa `rls_context`.
 
 ## Identificadors

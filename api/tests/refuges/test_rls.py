@@ -9,7 +9,7 @@ from django.contrib.gis.geos import Point
 from django.db import DatabaseError, connection, transaction
 
 from api.tests.refuges.helpers import T0, account_models, make_media, make_refuge, make_user, refuge_models
-from domain.core.rls import rls_context, system_context
+from apps.core.rls import rls_context, system_context
 
 pytestmark = [pytest.mark.db_infra, pytest.mark.django_db, pytest.mark.rls, pytest.mark.integration]
 

@@ -12,7 +12,7 @@ import pytest
 from api.tests.refuges.helpers import (
     AMENITY_FIELDS, BASE_KEYS, MEDIA_ITEM_KEYS, admin_claims, api_delete, api_get, make_media, make_refuge,
     make_user, user_claims)
-from domain.core.rls import rls_context
+from apps.core.rls import rls_context
 
 pytestmark = [pytest.mark.db_infra, pytest.mark.django_db, pytest.mark.views, pytest.mark.integration]
 
@@ -76,7 +76,7 @@ def test_detall_camps_nuls(client, RM):
 def test_detall_refugi_sense_fila_d_amenities_torna_tot_a_zero(client, RM):
     """Invariant «tot refugi té amenities» no forçat per la BD: la lectura fa LEFT JOIN (§2.6)."""
     from django.contrib.gis.geos import Point
-    from domain.core.rls import system_context
+    from apps.core.rls import system_context
     with system_context():
         r = RM.Refuge.objects.create(name='Sense amenities', coord=Point(1, 42, srid=4326))
     d = api_get(client, detail(r)).json()
