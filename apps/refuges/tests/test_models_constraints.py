@@ -10,7 +10,7 @@ from django.contrib.gis.measure import D
 from django.db import DataError, IntegrityError, connection, transaction
 
 from apps.refuges.tests.helpers import (
-    AMENITY_FIELDS, REFUGE_TYPES, QueryCounter, account_models, make_media, make_refuge, make_user, refuge_models)
+    AMENITY_FIELDS, REFUGE_TYPES, QueryCounter, account_models, make_media, make_refuge, make_user)
 from apps.core.rls import rls_context, system_context
 
 pytestmark = [pytest.mark.db_infra, pytest.mark.django_db, pytest.mark.models, pytest.mark.integration]

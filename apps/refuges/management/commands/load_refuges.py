@@ -216,12 +216,20 @@ class Command(BaseCommand):
                   RefugeLink.objects.using(db).count())
         if actual != (n_refuges, n_amenities, n_links):
             raise CommandError(f'Verificació fallida: esperats {(n_refuges, n_amenities, n_links)}, hi ha {actual}')
-        bad = Refuge.objects.using(db).exclude(condition__in=[0, 1, 2, 3]).exclude(condition__isnull=True).count()
-        if bad:
-            raise CommandError(f'Verificació fallida: {bad} refugis amb condició fora de 0-3')
+        # §9.1.5: tots els refugis nous porten una condició llavor (0-3) i cap valoració comptada (n = 0).
+        seeded = Refuge.objects.using(db).filter(
+            condition__in=[0, 1, 2, 3], num_contributed_conditions=0).count()
+        if seeded != n_refuges:
+            raise CommandError(
+                f'Verificació fallida: {n_refuges - seeded} refugis sense condició inicial 0-3 amb n = 0')
 
     def _analyze(self, db):
-        """`ANALYZE` de les taules (estadístiques per al planificador). Només té efecte per al propietari."""
+        """
+        `VACUUM (ANALYZE)` de les taules (només té efecte per al propietari; fora de la transacció de la càrrega).
+
+        Un `ANALYZE` sol no basta: les estadístiques de la metapàgina d'un índex GIN només les actualitza el
+        `VACUUM`, i sense elles el planificador menysprea els índexs GIN trigram i fa `Seq Scan` fins que arriba l'autovacuum.
+        """
         with connections[db].cursor() as cursor:
             for model in (Refuge, RefugeAmenities, RefugeLink, RefugeMedia):
-                cursor.execute(f'ANALYZE "{model._meta.db_table}"')       # nom constant (`schema"."taula`)
+                cursor.execute(f'VACUUM (ANALYZE) "{model._meta.db_table}"')       # nom constant (`schema"."taula`)
