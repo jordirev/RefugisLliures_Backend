@@ -29,7 +29,7 @@
 | M2 | PATCH de renovation amb només una data → `TypeError` (`date` vs `datetime`) → 500. | `api/controllers/renovation_controller.py:124-128`, `api/models/renovation.py:62-63` | FET |
 | M3 | Esborrar un usuari decrementa `total_visitors` en 1 i no en `num_visitors`. | `api/daos/refuge_visit_dao.py:529` | FET |
 | M4 | Visites duplicades possibles per (refugi, data): check-then-create sense transacció; `limit(1)` n'amaga una. | `api/controllers/refuge_visit_controller.py:105-147`, `api/daos/refuge_visit_dao.py:96-136` | INFERÈNCIA |
-| M5 | `condition` es desa com a mitjana float però el filtre de cerca només accepta 0/1/2 exactes. | `api/services/condition_service.py:39`, `api/serializers/refugi_lliure_serializer.py:82-164` | FET |
+| M5 | **RESOLT al chunk 2**: `condition` es desa com a mitjana decimal i es mostra/filtra arrodonida half-to-even; el filtre accepta 0–3 (`core.round_half_even`). | `apps/refuges/selectors.py`, `apps/refuges/serializers.py` | FET |
 | M6 | Actualitzar un refugi via proposta no invalida `refugi_search` ni `user_refugis_info`. | `api/daos/refuge_proposal_dao.py:373-378` | FET |
 | M7 | `doubt_detail` es desa amb dues formes (amb/sense `answers`). | `api/daos/doubt_dao.py:86-88` vs `129-153` | FET |
 | M8 | Error path del PATCH d'experiència fa `None.to_dict()`. | `api/views/experience_views.py:310-312` | FET |
@@ -41,8 +41,8 @@
 
 | # | Problema | Evidència | Tipus |
 |---|---|---|---|
-| B1 | `active_only` de `GET /refuges/{id}/renovations/` és paràmetre del mètode, no es llegeix de la query → sempre `False`. | `api/views/refugi_lliure_views.py:282-286` | FET |
-| B2 | Cerca per nom exacta (`==`) però Swagger diu parcial i case-insensitive. | `api/daos/refugi_lliure_dao.py:204-226` | FET |
+| B1 | `active_only` de `GET /refuges/{id}/renovations/` és paràmetre del mètode, no es llegeix de la query → sempre `False`. | `api/views/renovation_views.py` (`RefugeRenovationsAPIView.get`) | FET |
+| B2 | **RESOLT al chunk 2**: la cerca per nom és parcial, sense accents ni majúscules, sobre nom i `surname` (`pg_trgm` + `core.norm_name`), i admet noms repetits. | `apps/refuges/selectors.py` | FET |
 | B3 | Qualsevol usuari autenticat pot llegir el perfil complet d'un altre (llistes, claus de fotos). | `api/views/user_views.py:155-156` | FET |
 | B4 | **RESOLT al chunk 1 de la migració** (el client R2 de `RefugiLliureController` es crea sota demanda: el health check ja no depèn de `R2_*`, i comprova Postgres amb `SELECT 1`). Continua sense comprovar Redis (decisió: l'error de Redis s'empassa a propòsit). | `api/controllers/refugi_lliure_controller.py` (propietat `media_service`, `health_check`), `api/services/database_health.py` | FET |
 | B5 | `get_visits_by_user` fa scan de tota la col·lecció `refuge_visits`; els documents processats mai s'esborren. | `api/daos/refuge_visit_dao.py:207-248` | FET |

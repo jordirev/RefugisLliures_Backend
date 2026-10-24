@@ -7,7 +7,7 @@ Firestore és la **base de dades real** de tot el domini. No hi ha ORM: els DAOs
 ## Client
 - `FirestoreService` singleton (`api/services/firestore_service.py:13-22`), instància global `firestore_service` (L78). `get_db()` (L24-38) reaprofita l'app de Firebase ja inicialitzada o la inicialitza.
 - Els DAOs fan `FirestoreService()` a `__init__` i `self.firestore_service.get_db()` a cada mètode (p. ex. `api/daos/renovation_dao.py:20-23,36`).
-- Excepció: `IsMediaUploader` usa `firestore_service.get_db()` directament (`api/permissions.py:248`).
+- (`IsMediaUploader`, que feia servir `firestore_service.get_db()` directament, s'ha eliminat al chunk 2.)
 
 ## Col·leccions [FET]
 | Col·lecció | DAO / definició | ID del document | Notes |
@@ -38,7 +38,7 @@ Camps nous a `users/{uid}`: `age_confirmed_at`, `age_threshold`, `moderation_str
 | `ArrayUnion` | `api/daos/user_dao.py` (llistes de refugis), `api/daos/experience_dao.py` (`media_keys`) |
 | `ArrayRemove` | `api/daos/experience_dao.py`, `api/daos/refugi_lliure_dao.py`, `api/daos/renovation_dao.py` |
 | `SERVER_TIMESTAMP` | `api/daos/refuge_proposal_dao.py`, `api/management/commands/extract_coords_to_firestore.py` |
-| `batch()` | només a comandes de gestió (`assign_conditions.py`, `extract_coords_to_firestore.py`, `upload_refugis_to_firestore.py`) |
+| `batch()` | només a la comanda de gestió `extract_coords_to_firestore.py` (les antigues `assign_conditions` i `upload_refugis_to_firestore` s'han eliminat al chunk 2) |
 | `collection_group('answers')` | `api/daos/doubt_dao.py` |
 | **Transaccions** | **cap** a `api/` |
 
@@ -48,15 +48,15 @@ No hi ha `firestore.indexes.json` al repo → l'estat dels índexs és **[NO VER
 - `refuges_proposals`: diversos `where` + `order_by created_at desc` (`api/daos/refuge_proposal_dao.py:646-734`).
 - `refuge_visits`: `refuge_id ==` + `date >=` + `order_by date`.
 - `experiences`: `refuge_id ==` + `order_by modified_at desc`; `doubts`: `refuge_id ==` + `order_by created_at desc`.
-- `data_refugis_lliures`: estratègies amb `type in` + `condition in` + rang (`api/daos/search_strategies.py`).
+- (La cerca de refugis ja no usa Firestore: viu a PostgreSQL des del chunk 2, `apps/refuges/selectors.py`.)
 - `answers` (collection group) per `creator_uid` (esborrat d'usuari).
 
 ## Dades inicials (seeding)
 | Comanda | Què fa |
 |---|---|
-| `upload_refugis_to_firestore` | Carrega `api/utils/final_data_refuges.json` a `data_refugis_lliures` amb batches. **Només s'ha d'executar una vegada** (avís a les L10-16 del fitxer). |
+| ~~`upload_refugis_to_firestore`~~ | **Eliminada (chunk 2)**: substituïda per `load_refuges` (PostgreSQL, d'un sol ús; vegeu [local-setup](../guides/local-setup.md)). |
 | `extract_coords_to_firestore` | Construeix `coords_refugis/all_refugis_coords` a partir dels refugis |
-| `assign_conditions` / `verify_conditions` | Assigna/verifica `condition` inicial a partir d'`info_comp` |
+| ~~`assign_conditions`~~ / `verify_conditions` | `assign_conditions` eliminada (la condició inicial la fixa `puntua_refugi` a `load_refuges`); `verify_conditions` només verifica el Firestore antic (s'elimina al chunk 11) |
 | `process_yesterday_visits` | Procés diari (vegeu [flux 6](../flows/06-refuge-visits.md) i [guia](../guides/daily-visits-process.md)) |
 
 Ordre d'execució en una BD nova: [guides/local-setup.md §5](../guides/local-setup.md).

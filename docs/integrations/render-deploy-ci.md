@@ -32,7 +32,7 @@ Variables (noms) a `env/.env.development` i `env/.env.production`: `SECRET_KEY, 
 - La branca d'integració `migration` és als dos disparadors (`push` i `pull_request`) perquè les PR de cada chunk (`migracio/<chunk>` → `migration`) passin la CI.
 
 ## SonarCloud (`sonar-project.properties`)
-`projectKey=jordirev_RefugisLliures_Backend`, `organization=jordirev`, `sources=api`, coverage de `coverage.xml`. Exclou tests, settings, urls, `__init__`, i del coverage també `services/**` i `utils/**`.
+`projectKey=jordirev_RefugisLliures_Backend`, `organization=jordirev`, `sources=api,apps`, coverage de `coverage.xml` (tox: `--cov=api --cov=apps`; `.coveragerc` també amb `source = api, apps`). Exclou tests, settings, urls, `__init__`, i del coverage també `services/**` i `utils/**`.
 
 ## Tasques programades: què està actiu
 | Mecanisme | Estat |

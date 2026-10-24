@@ -39,7 +39,7 @@
 | 10 | **RLS activada a les 24 taules** (rol `app`, sense `FORCE`); context per **`set_config(..., true)`** (local a la transacció) dins una transacció per petició. Lectura pública (`USING (true)`) a refugis, perfils públics, experiències, dubtes i respostes; mitjans: `visible` per a tothom, la resta autor/admin. Les crides «de sistema» (jobs, efectes creuats de moderació) usen un `system_context()` explícit. **Perfil obligatori**: tot endpoint autenticat llevat de `POST /users/` retorna 403 `profile_required` si no hi ha fila a `users`. | §7 |
 | 11 | Esborrat d'usuari en **una transacció** amb `ON DELETE` (CASCADE / SET NULL segons el PLAN) + una **cua d'esborrat de R2** alimentada per triggers (`moderation.media_deletion_queue`). **Excepció CSAM**: les denúncies i les entrades d'auditoria marcades `legal_hold` es **conserven anonimitzades** (un *trigger* `BEFORE DELETE` les desvincula de l'usuari abans de la cascada); `moderation-hold/` a R2 es conserva. | §2.20, §2.23, §2.24, §8 |
 | 12 | `users` privada i minimitzada; dades públiques a `user_public_profiles`. Cap email ni data de naixement. `audit_logs` caduca a 365 dies, `upload_intents` a 1 dia (jobs de purga). | §2.1, §8 |
-| 13 | Càrrega del JSON idempotent amb identificació dels refugis ja carregats per clau natural `(name, coord)` (IDs nous UUIDv7); 1.542 refugis, 1.542 `refuge_amenities`, 2.075 enllaços; `condition` inicial = `puntua_refugi(info_comp)` amb `n = 0`. | §9 |
+| 13 | Càrrega **d'un sol ús** del JSON (`load_refuges`, sense `--overwrite`; si ja hi ha refugis a la BD, `CommandError` sense escriure res); 1.542 refugis, 1.542 `refuge_amenities`, 2.075 enllaços; `condition` inicial = `puntua_refugi(info_comp)` amb `n = 0`; la comanda i `puntua_refugi` viuen a `apps/refuges/management/commands/load_refuges.py`. | §9 |
 | 14 | Una **app Django per domini**, amb ordre de migracions explícit per evitar dependències circulars (`users` abans de `refuges`; les FK cap a `experiences` i `proposals` s'afegeixen en migracions posteriors de `refuges`). | §6 |
 
 ---
@@ -376,7 +376,7 @@ Restriccions:
 - `refuges_altitude_ck`: `altitude IS NULL OR altitude BETWEEN 0 AND 8848`
 - `refuges_places_ck`: `places IS NULL OR places >= 0`
 - `refuges_coord_ck`: `NOT (ST_X(coord::geometry) = 0 AND ST_Y(coord::geometry) = 0)` (el tipus `geography` ja limita els rangs; això evita el punt 0,0 per defecte)
-- **Sense `UNIQUE(name)`**: el JSON té 8 noms repetits (p. ex. «Cabane de la Plagne» ×3) i una parella de coordenades compartida **[FET]**. El DAO `_search_by_name`, que assumia «el nom és únic», era errònia (B2).
+- **Sense `UNIQUE(name)`**: el JSON té 8 noms repetits (p. ex. «Cabane de la Plagne» ×3) i una parella de coordenades compartida **[FET]**. El DAO antic (`_search_by_name`), que assumia «el nom és únic», era errònia (B2).
 
 Índexs:
 | Índex | Definició | Consulta que el justifica |
@@ -477,6 +477,8 @@ CREATE POLICY media_delete ON refuges.refuge_media FOR DELETE TO app       -- Is
   USING (creator_uid = {U} OR {ADM} OR {SYS});
 ```
 Grants: `SELECT, INSERT, UPDATE, DELETE`.
+
+**Chunk 2 (implementat)**: `refuges.0001` crea `refuge_media` **sense** `experience_id` ni la clàusula `EXISTS (… experiences …)` de `media_insert` (la taula `activity.experiences` encara no existeix): la política queda `(creator_uid = {U} AND status = 'visible') OR {ADM} OR {SYS}`. `refuges.0002` (chunk 7) afegeix la columna, la FK i reescriu la política. Fins llavors, la pujada continua escrivint a Firestore (flux antic) i `GET/DELETE /refuges/{id}/media/` operen sobre una taula buida.
 
 Trigger de cua d'R2: `AFTER DELETE ... FOR EACH ROW` → `moderation.media_deletion_queue (r2_key, reason)` amb `OLD.key` i `OLD.thumb_key` (`fn_media_enqueue_r2()`, `SECURITY DEFINER`, `ON CONFLICT DO NOTHING`). **Excepció** (retenció d'evidència, `_hold_media`): si `current_setting('app.skip_r2_queue', true) = 'true'` no encua (el flux de retenció mou els fitxers a `moderation-hold/` en comptes d'esborrar-los; només `system_context()` pot posar-ho). Això cobreix **totes** les vies d'esborrat (usuari, experiència, refugi, moderació) sense codi a cada controller.
 
@@ -1453,21 +1455,26 @@ Dues sentències en lloc d'un bucle de crides per visita/usuari. (Les visites pr
 
 ### 6.1 Una app per domini (cap conflicte de migracions entre chunks paral·lels)
 
-Paquet nou **`domain/`** a l'arrel del repo (germà d'`api/` i `refugis_lliures/`), una app per domini amb `models.py`, `querysets.py` (substitueix el DAO), `migrations/`. Els controllers de `api/controllers/` hi criden; les vistes, serializers i permisos continuen a `api/`. Les classes `@dataclass` d'`api/models/` es mantenen fins al chunk 11 (no hi ha col·lisió: mòduls diferents).
+Paquet **`apps/`** a l'arrel del repo (germà d'`api/` i `refugis_lliures/`): **una app Django per feature** (estil HackSoft Django Styleguide), que substitueix el `domain/` previst al principi. Cada app porta el seu `models.py`, `selectors.py` (lectures: substitueixen el DAO), `services.py` (escriptures: substitueixen el controller), `serializers.py`, `views.py`, `urls.py`, `migrations/`, `management/commands/` i `tests/`. Es migra **feature a feature**: cada chunk mou la seva feature a `apps/<feature>/` mentre la migra; el que encara no s'ha migrat continua a `api/` (el chunk 11 neteja la resta). La infra compartida (autenticació, middleware, R2, `rls_hook`) es queda a `api/`; `apps/core` és el nucli de la BD. Estructura de `apps/refuges` (la primera feature migrada, chunk 2):
+```
+apps/refuges/{apps.py, models.py, selectors.py, services.py, serializers.py, views.py, urls.py,
+              management/commands/load_refuges.py, migrations/, tests/}
+```
+Les rutes d'una feature migrada s'inclouen des d'`api/urls.py` (`path('refuges/', include('apps.refuges.urls'))`) amb els mateixos paths i `name=`; les rutes niades d'altres features (visits, renovations…) es queden a `api/urls.py` fins que aquestes es migrin. Els tests de cada app viuen a `apps/<feature>/tests/` (`pytest.ini: testpaths = api/tests apps`); les fixtures compartides (`django_db_setup`, bloqueig de Firestore, mocks d'audit i permisos) són al `conftest.py` de l'arrel. Les classes `@dataclass` d'`api/models/` es mantenen fins al chunk 11 (no hi ha col·lisió: mòduls diferents).
 
 | App (`INSTALLED_APPS`) | Models → taula | Schema | Chunk |
 |---|---|---|---|
 | `apps.core` | — (funcions, rols, grants, helpers de migració) | `core` | 1 |
 | `apps.accounts` | `UserAccount` → `users.users`; `UserPublicProfile` → `users.user_public_profiles` (`0001`); `FavouriteRefuge`, `VisitedRefuge` (`0002`) | `users` | 2 / 3 |
 | `apps.refuges` | `Refuge`, `RefugeAmenities`, `RefugeLink`, `RefugeMedia`; no gestionat `RefugeMapPoint` | `refuges` | 2 (+7) |
-| `domain.visits` | `RefugeVisit`, `VisitParticipant`; no gestionat `VisitTotal` | `activity` | 4 |
-| `domain.renovations` | `Renovation`, `RenovationGroupLink`, `RenovationParticipant`, `RenovationExpelled` | `activity` | 5 |
-| `domain.doubts` | `Doubt`, `Answer` | `activity` | 6 |
-| `domain.experiences` | `Experience` | `activity` | 7 |
-| `domain.uploads` | `UploadIntent` | `moderation` | 7 |
-| `domain.proposals` | `RefugeProposal` | `proposals` | 8 |
-| `domain.moderation` | `MediaReport`, `ModerationNotice`, `HashBlocklistEntry`, `MediaDeletionQueueItem` | `moderation` | 9 |
-| `domain.audit` | `AuditLog` | `audit` | 9 |
+| `apps.visits` | `RefugeVisit`, `VisitParticipant`; no gestionat `VisitTotal` | `activity` | 4 |
+| `apps.renovations` | `Renovation`, `RenovationGroupLink`, `RenovationParticipant`, `RenovationExpelled` | `activity` | 5 |
+| `apps.doubts` | `Doubt`, `Answer` | `activity` | 6 |
+| `apps.experiences` | `Experience` | `activity` | 7 |
+| `apps.uploads` | `UploadIntent` | `moderation` | 7 |
+| `apps.proposals` | `RefugeProposal` | `proposals` | 8 |
+| `apps.moderation` | `MediaReport`, `ModerationNotice`, `HashBlocklistEntry`, `MediaDeletionQueueItem` | `moderation` | 9 |
+| `apps.audit` | `AuditLog` | `audit` | 9 |
 
 També cal a `INSTALLED_APPS`: `django.contrib.gis` i `django.contrib.postgres` (`ExclusionConstraint`, `ArraySubquery`, `TrigramSimilarity`), i `DATABASES` amb el motor `django.contrib.gis.db.backends.postgis` (toggle `NEON_USE_POSTGIS_ENGINE` ja existent; Docker de proves amb GDAL/GEOS). Quin alias és `default` és decisió del chunk 1.
 
@@ -1764,17 +1771,16 @@ Això resol A5 (esborrar un refugi amb fotos d'experiències) i A6 (no atòmic).
 
 ## 9. Pla de càrrega de `final_data_refuges.json`
 
-Comanda de gestió **`load_refuges`** (substitueix `upload_refugis_to_firestore` i `assign_conditions`), executada pel rol propietari: `python manage.py load_refuges --database neon_migrator [--json api/utils/final_data_refuges.json] [--dry-run] [--overwrite]`. Primer a la branca `dev` de Neon (sense credencials als arguments: l'alias les llegeix de l'entorn).
+Comanda de gestió **`load_refuges`** (`apps/refuges/management/commands/load_refuges.py`; substitueix `upload_refugis_to_firestore` i `assign_conditions`), **d'un sol ús**: s'executa un cop per omplir la BD buida, pel rol propietari: `python manage.py load_refuges [--json api/utils/final_data_refuges.json] [--dry-run] [--database migrator]` (l'àlies per defecte és `migrator`; sense credencials als arguments: l'àlias les llegeix de l'entorn). **No hi ha `--overwrite`**: si la BD ja té refugis, acaba amb `CommandError` sense escriure res (no es poden trepitjar les edicions fetes via propostes). Primer a la branca `dev` de Neon.
 
 ### 9.1 Algorisme
 1. **Precondicions**: `migrate` aplicat; `btree_gist`/`postgis`/`pg_trgm`/`unaccent` instal·lades; el JSON és una llista.
 2. **Parse + validació** (tot el JSON en memòria, 1.542 registres): cada registre ha de complir les regles de la BD (nom no buit; `lat∈[-90,90]`, `long∈[-180,180]`; `altitude` 0–8848 o `null`; `places ≥ 0` o `null`; `type` ∈ enum; links `http(s)://`; `info_comp` amb claus conegudes). Si hi ha registres invàlids, **s'informa de tots** i l'execució s'atura amb codi ≠ 0 (cap escriptura).
-3. **Idempotència per clau natural** (els IDs són UUIDv7 generats a l'app, no deterministes): la clau `(name.strip(), round(lat,6), round(long,6))` és única als 1.542 registres (comprovat). Es carreguen els refugis existents amb `SELECT id, name, ST_Y(coord::geometry), ST_X(coord::geometry)`, es calcula el conjunt de claus i només s'insereixen els que no hi són (amb `uuid7()` nou); una segona execució no insereix res.
+3. **Càrrega d'un sol ús**: si `refuges.refuges` ja té alguna fila, `CommandError` i no s'escriu res (ni amb `--dry-run`). Ja no s'identifiquen refugis per clau natural; els IDs són UUIDv7 nous (`uuid7()`).
 4. **Una transacció** (`transaction.atomic(using=db)`): 
-   - consultar els `id` ja existents;
-   - `Refuge.objects.bulk_create(nous, batch_size=500, ignore_conflicts=True)`; amb `--overwrite`: `update_conflicts=True, unique_fields=['id'], update_fields=[camps gestionats pel loader]` (**perillós**: trepitja edicions fetes via propostes; per defecte **no** s'actualitza res d'existent);
-   - `RefugeAmenities.bulk_create(..., ignore_conflicts=True)`; `RefugeLink.bulk_create(...)` només per als refugis nous (`UNIQUE (refuge_id, position)`);
-   - **valor inicial de la condició** per als refugis nous: `condition = puntua_refugi(info_comp)` (la nota 0–3 enters, guardada com a `double precision`), `num_contributed_conditions = 0`, `condition_reset_at = NULL` (decisió del PO; **substitueix** la lògica d'`assign_conditions` i el seu `determine_condition`). Com que `n = 0`, la primera experiència sobreescriu aquest valor llavor (`c = (c·0 + v)/1 = v`). Funció (és la del PO, tal qual; el *loader* només desa `nota`):
+   - `Refuge.objects.bulk_create(refugis, batch_size=500)`;
+   - `RefugeAmenities.bulk_create(...)` i `RefugeLink.bulk_create(...)` (`UNIQUE (refuge_id, position)` i `UNIQUE (refuge_id, url)`; un enllaç repetit dins d'una fitxa avorta tota la càrrega);
+   - **valor inicial de la condició** per a tots els refugis: `condition = puntua_refugi(info_comp)` (la nota 0–3 enters, guardada com a `double precision`), `num_contributed_conditions = 0`, `condition_reset_at = NULL` (decisió del PO; **substitueix** la lògica d'`assign_conditions` i el seu `determine_condition`). Com que `n = 0`, la primera experiència sobreescriu aquest valor llavor (`c = (c·0 + v)/1 = v`). Funció (és la del PO, tal qual; la comanda només desa `nota`; viu a `load_refuges.py`):
 ```python
 def puntua_refugi(info):
     g = lambda k: info.get(k, 0)
@@ -1795,8 +1801,8 @@ def puntua_refugi(info):
     return nota, total
 ```
    - si `--dry-run`: `transaction.set_rollback(True)` al final.
-5. **Verificació** dins la transacció (si falla, *rollback*): `count(refuges) = n_nous + existents`, `count(refuge_amenities)` igual, `count(refuge_links)` = enllaços carregats, `count(refuges WHERE condition IS NOT NULL AND num_contributed_conditions = 0)` = nous, i tots els valors de `condition` ∈ {0,1,2,3}.
-6. **Postcàrrega**: `ANALYZE` de les 4 taules; informe final (compteus per tipus: llegits, nous, ja existents, invàlids, amenities, enllaços, distribució de la condició inicial, normalitzacions aplicades). Segona execució ⇒ `0 nous` (idempotent).
+5. **Verificació** dins la transacció (si falla, *rollback*): `count(refuges) = n_nous`, `count(refuge_amenities)` igual, `count(refuge_links)` = enllaços carregats, `count(refuges WHERE condition IS NOT NULL AND num_contributed_conditions = 0)` = nous, i tots els valors de `condition` ∈ {0,1,2,3}.
+6. **Postcàrrega**: `ANALYZE` de les 4 taules; informe final (llegits, nous, amenities, enllaços i distribució de la condició inicial). Una segona execució és rebutjada (`CommandError`: càrrega d'un sol ús). Segona execució ⇒ `0 nous` (idempotent).
 
 ### 9.2 Mapatge del JSON (1.542 registres) **[FET: inspeccionat amb Python]**
 

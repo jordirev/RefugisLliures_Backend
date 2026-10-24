@@ -8,7 +8,8 @@
 
 ## Executar
 ```bash
-pytest                                   # tots (testpaths = api/tests)
+pytest                                   # tots (testpaths = api/tests apps)
+pytest apps/refuges -q                   # una app migrada (tests a apps/<feature>/tests/)
 pytest api/tests/renovation -q           # un domini
 pytest api/tests/user/test_views.py      # un fitxer
 pytest api/tests/user/test_views.py::TestX::test_y   # un test
@@ -22,8 +23,8 @@ Depuració: `pytest -x` (atura al primer error), `--maxfail=3`, `--tb=long`, `-s
 
 ## Coverage
 ```bash
-pytest --cov=api --cov-report=term-missing      # línies no cobertes
-pytest --cov=api --cov-report=html              # informe a htmlcov/index.html
+pytest --cov=api --cov=apps --cov-report=term-missing      # línies no cobertes
+pytest --cov=api --cov=apps --cov-report=html              # informe a htmlcov/index.html
 ```
 `.coveragerc` i Sonar **exclouen `services/` i `utils/`**. CI puja `coverage.xml` a Codecov i SonarCloud ([render-deploy-ci](../integrations/render-deploy-ci.md)).
 
@@ -41,12 +42,13 @@ Per a un test d'integració amb Firebase real caldria `TESTING=false` i credenci
 - Bootstrap idempotent: `scripts/dev/setup_local_postgres.sh` (arrenca el clúster apt si cal; crea els rols `migrator` i `app` amb els atributs de `docs/design/postgres-schema.md` §1.3, la BD `refugisdb_test` i les extensions `postgis`, `pg_trgm`, `unaccent`, `btree_gist`). Imprimeix les dues URLs locals (no secretes); a CI es parametritza amb `PGHOST`, `PGPORT`, `PG_SUPERUSER`, `PGPASSWORD`, `PG_START_CLUSTER=0`.
 - Exporta-les: `eval "$(scripts/dev/setup_local_postgres.sh | grep ^export)"` → `TEST_DATABASE_URL_MIGRATOR` / `TEST_DATABASE_URL_APP`.
 - Marker `db_infra`: necessita aquestes variables i **se salta** (amb motiu) si falten; marker `rls`: tests del context RLS i del hook (executen el `set_config` de debò). Les migracions les aplica `migrator` i els tests corren com a `app` (la RLS només s'aplica a `app`).
-- **`django_db_setup`** (`api/tests/conftest.py`) sobreescriu el de pytest-django: amb `migrator` definit **no crea cap BD `test_*`**; executa `migrate --database=migrator` sobre la BD de proves (idempotent) i dona al rol `app` DML sobre les taules de Django de `public` (només a la BD de proves: alguns tests creen un `auth.User` per a `force_authenticate`; no formen part dels grants de producció). Sense `migrator` (sense Postgres) es manté el comportament per defecte sobre SQLite.
+- **`django_db_setup`** (`conftest.py` de l'arrel, compartit per `api/tests` i `apps/*/tests`) sobreescriu el de pytest-django: amb `migrator` definit **no crea cap BD `test_*`**; executa `migrate --database=migrator` sobre la BD de proves (idempotent) i dona al rol `app` DML sobre les taules de Django de `public` (només a la BD de proves: alguns tests creen un `auth.User` per a `force_authenticate`; no formen part dels grants de producció). Sense `migrator` (sense Postgres) es manté el comportament per defecte sobre SQLite.
 - **`TEST_DATABASE_URL_APP` / `TEST_DATABASE_URL_MIGRATOR` tenen prioritat** sobre `DATABASE_URL_*` a `settings.py`: els tests mai van a Neon encara que `env/` en tingui les URL.
 - **Fixture `_rls_hook_sense_bd`** (`autouse`): als tests que **no** porten cap dels markers `rls`, `django_db`, `db_infra` (vistes amb controllers mockejats, sense BD) fa `patch('api.rls_hook.apply_context')`, perquè el hook de RLS no intenti executar `set_config` sense connexió a Postgres. Els tests de BD l'executen de debò. Si un test de vista sense BD vol comprovar el hook, ha de dur el marker `rls`.
-- Les fixtures `app_db` / `migrator_db` (`api/tests/conftest.py`) donen connexions en autocommit fora de la transacció de pytest-django, necessàries per provar contextos locals a la transacció.
+- Les fixtures `app_db` / `migrator_db` (`conftest.py` de l'arrel) i els helpers `fetch_all` / `fetch_one` (`apps/core/testing.py`) donen connexions en autocommit fora de la transacció de pytest-django, necessàries per provar contextos locals a la transacció.
 - **Guarda de host**: `django_db_setup` fa `pytest.exit` (codi 2) si el `HOST` de `TEST_DATABASE_URL_MIGRATOR` no és local (`localhost`, `127.0.0.1`, `::1`, `host.docker.internal`, `*.localhost`): els tests mai poden córrer contra Neon, encara que s'hi apunti per error **[FET]**.
 - Tests de seguretat a `api/tests/security/`: rol `app` (sense atributs privilegiats ni propietat d'objectes, no pot crear objectes als schemas ni escalar privilegis ni substituir `core.*`; `core.*` no executables per `PUBLIC`, `SECURITY DEFINER` amb `search_path` fixat), hook de RLS (context local a la transacció, avís fora de transacció, `is_system` reiniciat, contextos interns que no escalen l'extern, `uid` no-string = anònim, `role` no exacte no dona admin), respostes d'auth (el 401 no filtra detalls ni l'UID als logs) i guarda de l'emulador de Firebase (plataformes, hosts locals, variants booleanes) **[FET]**.
+- **Tests de les apps migrades** a `apps/<feature>/tests/` (chunk 2: `apps/refuges/tests/`): esquema físic (`test_schema`), constraints i models, RLS amb el rol `app` (anònim, propi, aliè, admin, sistema), cerca i índexs (`EXPLAIN`), contracte HTTP contra Postgres real, recomptes de consultes (`django_assert_num_queries` equivalent: `QueryCounter`) i la comanda `load_refuges` (que fa `COMMIT` de debò amb `migrator`; la fixture `wipe_catalog` neteja). `apps/refuges/tests/helpers.py` crea dades amb `system_context()`. Les fixtures compartides (bloqueig de Firestore, mocks d'audit i de permisos, `django_db_setup`) són al `conftest.py` de l'arrel, de manera que els tests nous no depenen d'`api/tests`.
 - Tests d'infraestructura a `api/tests/infra/` (settings de BD, hook de RLS, health, arquitectura RLS, emulador, `uuid7`, middleware del health) i `api/tests/core/` (context RLS, helpers de polítiques, funcions SQL de `core`).
 - Execució a CI: servei `postgis/postgis:17-3.5` + `setup_local_postgres.sh` amb `PGHOST=localhost PG_START_CLUSTER=0`; `tox.ini` fa `passenv` de les `TEST_DATABASE_URL_*` ([render-deploy-ci.md](../integrations/render-deploy-ci.md)).
 

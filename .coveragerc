@@ -1,6 +1,8 @@
 [run]
 # Directoris a incloure en el coverage
-source = api
+source =
+    api
+    apps
 
 # Fitxers a excloure
 omit =

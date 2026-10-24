@@ -10,7 +10,7 @@ Aplica a **totes** les peticions. El client obté un ID token de Firebase Auth i
 | Middleware Django | `api/middleware/firebase_auth_middleware.py` (registrat a `refugis_lliures/settings.py:74`) |
 | Autenticació DRF | `api/authentication.py` (`REST_FRAMEWORK.DEFAULT_AUTHENTICATION_CLASSES`, `refugis_lliures/settings.py:158-160`) |
 | Permisos | `api/permissions.py` + `rest_framework.permissions.IsAuthenticated` |
-| Hook de RLS (context per transacció) | `api/rls_hook.py` (instal·lat a `ApiConfig.ready`, `api/apps.py`) → `domain/core/rls.py: apply_context` |
+| Hook de RLS (context per transacció) | `api/rls_hook.py` (instal·lat a `ApiConfig.ready`, `api/apps.py`) → `apps/core/rls.py: apply_context` |
 | Middleware d'errors del health | `api/middleware/health_database_middleware.py` (`HealthDatabaseErrorMiddleware`, registrat després del d'auth) |
 | Inicialització Firebase Admin | `api/apps.py` → `api/firebase_config.py` (inclou el mode Firebase Auth Emulator) |
 
@@ -68,7 +68,7 @@ sequenceDiagram
    - `IsAuthenticated` (DRF)
    - `IsSameUser` — `kwargs['uid'] == request.user.uid` (`api/permissions.py:50-72`)
    - `IsFirebaseAdmin` — `user_claims['role'] == 'admin'` (`:86-101`, helper `:10-21`)
-   - `IsMediaUploader` — llegeix Firestore directament (`:192-276`)
+   - (`IsMediaUploader` s'ha eliminat al chunk 2: la propietat del mitjà es comprova a `apps/refuges/services.py: delete_media`)
 6. **Context de RLS (hook)** **[FET]** — `ApiConfig.ready()` crida `rls_hook.install()`, que embolcalla `APIView.perform_authentication`: just **després** d'autenticar i **abans** de `check_permissions` (DRF crida `perform_authentication` → `check_permissions` a `initial()`), executa **una sola** sentència `SELECT set_config('app.uid', …, true), set_config('app.is_admin', …, true), set_config('app.is_system', 'false', true)` a la connexió `default`. Aplica a **totes** les vistes DRF (`APIView` i `@api_view`, incloses les de cache i les públiques; en una petició anònima `app.uid=''`).
    - `app.uid` = UID de l'usuari autenticat pel token verificat (`request.user.uid`; si la vista no autentica per DRF, `request.user_uid` del middleware). **Mai** d'una capçalera, query o cos.
    - `app.is_admin` = `true` només si els claims verificats tenen exactament `role == 'admin'` (`is_admin_claims`); qualsevol altre valor és `false`.

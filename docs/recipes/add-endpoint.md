@@ -1,5 +1,15 @@
 # Recepta — Afegir un endpoint nou
 
+> ## Features migrades a PostgreSQL (`apps/<feature>/`) — patró nou
+> Referència: `apps/refuges` (chunk 2). Aquesta recepta descriu a sota el patró **legacy** (Firestore); per a una feature ja migrada, o quan en migris una, el flux és:
+> 1. **Ruta** — `apps/<feature>/urls.py` amb `path(...)`/`name=` (mateixos paths i noms que tenia); `api/urls.py` només l'inclou: `path('<prefix>/', include('apps.<feature>.urls'))`. Les rutes niades d'altres features (p. ex. `refuges/<id>/renovations/`) es queden a `api/urls.py` fins que aquestes es migrin. Id de refugi: `<str:id>` i `selectors.parse_refuge_id` (un id que no sigui UUID → 404, no 500).
+> 2. **Serializers** — `apps/<feature>/serializers.py`: entrada (`XSearchFiltersSerializer`, `XCreateSerializer`) i sortida (forma exacta del contracte JSON); sense `ModelSerializer`.
+> 3. **Selectors** — `apps/<feature>/selectors.py` (lectures: ORM amb `select_related`/`Prefetch`/`ArraySubquery`/`annotate`, **una consulta per cas d'ús**; filtres al `WHERE`; sense cache de dades). Afegeix un test de recompte de consultes (`QueryCounter`).
+> 4. **Services** — `apps/<feature>/services.py` (escriptures: `transaction.atomic`, `select_for_update` si hi ha carreres, R2 comprovant el booleà de `delete_file`); llança excepcions de domini (`MediaForbidden`, `MediaNotFound`…).
+> 5. **Vista** — `apps/<feature>/views.py`: `APIView` fina amb `permission_classes` explícit (el default és `AllowAny`), crida selectors/services i mapa excepcions → HTTP; el context de RLS el posa el hook. Sense `str(e)` a les respostes d'error.
+> 6. **Tests** — `apps/<feature>/tests/`: contracte HTTP contra Postgres real (rol `app`), anònim/propi/aliè/admin, errors 400/401/403/404, `QueryCounter`. `pytest.ini` ja inclou `apps` a `testpaths`.
+> 7. **Docs** — `docs/ARCHITECTURE.md §4`, el flux a `docs/flows/` i `docs/recipes/`.
+
 > Segueix el patró **real** del domini renovations. Exemple fil conductor: `GET /api/renovations/{id}/summary/` (fictici, només per il·lustrar; **no existeix**).
 
 ## 0. Abans de començar

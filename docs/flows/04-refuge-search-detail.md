@@ -1,16 +1,18 @@
 # Flux 4 — Cerca, coordenades i detall de refugis
 
 > **[FET]** comprovat al codi · **[INFERÈNCIA]** deducció · **[NO VERIFICAT]** depèn de config externa.
+>
+> **Migrat a PostgreSQL (chunk 2).** Aquest flux viu a l'app `apps/refuges` (`views.py` → `selectors.py` → models/ORM amb RLS). Ja no hi ha Firestore, cache Redis, DAO, controller ni les 15 estratègies de cerca: la cerca amb filtres és **una sola consulta SQL**. Disseny: [postgres-schema.md](../design/postgres-schema.md) §2.5-2.9, §4.1, §5.2-5.3.
 
-## Endpoints (`api/views/refugi_lliure_views.py`)
+## Endpoints (`apps/refuges/views.py`, rutes a `apps/refuges/urls.py`)
 | Mètode | URL | Vista | Permisos |
 |---|---|---|---|
-| GET | `/api/refuges/` (sense filtres → llista de coordenades) | `RefugiLliureCollectionAPIView.get` (L121) | públic; el token és opcional i desbloqueja `visitors`/`images_metadata` |
+| GET | `/api/refuges/` (sense filtres → punts del mapa) | `RefugeCollectionAPIView.get` | públic; el token és opcional i desbloqueja `images_metadata` (i `visitors` per als admins) |
 | GET | `/api/refuges/?name=&type=&condition=&places_min=&places_max=&altitude_min=&altitude_max=` | idem | idem |
-| GET | `/api/refuges/{id}/` | `RefugiLliureDetailAPIView.get` (L206) | públic |
-| GET | `/api/refuges/{id}/renovations/` | `RefugeRenovationsAPIView.get` (L282) | IsAuthenticated |
+| GET | `/api/refuges/{id}/` | `RefugeDetailAPIView.get` | públic; l'`id` és un UUID (qualsevol altre format → 404) |
+| GET | `/api/refuges/{id}/renovations/` | `RefugeRenovationsAPIView.get` (`api/views/renovation_views.py`; ruta a `api/urls.py`) | IsAuthenticated |
 
-Col·leccions: `data_refugis_lliures/{id}` (detall) i el document únic `coords_refugis/all_refugis_coords` (camp `refugis_coordinates[]`) (`api/daos/refugi_lliure_dao.py:18-19`).
+Taules: `refuges.refuges` (+ `refuge_amenities` 1-1, `refuge_links`, `refuge_media`) i la vista `refuges.refuge_map` (llista sense filtres). Lectura pública per RLS (`USING (true)`); els mitjans només visibles per a tothom (la resta, autor i admin).
 
 ## Diagrama
 
@@ -18,65 +20,54 @@ Col·leccions: `data_refugis_lliures/{id}` (detall) i el document únic `coords_
 sequenceDiagram
     autonumber
     participant C as Client
-    participant V as RefugiLliureCollectionAPIView
+    participant V as RefugeCollectionAPIView
     participant S as RefugiSearchFiltersSerializer
-    participant RC as RefugiLliureController
-    participant D as RefugiLliureDAO
-    participant SS as SearchStrategySelector
-    participant K as CacheService
-    participant F as Firestore
+    participant SEL as selectors
+    participant DB as PostgreSQL (rol app + RLS)
 
     C->>V: GET /api/refuges/?filters (Bearer opcional)
     V->>S: valida query params
     S-->>V: errors → 400
-    V->>RC: search_refugis(filters, is_authenticated)
-    RC->>D: search_refugis(RefugiSearchFilters)
     alt sense filtres actius
-        D->>K: get refugi_coords:document:all (TTL 3600)
-        K-->>D: miss
-        D->>F: get coords_refugis/all_refugis_coords
-        D-->>RC: [{id, name, coord, geohash, surname?}]
-        V-->>C: 200 {count, has_filters:false, results}
-    else name present
-        D->>F: where name == name (exacte)
-    else altres filtres
-        D->>K: get_or_fetch_list(refugi_search:<filtres>, detail=refugi_detail)
-        D->>SS: select_strategy(filters)
-        SS-->>D: una de 15 estratègies
-        D->>F: query (type in / condition in / rangs)
-        D->>D: post-filtre en memòria (altitud, condition no nul·la)
+        V->>SEL: list_map_points()
+        SEL->>DB: SELECT … FROM refuges.refuge_map ORDER BY name, id   (1 consulta)
+        V-->>C: 200 {count, has_filters:false, results:[{id, name, coord, geohash}]}
+    else amb filtres
+        V->>SEL: search_refuges(filters, viewer, authenticated)
+        SEL->>DB: Q1: refuges + amenities (JOIN) + ARRAY(links) amb WHERE (nom trigram, type, places, altitude, round_half_even(condition))
+        opt autenticat
+            SEL->>DB: Q2: refuge_media dels refugis trobats (Prefetch, ordre uploaded_at, key)
+        end
+        V-->>C: 200 {count, has_filters:true, results:[RefugiSerializer]}
     end
-    RC->>RC: si anònim → buida visitors i images_metadata
-    V-->>C: 200 {count, results:[RefugiSerializer]}
 ```
 
 ## Passos
-1. **Validació** — `RefugiSearchFiltersSerializer` (`api/serializers/refugi_lliure_serializer.py:82-164`): `type` CSV contra tipus vàlids; `condition` CSV ∈ {0,1,2}; `places_*` ≥0; `altitude_*` 0–8848 i min≤max.
-2. **Controller** — `RefugiLliureController.search_refugis` (`api/controllers/refugi_lliure_controller.py:50-98`) construeix `RefugiSearchFilters` (`api/models/refugi_lliure.py:215-281`).
-3. **DAO** — `RefugiLliureDAO.search_refugis` (`api/daos/refugi_lliure_dao.py:54-112`):
-   - sense filtres: `_get_coordinates_as_refugi_list` (L114-164);
-   - amb `name`: `_search_by_name` (L204-226), igualtat **exacta**;
-   - altres: `_build_optimized_query` (L180-202) → `SearchStrategySelector.select_strategy` (`api/daos/search_strategies.py:499-583`).
-4. **Mapper** — `RefugiLliureMapper.format_search_response` (`api/mappers/refugi_lliure_mapper.py:80-99`); `RefugiSerializer.to_representation` (`api/serializers/refugi_lliure_serializer.py:56-75`) arrodoneix `condition` i elimina camps privats per a anònims.
-5. **Detall** — `RefugiLliureController.get_refugi_by_id` (`api/controllers/refugi_lliure_controller.py:24-48`) → `RefugiLliureDAO.get_by_id` (`api/daos/refugi_lliure_dao.py:23-52`), cache `refugi_detail:refugi_id:{id}` (600 s); `Refugi.from_dict` presigna les fotos.
-
-## Estratègies de cerca (`api/daos/search_strategies.py`)
-Interfície `RefugiSearchStrategy` (L42-63): `execute_query(db, collection, filters)`, `get_strategy_name()`. El selector tria per combinació de filtres presents (prioritat de més a menys específica):
-`TypeConditionPlacesAltitude` → `TypeConditionPlaces` → `TypeConditionAltitude` → `TypeCondition` → `TypePlacesAltitude` → `TypePlaces` → `TypeAltitude` → `TypeOnly` → `ConditionPlacesAltitude` → `ConditionPlaces` → `ConditionAltitude` → `ConditionOnly` → `PlacesAltitude` → `PlacesOnly` → `AltitudeOnly`.
-Patró general: com a màxim un filtre de rang a Firestore (places o altitude); la resta es filtra en memòria. **[FET]** per a la llista; detall de cada query a les classes citades.
+1. **Validació** — `RefugiSearchFiltersSerializer` (`apps/refuges/serializers.py`): `type` CSV contra `RefugeType`; `condition` CSV ∈ {0,1,2,3}; `places_*` ≥ 0; `altitude_*` 0–8848 i min ≤ max. Filtres buits (`?name=&type=`) = sense filtres.
+2. **Sense filtres** — `selectors.list_map_points()` llegeix la vista `refuge_map` (`id, name, lat, lng, geohash = ST_GeoHash(coord, 5)`): 1 consulta, sense joins. La resposta ja **no** porta `surname`. Substitueix el document `coords_refugis` de Firestore.
+3. **Amb filtres** — `selectors.search_refuges` (`search_queryset`):
+   - `name`: parcial, sense accents ni majúscules i **també sobre `surname`** (àlies). Usa `core.norm_name` (unaccent + lower, `IMMUTABLE`) amb `pg_trgm`: `norm_name(name) % q` (similitud ≥ 0,3) **o** `LIKE '%q%'`, per als dos camps; ordena per similitud descendent, nom i id. S'usen els índexs `refuges_name_trgm_gin` i `refuges_surname_trgm_gin` (`BitmapOr`; cada braç de l'àlies porta `surname IS NOT NULL` perquè el planificador pugui usar l'índex parcial). Els comodins (`%`, `_`, `\`) de l'usuari s'escapen.
+   - `type IN (…)`, `places >=/<=`, `altitude >=/<=` (els `NULL` no compleixen cap rang) — tot al `WHERE`.
+   - `condition IN (…)` sobre `core.round_half_even(condition)` (0–3); els refugis sense valoració (`NULL`) no coincideixen amb cap filtre.
+   - Els serveis (`info_comp`) venen del `JOIN` amb `refuge_amenities`; els enllaços, d'un `ARRAY(subconsulta)` ordenat per `position`: cap consulta addicional per refugi.
+4. **Serialització** — `refuge_to_dict` + `RefugiSerializer` (`apps/refuges/serializers.py`): `coord` → `{lat, long}`; `info_comp` → 12 enters 0/1; `condition` → **enter arrodonit half-to-even** (`round()` de Python, el mateix que `core.round_half_even`) o `null`; `modified_at` ISO; `surname` no s'emet mai. Anònim: sense `images_metadata` ni `visitors`. Autenticat: `images_metadata` (mitjans visibles + propis; tots per a admins). **`visitors` només per als admins** (hi serà la llista de `user_visited_refuges` quan arribi el chunk 3; fins llavors és sempre `[]`).
+5. **Detall** — `selectors.get_refuge(id)`: 1 consulta (refugi + amenities + enllaços); +1 de mitjans si és autenticat; els visitants d'admin seran +1 (chunk 3). Pressupost: llista sense filtres 1 · amb filtres 1 (+1 autenticat) · detall 1 (+1 autenticat). Els tests ho comproven (`apps/refuges/tests/test_query_counts.py`).
 
 ## Errors
 | Cas | HTTP |
 |---|---|
 | Query params invàlids | 400 `{error:'Invalid query parameters', details}` |
-| Refugi no trobat | 404 `"Refugi not found"` |
-| Error intern | 500 `{'error': 'Internal server error: ...'}` (exposa el text de l'excepció) |
-| Error llegint coords | **200 amb llista buida** (el DAO retorna `[]`) |
+| Refugi no trobat, o `id` que no és un UUID (p. ex. un ID antic de Firestore) | 404 `{error:'Refugi not found'}` |
+| Error intern | 500 `{error:'Internal server error'}` (ja no s'exposa el text de l'excepció; es registra al log) |
 
-## Gotchas i bugs
-- La cerca per nom és exacta, però Swagger diu "parcial, case-insensitive" (`api/views/refugi_lliure_views.py:60`) **[FET]**.
-- `condition` és una mitjana float (`api/services/condition_service.py:39`) però el filtre exigeix 0/1/2 exactes → refugis amb 1.6 no surten mai filtrant **[FET]**. El model diu 0–3 (`api/models/refugi_lliure.py:93`), el filtre 0–2.
-- `_search_by_name` retorna `doc.to_dict()` sense afegir `id`: depèn que el document desi el camp `id` (sí ho fan `upload_refugis_to_firestore` i `CreateRefugeStrategy`) **[FET/INFERÈNCIA]**.
-- Dos `in` a la mateixa query (type + condition) requereixen suport de disjuncions de Firestore i índexs compostos **[NO VERIFICAT]** (no hi ha `firestore.indexes.json`).
-- `GET /refuges/{id}/renovations/`: `active_only` no es llegeix de la query (`api/views/refugi_lliure_views.py:282-286`) **[FET]**.
-- Les llistes de cerca no s'invaliden quan una proposta modifica un refugi (vegeu [flux 5](05-refuge-proposals.md)).
+## Canvis respecte al flux antic (decisions del PO, chunk 2)
+- IDs: UUID v7 (string opac per al frontend).
+- `condition`: s'hi desa la mitjana decimal; es mostra i es filtra arrodonida half-to-even; el filtre accepta 0–3 (abans 0–2 i només enters exactes).
+- `visitors`: només admins. `surname`: només per cercar. La llista sense filtres ja no porta `surname` i totes dues respostes porten `has_filters`.
+- Cerca per nom parcial i sense accents (B2 resolt: el DAO antic assumia nom únic i la cerca era exacta).
+- Cap cache Redis per a refugis: les llistes ja no cal invalidar-les quan una proposta modifica un refugi.
+
+## Gotchas
+- `GET /refuges/{id}/renovations/`: `active_only` no es llegeix de la query (`api/views/renovation_views.py`, `RefugeRenovationsAPIView.get`) **[FET]**; continua sent la ruta antiga de Firestore.
+- Els dominis que encara no s'han migrat (experiències, dubtes, visites, propostes, usuaris) segueixen consultant els refugis al `RefugiLliureDAO` de Firestore, que ja no s'alimenta: fins als seus chunks, les seves comprovacions d'existència de refugi miren un catàleg buit.
+- `load_refuges` és d'un sol ús: vegeu [local-setup](../guides/local-setup.md).

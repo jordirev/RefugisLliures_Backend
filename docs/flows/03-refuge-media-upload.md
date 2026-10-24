@@ -33,8 +33,8 @@ MediaItem = {key, url, thumb_url, media_type: "image"|"video", width, height, bl
 |---|---|---|---|---|
 | POST | `/api/media/upload-intents/` | `UploadIntentsAPIView` (`api/views/media_views.py:62`) | IsAuthenticated + IsNotBlocked + IsAgeConfirmed | JSON (contracte) |
 | POST | `/api/media/upload-intents/confirm/` | `UploadIntentsConfirmAPIView` (`:120`) | idem | JSON `{upload_ids}` |
-| GET | `/api/refuges/{id}/media/` | `RefugiMediaAPIView.get` (només GET) | IsAuthenticated | — |
-| DELETE | `/api/refuges/{id}/media/{key}/` | `RefugiMediaDeleteAPIView.delete` | IsAuthenticated + IsMediaUploader | — (`key` és `path:`) |
+| GET | `/api/refuges/{id}/media/` | `RefugeMediaListAPIView.get` (`apps/refuges/views.py`; PostgreSQL) | IsAuthenticated | — |
+| DELETE | `/api/refuges/{id}/media/{key}/` | `RefugeMediaDetailAPIView.delete` (`apps/refuges/views.py`; PostgreSQL) | IsAuthenticated; autor o admin (al service) | — (`key` és `path:`) |
 
 ## Model de dades [FET]
 - R2: `refugis-lliures/{refuge_id}/{uuid}.webp` (imatge, 2048 px de costat llarg) + `{uuid}_thumb.webp` (400 px); vídeo `{uuid}.mp4|.mov|.webm` + `{uuid}_thumb.webp` (pòster). Les claus són **UUID** (no previsibles; el nom original no s'usa mai). Temporals: `quarantine/{upload_id}`. Evidència retinguda: `moderation-hold/...`.
@@ -102,41 +102,42 @@ sequenceDiagram
 ## Retirat: multipart antic
 Els camins multipart antics (`POST /api/refuges/{id}/media/`, `PATCH /api/users/{uid}/avatar/`, `files[]` a `POST`/`PATCH /api/experiences/`) s'han eliminat; ara responen **405** (les experiències només accepten JSON) **[FET]**. `MediaUploadController.process_and_publish` (`api/controllers/media_upload_controller.py:273`) només el crida `confirm`.
 
-## Diagrama — esborrar
+## Diagrama — esborrar (PostgreSQL, `apps/refuges`)
+
+> **Migrat (chunk 2).** L'esborrat d'un mitjà és `services.delete_media` (fila de `refuges.refuge_media` + fitxers a R2) i la llista és `selectors.get_refuge_media`. La **pujada** (intents/confirm) i el `media_metadata` de Firestore continuen igual fins al chunk 7: fins llavors els mitjans nous s'escriuen a Firestore i **no** surten a `GET /refuges/{id}/media/` (la taula de Postgres és buida). L'esborrat ja no toca `experiences.media_keys` ni `users.uploaded_photos_keys` (Firestore): arribaran amb els chunks 3 i 7.
 
 ```mermaid
 sequenceDiagram
     autonumber
     participant C as Client
-    participant P as IsMediaUploader
-    participant RC as RefugiLliureController
-    participant RD as RefugiLliureDAO
-    participant ED as ExperienceDAO
+    participant V as RefugeMediaDetailAPIView
+    participant SV as services.delete_media
+    participant DB as PostgreSQL (rol app + RLS)
     participant R2 as R2MediaService
-    participant UD as UserDAO
 
-    C->>P: DELETE /api/refuges/{id}/media/{key}/
-    P-->>C: 403 si no és l'autor ni admin
-    P->>RC: delete_refugi_media(id, key, actor_uid)
-    RC->>RD: delete_media_metadata → update({FieldPath: DELETE_FIELD})
-    opt experience_id
-        RC->>ED: remove_media_key (ArrayRemove)
+    C->>V: DELETE /api/refuges/{id}/media/{key}/
+    V->>SV: delete_media(refuge_id, key, actor_uid, is_admin)
+    SV->>DB: SELECT del mitjà (la RLS només el deixa veure si és visible, propi o admin)
+    alt no existeix
+        SV-->>C: 403 (no admin) / 404 (admin)
+    else no és l'autor ni admin
+        SV-->>C: 403
     end
-    RC->>R2: delete_file(key) → bool
-    alt False
-        RC->>RD: restaura l'entrada (+ media_keys de l'experiència)
-        RC-->>C: 500 "Error deleting file from storage"
+    SV->>DB: savepoint · DELETE FROM refuge_media WHERE key
+    SV->>R2: delete_file(key) → bool
+    alt False (o excepció)
+        SV->>DB: ROLLBACK TO SAVEPOINT (la fila es conserva)
+        SV-->>C: 500 "Error deleting file from storage"
     end
-    RC->>R2: delete_file(thumb_key) (si falla: orfe + warning)
-    RC->>UD: ArrayRemove uploaded_photos_keys
-    RC-->>C: 200 {success, message, key}
+    SV->>R2: delete_file(thumb_key) (si falla: orfe + warning)
+    SV-->>C: 200 {success, message, key}
 ```
 
 ## Passos (amb línies)
 - Intents/confirm: `MediaUploadController.create_upload_intents` (L76), `confirm_upload_intents` (L159) → `_confirm_one` (L183) → `process_and_publish` (L273) → `_publish_refuge_media` (L321) / `_publish_avatar` (L376); bloqueig per moderació `_handle_moderation_block` (L431).
-- DAO: `RefugiLliureDAO.add_media_metadata` (`api/daos/refugi_lliure_dao.py:442`, FieldPath), `update_media_status` (L479), `delete_media_metadata` (L509, `DELETE_FIELD`), `delete_multiple_media_metadata` (L553), `get_media_metadata` (L402, filtra per status), `get_raw_media_metadata` (L368, cache-first), `get_media_entry` (L387, sense cache).
+- DAO (**pujada, encara Firestore fins al chunk 7**): `RefugiLliureDAO.add_media_metadata` (`api/daos/refugi_lliure_dao.py:442`, FieldPath), `update_media_status` (L479), `delete_media_metadata` (L509, `DELETE_FIELD`), `delete_multiple_media_metadata` (L553), `get_media_metadata` (L402, filtra per status), `get_raw_media_metadata` (L368, cache-first), `get_media_entry` (L387, sense cache).
 - R2: `generate_presigned_put_url`, `head_object`, `get_object_bytes`, `put_bytes`, `copy_object`, `move_object`, `build_media_key` (`api/services/r2_media_service.py:368-480`).
-- Llistat: `RefugiLliureController.get_refugi_media` (L147) — registra l'accés a `audit_logs` (`media.list`).
+- Llistat: `RefugeMediaListAPIView` (`apps/refuges/views.py`) — registra l'accés a `audit_logs` (`media.list`); esborrat: `audit_logs` `media.delete` des de `services.delete_media`.
 
 ## Errors
 | Cas | HTTP |
@@ -146,13 +147,13 @@ sequenceDiagram
 | Refugi o experiència no trobats | 404 |
 | Fitxer rebutjat en confirmar | 200 amb `failed[].reason` |
 | `POST`/`PATCH` a `/api/refuges/{id}/media/` o `/api/users/{uid}/avatar/` | 405 |
-| Media inexistent o d'un altre usuari (DELETE) | **403** (no 404) |
-| R2 no pot esborrar (DELETE) | 500 (amb rollback de Firestore) |
+| Media inexistent o d'un altre usuari (DELETE) | **403** (no 404) per a no-admins; **404** per a admins |
+| R2 no pot esborrar (DELETE) | 500 i la fila es conserva (rollback del `savepoint`) |
 
 ## Gotchas i bugs
 - Les claus R2 contenen `/`, `.` i `-`: per escriure una entrada del map cal `FieldPath('media_metadata', key).to_api_repr()` (escapa amb backticks). **Mai** `update({'media_metadata.' + key: ...})` **[FET]**.
 - El processament és **síncron** dins la petició de `confirm` (1 worker a Render): 10 vídeos de 50 MB poden acostar-se al timeout de gunicorn **[INFERÈNCIA]** — vegeu [TECH_DEBT](../TECH_DEBT.md).
 - Totes les pujades exigeixen `IsAgeConfirmed` (ja no hi ha camins que l'esquivin) **[FET]**.
-- `unquote` a la vista sobre un path que Django ja ha decodificat → doble decodificació de `%25` **[INFERÈNCIA]**.
+- `unquote` a la vista sobre un path que Django ja ha decodificat → doble decodificació de `%25` **[INFERÈNCIA]** (es manté a `RefugeMediaDetailAPIView.delete`).
 - Swagger documenta 204 per al DELETE però retorna 200 **[FET]**.
 - Configuració necessària al bucket (CORS per a PUT, lifecycle de `quarantine/`): [integrations/cloudflare-r2.md](../integrations/cloudflare-r2.md).
