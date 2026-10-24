@@ -17,7 +17,7 @@
 |---|---|---|---|---|
 | 0 | Disseny BD | `migracio/disseny-bd` | fet | `docs/design/postgres-schema.md` tancat (`e611fe3`), PR a `migration` |
 | 1 | Infraestructura | `migracio/infraestructura` | fet (PR [#42](https://github.com/jordirev/RefugisLliures_Backend/pull/42) fusionada, `7d9073f`) | 1666 tests; D9 confirmada a Neon `dev` |
-| 2 | Refugis | `migracio/refugis` | tests fets (`f5e85de`); **esperant que el PO revisi l'estructura de carpetes** abans de l'implementador | |
+| 2 | Refugis | `migracio/refugis` | implementat (1924 tests verds, verificat); aplicant ajustos del PO | |
 | 3 | Usuaris | `migracio/usuaris` | pendent | |
 | 4 | Visites | `migracio/visites` | pendent | paral·lel amb 5, 6 |
 | 5 | Renovations | `migracio/renovations` | pendent | paral·lel amb 4, 6 |
@@ -46,6 +46,7 @@
 - 2026-10-24 — El PO confirma a Neon `dev` que `migrator` té `CREATE` a `public` (D9 tancada).
 - 2026-10-24 — Tests del chunk 2 (`f5e85de`): 415 nous (388 fallen per manca d'implementació), 1666 existents verds. Respostes del PO a les 8 preguntes: (1) tot el que és de la càrrega inicial (comanda i `puntua_refugi`) va a `management/commands`, no a `domain/`; (2) `load_refuges` per defecte amb l'àlies `migrator`; (3) `visitors` només per a admins (el camp no surt per a la resta); (4) DELETE d'un mitjà inexistent: 403 no-admin / 404 admin, com avui; (5) si R2 falla en esborrar: 500 i es conserva la fila; (6) la càrrega és d'un sol ús (s'executa un cop per omplir la BD), sense `--overwrite`; (7) la cerca mira nom + `surname`; (8) corregir l'arrodoniment de `condition` (decimal, half-to-even en mostrar/filtrar). **No llançar l'implementador fins que el PO revisi l'estructura de carpetes.**
 - 2026-10-24 — **Estructura (PO):** es deixa la separació `domain/` + `api/` i es passa a **una app Django per feature** (estil HackSoft Django Styleguide / cookiecutter-django) sota `apps/`: `apps/<feature>/{models, selectors (lectures, ex-DAO), services (escriptures, ex-controller), serializers, views, permissions, urls, management/commands, migrations, tests}`; infra compartida a `apps/core`. Es fa **feature a feature**: cada chunk mou la seva feature mentre la migra; el chunk 11 neteja la resta d'`api/`. Cal actualitzar §6.1 del disseny i CLAUDE.md. Pendent: aprovació del PO de l'estructura concreta del chunk 2.
+- 2026-10-24 — Implementació del chunk 2 (`a4a53f4`…`2702e80`): `domain/` → `apps/` (core, accounts, refuges), selectors/services, `load_refuges` d'un sol ús, neteja d'`api/` (1666 → 1508 tests a `api/tests` per codi esborrat; 416 a `apps/refuges/tests`). Suite: **1924 passen** (verificat per l'orquestrador). Respostes del PO: estat intermedi acceptat fins al chunk 7 (dominis a Firestore llegeixen refugis del DAO legacy; fotos noves no visibles a `/media/`); `visitors: []` per a admins fins al chunk 3; esborrar ja `extract_coords_to_firestore` i `verify_conditions`; cobertura/Sonar amb `apps/` i treure `IsMediaUploader` acceptats; **`has_filters` es treu sempre** (el frontend no el llegeix); **errors 500: missatge específic del punt que falla + `error_id` (UUID) també al log amb la traça; mai `str(e)`** (convenció per a features migrades). Implementador aplicant-ho.
 
 ## Traspàs a sessió local (24/10)
 Proper pas: **implementador del chunk 1** (brief a [`EQUIP.md`](EQUIP.md); abast al prompt de tests, resumit aquí).
