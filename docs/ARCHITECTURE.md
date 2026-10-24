@@ -7,7 +7,8 @@
 | Peça | Detall | Font |
 |---|---|---|
 | Framework | Django 5.1.12 + Django REST Framework 3.15.2 | `requirements.txt` |
-| Base de dades real | **Cloud Firestore** via `firebase-admin` 6.5.0 | `api/services/firestore_service.py` |
+| Base de dades del domini (encara) | **Cloud Firestore** via `firebase-admin` 6.5.0 (fins als chunks de la migració) | `api/services/firestore_service.py` |
+| Base de dades relacional (migració) | **PostgreSQL 17 + PostGIS** (Neon) com a BD `default` de Django amb el rol `app` (`ATOMIC_REQUESTS`, subjecte a RLS) i l'àlies `migrator` (DDL); `psycopg[binary]` 3.2.9, GeoDjango | `refugis_lliures/settings.py` (`DATABASES`), [integrations/neon.md](integrations/neon.md) |
 | Autenticació | Firebase Auth (ID tokens JWT) + custom claim `role` | `api/middleware/firebase_auth_middleware.py`, `api/permissions.py` |
 | Media | Cloudflare R2 (API S3) via `boto3` | `api/r2_config.py`, `api/services/r2_media_service.py` |
 | Cache | Redis via `django-redis` | `refugis_lliures/settings.py:183-202` |
@@ -15,7 +16,9 @@
 | Servidor | gunicorn (1 worker sync, timeout 30 s) + whitenoise | `gunicorn.conf.py:12-19`, `refugis_lliures/settings.py:68` |
 | Deploy | Render (`render.yaml`), CI a GitHub Actions | vegeu [integrations/render-deploy-ci.md](integrations/render-deploy-ci.md) |
 
-**SQLite** (`db.sqlite3`, `refugis_lliures/settings.py:103-108`) està configurat però **cap model de domini és un model Django**: tots els models de `api/models/` són `@dataclass` i es persisteixen a Firestore **[FET]**. SQLite només serveix per a les apps internes de Django (admin, sessions) **[INFERÈNCIA]**. `api/admin.py` no registra cap model **[FET]**.
+**Migració Firestore → PostgreSQL en curs** ([migration/PLAN.md](migration/PLAN.md), [migration/PROGRESS.md](migration/PROGRESS.md)). Chunk 1 (infraestructura) fet: `default` és Postgres/PostGIS amb el rol `app` i `ATOMIC_REQUESTS=True`; `migrator` és l'àlies per a DDL (`python manage.py migrate --database=migrator`); `django.contrib.gis` sempre actiu → **el runtime necessita GDAL/GEOS** (pendent de desplegament, [TECH_DEBT.md](TECH_DEBT.md) P1) **[FET]**. **Tots els models de `api/models/` continuen sent `@dataclass` persistits a Firestore**: cap DAO de domini toca encara Postgres; el que ja usa Postgres és el health check, el hook de RLS i `domain/core` **[FET]**. `api/admin.py` no registra cap model **[FET]**.
+
+Si no hi ha cap URL de Postgres (`DATABASE_URL_APP` / `TEST_DATABASE_URL_APP`), `default` cau a SQLite (`db.sqlite3`), només perquè els tests sense BD puguin carregar la configuració **[FET]**.
 
 ## 2. Estructura de directoris
 
@@ -30,13 +33,15 @@ api/
   mappers/              dict Firestore <-> model
   models/               @dataclass amb validació a __post_init__
   services/             singletons: firestore_service, cache_service; R2MediaService, ConditionService
-  middleware/           FirebaseAuthenticationMiddleware
+  middleware/           FirebaseAuthenticationMiddleware, HealthDatabaseErrorMiddleware (503 del health si Postgres cau)
+  rls_hook.py           hook de RLS: set_config local a la transacció (uid, is_admin, is_system) per petició DRF
   authentication.py     FirebaseAuthentication (DRF)
   permissions.py        IsSameUser, IsFirebaseAdmin, IsMediaUploader, Is*Creator...
   management/commands/  seeding, condicions, process_yesterday_visits
-  utils/                swagger_examples, swagger_error_responses, timezone_utils, JSON de dades
+  utils/                swagger_examples, swagger_error_responses, timezone_utils, ids.py (uuid7), JSON de dades
   tests/<domini>/       test_models/daos/mappers/serializers/controllers/views(/integration)
-scripts/                manage_admins.py (custom claims), verify_conditions.py
+domain/core/            app de Django de la migració: rls.py (rls_context, system_context, helpers de polítiques RLS), migració core.0001 (schemas, funcions core.*, grants)
+scripts/                manage_admins.py (custom claims), verify_conditions.py, dev/setup_local_postgres.sh (Postgres local de proves)
 docs/                   documentació (aquesta carpeta): flows, integrations, recipes, guides, design, deep-dives
 env/                    .env.* i service accounts — NO versionat, NO llegir valors
 ```
@@ -120,7 +125,9 @@ Detall complet a [flows/00-auth-request-pipeline.md](flows/00-auth-request-pipel
 4. Admin = custom claim `role == 'admin'` (`api/permissions.py:10-21`). Es gestiona amb `scripts/manage_admins.py`.
 5. Gestió d'admins: [guides/admin-management.md](guides/admin-management.md). Per què hi ha middleware **i** classe DRF: [design/decisions.md](design/decisions.md).
 6. **[FET]** Permisos nous de la feature *images*: `IsNotBlocked` (403 `user_blocked`) i `IsAgeConfirmed` (403 `age_not_confirmed`), basats en `has_permission` i en `users/{uid}` (cache-first). Els errors amb codi tenen la forma `{error, code, message}` (`coded_error`, `api/permissions.py`). Detall: [flows/12-media-moderation.md](flows/12-media-moderation.md).
-7. **[FET]** Cap vista crida `check_object_permissions()`, i totes hereten d'`APIView` (no `GenericAPIView`) → **`has_object_permission` de `IsExperienceCreator`, `IsRenovationCreator`, `IsDoubtCreator`, `IsAnswerCreator`, `IsOwnerOrReadOnly` mai s'executa**. Només funcionen els permisos basats en `has_permission`: `IsSameUser`, `IsFirebaseAdmin`, `IsMediaUploader`.
+7. **[FET] Context de RLS per petició**: `api/rls_hook.py` (instal·lat a `ApiConfig.ready`) embolcalla `APIView.perform_authentication` i, després d'autenticar i abans de `check_permissions`, fixa amb **un sol** `set_config(..., true)` (local a la transacció d'`ATOMIC_REQUESTS`) `app.uid` (de l'usuari verificat), `app.is_admin` (només si el claim verificat `role == 'admin'`) i `app.is_system=false`, a totes les vistes DRF. Detall: [flows/00-auth-request-pipeline.md](flows/00-auth-request-pipeline.md).
+8. **[FET] Firebase Auth Emulator**: amb `FIREBASE_AUTH_EMULATOR_HOST` Firebase Admin s'inicialitza sense credencials (`projectId` de `GCLOUD_PROJECT`/`GOOGLE_CLOUD_PROJECT` o `demo-refugis-lliures`); prohibit amb `RENDER`/`PRODUCTION` = `true` (Django no arrenca). Només per a e2e locals: [integrations/firebase-auth.md](integrations/firebase-auth.md).
+9. **[FET]** Cap vista crida `check_object_permissions()`, i totes hereten d'`APIView` (no `GenericAPIView`) → **`has_object_permission` de `IsExperienceCreator`, `IsRenovationCreator`, `IsDoubtCreator`, `IsAnswerCreator`, `IsOwnerOrReadOnly` mai s'executa**. Només funcionen els permisos basats en `has_permission`: `IsSameUser`, `IsFirebaseAdmin`, `IsMediaUploader`.
 
 ## 6. Cache (resum)
 
@@ -170,7 +177,8 @@ Detall amb diagrames i motivació: [design/patterns.md](design/patterns.md).
 Guia pràctica (comandes, coverage, per què Firebase no s'inicialitza): [guides/testing.md](guides/testing.md).
 
 
-- Config: `pytest.ini` (`DJANGO_SETTINGS_MODULE=refugis_lliures.settings`, `testpaths=api/tests`, `--strict-markers`, markers `unit, integration, views, serializers, controller(s), daos, mappers, models, edge_cases, slow`).
+- Config: `pytest.ini` (`DJANGO_SETTINGS_MODULE=refugis_lliures.settings`, `testpaths=api/tests`, `--strict-markers`, markers `unit, integration, views, serializers, controller(s), daos, mappers, models, edge_cases, slow, db_infra, rls, real_audit_log, real_permissions`).
+- **Tests contra PostgreSQL (chunk 1)** [FET]: `TEST_DATABASE_URL_APP` / `TEST_DATABASE_URL_MIGRATOR` (Postgres local bootstrapat amb `scripts/dev/setup_local_postgres.sh`, o el servei `postgis/postgis:17-3.5` de CI) tenen prioritat sobre `DATABASE_URL_*`; `django_db_setup` (`api/tests/conftest.py`) migra amb `migrator` sobre la BD de proves sense crear `test_*`, i els tests corren com a `app` (RLS activa). La fixture `autouse` `_rls_hook_sense_bd` desactiva el hook als tests sense BD (sense markers `rls`/`django_db`/`db_infra`). Calen GDAL/GEOS; a Windows, contenidor Linux ([guides/testing.md](guides/testing.md)).
 - `conftest.py` (arrel) i `api/tests/conftest.py` fixen `TESTING=true` i variables R2 falses **abans** d'importar res; amb `TESTING`/`pytest` carregat, Firebase **no s'inicialitza** (`api/firebase_config.py:15-17,92-94`).
 - Mocks habituals: `patch('api.services.firestore_service.FirestoreService')`, `patch('api.services.cache_service.cache_service')` (`api/tests/conftest.py:266-286`); a les vistes es mocka el controller al mòdul de la vista, p. ex. `@patch('api.views.renovation_views.RenovationController')` (`api/tests/renovation/test_views.py:91`).
 - Estructura per domini: `api/tests/<domini>/test_{models,mappers,daos,serializers,controllers,views}.py` (+ `test_integration.py` a refugi_lliure, renovation, user). Transversals: `api/tests/test_auth_middleware_permissions.py`, `api/tests/test_cache_views.py`, `api/tests/management_commands/`.
@@ -187,4 +195,4 @@ Llista completa: [GOTCHAS.md](GOTCHAS.md). Les més importants:
 5. Mantén la validació del serializer i del `__post_init__` del model alineades.
 
 ## 12. Deute tècnic detectat
-Llista completa per severitat: [TECH_DEBT.md](TECH_DEBT.md). Resum: permisos d'objecte inoperants (crític), invalidació de cache de propostes trencada (crític), escriptures multi-document no atòmiques, claus R2 amb nom de fitxer del client, `delete_file` que amaga errors, configuració insegura per defecte (`DEBUG=True`, `ALLOWED_HOSTS='*'`, CORS obert).
+Llista completa per severitat: [TECH_DEBT.md](TECH_DEBT.md). Resum: permisos d'objecte inoperants (crític), invalidació de cache de propostes trencada (crític), escriptures multi-document no atòmiques (`ATOMIC_REQUESTS` només cobreix Postgres), runtime sense GDAL/GEOS encara no desplegable (P1), claus R2 amb nom de fitxer del client, `delete_file` que amaga errors, configuració insegura per defecte (`DEBUG=True`, `ALLOWED_HOSTS='*'`, CORS obert).

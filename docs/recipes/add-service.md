@@ -30,6 +30,6 @@
 4. **Errors**: decideix i documenta si el servei **llança** o **retorna False/None**. El codi actual barreja (`upload_file` llança, `delete_file` retorna False) i això ha trencat rollbacks ([TECH_DEBT A4](../TECH_DEBT.md)). Recomanació: llançar excepcions pròpies i que el controller les tradueixi.
 5. **Export** a `api/services/__init__.py` (afegir a l'import i a `__all__`).
 6. **Logging**: si vols un nivell propi, afegeix-lo a `LOGGING['loggers']` de `refugis_lliures/settings.py:234-256`; recorda que el logger `api` només mostra `WARNING`+.
-7. **No el construeixis en constructors de controllers** si pot fallar per configuració: `RefugiLliureController()` crea R2 i trenca el health check (`api/controllers/refugi_lliure_controller.py:22`). Millor creació mandrosa.
+7. **No el construeixis en constructors de controllers** si pot fallar per configuració: `RefugiLliureController()` creava R2 i trencava el health check (resolt al chunk 1: ara `media_service` és una propietat mandrosa a `api/controllers/refugi_lliure_controller.py`). Segueix aquest patró: creació mandrosa.
 8. **Tests**: `.coveragerc` i Sonar **exclouen `services/`** del coverage; igualment escriu tests i mocka les dependències externes (`patch('api.services.<nom>_service.<client>')`). Si el servei llegeix variables d'entorn a l'import, fixa-les a `conftest.py` (arrel) com es fa amb `R2_*`.
 9. **Docs**: nou fitxer a `docs/integrations/` si és extern; actualitza `docs/ARCHITECTURE.md §1/§7`.
