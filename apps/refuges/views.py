@@ -33,6 +33,8 @@ from api.utils.swagger_examples import (
     EXAMPLE_REFUGI_SEARCH_RESPONSE,
 )
 
+from apps.core.errors import server_error
+
 from . import selectors, services
 from .models import RefugeType
 from .serializers import (
@@ -64,8 +66,13 @@ def _presigner():
     return lambda key: service.generate_presigned_url(key, PRESIGN_SECONDS)
 
 
-def _internal_error(message='Internal server error'):
-    return Response({'error': message}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+ERR_MAP = 'Error de base de dades en obtenir el mapa de refugis'
+ERR_SEARCH = 'Error de base de dades en cercar refugis'
+ERR_DETAIL = 'Error de base de dades en obtenir el refugi'
+ERR_MEDIA_DB = 'Error de base de dades en obtenir els mitjans del refugi'
+ERR_PRESIGN = 'Error en generar la URL de la imatge'
+ERR_R2_DELETE = 'Error en esborrar el fitxer a R2'
+ERR_DELETE = 'Error de base de dades en esborrar el mitjà'
 
 
 class RefugeCollectionAPIView(APIView):
@@ -117,15 +124,21 @@ class RefugeCollectionAPIView(APIView):
             return Response({'error': 'Invalid query parameters', 'details': filters_serializer.errors},
                             status=status.HTTP_400_BAD_REQUEST)
         filters = filters_serializer.validated_data
-        try:
-            if not selectors.has_active_filters(filters):
-                points = [{'id': str(p['id']), 'name': p['name'], 'coord': {'lat': p['lat'], 'long': p['lng']},
-                           'geohash': p['geohash']} for p in selectors.list_map_points()]
-                return Response(RefugeMapResponseSerializer(
-                    {'count': len(points), 'has_filters': False, 'results': points}).data)
+        if not selectors.has_active_filters(filters):
+            try:
+                rows = selectors.list_map_points()
+            except Exception as exc:
+                return server_error(ERR_MAP, exc, logger=logger)
+            points = [{'id': str(p['id']), 'name': p['name'], 'coord': {'lat': p['lat'], 'long': p['lng']},
+                       'geohash': p['geohash']} for p in rows]
+            return Response(RefugeMapResponseSerializer({'count': len(points), 'results': points}).data)
 
-            authenticated, uid, admin = _viewer(request)
+        authenticated, uid, admin = _viewer(request)
+        try:
             refuges = selectors.search_refuges(filters, viewer_uid=uid, authenticated=authenticated, is_admin=admin)
+        except Exception as exc:
+            return server_error(ERR_SEARCH, exc, logger=logger)
+        try:
             presign = _presigner() if authenticated else None
             results = [
                 refuge_to_dict(
@@ -133,12 +146,10 @@ class RefugeCollectionAPIView(APIView):
                     media=[media_to_dict(m, presign) for m in selectors.media_of(r)] if authenticated else None,
                     visitors=selectors.get_visitor_uids(r.pk) if admin else None)
                 for r in refuges]
-            return Response(RefugiSearchResponseSerializer(
-                {'count': len(results), 'has_filters': True, 'results': results},
-                context={'is_authenticated': authenticated}).data)
-        except Exception:
-            logger.exception('Error cercant refugis')
-            return _internal_error()
+        except Exception as exc:
+            return server_error(ERR_PRESIGN, exc, logger=logger)
+        return Response(RefugiSearchResponseSerializer(
+            {'count': len(results), 'results': results}, context={'is_authenticated': authenticated}).data)
 
 
 class RefugeDetailAPIView(APIView):
@@ -163,19 +174,24 @@ class RefugeDetailAPIView(APIView):
     def get(self, request, id):
         try:
             refuge = selectors.get_refuge(id)
-            if refuge is None:
-                return Response({'error': 'Refugi not found'}, status=status.HTTP_404_NOT_FOUND)
-            authenticated, uid, admin = _viewer(request)
-            media = None
-            if authenticated:
+        except Exception as exc:
+            return server_error(ERR_DETAIL, exc, logger=logger)
+        if refuge is None:
+            return Response({'error': 'Refugi not found'}, status=status.HTTP_404_NOT_FOUND)
+        authenticated, uid, admin = _viewer(request)
+        media = None
+        if authenticated:
+            try:
+                rows = selectors.get_refuge_media(refuge.pk, uid, admin)
+            except Exception as exc:
+                return server_error(ERR_MEDIA_DB, exc, logger=logger)
+            try:
                 presign = _presigner()
-                media = [media_to_dict(m, presign) for m in selectors.get_refuge_media(refuge.pk, uid, admin)]
-            data = refuge_to_dict(refuge, media=media,
-                                  visitors=selectors.get_visitor_uids(refuge.pk) if admin else None)
-            return Response(RefugiSerializer(data, context={'is_authenticated': authenticated}).data)
-        except Exception:
-            logger.exception('Error obtenint el refugi')
-            return _internal_error()
+                media = [media_to_dict(m, presign) for m in rows]
+            except Exception as exc:
+                return server_error(ERR_PRESIGN, exc, logger=logger)
+        data = refuge_to_dict(refuge, media=media, visitors=selectors.get_visitor_uids(refuge.pk) if admin else None)
+        return Response(RefugiSerializer(data, context={'is_authenticated': authenticated}).data)
 
 
 class RefugeMediaListAPIView(APIView):
@@ -199,18 +215,21 @@ class RefugeMediaListAPIView(APIView):
         },
     )
     def get(self, request, id):
+        _, uid, admin = _viewer(request)
         try:
-            _, uid, admin = _viewer(request)
             if not selectors.refuge_exists(id):
                 return Response({'error': 'Refugi not found'}, status=status.HTTP_404_NOT_FOUND)
+            rows = selectors.get_refuge_media(id, uid, admin)
+        except Exception as exc:
+            return server_error(ERR_MEDIA_DB, exc, logger=logger)
+        try:
             presign = _presigner()
-            media = [media_to_dict(m, presign) for m in selectors.get_refuge_media(id, uid, admin)]
-            # Registre d'accés a mitjans (art. 32 RGPD)
-            audit.audit_log_service.log(uid, audit.ACTION_MEDIA_LIST, 'refuge', str(id), {'count': len(media)})
-            return Response(RefugeMediaListResponseSerializer({'media': media}).data)
-        except Exception:
-            logger.exception('Error llistant mitjans')
-            return _internal_error('Error obtenint els mitjans')
+            media = [media_to_dict(m, presign) for m in rows]
+        except Exception as exc:
+            return server_error(ERR_PRESIGN, exc, logger=logger)
+        # Registre d'accés a mitjans (art. 32 RGPD)
+        audit.audit_log_service.log(uid, audit.ACTION_MEDIA_LIST, 'refuge', str(id), {'count': len(media)})
+        return Response(RefugeMediaListResponseSerializer({'media': media}).data)
 
 
 class RefugeMediaDetailAPIView(APIView):
@@ -247,8 +266,7 @@ class RefugeMediaDetailAPIView(APIView):
         except services.MediaNotFound as exc:
             return Response({'error': str(exc)}, status=status.HTTP_404_NOT_FOUND)
         except services.MediaStorageError as exc:
-            return _internal_error(str(exc))
-        except Exception:
-            logger.exception("Error en l'endpoint d'eliminació de mitjà")
-            return _internal_error('Error procesant la petició')
+            return server_error(ERR_R2_DELETE, exc, logger=logger)
+        except Exception as exc:
+            return server_error(ERR_DELETE, exc, logger=logger)
         return Response({'success': True, 'message': 'Mitjà eliminat correctament', 'key': decoded_key})

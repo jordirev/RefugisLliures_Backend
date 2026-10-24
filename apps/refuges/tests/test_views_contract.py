@@ -156,7 +156,7 @@ def test_llista_sense_filtres_forma_i_ordre(client, RM):
     r = api_get(client, URL)
     assert r.status_code == 200
     data = r.json()
-    assert data['has_filters'] is False and data['count'] == 2
+    assert set(data) == {'count', 'results'} and data['count'] == 2
     assert [x['name'] for x in data['results']] == ['Alfa', 'Zeta']
     for x in data['results']:
         assert set(x) == {'id', 'name', 'coord', 'geohash'}, 'ja no porta surname'
@@ -166,13 +166,14 @@ def test_llista_sense_filtres_forma_i_ordre(client, RM):
 
 
 def test_llista_buida(client, RM):
-    assert api_get(client, URL).json() == {'count': 0, 'has_filters': False, 'results': []}
+    assert api_get(client, URL).json() == {'count': 0, 'results': []}
 
 
 def test_filtres_buits_equivalen_a_sense_filtres(client, RM):
     make_refuge()
     d = api_get(client, URL + '?name=&type=&condition=').json()
-    assert d['has_filters'] is False and d['count'] == 1
+    assert set(d) == {'count', 'results'} and d['count'] == 1
+    assert set(d['results'][0]) == {'id', 'name', 'coord', 'geohash'}, 'filtres buits = llista de coordenades'
 
 
 def test_llista_identica_per_a_autenticats(client, RM):
@@ -190,7 +191,7 @@ def test_llista_ignora_la_rls_d_altres_taules_i_veu_tots_els_punts(client, RM):
 
 def test_llista_amb_filtres_retorna_refugis_complets(client, refuge):
     d = api_get(client, URL + '?type=fermée').json()
-    assert d['has_filters'] is True and d['count'] == 1
+    assert set(d) == {'count', 'results'} and d['count'] == 1
     assert set(d['results'][0]) == BASE_KEYS
     assert d['results'][0]['id'] == str(refuge.pk)
 
@@ -327,7 +328,8 @@ def test_delete_media_r2_que_falla_no_deixa_la_fila_esborrada(client, refuge, RM
     make_media(refuge, 'u1', key=key)
     with patch.object(R2MediaService, 'delete_file', lambda self, k: False):
         r = api_delete(client, del_url(refuge, key), user_claims('u1'))
-    assert r.status_code == 500 and 'error' in r.json()
+    assert r.status_code == 500
+    assert r.json()['error'] == 'Error en esborrar el fitxer a R2' and 'error_id' in r.json()
     with rls_context(system=True):
         assert RM.RefugeMedia.objects.filter(pk=key).exists()
 

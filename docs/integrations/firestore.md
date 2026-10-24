@@ -37,8 +37,8 @@ Camps nous a `users/{uid}`: `age_confirmed_at`, `age_threshold`, `moderation_str
 | `Increment` | `api/daos/user_dao.py` (comptadors), `api/daos/doubt_dao.py` (`answers_count`) |
 | `ArrayUnion` | `api/daos/user_dao.py` (llistes de refugis), `api/daos/experience_dao.py` (`media_keys`) |
 | `ArrayRemove` | `api/daos/experience_dao.py`, `api/daos/refugi_lliure_dao.py`, `api/daos/renovation_dao.py` |
-| `SERVER_TIMESTAMP` | `api/daos/refuge_proposal_dao.py`, `api/management/commands/extract_coords_to_firestore.py` |
-| `batch()` | només a la comanda de gestió `extract_coords_to_firestore.py` (les antigues `assign_conditions` i `upload_refugis_to_firestore` s'han eliminat al chunk 2) |
+| `SERVER_TIMESTAMP` | `api/daos/refuge_proposal_dao.py` |
+| `batch()` | cap (les comandes de gestió que l'usaven — `assign_conditions`, `upload_refugis_to_firestore`, `extract_coords_to_firestore` — s'han eliminat al chunk 2) |
 | `collection_group('answers')` | `api/daos/doubt_dao.py` |
 | **Transaccions** | **cap** a `api/` |
 
@@ -55,8 +55,8 @@ No hi ha `firestore.indexes.json` al repo → l'estat dels índexs és **[NO VER
 | Comanda | Què fa |
 |---|---|
 | ~~`upload_refugis_to_firestore`~~ | **Eliminada (chunk 2)**: substituïda per `load_refuges` (PostgreSQL, d'un sol ús; vegeu [local-setup](../guides/local-setup.md)). |
-| `extract_coords_to_firestore` | Construeix `coords_refugis/all_refugis_coords` a partir dels refugis |
-| ~~`assign_conditions`~~ / `verify_conditions` | `assign_conditions` eliminada (la condició inicial la fixa `puntua_refugi` a `load_refuges`); `verify_conditions` només verifica el Firestore antic (s'elimina al chunk 11) |
+| ~~`extract_coords_to_firestore`~~ | **Eliminada (chunk 2)**: la llista de coordenades és la vista `refuges.refuge_map` |
+| ~~`assign_conditions`~~ / ~~`verify_conditions`~~ | `assign_conditions` eliminada (la condició inicial la fixa `puntua_refugi` a `load_refuges`); `verify_conditions` també eliminada |
 | `process_yesterday_visits` | Procés diari (vegeu [flux 6](../flows/06-refuge-visits.md) i [guia](../guides/daily-visits-process.md)) |
 
 Ordre d'execució en una BD nova: [guides/local-setup.md §5](../guides/local-setup.md).

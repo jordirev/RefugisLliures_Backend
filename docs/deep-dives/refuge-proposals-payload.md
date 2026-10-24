@@ -57,7 +57,7 @@ El document únic que serveix `GET /api/refuges/` sense filtres es manté des de
 | update | `update_refuge_from_coords_refugis` | només si el payload porta `name` o `coord`; regenera `geohash` si canvia `coord` |
 | delete | `delete_refuge_from_coords_refugis` | filtra l'entrada; warning si no hi era |
 
-`geohash` = `generate_simple_geohash(lat, lng, precision=5)` (base32 `0123456789bcdefghjkmnpqrstuvwxyz`), la mateixa lògica que la comanda `extract_coords_to_firestore`.
+`geohash` = `generate_simple_geohash(lat, lng, precision=5)` (base32 `0123456789bcdefghjkmnpqrstuvwxyz`), la mateixa lògica que feia l'antiga comanda `extract_coords_to_firestore` (eliminada al chunk 2; a PostgreSQL el geohash el calcula la vista `refuge_map`).
 
 > ⚠️ Totes tres fan read-modify-write de l'array sencer (sense transacció) → aprovacions concurrents poden perdre entrades ([TECH_DEBT A3](../TECH_DEBT.md)). El document creix amb cada refugi (límit d'1 MiB de Firestore).
 

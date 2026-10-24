@@ -36,6 +36,9 @@ Recursos a `api/urls.py` (`/refuges/`, `/users/`, `/experiences/`…), verbs GET
 ### Selectors i services per feature (apps migrades a PostgreSQL)
 Les features migrades (`apps/<feature>/`) substitueixen DAO + controller per **`selectors.py`** (lectures; una consulta per cas d'ús, sense cache de dades) i **`services.py`** (escriptures amb `transaction.atomic`; excepcions de domini). La resta de capes (vista fina, serializers, models amb RLS i FK del DDL) i el flux estan a [ARCHITECTURE §3.1](../ARCHITECTURE.md). Referència: `apps/refuges`.
 
+### Errors 500 amb traçabilitat (apps migrades)
+**Errors 500 amb traçabilitat** (política del PO per a les features migrades): la resposta és `{"error": "<missatge específic del punt que ha fallat>", "error_id": "<uuid>"}` i el mateix `error_id` es desa al log amb la traça completa (`logger.exception`). **Mai** es retorna `str(e)` ni el nom/text de l'excepció (pot dur SQL, hosts, bucket, claus o rutes). Ho fa el helper `apps.core.errors.server_error(message, exc, logger=logger)`; el missatge és un text fix per punt ("Error en esborrar el fitxer a R2", "Error de base de dades en cercar refugis", "Error en generar la URL de la imatge"…). Tests de referència: `apps/core/tests/test_errors.py` i `apps/refuges/tests/test_server_errors.py` (forma de la resposta, `error_id` coincident amb el log, cap text d'excepció a la resposta).
+
 ### Strategy
 | On | Interfície | Concrets | Selector |
 |---|---|---|---|

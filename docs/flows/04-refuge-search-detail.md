@@ -31,14 +31,14 @@ sequenceDiagram
     alt sense filtres actius
         V->>SEL: list_map_points()
         SEL->>DB: SELECT … FROM refuges.refuge_map ORDER BY name, id   (1 consulta)
-        V-->>C: 200 {count, has_filters:false, results:[{id, name, coord, geohash}]}
+        V-->>C: 200 {count, results:[{id, name, coord, geohash}]}
     else amb filtres
         V->>SEL: search_refuges(filters, viewer, authenticated)
         SEL->>DB: Q1: refuges + amenities (JOIN) + ARRAY(links) amb WHERE (nom trigram, type, places, altitude, round_half_even(condition))
         opt autenticat
             SEL->>DB: Q2: refuge_media dels refugis trobats (Prefetch, ordre uploaded_at, key)
         end
-        V-->>C: 200 {count, has_filters:true, results:[RefugiSerializer]}
+        V-->>C: 200 {count, results:[RefugiSerializer]}
     end
 ```
 
@@ -58,12 +58,12 @@ sequenceDiagram
 |---|---|
 | Query params invàlids | 400 `{error:'Invalid query parameters', details}` |
 | Refugi no trobat, o `id` que no és un UUID (p. ex. un ID antic de Firestore) | 404 `{error:'Refugi not found'}` |
-| Error intern | 500 `{error:'Internal server error'}` (ja no s'exposa el text de l'excepció; es registra al log) |
+| Error intern | 500 `{error:'<missatge específic>', error_id:'<uuid>'}` (p. ex. "Error de base de dades en cercar refugis", "Error en generar la URL de la imatge"); el mateix `error_id` és al log amb la traça; no s'exposa mai el text de l'excepció (`apps.core.errors.server_error`) |
 
 ## Canvis respecte al flux antic (decisions del PO, chunk 2)
 - IDs: UUID v7 (string opac per al frontend).
 - `condition`: s'hi desa la mitjana decimal; es mostra i es filtra arrodonida half-to-even; el filtre accepta 0–3 (abans 0–2 i només enters exactes).
-- `visitors`: només admins. `surname`: només per cercar. La llista sense filtres ja no porta `surname` i totes dues respostes porten `has_filters`.
+- `visitors`: només admins. `surname`: només per cercar. La llista sense filtres ja no porta `surname` i cap resposta porta `has_filters` (el frontend no el llegeix: `{count, results}`).
 - Cerca per nom parcial i sense accents (B2 resolt: el DAO antic assumia nom únic i la cerca era exacta).
 - Cap cache Redis per a refugis: les llistes ja no cal invalidar-les quan una proposta modifica un refugi.
 

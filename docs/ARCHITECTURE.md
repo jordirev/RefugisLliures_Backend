@@ -44,7 +44,7 @@ apps/                   features migrades a PostgreSQL: una app Django per featu
   core/                 nucli de la BD: rls.py (rls_context, system_context, helpers de polítiques RLS), migration_utils.py, testing.py, migracions core.0001/0002 (schemas, funcions core.*, grants)
   accounts/             models UserAccount i UserPublicProfile (mínim del chunk 2; la resta al chunk 3)
   refuges/              models, selectors (lectures), services (escriptures), serializers, views, urls, management/commands/load_refuges.py, migrations, tests/
-scripts/                manage_admins.py (custom claims), verify_conditions.py, dev/setup_local_postgres.sh (Postgres local de proves)
+scripts/                manage_admins.py (custom claims), dev/setup_local_postgres.sh (Postgres local de proves)
 docs/                   documentació (aquesta carpeta): flows, integrations, recipes, guides, design, deep-dives
 env/                    .env.* i service accounts — NO versionat, NO llegir valors
 ```
@@ -60,7 +60,7 @@ HTTP → FirebaseAuthenticationMiddleware → hook de RLS (set_config) → View 
 
 | Capa | Contracte |
 |---|---|
-| **View** (`views.py`) | `APIView` fina: declara `permission_classes`, valida l'entrada amb el serializer, crida un *selector* o un *service*, tradueix les excepcions de domini a HTTP i serialitza. Sense accés directe a l'ORM. |
+| **View** (`views.py`) | `APIView` fina: declara `permission_classes`, valida l'entrada amb el serializer, crida un *selector* o un *service*, tradueix les excepcions de domini a HTTP i serialitza. Sense accés directe a l'ORM. Errors 500: `apps.core.errors.server_error(missatge específic, exc)` → `{error, error_id}` (mateix `error_id` al log amb la traça; mai el text de l'excepció). |
 | **Selectors** (`selectors.py`) | Lectures (substitueixen el DAO): funcions que retornen models, llistes o `QuerySet`. Una consulta (o un `Prefetch`/`ArraySubquery`) per cas d'ús, cap N+1. Sense cache de dades. |
 | **Services** (`services.py`) | Escriptures amb regles de negoci (substitueixen el controller): `transaction.atomic`, `select_for_update`, R2. Llancen excepcions de domini (`MediaForbidden`, `MediaNotFound`…), no tuples. |
 | **Models** (`models.py`) | `django.db.models` amb `db_table = 'schema"."taula'`, FK `DO_NOTHING` + `db_constraint=False` (les cascades i la RLS són del DDL a la migració). |
@@ -188,7 +188,7 @@ Detall amb diagrames i motivació: [design/patterns.md](design/patterns.md).
 | DAO amb `self.collection_name` en lloc de `COLLECTION_NAME` | `api/daos/refugi_lliure_dao.py:18-19`, `api/daos/refuge_proposal_dao.py:579` |
 | Lògica de negoci (strategies) dins el DAO | `api/daos/refuge_proposal_dao.py:231-570` (crida controllers d'altres dominis des del DAO) |
 | Body d'error amb un objecte Swagger (`{'error': ERROR_500_INTERNAL_ERROR}`) | 14 ocurrències a `api/views/renovation_views.py`, 4 a `api/views/user_views.py`. `ERROR_500_INTERNAL_ERROR` és un `openapi.Response` (`api/utils/swagger_error_responses.py:316`). Com es serialitza a JSON: **[NO VERIFICAT]** |
-| Errors 500 que exposen el text de l'excepció | `"Error intern: {str(e)}"` als controllers |
+| Errors 500 que exposen el text de l'excepció | `"Error intern: {str(e)}"` als controllers (les features migrades usen `apps.core.errors.server_error`: missatge específic + `error_id`, sense text d'excepció) |
 | DAO de llistes d'usuari que retorna tuples truthy com a "èxit" | `api/daos/user_dao.py:199,235,245,260` |
 | Imports erronis de `logger` | `api/models/user.py:6` (`from venv import logger`), `api/models/experience.py:9` i `api/models/refugi_lliure.py:4` (`from asyncio.log import logger`) |
 

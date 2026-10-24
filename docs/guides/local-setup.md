@@ -88,7 +88,7 @@ El rol `app` (BD `default`) no té permisos de DDL: un `migrate` sense `--databa
 python manage.py load_refuges --dry-run     # valida i compta, sense escriure
 python manage.py load_refuges               # UNA sola vegada: 1.542 refugis, 1.542 serveis, 2.075 enllaços
 ```
-És **d'un sol ús** i va pel rol propietari (`--database migrator`, per defecte): si la BD ja té refugis acaba amb `CommandError` sense escriure res (no hi ha `--overwrite`). Valida tot el JSON abans (informa de tots els registres invàlids) i fixa la condició inicial amb `puntua_refugi` (`n = 0`). Disseny: [postgres-schema.md §9](../design/postgres-schema.md). Les comandes antigues de Firestore (`upload_refugis_to_firestore`, `assign_conditions`) s'han eliminat; `extract_coords_to_firestore` i `verify_conditions` continuen només per al Firestore antic fins al chunk 11.
+És **d'un sol ús** i va pel rol propietari (`--database migrator`, per defecte): si la BD ja té refugis acaba amb `CommandError` sense escriure res (no hi ha `--overwrite`). Valida tot el JSON abans (informa de tots els registres invàlids) i fixa la condició inicial amb `puntua_refugi` (`n = 0`). Disseny: [postgres-schema.md §9](../design/postgres-schema.md). Les comandes antigues de Firestore (`upload_refugis_to_firestore`, `assign_conditions`) s'han eliminat; `extract_coords_to_firestore` i `verify_conditions` també s'han eliminat.
 
 ## 6. Arrencar
 ```bash

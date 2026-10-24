@@ -144,7 +144,6 @@ class RefugiSerializer(serializers.Serializer):
 
 class RefugiSearchResponseSerializer(serializers.Serializer):
     count = serializers.IntegerField()
-    has_filters = serializers.BooleanField()
     results = RefugiSerializer(many=True)
 
 
@@ -158,7 +157,6 @@ class RefugeMapPointSerializer(serializers.Serializer):
 
 class RefugeMapResponseSerializer(serializers.Serializer):
     count = serializers.IntegerField()
-    has_filters = serializers.BooleanField()
     results = RefugeMapPointSerializer(many=True)
 
 

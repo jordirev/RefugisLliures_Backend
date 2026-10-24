@@ -6,7 +6,7 @@
 > 2. **Serializers** — `apps/<feature>/serializers.py`: entrada (`XSearchFiltersSerializer`, `XCreateSerializer`) i sortida (forma exacta del contracte JSON); sense `ModelSerializer`.
 > 3. **Selectors** — `apps/<feature>/selectors.py` (lectures: ORM amb `select_related`/`Prefetch`/`ArraySubquery`/`annotate`, **una consulta per cas d'ús**; filtres al `WHERE`; sense cache de dades). Afegeix un test de recompte de consultes (`QueryCounter`).
 > 4. **Services** — `apps/<feature>/services.py` (escriptures: `transaction.atomic`, `select_for_update` si hi ha carreres, R2 comprovant el booleà de `delete_file`); llança excepcions de domini (`MediaForbidden`, `MediaNotFound`…).
-> 5. **Vista** — `apps/<feature>/views.py`: `APIView` fina amb `permission_classes` explícit (el default és `AllowAny`), crida selectors/services i mapa excepcions → HTTP; el context de RLS el posa el hook. Sense `str(e)` a les respostes d'error.
+> 5. **Vista** — `apps/<feature>/views.py`: `APIView` fina amb `permission_classes` explícit (el default és `AllowAny`), crida selectors/services i mapa excepcions → HTTP; el context de RLS el posa el hook. Els errors inesperats es capturen **per punt** i es retornen amb `apps.core.errors.server_error("<missatge específic>", exc, logger=logger)` → `500 {error, error_id}` (l'`error_id` és al log amb la traça); **mai** `str(e)` ni text d'excepció a la resposta. Cal un test per a cada missatge (vegeu `apps/refuges/tests/test_server_errors.py`).
 > 6. **Tests** — `apps/<feature>/tests/`: contracte HTTP contra Postgres real (rol `app`), anònim/propi/aliè/admin, errors 400/401/403/404, `QueryCounter`. `pytest.ini` ja inclou `apps` a `testpaths`.
 > 7. **Docs** — `docs/ARCHITECTURE.md §4`, el flux a `docs/flows/` i `docs/recipes/`.
 

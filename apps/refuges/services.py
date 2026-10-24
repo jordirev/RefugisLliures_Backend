@@ -51,11 +51,10 @@ def delete_media(*, refuge_id, key: str, actor_uid: Optional[str], is_admin: boo
             raise MediaNotFound('Mitjà no trobat')
         try:
             stored = service.delete_file(key)
-        except Exception:
-            logger.exception('Error eliminant el fitxer de R2')
-            stored = False
+        except Exception as exc:
+            raise MediaStorageError('R2 ha fallat en esborrar el fitxer') from exc    # desfà l'esborrat de la fila
         if not stored:
-            raise MediaStorageError('Error deleting file from storage')      # desfà l'esborrat de la fila
+            raise MediaStorageError('R2 no ha esborrat el fitxer')                    # desfà l'esborrat de la fila
 
     # Miniatura: si falla només queda un fitxer orfe.
     if media.thumb_key and not service.delete_file(media.thumb_key):

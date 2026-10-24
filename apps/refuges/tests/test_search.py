@@ -16,7 +16,7 @@ def search(client, qs, claims=None):
     r = api_get(client, f'{URL}?{qs}', claims)
     assert r.status_code == 200, r.content
     data = r.json()
-    assert data['has_filters'] is True
+    assert set(data) == {'count', 'results'}, 'sense has_filters (el frontend no el llegeix)'
     return data
 
 
@@ -51,7 +51,7 @@ def test_cerca_per_nom(client, named, q, expected):
 
 def test_cerca_per_nom_sense_resultats(client, named):
     d = search(client, 'name=zzzzzzzz')
-    assert d == {'count': 0, 'has_filters': True, 'results': []}
+    assert d == {'count': 0, 'results': []}
 
 
 def test_cerca_tolera_una_errada_de_lletra_amb_similitud_trigram(client, named):

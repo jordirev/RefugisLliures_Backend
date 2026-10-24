@@ -148,7 +148,7 @@ sequenceDiagram
 | Fitxer rebutjat en confirmar | 200 amb `failed[].reason` |
 | `POST`/`PATCH` a `/api/refuges/{id}/media/` o `/api/users/{uid}/avatar/` | 405 |
 | Media inexistent o d'un altre usuari (DELETE) | **403** (no 404) per a no-admins; **404** per a admins |
-| R2 no pot esborrar (DELETE) | 500 i la fila es conserva (rollback del `savepoint`) |
+| R2 no pot esborrar (DELETE) | 500 `{error:'Error en esborrar el fitxer a R2', error_id}` i la fila es conserva (rollback del `savepoint`) |
 
 ## Gotchas i bugs
 - Les claus R2 contenen `/`, `.` i `-`: per escriure una entrada del map cal `FieldPath('media_metadata', key).to_api_repr()` (escapa amb backticks). **Mai** `update({'media_metadata.' + key: ...})` **[FET]**.
