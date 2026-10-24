@@ -17,7 +17,7 @@
 |---|---|---|---|---|
 | 0 | Disseny BD | `migracio/disseny-bd` | fet | `docs/design/postgres-schema.md` tancat (`e611fe3`), PR a `migration` |
 | 1 | Infraestructura | `migracio/infraestructura` | fet (PR [#42](https://github.com/jordirev/RefugisLliures_Backend/pull/42) fusionada, `7d9073f`) | 1666 tests; D9 confirmada a Neon `dev` |
-| 2 | Refugis | `migracio/refugis` | tests en curs | |
+| 2 | Refugis | `migracio/refugis` | tests fets (`f5e85de`); **esperant que el PO revisi l'estructura de carpetes** abans de l'implementador | |
 | 3 | Usuaris | `migracio/usuaris` | pendent | |
 | 4 | Visites | `migracio/visites` | pendent | paral·lel amb 5, 6 |
 | 5 | Renovations | `migracio/renovations` | pendent | paral·lel amb 4, 6 |
@@ -44,6 +44,7 @@
 - 2026-10-24 — **E2E local** (orquestrador): `runserver` en contenidor contra `refugisdb_e2e` (PG17, rols reals, migrat amb `migrator`) + Firebase Auth/Firestore Emulators. `scripts/e2e/e2e_chunk1.sh`: 12/12 (health amb `database`; 401 sense token o token invàlid; 403 usuari normal a rutes d'admin i PATCH aliè; 200 admin; 404 perfil inexistent). Al log de Postgres: `BEGIN` → un sol `set_config(app.uid, app.is_admin, app.is_system=false)` amb valors correctes (normal/admin/anònim) → `COMMIT`. Postgres caigut → 503 en 10 s; recuperació → 200. Troballes corregides: `runserver` no arrencava (D8, `core.0002`), comentari amb backticks dins d'un heredoc del bootstrap, fals avís de `check_neon --alias default`. Decisions D7–D9.
 - 2026-10-24 — PR #42 fusionada a `migration` (CI: tests verds; només falla SonarCloud). Creada `migracio/refugis`; agent de tests del chunk 2 en marxa. **El PO retira la delegació de decisions**: `DECISIONS_AUTONOMES.md` en pausa; qualsevol dubte o desviació es pregunta al PO (notificació al mòbil via Remote Control).
 - 2026-10-24 — El PO confirma a Neon `dev` que `migrator` té `CREATE` a `public` (D9 tancada).
+- 2026-10-24 — Tests del chunk 2 (`f5e85de`): 415 nous (388 fallen per manca d'implementació), 1666 existents verds. Respostes del PO a les 8 preguntes: (1) tot el que és de la càrrega inicial (comanda i `puntua_refugi`) va a `management/commands`, no a `domain/`; (2) `load_refuges` per defecte amb l'àlies `migrator`; (3) `visitors` només per a admins (el camp no surt per a la resta); (4) DELETE d'un mitjà inexistent: 403 no-admin / 404 admin, com avui; (5) si R2 falla en esborrar: 500 i es conserva la fila; (6) la càrrega és d'un sol ús (s'executa un cop per omplir la BD), sense `--overwrite`; (7) la cerca mira nom + `surname`; (8) corregir l'arrodoniment de `condition` (decimal, half-to-even en mostrar/filtrar). **No llançar l'implementador fins que el PO revisi l'estructura de carpetes.**
 
 ## Traspàs a sessió local (24/10)
 Proper pas: **implementador del chunk 1** (brief a [`EQUIP.md`](EQUIP.md); abast al prompt de tests, resumit aquí).
