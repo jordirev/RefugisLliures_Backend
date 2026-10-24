@@ -1,6 +1,7 @@
 """
 Models `apps.refuges` / `apps.accounts` i restriccions de la BD (§2.5-2.8), provats amb el rol `app`
-dins `system_context()` (l'escriptura de refugis és d'admin/sistema per RLS).
+dins `system_context()`; el catàleg (`refuges`, amenities, enllaços) es crea com a propietari (`as_owner()`): `app` no
+hi té escriptura fins al chunk 8 (§7.2).
 """
 import uuid
 
@@ -10,7 +11,7 @@ from django.contrib.gis.measure import D
 from django.db import DataError, IntegrityError, connection, transaction
 
 from apps.refuges.tests.helpers import (
-    AMENITY_FIELDS, REFUGE_TYPES, QueryCounter, account_models, make_media, make_refuge, make_user)
+    AMENITY_FIELDS, REFUGE_TYPES, QueryCounter, account_models, as_owner, make_media, make_refuge, make_user)
 from apps.core.rls import rls_context, system_context
 
 pytestmark = [pytest.mark.db_infra, pytest.mark.django_db, pytest.mark.models, pytest.mark.integration]
@@ -25,28 +26,41 @@ def _fails(fn):
 def _create(RM, **kw):
     kw.setdefault('name', 'X')
     kw.setdefault('coord', Point(1.5, 42.5, srid=4326))
-    with system_context():
+    if 'type' in kw:
+        kw['type_id'] = kw.pop('type')
+    with as_owner():
         return RM.Refuge.objects.create(**kw)
 
 
-# ---------- Models / TextChoices ----------
+# ---------- Models / catàlegs / TextChoices ----------
 
-def test_choices_de_tipus_coincideixen_amb_els_valors_del_codi(RM):
-    assert set(RM.RefugeType.values) == set(REFUGE_TYPES)
+def test_el_cataleg_de_tipus_te_els_valors_inicials(RM):
+    """§2.5.1: catàleg obert a la BD (cap llista de tipus al codi)."""
+    assert set(RM.RefugeType.objects.values_list('code', flat=True)) == set(REFUGE_TYPES)
     assert set(RM.MediaStatus.values) == {'visible', 'hidden_pending_review', 'removed'}
     assert set(RM.MediaType.values) == {'image', 'video'}
 
 
-def test_pk_per_defecte_es_uuid7(RM):
-    r = RM.Refuge(name='a', coord=Point(1, 42, srid=4326))
+def test_pk_per_defecte_es_uuid7_generat_per_la_bd(RM):
+    """§1.4: `DEFAULT uuidv7()` de Postgres 18; Django el recupera amb `RETURNING` (també a `bulk_create`)."""
+    assert RM.RefugeLink._meta.pk.name == 'url'
+    assert not isinstance(RM.Refuge(name='a', coord=Point(1, 42, srid=4326)).pk, uuid.UUID)   # el posa la BD
+    r = _create(RM)
     assert isinstance(r.pk, uuid.UUID) and r.pk.version == 7
-    assert RM.RefugeLink(position=0, url='https://a.b').pk.version == 7
+    # Limitació de Django 5.2: `bulk_create` no recupera el PK de `db_default` (per això `load_refuges` demana els
+    # ids a la BD abans d'inserir). Si algun dia ho fa, aquest test avisarà que el *workaround* sobra.
+    with as_owner():
+        bulk = RM.Refuge.objects.bulk_create([RM.Refuge(name=f'b{i}', coord=Point(1, 42, srid=4326)) for i in range(3)])
+    assert not any(isinstance(b.pk, uuid.UUID) for b in bulk)
+    with as_owner():
+        assert all(pk.version == 7 for pk in RM.Refuge.objects.filter(name__startswith='b').values_list('pk', flat=True))
 
 
 def test_valors_per_defecte_del_refugi(RM):
     r = _create(RM)
     r.refresh_from_db()
-    assert (r.type, r.remarque, r.description) == ('non gardé', '', '')
+    assert (r.type_id, r.description) == ('non gardé', '')
+    assert not hasattr(r, 'remarque')                                # columna eliminada (decisió del PO)
     assert r.num_contributed_conditions == 0 and r.condition is None and r.condition_reset_at is None
     assert r.altitude is None and r.places is None and r.region is None and r.surname is None
     assert r.created_at is not None
@@ -89,7 +103,6 @@ def test_geografia_dwithin_200_metres(RM):
     {'num_contributed_conditions': 2, 'condition': None},          # n > 0 exigeix condition
     {'name': ''}, {'name': '   '},
     {'surname': ''}, {'surname': '  '},
-    {'type': 'garde'}, {'type': 'no guardat'},
     {'altitude': -1}, {'altitude': 8849},
     {'places': -1},
     {'coord': Point(0, 0, srid=4326)},
@@ -113,35 +126,51 @@ def test_tots_els_tipus_valids_s_accepten(RM, t):
     _create(RM, type=t)
 
 
+@pytest.mark.parametrize('t', ['garde', 'no guardat'])
+def test_tipus_fora_del_cataleg_rebutjat_per_la_fk(RM, t):
+    _fails(lambda: _create(RM, type=t))
+
+
+def test_un_tipus_en_us_no_es_pot_esborrar_del_cataleg(RM):
+    _create(RM, type='orri')
+    with as_owner():
+        _fails(lambda: RM.RefugeType.objects.filter(pk='orri').delete())
+
+
+def test_un_tipus_nou_es_nomes_un_insert(RM):
+    with as_owner():
+        RM.RefugeType.objects.create(code='bivouac')
+    _create(RM, type='bivouac')
+
+
 # ---------- amenities / links ----------
 
 def test_amenities_es_1_a_1_amb_el_refugi(RM):
     r = make_refuge()
-    with system_context():
+    with as_owner():
         _fails(lambda: RM.RefugeAmenities.objects.create(refuge=r))
 
 
 def test_link_url_ha_de_ser_http_s_i_curta(RM):
     r = make_refuge()
     for url in ('ftp://x.org/a', 'javascript:alert(1)', 'www.x.org', '', 'https://x.org/' + 'a' * 2048):
-        with system_context():
+        with as_owner():
             _fails(lambda: RM.RefugeLink.objects.create(refuge=r, position=0, url=url))
-    with system_context():
+    with as_owner():
         RM.RefugeLink.objects.create(refuge=r, position=0, url='HTTPS://x.org/a')   # `~*`: sense distinció
 
 
 def test_link_posicio_no_negativa(RM):
     r = make_refuge()
-    with system_context():
+    with as_owner():
         _fails(lambda: RM.RefugeLink.objects.create(refuge=r, position=-1, url='https://x.org'))
 
 
-def test_link_unique_per_posicio_i_per_url(RM):
+def test_link_unique_per_posicio_i_url_es_la_pk(RM):
     r = make_refuge(links=['https://a.org', 'https://b.org'])
-    with system_context():
-        _fails(lambda: (RM.RefugeLink.objects.create(refuge=r, position=5, url='https://a.org'),
-                        connection.check_constraints()))
-    with system_context():
+    with as_owner():
+        _fails(lambda: RM.RefugeLink.objects.bulk_create([RM.RefugeLink(refuge=r, position=5, url='https://a.org')]))
+    with as_owner():
         _fails(lambda: (RM.RefugeLink.objects.create(refuge=r, position=1, url='https://c.org'),
                         connection.check_constraints()))
 
@@ -149,7 +178,7 @@ def test_link_unique_per_posicio_i_per_url(RM):
 def test_link_posicions_es_poden_intercanviar_dins_la_transaccio(RM):
     """`UNIQUE (refuge_id, position) DEFERRABLE INITIALLY DEFERRED` (§2.7)."""
     r = make_refuge(links=['https://a.org', 'https://b.org'])
-    with system_context():
+    with as_owner():
         a = RM.RefugeLink.objects.get(refuge=r, position=0)
         b = RM.RefugeLink.objects.get(refuge=r, position=1)
         RM.RefugeLink.objects.filter(pk=a.pk).update(position=1)       # duplicat transitori
@@ -160,16 +189,19 @@ def test_link_posicions_es_poden_intercanviar_dins_la_transaccio(RM):
     assert urls == ['https://b.org', 'https://a.org']
 
 
-def test_mateixa_url_en_refugis_diferents_es_permesa(RM):
+def test_mateixa_url_en_refugis_diferents_es_rebutja(RM):
+    """PK `url` (decisió del PO): un enllaç identifica un sol refugi (§2.7)."""
     make_refuge(name='a', links=['https://x.org'])
-    make_refuge(name='b', lat=43, links=['https://x.org'])
+    b = make_refuge(name='b', lat=43)
+    with as_owner():
+        _fails(lambda: RM.RefugeLink.objects.bulk_create([RM.RefugeLink(refuge=b, position=0, url='https://x.org')]))
 
 
 # ---------- FK reals ----------
 
 def test_amenities_amb_refugi_inexistent_falla_en_comprovar_les_fk(RM):
     orphan = uuid.uuid4()
-    with system_context():
+    with as_owner():
         RM.RefugeAmenities.objects.create(refuge_id=orphan)
         with pytest.raises(IntegrityError):
             with transaction.atomic():
@@ -205,7 +237,7 @@ def test_esborrar_un_refugi_cascadeja_amenities_links_i_media(RM):
     r = make_refuge(links=['https://a.org'])
     make_media(r, 'u1')
     other = make_refuge(name='altre', lat=43, links=['https://z.org'])
-    with system_context():
+    with as_owner():
         RM.Refuge.objects.filter(pk=r.pk).delete()
     assert _count(RM.RefugeAmenities) == 1 and _count(RM.RefugeLink) == 1 and _count(RM.RefugeMedia) == 0
     assert RM.Refuge.objects.filter(pk=other.pk).exists()
@@ -286,7 +318,7 @@ def test_media_requereix_rights_confirmed_at(RM):
 
 @pytest.mark.parametrize('kw', [
     {'uid': ''}, {'uid': 'system'}, {'uid': 'unknown'}, {'uid': 'x' * 129},
-    {'language': 'de'},
+    {'language_id': 'de'},                                           # fora del catàleg (FK)
     {'age_confirmed_at': '2025-01-01T00:00:00Z'},                    # sense age_threshold
     {'age_threshold': 16},                                           # sense age_confirmed_at
     {'moderation_strikes': -1},
@@ -310,7 +342,7 @@ def test_usuari_per_defecte():
     am = account_models()
     with system_context():
         u = am.UserAccount.objects.get(pk='u1')
-    assert (u.language, u.moderation_strikes, u.is_blocked) == ('ca', 0, False)
+    assert (u.language_id, u.moderation_strikes, u.is_blocked) == ('en', 0, False)     # 'en' per defecte (decisió del PO)
     assert u.age_confirmed_at is None and u.blocked_reason is None
 
 
@@ -324,3 +356,57 @@ def test_username_curt_rebutjat_pero_buit_permes(username):
         with system_context():
             am.UserPublicProfile.objects.filter(pk='u1').update(username=username)
     _fails(go)
+
+
+# ---------- catàleg d'idiomes i avatars (§2.1.1, §2.2.1) ----------
+
+def test_el_cataleg_d_idiomes_te_els_valors_inicials_i_un_idioma_nou_es_un_insert():
+    am = account_models()
+    assert set(am.Language.objects.values_list('code', flat=True)) == {'ca', 'es', 'en', 'fr'}
+    with as_owner():
+        am.Language.objects.create(code='pt-br')
+    make_user('u1', language_id='pt-br')
+    with as_owner():
+        _fails(lambda: am.Language.objects.filter(pk='pt-br').delete())       # RESTRICT: en ús
+
+
+@pytest.mark.parametrize('code', ['CA', 'catala', 'c', 'pt_br', ''])
+def test_codi_d_idioma_amb_format_invalid(code):
+    am = account_models()
+    with as_owner():
+        _fails(lambda: am.Language.objects.create(code=code))
+
+
+def _avatar(user_uid='u1', **kw):
+    am = account_models()
+    kw.setdefault('key', f'users-avatars/{user_uid}/{uuid.uuid4()}.webp')
+    kw.setdefault('content_type', 'image/webp')
+    with system_context():
+        return am.UserAvatar.objects.create(user_id=user_uid, **kw)
+
+
+def test_un_sol_avatar_per_usuari_i_canviar_es_delete_mes_insert():
+    am = account_models()
+    make_user('u1')
+    old = _avatar()
+    _fails(lambda: _avatar())                                                  # user_avatars_user_uq
+    with system_context():
+        am.UserAvatar.objects.filter(pk=old.pk).delete()
+    new = _avatar()
+    assert new.pk != old.pk and new.uploaded_at is not None
+
+
+@pytest.mark.parametrize('kw', [{'key': ''}, {'key': '  '}, {'width': 0}, {'height': -1}, {'size_bytes': 0},
+                                {'key': 'same', 'thumb_key': 'same'}])
+def test_check_constraints_d_avatars(kw):
+    make_user('u1')
+    _fails(lambda: _avatar(**kw))
+
+
+def test_esborrar_l_usuari_cascadeja_l_avatar():
+    am = account_models()
+    make_user('u1')
+    _avatar()
+    with system_context():
+        am.UserAccount.objects.filter(pk='u1').delete()
+        assert not am.UserAvatar.objects.exists()

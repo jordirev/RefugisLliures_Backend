@@ -27,7 +27,7 @@ def detail(r):
 def refuge(RM):
     return make_refuge(
         name='Refugi de Colomers', lat=42.6321, long=0.9984, surname='Colomers', altitude=2135, places=12,
-        type='fermée', remarque='Porta oberta', description='Un refugi', region='Pirineus', departement='Lleida',
+        type='fermée', description='Un refugi', region='Pirineus', departement='Lleida',
         modified_at='2024-05-17', condition=1.5, num_contributed_conditions=3,
         amenities={'eau': True, 'poele': True, 'lits': True},
         links=['https://www.refuges.info/a', 'https://example.org/b'])
@@ -44,7 +44,7 @@ def test_detall_anonim_forma_exacta(client, refuge):
     assert data['name'] == 'Refugi de Colomers'
     assert data['coord'] == pytest.approx({'lat': 42.6321, 'long': 0.9984})
     assert (data['altitude'], data['places'], data['type']) == (2135, 12, 'fermée')
-    assert (data['remarque'], data['description']) == ('Porta oberta', 'Un refugi')
+    assert data['description'] == 'Un refugi' and 'remarque' not in data           # S-6: ja no s'emet
     assert (data['region'], data['departement']) == ('Pirineus', 'Lleida')
     assert data['modified_at'] == '2024-05-17'
     assert data['links'] == ['https://www.refuges.info/a', 'https://example.org/b']
@@ -69,15 +69,15 @@ def test_detall_camps_nuls(client, RM):
     d = api_get(client, detail(r)).json()
     assert (d['altitude'], d['places'], d['region'], d['departement'], d['modified_at'], d['condition']) == \
         (None, None, None, None, None, None)
-    assert (d['remarque'], d['description'], d['links']) == ('', '', [])
+    assert (d['description'], d['links']) == ('', [])
     assert all(v == 0 for v in d['info_comp'].values())
 
 
 def test_detall_refugi_sense_fila_d_amenities_torna_tot_a_zero(client, RM):
     """Invariant «tot refugi té amenities» no forçat per la BD: la lectura fa LEFT JOIN (§2.6)."""
     from django.contrib.gis.geos import Point
-    from apps.core.rls import system_context
-    with system_context():
+    from apps.refuges.tests.helpers import as_owner
+    with as_owner():
         r = RM.Refuge.objects.create(name='Sense amenities', coord=Point(1, 42, srid=4326))
     d = api_get(client, detail(r)).json()
     assert d['info_comp'] == {f: 0 for f in AMENITY_FIELDS}

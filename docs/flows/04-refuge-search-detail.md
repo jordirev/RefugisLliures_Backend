@@ -12,7 +12,7 @@
 | GET | `/api/refuges/{id}/` | `RefugeDetailAPIView.get` | públic; l'`id` és un UUID (qualsevol altre format → 404) |
 | GET | `/api/refuges/{id}/renovations/` | `RefugeRenovationsAPIView.get` (`api/views/renovation_views.py`; ruta a `api/urls.py`) | IsAuthenticated |
 
-Taules: `refuges.refuges` (+ `refuge_amenities` 1-1, `refuge_links`, `refuge_media`) i la vista `refuges.refuge_map` (llista sense filtres). Lectura pública per RLS (`USING (true)`); els mitjans només visibles per a tothom (la resta, autor i admin).
+Taules: `refuges.refuges` (+ `refuge_amenities` 1-1, `refuge_links` amb PK `url`, `refuge_media`) i el catàleg `refuges.refuge_types` (FK de `refuges.type`). No hi ha vista `refuge_map`: la llista sense filtres és una consulta directa a `refuges.refuges` (disseny §5.3, recepta 5). Lectura pública per RLS (`USING (true)`); els mitjans només visibles per a tothom (la resta, autor i admin).
 
 ## Diagrama
 
@@ -30,7 +30,7 @@ sequenceDiagram
     S-->>V: errors → 400
     alt sense filtres actius
         V->>SEL: list_map_points()
-        SEL->>DB: SELECT … FROM refuges.refuge_map ORDER BY name, id   (1 consulta)
+        SEL->>DB: SELECT id, name, coord, ST_GeoHash(coord::geometry, 5) FROM refuges.refuges ORDER BY name, id   (1 consulta, sense joins)
         V-->>C: 200 {count, results:[{id, name, coord, geohash}]}
     else amb filtres
         V->>SEL: search_refuges(filters, viewer, authenticated)
@@ -43,14 +43,14 @@ sequenceDiagram
 ```
 
 ## Passos
-1. **Validació** — `RefugiSearchFiltersSerializer` (`apps/refuges/serializers.py`): `type` CSV contra `RefugeType`; `condition` CSV ∈ {0,1,2,3}; `places_*` ≥ 0; `altitude_*` 0–8848 i min ≤ max. Filtres buits (`?name=&type=`) = sense filtres.
-2. **Sense filtres** — `selectors.list_map_points()` llegeix la vista `refuge_map` (`id, name, lat, lng, geohash = ST_GeoHash(coord, 5)`): 1 consulta, sense joins. La resposta ja **no** porta `surname`. Substitueix el document `coords_refugis` de Firestore.
+1. **Validació** — `RefugiSearchFiltersSerializer` (`apps/refuges/serializers.py`): `type` CSV contra el catàleg `refuges.refuge_types` (afegir un tipus és un `INSERT`, no canvia el codi); `condition` CSV ∈ {0,1,2,3}; `places_*` ≥ 0; `altitude_*` 0–8848 i min ≤ max. Filtres buits (`?name=&type=`) = sense filtres.
+2. **Sense filtres** — `selectors.list_map_points()` fa una consulta directa a `refuges.refuges` (`id, name, coord`, `geohash = ST_GeoHash(coord::geometry, 5)` com a anotació; recepta 5 del disseny): 1 consulta, sense joins ni vista. La resposta ja **no** porta `surname`. Substitueix el document `coords_refugis` de Firestore.
 3. **Amb filtres** — `selectors.search_refuges` (`search_queryset`):
    - `name`: parcial, sense accents ni majúscules i **també sobre `surname`** (àlies). Usa `core.norm_name` (unaccent + lower, `IMMUTABLE`) amb `pg_trgm`: `norm_name(name) % q` (similitud ≥ 0,3) **o** `LIKE '%q%'`, per als dos camps; ordena per similitud descendent, nom i id. S'usen els índexs `refuges_name_trgm_gin` i `refuges_surname_trgm_gin` (`BitmapOr`; cada braç de l'àlies porta `surname IS NOT NULL` perquè el planificador pugui usar l'índex parcial). Els comodins (`%`, `_`, `\`) de l'usuari s'escapen.
    - `type IN (…)`, `places >=/<=`, `altitude >=/<=` (els `NULL` no compleixen cap rang) — tot al `WHERE`.
    - `condition IN (…)` sobre `core.round_half_even(condition)` (0–3); els refugis sense valoració (`NULL`) no coincideixen amb cap filtre.
    - Els serveis (`info_comp`) venen del `JOIN` amb `refuge_amenities`; els enllaços, d'un `ARRAY(subconsulta)` ordenat per `position`: cap consulta addicional per refugi.
-4. **Serialització** — `refuge_to_dict` + `RefugiSerializer` (`apps/refuges/serializers.py`): `coord` → `{lat, long}`; `info_comp` → 12 enters 0/1; `condition` → **enter arrodonit half-to-even** (`round()` de Python, el mateix que `core.round_half_even`) o `null`; `modified_at` ISO; `surname` no s'emet mai. Anònim: sense `images_metadata` ni `visitors`. Autenticat: `images_metadata` (mitjans visibles + propis; tots per a admins). **`visitors` només per als admins** (hi serà la llista de `user_visited_refuges` quan arribi el chunk 3; fins llavors és sempre `[]`).
+4. **Serialització** — `refuge_to_dict` + `RefugiSerializer` (`apps/refuges/serializers.py`): `coord` → `{lat, long}`; `info_comp` → 12 enters 0/1; `condition` → **enter arrodonit half-to-even** (`round()` de Python, el mateix que `core.round_half_even`) o `null`; `modified_at` ISO; `surname` no s'emet mai, ni `remarque` (columna eliminada, decisió S-6 del PO). Anònim: sense `images_metadata` ni `visitors`. Autenticat: `images_metadata` (mitjans visibles + propis; tots per a admins). **`visitors` només per als admins** (hi serà la llista de `user_visited_refuges` quan arribi el chunk 3; fins llavors és sempre `[]`).
 5. **Detall** — `selectors.get_refuge(id)`: 1 consulta (refugi + amenities + enllaços); +1 de mitjans si és autenticat; els visitants d'admin seran +1 (chunk 3). Pressupost: llista sense filtres 1 · amb filtres 1 (+1 autenticat) · detall 1 (+1 autenticat). Els tests ho comproven (`apps/refuges/tests/test_query_counts.py`).
 
 ## Errors
@@ -65,6 +65,7 @@ sequenceDiagram
 - `condition`: s'hi desa la mitjana decimal; es mostra i es filtra arrodonida half-to-even; el filtre accepta 0–3 (abans 0–2 i només enters exactes).
 - `visitors`: només admins. `surname`: només per cercar. La llista sense filtres ja no porta `surname` i cap resposta porta `has_filters` (el frontend no el llegeix: `{count, results}`).
 - Cerca per nom parcial i sense accents (B2 resolt: el DAO antic assumia nom únic i la cerca era exacta).
+- `remarque`: la columna s'ha eliminat; ja no s'emet al detall (el frontend no la llegeix).
 - Cap cache Redis per a refugis: les llistes ja no cal invalidar-les quan una proposta modifica un refugi.
 
 ## Gotchas

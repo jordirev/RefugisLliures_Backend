@@ -6,7 +6,7 @@
 
 | Peça | Detall | Font |
 |---|---|---|
-| Framework | Django 5.1.12 + Django REST Framework 3.15.2 | `requirements.txt` |
+| Framework | Django 5.2.18 LTS + Django REST Framework 3.16.1, Python 3.14 | `requirements.txt`, `.python-version` |
 | Base de dades del domini (encara) | **Cloud Firestore** via `firebase-admin` 6.5.0 (fins als chunks de la migració) | `api/services/firestore_service.py` |
 | Base de dades relacional (migració) | **PostgreSQL 17 + PostGIS** (Neon) com a BD `default` de Django amb el rol `app` (`ATOMIC_REQUESTS`, subjecte a RLS) i l'àlies `migrator` (DDL); `psycopg[binary]` 3.2.9, GeoDjango | `refugis_lliures/settings.py` (`DATABASES`), [integrations/neon.md](integrations/neon.md) |
 | Autenticació | Firebase Auth (ID tokens JWT) + custom claim `role` | `api/middleware/firebase_auth_middleware.py`, `api/permissions.py` |
@@ -16,7 +16,7 @@
 | Servidor | gunicorn (1 worker sync, timeout 30 s) + whitenoise | `gunicorn.conf.py:12-19`, `refugis_lliures/settings.py:68` |
 | Deploy | Render (`render.yaml`), CI a GitHub Actions | vegeu [integrations/render-deploy-ci.md](integrations/render-deploy-ci.md) |
 
-**Migració Firestore → PostgreSQL en curs** ([migration/PLAN.md](migration/PLAN.md), [migration/PROGRESS.md](migration/PROGRESS.md)). Chunk 1 (infraestructura) i **chunk 2 (refugis)** fets: `default` és Postgres/PostGIS amb el rol `app` i `ATOMIC_REQUESTS=True`; `migrator` és l'àlies per a DDL (`python manage.py migrate --database=migrator`); `django.contrib.gis` sempre actiu → **el runtime necessita GDAL/GEOS** (pendent de desplegament, [TECH_DEBT.md](TECH_DEBT.md) P1) **[FET]**. **Els refugis (catàleg, serveis, enllaços i mitjans) ja viuen a PostgreSQL** a l'app `apps/refuges` (amb el mínim d'`apps/accounts` que necessita: `users` i `user_public_profiles`); la resta de models de `api/models/` continuen sent `@dataclass` persistits a Firestore, i els dominis que encara llegeixen un refugi (experiències, dubtes, visites, propostes, usuaris…) ho fan amb el `RefugiLliureDAO` legacy de Firestore fins que els migri el seu chunk **[FET]**. Postgres també el fan servir el health check i el hook de RLS **[FET]**. `api/admin.py` no registra cap model **[FET]**.
+**Migració Firestore → PostgreSQL en curs** ([migration/PLAN.md](migration/PLAN.md), [migration/PROGRESS.md](migration/PROGRESS.md)). Chunk 1 (infraestructura) i **chunk 2 (refugis)** fets: `default` és Postgres/PostGIS amb el rol `app` i `ATOMIC_REQUESTS=True`; `migrator` és l'àlies per a DDL (`python manage.py migrate --database=migrator`); `django.contrib.gis` sempre actiu → **el runtime necessita GDAL/GEOS** (pendent de desplegament, [TECH_DEBT.md](TECH_DEBT.md) P1) **[FET]**. **Els refugis (catàleg, serveis, enllaços i mitjans) ja viuen a PostgreSQL** a l'app `apps/refuges` (amb el mínim d'`apps/accounts` que necessita: `languages`, `users`, `user_public_profiles` i `user_avatars`); la resta de models de `api/models/` continuen sent `@dataclass` persistits a Firestore, i els dominis que encara llegeixen un refugi (experiències, dubtes, visites, propostes, usuaris…) ho fan amb el `RefugiLliureDAO` legacy de Firestore fins que els migri el seu chunk **[FET]**. Postgres també el fan servir el health check i el hook de RLS **[FET]**. `api/admin.py` no registra cap model **[FET]**.
 
 Si no hi ha cap URL de Postgres (`DATABASE_URL_APP` / `TEST_DATABASE_URL_APP`), `default` cau a SQLite (`db.sqlite3`), només perquè els tests sense BD puguin carregar la configuració **[FET]**.
 
@@ -38,7 +38,7 @@ api/
   authentication.py     FirebaseAuthentication (DRF)
   permissions.py        IsSameUser, IsFirebaseAdmin, Is*Creator...
   management/commands/  process_yesterday_visits, check_neon (les comandes antigues de refugis s'han eliminat al chunk 2)
-  utils/                swagger_examples, swagger_error_responses, timezone_utils, ids.py (uuid7), JSON de dades
+  utils/                swagger_examples, swagger_error_responses, timezone_utils, JSON de dades (els UUID v7 els genera la BD: `uuidv7()`)
   tests/<domini>/       test_models/daos/mappers/serializers/controllers/views(/integration); els de les apps a apps/<feature>/tests/
 apps/                   features migrades a PostgreSQL: una app Django per feature (estil HackSoft; substitueix `api/` feature a feature)
   core/                 nucli de la BD: errors.py (`server_error`: 500 amb `error_id`), rls.py (rls_context, system_context, helpers de polítiques RLS), migration_utils.py, testing.py, migracions core.0001/0002 (schemas, funcions core.*, grants)
@@ -202,7 +202,7 @@ Guia pràctica (comandes, coverage, per què Firebase no s'inicialitza): [guides
 - `conftest.py` (arrel: també `django_db_setup`, `app_db`/`migrator_db`, bloqueig de Firestore i mocks d'audit/permisos, compartits amb `apps/*/tests`) i `api/tests/conftest.py` fixen `TESTING=true` i variables R2 falses **abans** d'importar res; amb `TESTING`/`pytest` carregat, Firebase **no s'inicialitza** (`api/firebase_config.py:15-17,92-94`).
 - Mocks habituals: `patch('api.services.firestore_service.FirestoreService')`, `patch('api.services.cache_service.cache_service')` (`api/tests/conftest.py:266-286`); a les vistes es mocka el controller al mòdul de la vista, p. ex. `@patch('api.views.renovation_views.RenovationController')` (`api/tests/renovation/test_views.py:91`).
 - Estructura per domini: `api/tests/<domini>/test_{models,mappers,daos,serializers,controllers,views}.py`; les features migrades tenen els tests a `apps/<feature>/tests/` (esquema, RLS, models, cerca, vistes de contracte contra Postgres, recomptes de consultes) (+ `test_integration.py` a refugi_lliure, renovation, user). Transversals: `api/tests/test_auth_middleware_permissions.py`, `api/tests/test_cache_views.py`, `api/tests/management_commands/` (només `process_yesterday_visits`). `api/tests/refugi_lliure/` conserva només els tests del codi legacy que encara viu a `api/` (DAO/controller/mapper/models de refugi i el health check).
-- Execució: `pytest`, `pytest api/tests/renovation`, `pytest -m views`, `tox` (`tox.ini`: `envlist=py39`, genera `coverage.xml`), `python run_tests.py`.
+- Execució: `pytest`, `pytest api/tests/renovation`, `pytest -m views`, `tox` (`tox.ini`: `envlist=py314`, genera `coverage.xml`), `python run_tests.py`.
 - Coverage (`.coveragerc`) **exclou `services/` i `utils/`** → `cache_service`, `r2_media_service`, `firestore_service` no compten al coverage.
 - Fixtures probablement mortes **[INFERÈNCIA]**: `authenticated_client` fa patch de `api.permissions.IsAuthenticated`, que no existeix a `api/permissions.py` (`api/tests/conftest.py:323`); `mock_refugi_dao` fa patch de `RefugiLliureDao` però la classe és `RefugiLliureDAO` (`api/tests/conftest.py:398` vs `api/daos/refugi_lliure_dao.py:14`). Cap test sembla usar-les.
 

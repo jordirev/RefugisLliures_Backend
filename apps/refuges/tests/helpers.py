@@ -5,11 +5,14 @@ Els models de producció (`apps.refuges`, `apps.accounts`) encara no existeixen 
 s'importen **de manera mandrosa** (`refuge_models()`, `account_models()`) perquè cada test falli pel seu propi motiu
 (`ModuleNotFoundError: apps.refuges`) en lloc de trencar la col·lecció de tota la suite.
 
-Les dades de prova s'escriuen amb el rol `app` dins `system_context()` (la RLS d'escriptura és `{ADM} OR {SYS}`),
-de manera que les mateixes eines que farà servir l'aplicació queden provades.
+Les dades de prova s'escriuen amb el rol `app` dins `system_context()`, llevat del catàleg (`refuges`, `refuge_amenities`,
+`refuge_links`): `app` no hi té escriptura fins al chunk 8 (§7.2), i `as_owner()` el crea amb el rol de proves
+`test_fixtures` (`BYPASSRLS`, només existeix a la BD de proves: `scripts/dev/setup_local_postgres.sh`) dins la mateixa
+transacció del test.
 """
 import importlib
 import json
+from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone as dt_timezone
 from pathlib import Path
 from unittest.mock import patch
@@ -25,7 +28,7 @@ AMENITY_FIELDS = ('manque_un_mur', 'cheminee', 'poele', 'couvertures', 'latrines
                   'couchage', 'bas_flancs', 'lits', 'mezzanine_etage')
 REFUGE_TYPES = ('non gardé', 'fermée', 'cabane ouverte mais ocupee par le berger l ete', 'orri', 'emergence',
                 'key_needed')
-BASE_KEYS = {'id', 'name', 'coord', 'altitude', 'places', 'remarque', 'info_comp', 'description', 'links', 'type',
+BASE_KEYS = {'id', 'name', 'coord', 'altitude', 'places', 'info_comp', 'description', 'links', 'type',
              'modified_at', 'region', 'departement', 'condition'}
 MEDIA_ITEM_KEYS = {'key', 'url', 'thumb_url', 'media_type', 'width', 'height', 'blurhash', 'creator_uid',
                    'uploaded_at', 'taken_at', 'experience_id'}
@@ -57,13 +60,24 @@ def make_user(uid='u1', username='', **fields):
     return user
 
 
+@contextmanager
+def as_owner():
+    """Escriu amb el rol de proves `test_fixtures` (sense RLS) a la connexió `default`, dins la transacció en curs."""
+    with connection.cursor() as cursor:
+        cursor.execute('SET ROLE test_fixtures')
+    yield
+    # Només si no hi ha hagut excepció: si n'hi ha, la transacció (o el punt de desat) està avortada i el seu
+    # `ROLLBACK` ja desfà el `SET ROLE`; executar res aquí faria fallar el `ROLLBACK TO SAVEPOINT` de Django.
+    with connection.cursor() as cursor:
+        cursor.execute('RESET ROLE')
+
+
 def make_refuge(name='Refugi Test', lat=42.5, long=1.5, amenities=None, links=None, **fields):
-    """Refugi + amenities (sempre, invariant §2.6) + enllaços ordenats."""
+    """Refugi + amenities (sempre, invariant §2.6) + enllaços ordenats (com a propietari: `as_owner()`)."""
     from django.contrib.gis.geos import Point
-    from apps.core.rls import system_context
     rm = refuge_models()
-    fields.setdefault('type', 'non gardé')
-    with system_context():
+    fields.setdefault('type_id', fields.pop('type', 'non gardé'))
+    with as_owner():
         refuge = rm.Refuge.objects.create(name=name, coord=Point(long, lat, srid=4326), **fields)
         rm.RefugeAmenities.objects.create(refuge=refuge, **(amenities or {}))
         for position, url in enumerate(links or []):

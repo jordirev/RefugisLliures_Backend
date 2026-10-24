@@ -19,7 +19,7 @@ OTHER = {'uid': 'u2'}
 ADMIN = {'uid': 'adm', 'is_admin': True}
 SYSTEM = {'system': True}
 ALL_CTX = {'anon': ANON, 'own': OWN, 'other': OTHER, 'admin': ADMIN, 'system': SYSTEM}
-WRITERS = {'admin', 'system'}          # {ADM} OR {SYS}
+MODERATORS = {'admin', 'system'}       # {ADM} OR {SYS} (canvi d'estat dels mitjans)
 
 
 def _denied(fn):
@@ -36,7 +36,7 @@ def world(RM):
     return r
 
 
-# ---------- refuges / amenities / links: lectura pública, escriptura admin/sistema ----------
+# ---------- refuges / amenities / links: lectura pública; sense escriptura per a app fins al chunk 8 ----------
 
 @pytest.mark.parametrize('ctx', ALL_CTX)
 def test_lectura_publica_de_refugis_amenities_i_links(RM, world, ctx):
@@ -54,78 +54,42 @@ def test_sense_context_la_lectura_publica_funciona(RM, world):
 
 
 @pytest.mark.parametrize('ctx', ALL_CTX)
-def test_insert_de_refugi_nomes_admin_o_sistema(RM, ctx):
-    def go():
-        with rls_context(**ALL_CTX[ctx]):
-            RM.Refuge.objects.create(name='N', coord=Point(1, 42, srid=4326))
-    if ctx in WRITERS:
-        go()
-    else:
-        _denied(go)
+def test_ningu_pot_inserir_refugis_amenities_ni_links_fins_al_chunk_8(RM, world, ctx):
+    """§7.2 (S-5): `app` només té `SELECT` sobre el catàleg; ni admin ni sistema hi escriuen fins al chunk 8."""
+    other = make_refuge(name='N', lat=43)
+    for go in (lambda: RM.Refuge.objects.create(name='N2', coord=Point(1, 42, srid=4326)),
+               lambda: RM.RefugeAmenities.objects.create(refuge=other),
+               lambda: RM.RefugeLink.objects.create(refuge=other, position=1, url='https://x.org')):
+        def run(go=go):
+            with rls_context(**ALL_CTX[ctx]):
+                go()
+        _denied(run)
 
 
 @pytest.mark.parametrize('ctx', ALL_CTX)
-def test_insert_d_amenities_i_links_nomes_admin_o_sistema(RM, world, ctx):
-    with system_context():
-        other = RM.Refuge.objects.create(name='N', coord=Point(1, 42, srid=4326))
-
-    def go_a():
-        with rls_context(**ALL_CTX[ctx]):
-            RM.RefugeAmenities.objects.create(refuge=other)
-
-    def go_l():
-        with rls_context(**ALL_CTX[ctx]):
-            RM.RefugeLink.objects.create(refuge=other, position=0, url='https://x.org')
-    for go in (go_a, go_l):
-        if ctx in WRITERS:
-            go()
-        else:
-            _denied(go)
-
-
-@pytest.mark.parametrize('ctx', ALL_CTX)
-def test_update_i_delete_de_refugi_nomes_admin_o_sistema(RM, world, ctx):
-    with rls_context(**ALL_CTX[ctx]):
-        updated = RM.Refuge.objects.filter(pk=world.pk).update(altitude=1234)
-    assert updated == (1 if ctx in WRITERS else 0)
-    with rls_context(**ALL_CTX[ctx]):
-        deleted = RM.Refuge.objects.filter(pk=world.pk).delete()[0]
-    assert deleted == (1 if ctx in WRITERS else 0)
-    assert RM.Refuge.objects.count() == (0 if ctx in WRITERS else 1)
-
-
-@pytest.mark.parametrize('ctx', ['anon', 'own', 'other'])
-def test_un_usuari_no_pot_tocar_la_condicio_del_refugi(RM, world, ctx):
-    """§2.9: només el trigger d'experiències (chunk 7) o una aprovació d'admin escriuen `condition`."""
-    with rls_context(**ALL_CTX[ctx]):
-        n = RM.Refuge.objects.filter(pk=world.pk).update(condition=3, num_contributed_conditions=9)
-    assert n == 0
+def test_ningu_pot_modificar_ni_esborrar_el_cataleg_fins_al_chunk_8(RM, world, ctx):
+    for go in (lambda: RM.Refuge.objects.filter(pk=world.pk).update(altitude=1234),
+               lambda: RM.Refuge.objects.filter(pk=world.pk).update(condition=3, num_contributed_conditions=9),
+               lambda: RM.Refuge.objects.filter(pk=world.pk).delete(),
+               lambda: RM.RefugeAmenities.objects.update(eau=True),
+               lambda: RM.RefugeAmenities.objects.all().delete(),
+               lambda: RM.RefugeLink.objects.update(position=7),
+               lambda: RM.RefugeLink.objects.all().delete()):
+        def run(go=go):
+            with rls_context(**ALL_CTX[ctx]):
+                go()
+        _denied(run)
     world.refresh_from_db()
-    assert world.condition is None and world.num_contributed_conditions == 0
-
-
-@pytest.mark.parametrize('ctx', ['anon', 'own', 'other'])
-def test_un_usuari_no_pot_modificar_amenities_ni_links(RM, world, ctx):
-    with rls_context(**ALL_CTX[ctx]):
-        assert RM.RefugeAmenities.objects.update(eau=True) == 0
-        assert RM.RefugeLink.objects.update(url='https://hack.org') == 0
-        assert RM.RefugeLink.objects.all().delete()[0] == 0
-        assert RM.RefugeAmenities.objects.all().delete()[0] == 0
-    assert RM.RefugeLink.objects.get().url == 'https://a.org'
+    assert world.altitude is None and world.condition is None and world.num_contributed_conditions == 0
+    assert RM.RefugeLink.objects.get().position == 0
     assert RM.RefugeAmenities.objects.get().eau is False
 
 
-@pytest.mark.parametrize('ctx', sorted(WRITERS))
-def test_admin_i_sistema_poden_editar_amenities_i_links(RM, world, ctx):
-    with rls_context(**ALL_CTX[ctx]):
-        assert RM.RefugeAmenities.objects.update(eau=True) == 1
-        assert RM.RefugeLink.objects.update(url='https://b.org') == 1
-
-
-def test_la_vista_refuge_map_es_llegeix_sense_context_i_mostra_tots_els_refugis(RM, world):
+def test_els_punts_del_mapa_es_llegeixen_sense_context_i_mostren_tots_els_refugis(RM, world):
+    from apps.refuges import selectors
     make_refuge(name='R2', lat=43, long=2)
     with rls_context():
-        pts = list(RM.RefugeMapPoint.objects.order_by('name').values('name', 'lat', 'lng'))
+        pts = selectors.list_map_points()
     assert [p['name'] for p in pts] == ['R1', 'R2']
     assert (pts[1]['lat'], pts[1]['lng']) == pytest.approx((43, 2))
 
@@ -181,7 +145,7 @@ def test_update_de_media_nomes_moderacio(RM, world, ctx):
     make_media(world, 'u1', key='k/m.webp')
     with rls_context(**ALL_CTX[ctx]):
         n = RM.RefugeMedia.objects.filter(pk='k/m.webp').update(status='hidden_pending_review')
-    assert n == (1 if ctx in WRITERS else 0)
+    assert n == (1 if ctx in MODERATORS else 0)
 
 
 @pytest.mark.parametrize('ctx,allowed', [('anon', False), ('own', True), ('other', False), ('admin', True),
@@ -298,3 +262,53 @@ def test_perfil_public_no_te_delete_per_a_app(world):
     am = account_models()
     with rls_context(system=True):
         _denied(lambda: am.UserPublicProfile.objects.filter(pk='u1').delete())
+
+
+# ---------- user_avatars (§2.2.1): lectura oberta; inserir el propi; esborrar propi/admin; sense UPDATE ----------
+
+@pytest.mark.parametrize('ctx', ALL_CTX)
+def test_avatars_es_llegeixen_per_tothom(world, ctx):
+    am = account_models()
+    with system_context():
+        am.UserAvatar.objects.create(key='users-avatars/u1/a.webp', user_id='u1', content_type='image/webp')
+    with rls_context(**ALL_CTX[ctx]):
+        assert am.UserAvatar.objects.count() == 1
+
+
+@pytest.mark.parametrize('ctx,allowed', [('anon', False), ('own', True), ('other', False), ('admin', False),
+                                         ('system', True)])
+def test_inserir_avatar_nomes_el_propi_o_sistema(world, ctx, allowed):
+    am = account_models()
+
+    def go():
+        with rls_context(**ALL_CTX[ctx]):
+            am.UserAvatar.objects.create(key='users-avatars/u1/b.webp', user_id='u1', content_type='image/webp')
+    if allowed:
+        go()
+    else:
+        _denied(go)
+
+
+@pytest.mark.parametrize('ctx,allowed', [('anon', False), ('own', True), ('other', False), ('admin', True),
+                                         ('system', True)])
+def test_esborrar_avatar_propi_admin_o_sistema(world, ctx, allowed):
+    am = account_models()
+    with system_context():
+        am.UserAvatar.objects.create(key='users-avatars/u1/c.webp', user_id='u1', content_type='image/webp')
+    with rls_context(**ALL_CTX[ctx]):
+        deleted = am.UserAvatar.objects.all().delete()[0]
+    assert deleted == (1 if allowed else 0)
+
+
+def test_avatar_sense_update_per_a_app(world):
+    am = account_models()
+    with system_context():
+        am.UserAvatar.objects.create(key='users-avatars/u1/d.webp', user_id='u1', content_type='image/webp')
+    _denied(lambda: am.UserAvatar.objects.update(width=10))
+
+
+def test_cataleg_d_idiomes_nomes_lectura_per_a_app(world):
+    am = account_models()
+    with rls_context(**ADMIN):
+        assert am.Language.objects.count() == 4
+    _denied(lambda: am.Language.objects.create(code='de'))

@@ -6,7 +6,7 @@
 - Llegir primer: `CLAUDE.md`, `docs/migration/PLAN.md`, `docs/migration/PROGRESS.md`, `docs/migration/DECISIONS_AUTONOMES.md` i les seccions del disseny (`docs/design/postgres-schema.md`) que afecten el chunk. **El disseny és vinculant**. Si cal desviar-se'n, s'explica a l'orquestrador i no es fa en silenci.
 - **Seguretat**:
   - No llegir ni imprimir `env/` ni valors de variables d'entorn (`DATABASE_URL_*`, `R2_*`, tokens).
-  - Mai accedir a Neon ni a Firestore reals (tampoc hi ha xarxa TCP cap a Neon). Els tests van contra el Postgres local (contenidor Docker `rl-postgres`, `postgis/postgis:17-3.5`; PG18 després de la pujada; bootstrap amb `scripts/dev/setup_local_postgres.sh`) o amb mocks.
+  - Mai accedir a Neon ni a Firestore reals (tampoc hi ha xarxa TCP cap a Neon). Els tests van contra el Postgres local (contenidor Docker `rl-postgres`, `postgis/postgis:18-3.6` (Postgres 18.6, PostGIS 3.6.4) **[FET]**; bootstrap amb `scripts/dev/setup_local_postgres.sh`) o amb mocks.
 - Treballar només a la branca del chunk (`migracio/<chunk>`), que ja està creada. Commits `[<Feature>] <tipus>: <comentari>` acabats amb:
   ```
   Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

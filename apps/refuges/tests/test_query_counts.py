@@ -47,9 +47,12 @@ def test_llista_sense_filtres_1_consulta(client, RM, n):
 
 @pytest.mark.parametrize('n', [1, 30])
 def test_llista_amb_filtres_1_consulta_anonim_i_2_autenticat(client, RM, n):
+    """El filtre `type` afegeix 1 consulta fixa: validar els tipus contra el catàleg de la BD (§2.5.1)."""
     populate(n)
-    assert count(client, URL + '?type=orri')[0] == 1
-    assert count(client, URL + '?type=orri', user_claims('u2'))[0] == 2          # + mitjans en bloc (Prefetch)
+    assert count(client, URL + '?places_min=1')[0] == 1
+    assert count(client, URL + '?places_min=1', user_claims('u2'))[0] == 2      # + mitjans en bloc (Prefetch)
+    assert count(client, URL + '?type=orri')[0] == 2                             # + catàleg de tipus
+    assert count(client, URL + '?type=orri', user_claims('u2'))[0] == 3
 
 
 def test_llista_amb_filtres_de_nom_i_condicio_continua_sent_1_consulta(client, RM):
@@ -60,7 +63,7 @@ def test_llista_amb_filtres_de_nom_i_condicio_continua_sent_1_consulta(client, R
 def test_el_nombre_de_consultes_no_creix_amb_els_resultats(client, RM):
     populate(5)
     small = count(client, URL + '?type=orri', user_claims('u2'))[0]
-    populate_more = [make_refuge(name=f'Extra {i}', lat=44 + i / 100, type='orri', links=['https://y.org/1'])
+    populate_more = [make_refuge(name=f'Extra {i}', lat=44 + i / 100, type='orri', links=[f'https://y.org/{i}'])
                      for i in range(25)]
     for r in populate_more:
         make_media(r, 'u1', key=f'extra/{r.pk}.webp')

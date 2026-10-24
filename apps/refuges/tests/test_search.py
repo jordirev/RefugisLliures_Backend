@@ -176,7 +176,7 @@ def test_la_cerca_per_condicio_usa_round_half_even_a_la_consulta(client, catalog
 
 
 def test_els_filtres_son_a_la_clausula_where_no_a_python(client, catalog):
-    sql = _sql_of_search(client, 'type=orri&places_min=3&altitude_max=2500')[0].upper()
+    sql = _sql_of_search(client, 'type=orri&places_min=3&altitude_max=2500')[-1].upper()   # [0]: catàleg de tipus
     assert 'WHERE' in sql and 'PLACES' in sql and 'ALTITUDE' in sql and 'TYPE' in sql
 
 

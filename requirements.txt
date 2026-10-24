@@ -1,20 +1,20 @@
-Django==5.1.12
-djangorestframework==3.15.2
+Django==5.2.18
+djangorestframework==3.16.1
 python-decouple==3.8
 python-dotenv==1.0.0
-django-cors-headers==4.4.0
+django-cors-headers==4.9.0
 firebase-admin==6.5.0
 
 # Neon (Postgres + PostGIS)
-psycopg[binary]==3.2.9
+psycopg[binary]==3.2.13
 
 # Cloudflare R2 / AWS S3 compatible storage
 boto3==1.35.78
 
 # Processament de mitjans (feature images): recodificació, neteja de metadades,
 # miniatures, blurhash i hash perceptual per a moderació
-Pillow==11.2.1
-pillow-heif==0.22.0
+Pillow==11.3.0
+pillow-heif==1.1.1
 imageio-ffmpeg==0.6.0
 ImageHash==4.3.2
 blurhash==1.1.4
@@ -36,14 +36,14 @@ django-redis==5.4.0
 django-crontab==0.7.1
 
 # Testing
-pytest==7.4.3
-pytest-cov==4.1.0
-pytest-django==4.7.0
-pytest-mock==3.12.0
+pytest==8.4.2
+pytest-cov==7.0.0
+pytest-django==4.11.1
+pytest-mock==3.15.1
 tox
 
 # Coverage
-coverage==7.3.2
+coverage==7.10.7
 
 # Faker per generar dades de prova 
 Faker==20.1.0

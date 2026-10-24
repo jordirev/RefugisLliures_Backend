@@ -55,7 +55,7 @@ No hi ha `firestore.indexes.json` al repo → l'estat dels índexs és **[NO VER
 | Comanda | Què fa |
 |---|---|
 | ~~`upload_refugis_to_firestore`~~ | **Eliminada (chunk 2)**: substituïda per `load_refuges` (PostgreSQL, d'un sol ús; vegeu [local-setup](../guides/local-setup.md)). |
-| ~~`extract_coords_to_firestore`~~ | **Eliminada (chunk 2)**: la llista de coordenades és la vista `refuges.refuge_map` |
+| ~~`extract_coords_to_firestore`~~ | **Eliminada (chunk 2)**: la llista de coordenades és una consulta directa a `refuges.refuges` (sense vista; disseny §5.3, recepta 5) |
 | ~~`assign_conditions`~~ / ~~`verify_conditions`~~ | `assign_conditions` eliminada (la condició inicial la fixa `puntua_refugi` a `load_refuges`); `verify_conditions` també eliminada |
 | `process_yesterday_visits` | Procés diari (vegeu [flux 6](../flows/06-refuge-visits.md) i [guia](../guides/daily-visits-process.md)) |
 

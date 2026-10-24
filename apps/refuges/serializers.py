@@ -15,8 +15,6 @@ from api.serializers.media_serializer import MediaItemSerializer
 from api.utils.timezone_utils import get_madrid_timezone
 
 from .models import RefugeAmenities, RefugeType
-
-VALID_TYPES = list(RefugeType.values)
 CONDITION_VALUES = (0, 1, 2, 3)
 
 
@@ -64,11 +62,10 @@ def refuge_to_dict(refuge, links=None, media=None, visitors=None):
         'coord': {'lat': refuge.coord.y, 'long': refuge.coord.x},
         'altitude': refuge.altitude,
         'places': refuge.places,
-        'remarque': refuge.remarque,
         'info_comp': {f: int(bool(getattr(amenities, f, False))) for f in RefugeAmenities.AMENITY_FIELDS},
         'description': refuge.description,
         'links': list(links if links is not None else getattr(refuge, 'links_list', None) or []),
-        'type': refuge.type,
+        'type': refuge.type_id,
         'modified_at': refuge.modified_at.isoformat() if refuge.modified_at else None,
         'region': refuge.region,
         'departement': refuge.departement,
@@ -114,11 +111,10 @@ class RefugiSerializer(serializers.Serializer):
     coord = CoordinatesSerializer()
     altitude = serializers.IntegerField(default=None, allow_null=True)
     places = serializers.IntegerField(default=None, allow_null=True)
-    remarque = serializers.CharField(default='', allow_blank=True)
     info_comp = InfoComplementariaSerializer()
     description = serializers.CharField(default='', allow_blank=True)
     links = serializers.ListField(child=serializers.URLField(), default=list)
-    type = serializers.CharField(default=RefugeType.NON_GARDE.value)
+    type = serializers.CharField(default=RefugeType.DEFAULT)
     modified_at = serializers.CharField(default=None, allow_null=True)
     region = serializers.CharField(default=None, allow_null=True, required=False)
     departement = serializers.CharField(default=None, allow_null=True, required=False)
@@ -148,7 +144,7 @@ class RefugiSearchResponseSerializer(serializers.Serializer):
 
 
 class RefugeMapPointSerializer(serializers.Serializer):
-    """Llista sense filtres: `{id, name, coord, geohash}` (vista `refuge_map`)."""
+    """Llista sense filtres: `{id, name, coord, geohash}` (consulta directa a `refuges`)."""
     id = serializers.CharField()
     name = serializers.CharField()
     coord = CoordinatesSerializer()
@@ -194,10 +190,14 @@ class RefugiSearchFiltersSerializer(serializers.Serializer):
     def validate(self, data):
         raw_types = data.get('type', '')
         types = [t.strip() for t in raw_types.split(',') if t.strip()] if isinstance(raw_types, str) else raw_types
-        for t in types:
-            if t not in VALID_TYPES:
-                raise serializers.ValidationError({
-                    'type': f'El valor "{t}" no és vàlid. Els valors permesos són: {", ".join(VALID_TYPES)}'})
+        if types:
+            # Catàleg obert a la BD (`refuges.refuge_types`): només es consulta si hi ha filtre de tipus.
+            from .selectors import refuge_type_codes
+            valid_types = refuge_type_codes()
+            for t in types:
+                if t not in valid_types:
+                    raise serializers.ValidationError({
+                        'type': f'El valor "{t}" no és vàlid. Els valors permesos són: {", ".join(sorted(valid_types))}'})
         data['type'] = types
 
         raw_conditions = data.get('condition', '')

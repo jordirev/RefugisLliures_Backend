@@ -73,7 +73,7 @@ ADMIN_TOKEN=$(auth_call accounts:signInWithPassword "$ADMIN_EMAIL" | json_field 
 U=(-H "Authorization: Bearer $USER_TOKEN")
 A=(-H "Authorization: Bearer $ADMIN_TOKEN")
 
-# --- Llista sense filtres (mapa, des de la vista refuge_map)
+# --- Llista sense filtres (mapa: consulta directa a refuges)
 check_json "llista: {count, results}, sense has_filters" \
   "set(d) == {'count', 'results'} and d['count'] == len(d['results']) and d['count'] > 0" "$API/refuges/"
 check_json "llista: punts {id, name, coord{lat,long}, geohash}" \
@@ -99,7 +99,7 @@ check "filtre invàlid (condition=7)" 400 "$API/refuges/?condition=7"
 check "filtre invàlid (altitude_min > max)" 400 "$API/refuges/?altitude_min=3000&altitude_max=1000"
 
 # --- Detall
-DETAIL_KEYS="{'id','name','coord','altitude','places','remarque','info_comp','description','links','type','modified_at','region','departement','condition'}"
+DETAIL_KEYS="{'id','name','coord','altitude','places','info_comp','description','links','type','modified_at','region','departement','condition'}"   # sense remarque (S-6)
 check_json "detall anònim: camps exactes (sense surname, mitjans ni visitors)" \
   "set(d) == $DETAIL_KEYS" "$API/refuges/$REFUGE_ID/"
 check_json "detall anònim: condition enter 0-3 o null; info_comp 0/1" \
@@ -147,7 +147,9 @@ if [ -n "${E2E_SQL_CMD:-}" ]; then
   fi
   check_json "després del 500 la fila es conserva" "len(d['media']) == 1" "${U[@]}" "$API/refuges/$REFUGE_ID/media/"
   if [ -n "${E2E_LOG_CMD:-}" ] && [ -n "$error_id" ]; then
-    if $E2E_LOG_CMD 2>&1 | grep -q "$error_id"; then ok "l'error_id apareix al log del servidor"
+    # Primer a una variable: amb `pipefail`, `grep -q` tancaria la canonada abans d'hora i el SIGPIPE faria fallar el cas.
+    server_log=$($E2E_LOG_CMD 2>&1)
+    if grep -q "$error_id" <<<"$server_log"; then ok "l'error_id apareix al log del servidor"
     else fail "l'error_id $error_id no apareix al log del servidor"; fi
   fi
   echo "DELETE FROM users.users WHERE uid = '$USER_UID'" | $E2E_SQL_CMD   # CASCADE esborra el mitjà

@@ -77,13 +77,18 @@ def test_filtre_condition_rebutja_fora_de_0_3(value):
     assert not ok and 'condition' in s.errors
 
 
+@pytest.mark.db_infra
+@pytest.mark.django_db
 def test_filtre_type_llista_i_validacio():
+    """Els tipus vàlids són els del catàleg `refuges.refuge_types` (BD), no una llista del codi."""
     ok, s = validate(type='orri, fermée')
     assert ok and s.validated_data['type'] == ['orri', 'fermée']
     ok, s = validate(type='orri,piscina')
     assert not ok and 'type' in s.errors
 
 
+@pytest.mark.db_infra
+@pytest.mark.django_db
 def test_filtre_type_accepta_tots_els_valors_del_disseny():
     from apps.refuges.tests.helpers import REFUGE_TYPES
     ok, s = validate(type=','.join(REFUGE_TYPES))

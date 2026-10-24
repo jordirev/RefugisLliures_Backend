@@ -10,10 +10,12 @@ from typing import Iterable, Optional
 
 from django.contrib.postgres.expressions import ArraySubquery
 from django.contrib.postgres.search import TrigramSimilarity
-from django.db.models import F, Func, IntegerField, OuterRef, Prefetch, Q, QuerySet, Value
+from django.contrib.gis.db.models import GeometryField
+from django.db.models import CharField, F, FloatField, Func, IntegerField, OuterRef, Prefetch, Q, QuerySet, Value
+from django.db.models.functions import Cast
 from django.db.models.functions import Coalesce, Greatest
 
-from .models import Refuge, RefugeLink, RefugeMapPoint, RefugeMedia, norm_name
+from .models import Refuge, RefugeLink, RefugeMedia, RefugeType, norm_name
 
 
 def parse_refuge_id(value) -> Optional[uuid.UUID]:
@@ -85,11 +87,25 @@ def get_media_by_key(refuge_id, key: str) -> Optional[RefugeMedia]:
     return RefugeMedia.objects.filter(pk=key, refuge_id=pk).first()
 
 
-# ---------- Llista sense filtres (vista refuge_map) ----------
+# ---------- Llista sense filtres (punts del mapa) ----------
+
+def _geometry(field):
+    return Cast(F(field), GeometryField(srid=4326))
+
 
 def list_map_points() -> list:
-    """`[{id, name, lat, lng, geohash}]` ordenats per nom: 1 consulta, sense joins."""
-    return list(RefugeMapPoint.objects.order_by('name', 'id').values('id', 'name', 'lat', 'lng', 'geohash'))
+    """`[{id, name, lat, lng, geohash}]` ordenats per nom: 1 consulta directa a `refuges`, sense joins (§5.3, recepta 5)."""
+    return list(
+        Refuge.objects.annotate(
+            lat=Func(_geometry('coord'), function='ST_Y', output_field=FloatField()),
+            lng=Func(_geometry('coord'), function='ST_X', output_field=FloatField()),
+            geohash=Func(_geometry('coord'), Value(5), function='ST_GeoHash', output_field=CharField()),
+        ).order_by('name', 'id').values('id', 'name', 'lat', 'lng', 'geohash'))
+
+
+def refuge_type_codes() -> set:
+    """Codis del catàleg `refuges.refuge_types` (1 consulta; valida el filtre `type`)."""
+    return set(RefugeType.objects.values_list('code', flat=True))
 
 
 # ---------- Cerca amb filtres ----------

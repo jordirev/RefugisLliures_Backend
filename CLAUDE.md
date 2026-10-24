@@ -1,6 +1,6 @@
 # CLAUDE.md — RefugisLliures Backend
 
-API REST (Django 5.1 + DRF) de l'app Refugis Lliures: refugis de muntanya, fotos, experiències, dubtes, visites, reformes ("renovations") i propostes de canvi revisades per admins.
+API REST (Django 5.2 LTS + DRF, Python 3.14) de l'app Refugis Lliures: refugis de muntanya, fotos, experiències, dubtes, visites, reformes ("renovations") i propostes de canvi revisades per admins.
 Documentació detallada a [`docs/`](docs/README.md). Llegenda als docs: **[FET]** / **[INFERÈNCIA]** / **[NO VERIFICAT]**.
 
 ## Stack
@@ -13,6 +13,7 @@ Documentació detallada a [`docs/`](docs/README.md). Llegenda als docs: **[FET]*
 
 ## Comandes
 ```bash
+py -3.14 -m venv .venv && .venv\Scripts\activate   # Windows; Python 3.14 també a CI i producció
 pip install -r requirements.txt
 python manage.py runserver            # requereix env/ local + Postgres (DATABASE_URL_APP) + Redis + GDAL; R2_* només per als endpoints de media
 python manage.py migrate --database=migrator   # SEMPRE amb el rol migrator (app no té DDL)
@@ -54,7 +55,7 @@ api/views  api/serializers  api/controllers  api/daos  api/services   + api/mapp
 ## Convencions
 - Català a docstrings, comentaris i la majoria de missatges; identificadors en anglès (el domini refugi legacy en català: `RefugiLliureDAO`, `data_refugis_lliures`; a `apps/refuges` tot en anglès).
 - Dates com a strings ISO; zona `Europe/Madrid` via `api/utils/timezone_utils.py`.
-- IDs: a les apps migrades, UUID v7 (`api/utils/ids.py: uuid7`) exposat com a string opac; a Firestore, auto-ID desat també com a camp `id`; `users/{uid}` usa l'UID de Firebase.
+- IDs: a les apps migrades, UUID v7 generat per la BD (`DEFAULT uuidv7()`, Postgres 18; `db_default` als models) exposat com a string opac; a Firestore, auto-ID desat també com a camp `id`; `users/{uid}` usa l'UID de Firebase.
 - Logs: nivells propis CACHE=21, FIRESTORE=22, DAO=23 (`logger.log(23, "Firestore READ: ...")`).
 - Swagger: exemples a `api/utils/swagger_examples.py`, errors a `api/utils/swagger_error_responses.py`.
 - Tests per domini a `api/tests/<domini>/test_{models,mappers,daos,serializers,controllers,views}.py`; es mocka `FirestoreService`/`cache_service` al mòdul del DAO i el controller al mòdul de la vista. Les apps migrades tenen els tests a `apps/<feature>/tests/` (contra Postgres real amb el rol `app`: esquema, RLS, models, cerca, contracte HTTP, recomptes de consultes); les fixtures compartides són al `conftest.py` de l'arrel.
@@ -71,7 +72,7 @@ api/views  api/serializers  api/controllers  api/daos  api/services   + api/mapp
 9. Canviar el text d'un error pot canviar el codi HTTP.
 10. El context de RLS (`set_config(..., true)`) és local a la transacció i només el posa el hook a peticions HTTP; en comandes/jobs usa `rls_context()`/`system_context()`. Migracions sempre `--database=migrator`. `ATOMIC_REQUESTS` no desfà escriptures a Firestore/R2.
 11. Els tests de vistes muten `view.cls.permission_classes`; usa `patch.object`. El `conftest.py` de l'arrel bloqueja Firestore real i mocka `AuditLogService.log` i `get_user_for_permissions` (markers `real_audit_log`, `real_permissions` per desactivar-ho).
-12. A les apps migrades les FK són `DO_NOTHING` + `db_constraint=False`: les cascades i `SET NULL` són del DDL (migració `RunSQL`), no de Django; no depenguis de `on_delete` ni de signals. `load_refuges` és d'un sol ús (sense `--overwrite`).
+12. A les apps migrades les FK són `DO_NOTHING` + `db_constraint=False`: les cascades i `SET NULL` són del DDL (migració `RunSQL`), no de Django; no depenguis de `on_delete` ni de signals. `load_refuges` és d'un sol ús (sense `--overwrite`). `bulk_create` no recupera els PK de `db_default` (`uuidv7()`): demana'ls abans a la BD (GOTCHAS #48).
 13. **Estat intermedi (chunk 2 → 7)**: els dominis encara a Firestore comproven els refugis amb el `RefugiLliureDAO` legacy (catàleg antic, IDs diferents dels UUID de PostgreSQL); les fotos noves i les propostes aprovades escriuen a Firestore i no es veuen a `/api/refuges/`. No usis el DAO legacy en codi nou (GOTCHAS #41–42, TECH_DEBT R1–R7).
 14. Errors 500 a les apps migrades: sempre `server_error(...)` (`{error, error_id}`), mai `str(e)`.
 

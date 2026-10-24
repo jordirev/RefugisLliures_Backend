@@ -38,7 +38,8 @@ def counts(conn):
 
 def record(name='Cabane A', lat=42.5, long=1.5, **kw):
     r = {'name': name, 'coord': {'lat': lat, 'long': long}, 'altitude': 1500, 'places': 4, 'type': 'non gardé',
-         'description': 'desc', 'links': ['https://a.org/1', 'https://a.org/2'], 'region': 'Ariège',
+         'description': 'desc', 'links': [f'https://a.org/{name}/{lat}/1', f'https://a.org/{name}/{lat}/2'],
+         'region': 'Ariège',
          'departement': 'Ariège', 'modified_at': '2024-05-17',
          'info_comp': {'cheminee': 1, 'eau': 1, 'bois': 1, 'lits': 1}}
     r.update(kw)
@@ -106,7 +107,7 @@ def test_cada_refugi_es_correspon_amb_el_json(full, mig):
     cols = ', '.join(f'a.{f}' for f in AMENITY_FIELDS)
     rows = fetch_all(mig, f"""
         SELECT r.name, ST_Y(r.coord::geometry), ST_X(r.coord::geometry), r.surname, r.type, r.altitude, r.places,
-               r.remarque, r.description, r.region, r.departement, r.modified_at, r.condition,
+               NULL, r.description, r.region, r.departement, r.modified_at, r.condition,
                ARRAY(SELECT l.url FROM refuges.refuge_links l WHERE l.refuge_id = r.id ORDER BY l.position),
                {cols}
           FROM refuges.refuges r JOIN refuges.refuge_amenities a ON a.refuge_id = r.id""")
@@ -121,7 +122,7 @@ def test_cada_refugi_es_correspon_amb_el_json(full, mig):
         assert r[4] == rec['type']
         assert r[5] == rec['altitude']
         assert r[6] == rec['places']                                    # null → NULL, mai 0
-        assert r[7] == ''                                               # `remarque` no és al JSON
+        assert r[7] is None                                             # columna `remarque` eliminada (S-6)
         assert r[8] == (rec['description'] or '')
         assert r[9] == ((rec.get('region') or '').strip() or None)
         assert r[10] == ((rec.get('departement') or '').strip() or None)
@@ -153,10 +154,11 @@ def test_amenities_no_tenen_les_dades_ignorades(full, mig):
     assert not ({'info_couchage', 'info_eau'} & cols)
 
 
-def test_geohash_de_la_vista_coincideix_amb_generate_simple_geohash(full, mig):
-    """§4: `ST_GeoHash(coord::geometry, 5)` == `generate_simple_geohash` actual (inferència del disseny)."""
+def test_geohash_dels_punts_del_mapa_coincideix_amb_generate_simple_geohash(full, mig):
+    """§5.3 (recepta 5): `ST_GeoHash(coord::geometry, 5)` == `generate_simple_geohash` actual."""
     from api.daos.refuge_proposal_dao import generate_simple_geohash
-    rows = fetch_all(mig, 'SELECT lat, lng, geohash FROM refuges.refuge_map')
+    rows = fetch_all(mig, 'SELECT ST_Y(coord::geometry), ST_X(coord::geometry), ST_GeoHash(coord::geometry, 5) '
+                          'FROM refuges.refuges')
     assert len(rows) == 1542
     bad = [(lat, lng, g) for lat, lng, g in rows if g != generate_simple_geohash(lat, lng)]
     assert bad == [], f'{len(bad)} geohash difereixen, p. ex. {bad[:3]}'
@@ -225,6 +227,13 @@ def test_un_refugi_preexistent_bloqueja_la_carrega_sense_escriure_res(wipe_catal
         run(json_path=json_file([record('Cabane A'), record('Cabane B', lat=43)]))
     assert [r[0] for r in fetch_all(wipe_catalog, 'SELECT id FROM refuges.refuges')] == [pre.pk]
     assert counts(wipe_catalog) == {'refuges': 1, 'refuge_amenities': 0, 'refuge_links': 0, 'refuge_media': 0}
+
+
+def test_una_url_repetida_entre_refugis_es_rebutja_sense_escriure_res(wipe_catalog, json_file):
+    """PK `refuge_links.url` (decisió del PO): un enllaç és d'un sol refugi; el loader ho valida abans d'escriure."""
+    with pytest.raises(CommandError, match='enllaç repetit'):
+        run(json_path=json_file([record('A', links=['https://x.org']), record('B', lat=43, links=['https://x.org'])]))
+    assert counts(wipe_catalog)['refuges'] == 0
 
 
 def test_mateix_nom_i_altres_coordenades_son_refugis_diferents(wipe_catalog, json_file):

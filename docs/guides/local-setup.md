@@ -4,10 +4,10 @@
 > Context: [ARCHITECTURE §1](../ARCHITECTURE.md) (stack) · [integrations/render-deploy-ci.md](../integrations/render-deploy-ci.md) (selecció d'entorn).
 
 ## Requisits
-- **Python ≥ 3.9** (`zoneinfo`, `api/utils/timezone_utils.py:5`); CI fa servir 3.10 (`.github/workflows/django.yml:16`) **[FET]**.
+- **Python 3.14** (mínim 3.9 per `zoneinfo`, `api/utils/timezone_utils.py:5`); el projecte objectiu és **Python 3.14 + Django 5.2 LTS** (chunk 2) i CI usa 3.14 amb el servei `postgis/postgis:18-3.6` **[FET]**.
 - **Redis** local a `redis://localhost:6379/1` (o `REDIS_URL`). Sense Redis l'API funciona però sense cache (errors empassats) — vegeu [redis-cache](../integrations/redis-cache.md).
 - **PostgreSQL + PostGIS** (rol `app` i rol `migrator`): és la BD `default` de Django des del chunk 1 de la migració ([integrations/neon.md](../integrations/neon.md)). En local: el Postgres de proves de `scripts/dev/setup_local_postgres.sh` o Neon `dev` (variables `DATABASE_URL_APP` / `DATABASE_URL_MIGRATOR`). Sense cap URL, Django cau a SQLite i les peticions reals no funcionen **[FET]**.
-- **GDAL/GEOS/PROJ** del sistema (`django.contrib.gis` sempre és actiu): `apt install gdal-bin libgdal-dev libgeos-dev libproj-dev` a Linux; **a Windows no n'hi ha de natiu** → vegeu «Windows: executar en un contenidor Linux» més avall **[FET]**.
+- **GDAL/GEOS/PROJ** del sistema (`django.contrib.gis` sempre és actiu): `apt install gdal-bin libgdal-dev libgeos-dev libproj-dev` a Linux; **a Windows** instal·la [OSGeo4W](https://trac.osgeo.org/osgeo4w/) (Express Install, només el paquet GDAL; per defecte a `%LOCALAPPDATA%\Programs\OSGeo4W`, o fixa `OSGEO4W_ROOT`): `settings.py` detecta la DLL `gdal3xx.dll`, `geos_c.dll`, `GDAL_DATA` i `PROJ_LIB` sol **[FET: `check_neon` verificat a Windows]**. Alternativa: contenidor Linux (vegeu «Windows: executar en un contenidor Linux» més avall).
 - Accés a un projecte **Firebase** (service account) i a un bucket **Cloudflare R2**.
 
 ## 1. Clonar i crear l'entorn virtual
@@ -15,11 +15,12 @@
 git clone https://github.com/jordirev/RefugisLliures_Backend.git
 cd RefugisLliures_Backend
 
-python -m venv venv
+# Python 3.14 (Windows: `winget install Python.Python.3.14` i el llançador `py`)
+python3.14 -m venv .venv          # Windows: py -3.14 -m venv .venv
 # Linux/macOS
-source venv/bin/activate
+source .venv/bin/activate
 # Windows
-venv\Scripts\activate
+.venv\Scripts\activate
 
 pip install -r requirements.txt     # inclou pytest, coverage, boto3, django-redis
 ```
@@ -47,7 +48,7 @@ Crea els rols `migrator` i `app`, la BD `refugisdb_test`, les extensions i `GRAN
 
 **Windows: executar en un contenidor Linux** (no hi ha GDAL natiu) **[FET: és com s'han executat els tests del chunk 1]**. Un `Dockerfile` (fora del repo, p. ex. `rl-backend-tests.Dockerfile`):
 ```dockerfile
-FROM python:3.13-slim
+FROM python:3.14-slim-bookworm
 RUN apt-get update && apt-get install -y --no-install-recommends \
       build-essential gdal-bin libgdal-dev libgeos-dev libproj-dev postgresql-client \
     && rm -rf /var/lib/apt/lists/*
@@ -56,8 +57,8 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 ```
 ```powershell
-# 1) Postgres + PostGIS 17 (mateixa versió major que Neon i que CI)
-docker run -d --name rl-postgres -e POSTGRES_PASSWORD=<contrasenya-local> -p 5432:5432 postgis/postgis:17-3.5
+# 1) Postgres 18 + PostGIS 3.6 (mateixa versió major que Neon i que CI)
+docker run -d --name rl-postgres -e POSTGRES_PASSWORD=<contrasenya-local> -p 5432:5432 postgis/postgis:18-3.6
 # 2) Imatge amb GDAL (el requirements.txt s'instal·la a la imatge; el repo es munta a /app)
 docker build -t rl-backend -f rl-backend-tests.Dockerfile .
 # 3) Bootstrap + comanda dins del contenidor (apunta al Postgres del host)
@@ -81,7 +82,7 @@ Sense elles, qualsevol controller que creï `R2MediaService` falla. El health ch
 ```bash
 python manage.py migrate --database=migrator
 ```
-El rol `app` (BD `default`) no té permisos de DDL: un `migrate` sense `--database=migrator` fallaria. Crea els schemas i les funcions de `apps/core` (`core.0001`) i les taules internes de Django a `public` (propietat del migrator). Això també crea les taules de refugis i el mínim de comptes (`accounts.0001`, `refuges.0001`: taules, FK reals, RLS, grants i la vista `refuge_map`); la resta del domini continua a Firestore fins als chunks següents **[FET]**. Cal el *bootstrap* previ del propietari de la BD ([neon.md](../integrations/neon.md)). Sense Postgres configurat només s'afectaria `db.sqlite3`.
+El rol `app` (BD `default`) no té permisos de DDL: un `migrate` sense `--database=migrator` fallaria. Crea els schemas i les funcions de `apps/core` (`core.0001`) i les taules internes de Django a `public` (propietat del migrator). Això també crea les taules de refugis i el mínim de comptes (`accounts.0001`, `refuges.0001`: taules, catàlegs `users.languages` i `refuges.refuge_types`, FK reals, RLS i grants; sense vista `refuge_map`); la resta del domini continua a Firestore fins als chunks següents **[FET]**. Cal el *bootstrap* previ del propietari de la BD ([neon.md](../integrations/neon.md)). Sense Postgres configurat només s'afectaria `db.sqlite3`.
 
 ## 5. Dades inicials: catàleg de refugis a PostgreSQL (només si la BD és nova)
 ```bash
@@ -106,7 +107,7 @@ python manage.py runserver
 | `FileNotFoundError ... firebase-service-account.json` | Falta el fitxer de la ruta fixa (pas 2) |
 | Respostes lentes i cap clau a Redis | Redis no arrencat; la cache falla en silenci |
 | Health check 503 | Postgres inaccessible (`database: false`) **o** Firestore inaccessible ([flux 11](../flows/11-admin-cache-health.md)); la config R2 ja no hi influeix |
-| `ImproperlyConfigured: Could not find the GDAL library` (o GEOS) | Falta GDAL/GEOS al sistema (Windows natiu): executa en un contenidor Linux (§ PostgreSQL) |
+| `ImproperlyConfigured: Could not find the GDAL library` (o GEOS) | Falta GDAL/GEOS al sistema: a Windows instal·la OSGeo4W (§ Requisits; `OSGEO4W_ROOT` si no és a la ruta per defecte) o executa en un contenidor Linux (§ PostgreSQL) |
 | `permission denied for schema public` en migrar | Falta `GRANT CREATE ON SCHEMA public TO migrator` (PG15+) al *bootstrap* |
 | `permission denied` / `must be owner` amb `migrate` | S'ha usat el rol `app`: torna a executar amb `--database=migrator` |
 | `OperationalError` a Postgres sense haver definit URL | Cap `DATABASE_URL_APP`/`TEST_DATABASE_URL_APP` → `default` és SQLite |

@@ -35,7 +35,6 @@ from api.utils.swagger_examples import (
 from apps.core.errors import server_error
 
 from . import selectors, services
-from .models import RefugeType
 from .serializers import (
     RefugeMapResponseSerializer,
     RefugeMediaDeleteResponseSerializer,
@@ -93,7 +92,7 @@ class RefugeCollectionAPIView(APIView):
                               type=openapi.TYPE_STRING, required=False),
             openapi.Parameter('type', openapi.IN_QUERY, description='Tipus de refugi (separats per comes)',
                               type=openapi.TYPE_ARRAY,
-                              items=openapi.Items(type=openapi.TYPE_STRING, enum=list(RefugeType.values)),
+                              items=openapi.Items(type=openapi.TYPE_STRING),   # valors: catàleg refuges.refuge_types
                               required=False),
             openapi.Parameter('condition', openapi.IN_QUERY,
                               description='Condició (separades per comes). 0: pobre, 1: correcte, 2: bé, 3: excel·lent.',

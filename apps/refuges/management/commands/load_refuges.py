@@ -68,8 +68,8 @@ def _is_int(value):
     return isinstance(value, int) and not isinstance(value, bool)
 
 
-def parse_record(rec):
-    """Valida un registre del JSON amb les regles de la BD. Retorna `(valors, errors)`."""
+def parse_record(rec, refuge_types):
+    """Valida un registre del JSON amb les regles de la BD (`refuge_types`: codis del catàleg). Retorna `(valors, errors)`."""
     errors = []
     if not isinstance(rec, dict):
         return None, ['el registre no és un objecte']
@@ -98,7 +98,7 @@ def parse_record(rec):
         errors.append(f'places invàlides ({places})')
 
     rtype = rec.get('type')
-    if rtype not in RefugeType.values:
+    if rtype not in refuge_types:
         errors.append(f'tipus no vàlid ({rtype!r})')
 
     links = rec.get('links') or []
@@ -164,9 +164,16 @@ class Command(BaseCommand):
         db = database
         records = read_records(json)
 
-        parsed, problems = [], []
+        refuge_types = set(RefugeType.objects.using(db).values_list('code', flat=True))   # catàleg obert (§2.5.1)
+        parsed, problems, link_owner = [], [], {}
         for index, rec in enumerate(records):
-            values, errors = parse_record(rec)
+            values, errors = parse_record(rec, refuge_types)
+            # `refuge_links.url` és la PK (§2.7): una URL no pot ser de dos refugis (ni repetida dins d'un).
+            for url in (values or {}).get('links', []):
+                if url in link_owner:
+                    errors.append(f'enllaç repetit ({url!r}, també al registre #{link_owner[url]})')
+                else:
+                    link_owner[url] = index
             if errors:
                 label = rec.get('name') if isinstance(rec, dict) else None
                 problems.append(f'#{index} {label!r}: ' + '; '.join(errors))
@@ -195,11 +202,17 @@ class Command(BaseCommand):
             f"condició inicial: " + ', '.join(f'{k} → {dist[k]}' for k in sorted(dist)))
 
     def _write(self, db, parsed):
+        # `bulk_create` de Django 5.2 no recupera els PK amb `db_default` (els deixa com a `DatabaseDefault`): els
+        # demanem a la BD en una sola consulta, de manera que `uuidv7()` continua sent l'únic generador (§1.4).
+        with connections[db].cursor() as cursor:
+            cursor.execute('SELECT uuidv7() FROM generate_series(1, %s)', [len(parsed)])
+            ids = [row[0] for row in cursor.fetchall()]
         refuges, amenities, links = [], [], []
-        for v in parsed:
+        for refuge_id, v in zip(ids, parsed):
             refuge = Refuge(
-                name=v['name'], surname=v['surname'], type=v['type'], coord=Point(v['long'], v['lat'], srid=4326),
-                altitude=v['altitude'], places=v['places'], remarque='', description=v['description'],
+                id=refuge_id,
+                name=v['name'], surname=v['surname'], type_id=v['type'], coord=Point(v['long'], v['lat'], srid=4326),
+                altitude=v['altitude'], places=v['places'], description=v['description'],
                 region=v['region'], departement=v['departement'], modified_at=v['modified_at'],
                 condition=v['condition'], num_contributed_conditions=0)
             refuges.append(refuge)

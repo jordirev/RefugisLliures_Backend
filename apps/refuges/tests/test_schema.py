@@ -1,5 +1,5 @@
 """
-Esquema físic del chunk 2 (docs/design/postgres-schema.md §2.1, §2.2, §2.5-2.8, §4.1, §6, §7.2):
+Esquema físic del chunk 2 (docs/design/postgres-schema.md §1.4, §2.1-2.2.1, §2.5-2.8, §6, §7.2):
 taules, constraints, índexs, FK reals amb `ON DELETE` del DDL, RLS activada, grants i propietari.
 
 Es consulta el catàleg amb el propietari (`migrator`); el comportament de les restriccions i de les polítiques
@@ -12,8 +12,9 @@ from apps.refuges.tests.helpers import AMENITY_FIELDS, account_models
 
 pytestmark = [pytest.mark.db_infra, pytest.mark.integration]
 
-REFUGE_TABLES = ['refuges.refuges', 'refuges.refuge_amenities', 'refuges.refuge_links', 'refuges.refuge_media']
-ACCOUNT_TABLES = ['users.users', 'users.user_public_profiles']
+REFUGE_TABLES = ['refuges.refuge_types', 'refuges.refuges', 'refuges.refuge_amenities', 'refuges.refuge_links',
+                 'refuges.refuge_media']
+ACCOUNT_TABLES = ['users.languages', 'users.users', 'users.user_public_profiles', 'users.user_avatars']
 ALL_TABLES = REFUGE_TABLES + ACCOUNT_TABLES
 
 
@@ -69,22 +70,30 @@ def test_taula_amb_rls_activada_sense_force_i_propietat_del_migrator(migrator_db
     assert row == (True, False, 'migrator')
 
 
-def test_vista_refuge_map_existeix_i_es_del_migrator(migrator_db):
-    row = fetch_one(migrator_db, """
-        SELECT pg_get_userbyid(c.relowner), c.relkind FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
-         WHERE n.nspname = 'refuges' AND c.relname = 'refuge_map'""")
-    assert row == ('migrator', 'v')
-    assert set(_cols(migrator_db, 'refuges', 'refuge_map')) == {'id', 'name', 'lat', 'lng', 'geohash', 'coord'}
+def test_cap_vista_als_schemas_del_chunk(migrator_db):
+    """La vista `refuge_map` s'ha eliminat (decisió del PO): el mapa és una consulta directa a `refuges` (§5.3)."""
+    assert fetch_all(migrator_db, "SELECT viewname FROM pg_views WHERE schemaname IN ('refuges', 'users')") == []
+
+
+@pytest.mark.parametrize('table,codes', [
+    ('users.languages', {'ca', 'es', 'en', 'fr'}),
+    ('refuges.refuge_types', {'non gardé', 'fermée', 'cabane ouverte mais ocupee par le berger l ete', 'orri',
+                              'emergence', 'key_needed'}),
+])
+def test_cataleg_amb_els_valors_inicials(migrator_db, table, codes):
+    assert {r[0] for r in fetch_all(migrator_db, f'SELECT code FROM {table}')} == codes
 
 
 @pytest.mark.parametrize('table,expected', [
-    ('refuges.refuges', {'SELECT', 'INSERT', 'UPDATE', 'DELETE'}),
-    ('refuges.refuge_amenities', {'SELECT', 'INSERT', 'UPDATE', 'DELETE'}),
-    ('refuges.refuge_links', {'SELECT', 'INSERT', 'UPDATE', 'DELETE'}),
+    ('refuges.refuge_types', {'SELECT'}),                                # catàleg: només hi escriu el migrator
+    ('refuges.refuges', {'SELECT'}),                                     # escriptura: chunk 8 (S-5)
+    ('refuges.refuge_amenities', {'SELECT'}),
+    ('refuges.refuge_links', {'SELECT'}),
     ('refuges.refuge_media', {'SELECT', 'INSERT', 'UPDATE', 'DELETE'}),
-    ('refuges.refuge_map', {'SELECT'}),
+    ('users.languages', {'SELECT'}),
     ('users.users', {'SELECT', 'INSERT', 'UPDATE', 'DELETE'}),
     ('users.user_public_profiles', {'SELECT', 'INSERT', 'UPDATE'}),       # esborrat només per cascada
+    ('users.user_avatars', {'SELECT', 'INSERT', 'DELETE'}),               # canvi d'avatar = DELETE + INSERT
 ])
 def test_matriu_de_grants_del_rol_app(app_db, table, expected):
     """§7.2: mínim privilegi. `app` mai té TRUNCATE, REFERENCES ni TRIGGER."""
@@ -97,7 +106,7 @@ def test_matriu_de_grants_del_rol_app(app_db, table, expected):
 
 def test_columnes_de_refuges(migrator_db):
     c = _cols(migrator_db, 'refuges', 'refuges')
-    assert set(c) == {'id', 'name', 'surname', 'type', 'coord', 'altitude', 'places', 'remarque', 'description',
+    assert set(c) == {'id', 'name', 'surname', 'type', 'coord', 'altitude', 'places', 'description',
                       'region', 'departement', 'modified_at', 'condition', 'num_contributed_conditions',
                       'condition_reset_at', 'created_at'}
     assert c['id'][2] == 'uuid' and c['id'][3] == 'NO'
@@ -110,15 +119,15 @@ def test_columnes_de_refuges(migrator_db):
     assert c['created_at'][2] == 'timestamptz' and c['created_at'][3] == 'NO'
     assert c['name'][5] == 255 and c['type'][5] == 64
     assert c['places'][3] == 'YES' and c['altitude'][3] == 'YES'
-    assert c['remarque'][3] == 'NO' and c['description'][3] == 'NO'
+    assert c['description'][3] == 'NO'
     assert c['region'][3] == 'YES' and c['departement'][3] == 'YES' and c['surname'][3] == 'YES'
     assert 'non gardé' in c['type'][4]
 
 
-def test_les_pk_uuid_no_tenen_default_de_bd(migrator_db):
-    """§1.4: els uuid v7 els genera l'aplicació (`uuid7()`); la columna no té DEFAULT."""
-    assert _cols(migrator_db, 'refuges', 'refuges')['id'][4] is None
-    assert _cols(migrator_db, 'refuges', 'refuge_links')['id'][4] is None
+def test_les_pk_uuid_tenen_default_uuidv7_de_la_bd(migrator_db):
+    """§1.4: `DEFAULT uuidv7()` de Postgres 18 (l'únic generador d'ID)."""
+    assert _cols(migrator_db, 'refuges', 'refuges')['id'][4] == 'uuidv7()'
+    assert fetch_one(migrator_db, "SELECT uuid_extract_version(uuidv7())")[0] == 7
 
 
 def test_columnes_d_amenities(migrator_db):
@@ -130,7 +139,7 @@ def test_columnes_d_amenities(migrator_db):
 
 def test_columnes_de_links(migrator_db):
     c = _cols(migrator_db, 'refuges', 'refuge_links')
-    assert set(c) == {'id', 'refuge_id', 'position', 'url'}
+    assert set(c) == {'url', 'refuge_id', 'position'}                     # PK `url`, sense `id` (decisió del PO)
     assert c['position'][2] == 'int2' and c['url'][2] == 'text'
 
 
@@ -148,16 +157,20 @@ def test_columnes_d_accounts(migrator_db):
     u = _cols(migrator_db, 'users', 'users')
     assert set(u) == {'uid', 'language', 'created_at', 'age_confirmed_at', 'age_threshold', 'moderation_strikes',
                       'is_blocked', 'blocked_reason', 'blocked_at'}
-    assert u['uid'][5] == 128 and u['language'][4].startswith("'ca'")
+    assert u['uid'][5] == 128 and u['language'][4].startswith("'en'") and u['language'][5] == 8
     p = _cols(migrator_db, 'users', 'user_public_profiles')
-    assert set(p) == {'uid', 'username', 'avatar_key', 'avatar_thumb_key', 'avatar_content_type', 'avatar_width',
-                      'avatar_height', 'avatar_size_bytes', 'avatar_blurhash', 'avatar_uploaded_at', 'updated_at'}
+    assert set(p) == {'uid', 'username', 'updated_at'}                    # l'avatar és a `user_avatars`
+    a = _cols(migrator_db, 'users', 'user_avatars')
+    assert set(a) == {'key', 'user_uid', 'thumb_key', 'content_type', 'width', 'height', 'size_bytes', 'blurhash',
+                      'uploaded_at'}
+    assert a['content_type'][3] == 'NO' and a['uploaded_at'][3] == 'NO' and a['size_bytes'][2] == 'int8'
+
 
 
 # ---------- Constraints i índexs pel nom que fixa el disseny ----------
 
 @pytest.mark.parametrize('name', [
-    'refuges_condition_ck', 'refuges_condition_n_ck', 'refuges_name_ck', 'refuges_surname_ck', 'refuges_type_ck',
+    'refuges_condition_ck', 'refuges_condition_n_ck', 'refuges_name_ck', 'refuges_surname_ck',
     'refuges_altitude_ck', 'refuges_places_ck', 'refuges_coord_ck'])
 def test_constraints_de_refuges_amb_el_nom_del_disseny(migrator_db, name):
     row = fetch_one(migrator_db, "SELECT contype FROM pg_constraint WHERE conname = %s "
@@ -234,6 +247,7 @@ def _fk(conn, table, column):
     ('refuges.refuge_media', 'refuge_id', 'refuges.refuges'),
     ('refuges.refuge_media', 'creator_uid', 'users.users'),
     ('users.user_public_profiles', 'uid', 'users.users'),
+    ('users.user_avatars', 'user_uid', 'users.users'),
 ])
 def test_fk_real_amb_on_delete_cascade_diferible(migrator_db, table, column, target):
     fks = _fk(migrator_db, table, column)
@@ -242,7 +256,22 @@ def test_fk_real_amb_on_delete_cascade_diferible(migrator_db, table, column, tar
     assert (deltype, deferrable, deferred, ref) == ('c', True, True, target)
 
 
-def test_unique_de_links_refuge_position_diferible_i_refuge_url(migrator_db):
+@pytest.mark.parametrize('table,column,target', [
+    ('users.users', 'language', 'users.languages'),
+    ('refuges.refuges', 'type', 'refuges.refuge_types'),
+])
+def test_fk_als_catalegs_restrict(migrator_db, table, column, target):
+    """Catàlegs oberts (decisió del PO): no es pot treure un valor en ús (`ON DELETE RESTRICT`)."""
+    fks = _fk(migrator_db, table, column)
+    assert len(fks) == 1 and (fks[0][0], fks[0][3]) == ('r', target)
+
+
+def test_avatar_un_per_usuari(migrator_db):
+    row = fetch_one(migrator_db, "SELECT contype FROM pg_constraint WHERE conname = 'user_avatars_user_uq'")
+    assert row == ('u',)
+
+
+def test_unique_de_links_refuge_position_diferible_i_pk_url(migrator_db):
     rows = fetch_all(migrator_db, """
         SELECT c.condeferrable, c.condeferred,
                (SELECT array_agg(a.attname::text ORDER BY k.ord)
@@ -250,7 +279,11 @@ def test_unique_de_links_refuge_position_diferible_i_refuge_url(migrator_db):
                   JOIN pg_attribute a ON a.attrelid = c.conrelid AND a.attnum = k.attnum)
           FROM pg_constraint c WHERE c.contype = 'u' AND c.conrelid = 'refuges.refuge_links'::regclass""")
     by_cols = {tuple(r[2]): r for r in rows}
-    assert ('refuge_id', 'position') in by_cols and ('refuge_id', 'url') in by_cols
+    assert ('refuge_id', 'position') in by_cols and ('refuge_id', 'url') not in by_cols   # la PK `url` ja és única
+    pk = fetch_all(migrator_db, "SELECT a.attname FROM pg_index i JOIN pg_attribute a ON a.attrelid = i.indrelid "
+                                "AND a.attnum = ANY(i.indkey) WHERE i.indrelid = 'refuges.refuge_links'::regclass "
+                                "AND i.indisprimary")
+    assert pk == [('url',)]
     assert by_cols[('refuge_id', 'position')][:2] == (True, True), \
         'UNIQUE (refuge, position) DEFERRABLE INITIALLY DEFERRED'
 
@@ -267,24 +300,28 @@ def test_db_table_dels_models_porta_el_schema_entre_cometes(RM):
     assert RM.RefugeAmenities._meta.db_table == 'refuges"."refuge_amenities'
     assert RM.RefugeLink._meta.db_table == 'refuges"."refuge_links'
     assert RM.RefugeMedia._meta.db_table == 'refuges"."refuge_media'
-    assert RM.RefugeMapPoint._meta.db_table == 'refuges"."refuge_map'
-    assert RM.RefugeMapPoint._meta.managed is False
+    assert RM.RefugeType._meta.db_table == 'refuges"."refuge_types'
+    assert not hasattr(RM, 'RefugeMapPoint')                              # vista eliminada
 
 
 def test_db_table_dels_models_d_accounts():
     am = account_models()
     assert am.UserAccount._meta.db_table == 'users"."users'
     assert am.UserPublicProfile._meta.db_table == 'users"."user_public_profiles'
+    assert am.UserAvatar._meta.db_table == 'users"."user_avatars' and am.UserAvatar._meta.pk.name == 'key'
+    assert am.Language._meta.db_table == 'users"."languages'
     assert am.UserAccount._meta.pk.name == 'uid'
     assert am.UserPublicProfile._meta.pk.name == 'user'
     assert am.UserPublicProfile._meta.pk.column == 'uid'
 
 
 def test_les_fk_dels_models_son_do_nothing_sense_constraint_de_django(RM):
-    """§6.3: les cascades són del DDL; Django 5.1 les emularia des del rol `app` (subjecte a RLS)."""
+    """§6.3: les cascades són del DDL; Django 5.2 les emularia des del rol `app` (subjecte a RLS)."""
     from django.db import models
+    am = account_models()
     for model, field in ((RM.RefugeAmenities, 'refuge'), (RM.RefugeLink, 'refuge'), (RM.RefugeMedia, 'refuge'),
-                         (RM.RefugeMedia, 'creator')):
+                         (RM.RefugeMedia, 'creator'), (RM.Refuge, 'type'), (am.UserAccount, 'language'),
+                         (am.UserAvatar, 'user')):
         f = model._meta.get_field(field)
         assert f.remote_field.on_delete is models.DO_NOTHING, f'{model.__name__}.{field}'
         assert f.db_constraint is False, f'{model.__name__}.{field}'
