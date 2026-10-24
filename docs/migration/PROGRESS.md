@@ -16,7 +16,7 @@
 | # | Chunk | Branca | Estat | Notes |
 |---|---|---|---|---|
 | 0 | Disseny BD | `migracio/disseny-bd` | fet | `docs/design/postgres-schema.md` tancat (`e611fe3`), PR a `migration` |
-| 1 | Infraestructura | `migracio/infraestructura` | fet (PR [#42](https://github.com/jordirev/RefugisLliures_Backend/pull/42) fusionada, `7d9073f`) | 1666 tests; pendent confirmar D9 a Neon `dev` |
+| 1 | Infraestructura | `migracio/infraestructura` | fet (PR [#42](https://github.com/jordirev/RefugisLliures_Backend/pull/42) fusionada, `7d9073f`) | 1666 tests; D9 confirmada a Neon `dev` |
 | 2 | Refugis | `migracio/refugis` | tests en curs | |
 | 3 | Usuaris | `migracio/usuaris` | pendent | |
 | 4 | Visites | `migracio/visites` | pendent | paral·lel amb 5, 6 |
@@ -43,6 +43,7 @@
 - 2026-10-24 — Revisor (`fe2278b`, `7c6e026`: `connect_timeout=10`, guarda de tests només locals, CI que falla en veu alta, `check_neon` comprova el bootstrap, health sense `str(e)`), seguretat (`52e3988`, `327631a`: guard de l'emulador per plataforma i host, 401 sense detalls ni UID als logs, avís del hook fora de transacció, 76 tests nous) i documentació (`c7e5719`). Cap forat greu. Deute nou a `docs/TECH_DEBT.md` (P1–P11: GDAL al runtime, `DEBUG`/`ALLOWED_HOSTS` per defecte, `REVOKE TEMP` de `PUBLIC`…).
 - 2026-10-24 — **E2E local** (orquestrador): `runserver` en contenidor contra `refugisdb_e2e` (PG17, rols reals, migrat amb `migrator`) + Firebase Auth/Firestore Emulators. `scripts/e2e/e2e_chunk1.sh`: 12/12 (health amb `database`; 401 sense token o token invàlid; 403 usuari normal a rutes d'admin i PATCH aliè; 200 admin; 404 perfil inexistent). Al log de Postgres: `BEGIN` → un sol `set_config(app.uid, app.is_admin, app.is_system=false)` amb valors correctes (normal/admin/anònim) → `COMMIT`. Postgres caigut → 503 en 10 s; recuperació → 200. Troballes corregides: `runserver` no arrencava (D8, `core.0002`), comentari amb backticks dins d'un heredoc del bootstrap, fals avís de `check_neon --alias default`. Decisions D7–D9.
 - 2026-10-24 — PR #42 fusionada a `migration` (CI: tests verds; només falla SonarCloud). Creada `migracio/refugis`; agent de tests del chunk 2 en marxa. **El PO retira la delegació de decisions**: `DECISIONS_AUTONOMES.md` en pausa; qualsevol dubte o desviació es pregunta al PO (notificació al mòbil via Remote Control).
+- 2026-10-24 — El PO confirma a Neon `dev` que `migrator` té `CREATE` a `public` (D9 tancada).
 
 ## Traspàs a sessió local (24/10)
 Proper pas: **implementador del chunk 1** (brief a [`EQUIP.md`](EQUIP.md); abast al prompt de tests, resumit aquí).
