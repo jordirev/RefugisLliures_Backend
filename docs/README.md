@@ -63,6 +63,7 @@ Les línies poden desplaçar-se amb canvis futurs; si una cita no quadra, busca 
 ### Disseny
 - [design/patterns.md](design/patterns.md) — patrons arquitectònics i de disseny amb diagrames (amplia [ARCHITECTURE §7](ARCHITECTURE.md)).
 - [design/decisions.md](design/decisions.md) — decisions preses (APIView, autenticació DRF + middleware, custom claims) i el seu estat real.
+- [design/postgres-schema.md](design/postgres-schema.md) — disseny físic de la BD PostgreSQL (Neon) per a la migració des de Firestore: schemas, taules, RLS, grants, mapatge i dubtes oberts.
 
 ### Deep dives (detall que no cap als fluxos)
 | Document | Pare |

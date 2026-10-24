@@ -66,7 +66,7 @@ api/views  api/serializers  api/controllers  api/daos  api/services   + api/mapp
 - `docs/integrations/` — firebase-auth · firestore · cloudflare-r2 · neon · redis-cache · render-deploy-ci.
 - `docs/recipes/` — add-endpoint · add-service · add-model.
 - `docs/guides/` — passos per executar/configurar: local-setup · testing · firebase-credentials · r2-render-setup · admin-management · client-auth-usage · daily-visits-process · cloudflare-domain-csam (futur: domini + CSAM).
-- `docs/design/` — patterns (detall dels patrons) · decisions (ADR: APIView, auth DRF+middleware, custom claims).
+- `docs/design/` — patterns (detall dels patrons) · decisions (ADR: APIView, auth DRF+middleware, custom claims) · postgres-schema (disseny físic de la BD PostgreSQL/Neon de la migració).
 - `docs/deep-dives/` — condition-average · refuge-proposals-payload · user-deletion (enllaçats des dels fluxos pare).
 
 ## En canviar codi
