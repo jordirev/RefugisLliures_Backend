@@ -491,3 +491,62 @@ def _mock_permission_user_lookup(request):
                 age_threshold=16, is_blocked=False)
     with patch('api.permissions.get_user_for_permissions', return_value=user) as mock_lookup:
         yield mock_lookup
+
+
+# ============= INFRAESTRUCTURA POSTGRES (chunk 1) =============
+# Els tests marcats `db_infra` necessiten el Postgres local (scripts/dev/setup_local_postgres.sh) i
+# les variables TEST_DATABASE_URL_APP / TEST_DATABASE_URL_MIGRATOR. Només se salten si falten.
+# Contracte per a l'implementador:
+#   - alias `default` = rol `app` (ATOMIC_REQUESTS=True) i alias `migrator` = rol `migrator`;
+#   - la fixture `django_db_setup` (pytest-django) s'ha de sobreescriure perquè apliqui les migracions amb
+#     `migrator` sobre la BD de proves i deixi la connexió `default` com a `app` (sense crear `test_*`).
+
+_PG_ENV_VARS = ('TEST_DATABASE_URL_APP', 'TEST_DATABASE_URL_MIGRATOR')
+
+
+def pytest_collection_modifyitems(config, items):
+    missing = [v for v in _PG_ENV_VARS if not os.environ.get(v)]
+    if not missing:
+        return
+    skip = pytest.mark.skip(
+        reason=f"Postgres local no configurat: falta {', '.join(missing)} "
+               f"(executa scripts/dev/setup_local_postgres.sh i exporta les URLs)")
+    for item in items:
+        if item.get_closest_marker('db_infra'):
+            item.add_marker(skip)
+
+
+@pytest.fixture
+def app_db(django_db_setup, django_db_blocker):
+    """Connexió Django `default` (rol app) en autocommit, fora de la transacció de pytest-django.
+
+    Cal per provar el context RLS local a la transacció: dins d'un `django_db` normal tot el test és
+    una sola transacció i `set_config(..., true)` no moriria en sortir d'un `atomic()` intern.
+    """
+    from django.db import connections
+    with django_db_blocker.unblock():
+        conn = connections['default']
+        assert conn.vendor == 'postgresql', f"`default` ha de ser Postgres, és {conn.vendor}"
+        assert not conn.in_atomic_block
+        yield conn
+
+
+@pytest.fixture
+def migrator_db(django_db_setup, django_db_blocker):
+    """Connexió Django `migrator` (propietària dels objectes de domini), en autocommit."""
+    from django.db import connections
+    with django_db_blocker.unblock():
+        if 'migrator' not in connections.databases:
+            pytest.fail("L'alias de BD `migrator` no està definit a settings.DATABASES")
+        yield connections['migrator']
+
+
+def fetch_all(conn, sql, params=None):
+    with conn.cursor() as cur:
+        cur.execute(sql, params)
+        return cur.fetchall()
+
+
+def fetch_one(conn, sql, params=None):
+    rows = fetch_all(conn, sql, params)
+    return rows[0] if rows else None
