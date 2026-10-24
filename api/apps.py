@@ -8,7 +8,10 @@ class ApiConfig(AppConfig):
     def ready(self):
         """
         S'executa quan l'aplicació està llesta.
-        Inicialitza Firebase Admin SDK.
+        Inicialitza Firebase Admin SDK i instal·la el hook de RLS per petició.
         """
+        from . import rls_hook
+        rls_hook.install()
+
         from .firebase_config import initialize_firebase
         initialize_firebase()

@@ -39,7 +39,7 @@ Les línies poden desplaçar-se amb canvis futurs; si una cita no quadra, busca 
 - [integrations/firebase-auth.md](integrations/firebase-auth.md)
 - [integrations/firestore.md](integrations/firestore.md)
 - [integrations/cloudflare-r2.md](integrations/cloudflare-r2.md)
-- [integrations/neon.md](integrations/neon.md) (Neon Postgres + PostGIS, en migració)
+- [integrations/neon.md](integrations/neon.md) (Neon Postgres + PostGIS: BD `default`, rols, migracions, RLS; migració en curs)
 - [integrations/redis-cache.md](integrations/redis-cache.md)
 - [integrations/render-deploy-ci.md](integrations/render-deploy-ci.md) (Render, GitHub Actions, SonarCloud, Codecov)
 
@@ -51,8 +51,8 @@ Les línies poden desplaçar-se amb canvis futurs; si una cita no quadra, busca 
 ### Guies (passos per executar o configurar)
 | Guia | Per a… |
 |---|---|
-| [guides/local-setup.md](guides/local-setup.md) | Posar en marxa el backend en local (venv, `env/`, R2, seeding, `runserver`) |
-| [guides/testing.md](guides/testing.md) | Executar i escriure tests, coverage, per què Firebase no s'inicialitza |
+| [guides/local-setup.md](guides/local-setup.md) | Posar en marxa el backend en local (venv, `env/`, Postgres + GDAL, Windows amb Docker, R2, seeding, `runserver`) |
+| [guides/testing.md](guides/testing.md) | Executar i escriure tests, coverage, tests contra Postgres local (RLS), Windows amb Docker, per què Firebase no s'inicialitza |
 | [guides/firebase-credentials.md](guides/firebase-credentials.md) | Configurar el service account (local, Render, GitHub Actions) |
 | [guides/r2-render-setup.md](guides/r2-render-setup.md) | Configurar Cloudflare R2 a Render/local, bucket, rotació de claus |
 | [guides/admin-management.md](guides/admin-management.md) | Fer/treure admins (custom claims) i usar els endpoints de cache |

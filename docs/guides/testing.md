@@ -4,7 +4,7 @@
 > Convencions de tests (mocks, estructura, fixtures mortes): [ARCHITECTURE §10](../ARCHITECTURE.md). Gotchas: [GOTCHAS #30-31](../GOTCHAS.md).
 
 ## Requisits
-`pip install -r requirements.txt` ja inclou `pytest`, `pytest-django`, `pytest-cov`, `pytest-mock` i `coverage`. No cal Firebase, Firestore, Redis ni R2: tot es mocka.
+`pip install -r requirements.txt` ja inclou `pytest`, `pytest-django`, `pytest-cov`, `pytest-mock` i `coverage`. No cal Firebase, Firestore, Redis ni R2: tot es mocka. Des del chunk 1 de la migració calen a més **GDAL/GEOS** al sistema (`django.contrib.gis` és sempre actiu) i, per als tests de BD, un **PostgreSQL + PostGIS local** (vegeu més avall); sense Postgres els tests amb BD se salten i els que no toquen la BD funcionen amb el SQLite de reserva **[FET]**.
 
 ## Executar
 ```bash
@@ -16,7 +16,7 @@ pytest -k "create"                       # per nom
 pytest -m views                          # per marker
 tox                                      # com a CI: pytest + coverage.xml
 ```
-Markers declarats a `pytest.ini` (amb `--strict-markers`, un marker no declarat fa fallar): `unit, integration, views, serializers, controller, controllers, daos, mappers, models, edge_cases, slow`.
+Markers declarats a `pytest.ini` (amb `--strict-markers`, un marker no declarat fa fallar): `unit, integration, views, serializers, controller, controllers, daos, mappers, models, edge_cases, slow, db_infra, rls, real_audit_log, real_permissions`.
 
 Depuració: `pytest -x` (atura al primer error), `--maxfail=3`, `--tb=long`, `-s` (mostra `print`), `--pdb`.
 
@@ -36,6 +36,37 @@ pytest --cov=api --cov-report=html              # informe a htmlcov/index.html
 3. `api/firebase_config.py` no inicialitza res si `'pytest' in sys.modules` o `TESTING=='true'`.
 
 Per a un test d'integració amb Firebase real caldria `TESTING=false` i credencials (no n'hi ha cap avui).
+
+## Tests contra PostgreSQL local (migració, chunk 1) [FET]
+- Bootstrap idempotent: `scripts/dev/setup_local_postgres.sh` (arrenca el clúster apt si cal; crea els rols `migrator` i `app` amb els atributs de `docs/design/postgres-schema.md` §1.3, la BD `refugisdb_test` i les extensions `postgis`, `pg_trgm`, `unaccent`, `btree_gist`). Imprimeix les dues URLs locals (no secretes); a CI es parametritza amb `PGHOST`, `PGPORT`, `PG_SUPERUSER`, `PGPASSWORD`, `PG_START_CLUSTER=0`.
+- Exporta-les: `eval "$(scripts/dev/setup_local_postgres.sh | grep ^export)"` → `TEST_DATABASE_URL_MIGRATOR` / `TEST_DATABASE_URL_APP`.
+- Marker `db_infra`: necessita aquestes variables i **se salta** (amb motiu) si falten; marker `rls`: tests del context RLS i del hook (executen el `set_config` de debò). Les migracions les aplica `migrator` i els tests corren com a `app` (la RLS només s'aplica a `app`).
+- **`django_db_setup`** (`api/tests/conftest.py`) sobreescriu el de pytest-django: amb `migrator` definit **no crea cap BD `test_*`**; executa `migrate --database=migrator` sobre la BD de proves (idempotent) i dona al rol `app` DML sobre les taules de Django de `public` (només a la BD de proves: alguns tests creen un `auth.User` per a `force_authenticate`; no formen part dels grants de producció). Sense `migrator` (sense Postgres) es manté el comportament per defecte sobre SQLite.
+- **`TEST_DATABASE_URL_APP` / `TEST_DATABASE_URL_MIGRATOR` tenen prioritat** sobre `DATABASE_URL_*` a `settings.py`: els tests mai van a Neon encara que `env/` en tingui les URL.
+- **Fixture `_rls_hook_sense_bd`** (`autouse`): als tests que **no** porten cap dels markers `rls`, `django_db`, `db_infra` (vistes amb controllers mockejats, sense BD) fa `patch('api.rls_hook.apply_context')`, perquè el hook de RLS no intenti executar `set_config` sense connexió a Postgres. Els tests de BD l'executen de debò. Si un test de vista sense BD vol comprovar el hook, ha de dur el marker `rls`.
+- Les fixtures `app_db` / `migrator_db` (`api/tests/conftest.py`) donen connexions en autocommit fora de la transacció de pytest-django, necessàries per provar contextos locals a la transacció.
+- **Guarda de host**: `django_db_setup` fa `pytest.exit` (codi 2) si el `HOST` de `TEST_DATABASE_URL_MIGRATOR` no és local (`localhost`, `127.0.0.1`, `::1`, `host.docker.internal`, `*.localhost`): els tests mai poden córrer contra Neon, encara que s'hi apunti per error **[FET]**.
+- Tests de seguretat a `api/tests/security/`: rol `app` (sense atributs privilegiats ni propietat d'objectes, no pot crear objectes als schemas ni escalar privilegis ni substituir `core.*`; `core.*` no executables per `PUBLIC`, `SECURITY DEFINER` amb `search_path` fixat), hook de RLS (context local a la transacció, avís fora de transacció, `is_system` reiniciat, contextos interns que no escalen l'extern, `uid` no-string = anònim, `role` no exacte no dona admin), respostes d'auth (el 401 no filtra detalls ni l'UID als logs) i guarda de l'emulador de Firebase (plataformes, hosts locals, variants booleanes) **[FET]**.
+- Tests d'infraestructura a `api/tests/infra/` (settings de BD, hook de RLS, health, arquitectura RLS, emulador, `uuid7`, middleware del health) i `api/tests/core/` (context RLS, helpers de polítiques, funcions SQL de `core`).
+- Execució a CI: servei `postgis/postgis:17-3.5` + `setup_local_postgres.sh` amb `PGHOST=localhost PG_START_CLUSTER=0`; `tox.ini` fa `passenv` de les `TEST_DATABASE_URL_*` ([render-deploy-ci.md](../integrations/render-deploy-ci.md)).
+
+### Windows: tests en un contenidor Linux [FET]
+No hi ha GDAL natiu a Windows, així que els tests s'executen en un contenidor (així s'han passat els del chunk 1: `python:3.13-slim` + `gdal-bin libgdal-dev libgeos-dev libproj-dev`, `pip install -r requirements.txt`) contra un contenidor `postgis/postgis:17-3.5`. El Dockerfile, l'arrencada del Postgres i el *bootstrap* són a [local-setup.md § PostgreSQL](local-setup.md). Les proves, amb el repo muntat a `/app`:
+```powershell
+docker run --rm -v "${PWD}:/app" -w /app --add-host=host.docker.internal:host-gateway `
+  -e PGHOST=host.docker.internal -e PG_START_CLUSTER=0 -e PGPASSWORD=<contrasenya-local> rl-backend `
+  bash -c 'eval "$(scripts/dev/setup_local_postgres.sh | grep ^export)" && pytest -q'
+```
+Alternativa: `TEST_DATABASE_URL_APP` i `TEST_DATABASE_URL_MIGRATOR` a `env/.env.development` amb host `host.docker.internal` (no cal l'`eval`; no imprimeixis els valors). El contenidor corre Python 3.13 i CI 3.10: un test que depengui de la versió pot divergir **[INFERÈNCIA]**.
+
+## E2E local (servidor real + Firebase Emulators) [FET]
+Script: `scripts/e2e/e2e_chunk1.sh` (health amb `database`, 401/403/404/200 amb tokens d'usuari normal i d'admin; surt amb 1 si algun cas falla). Així s'ha validat el chunk 1 el 24/10/2026 contra un Postgres local migrat (12/12).
+1. Emuladors: carpeta amb `firebase.json` (`{"emulators":{"auth":{"port":9099,"host":"0.0.0.0"},"firestore":{"port":8085,"host":"0.0.0.0"},"ui":{"enabled":false}}}`) i `npx -y firebase-tools emulators:start --only auth,firestore --project demo-refugis-lliures` (cal Node i Java).
+2. BD: `TEST_DB_NAME=refugisdb_e2e scripts/dev/setup_local_postgres.sh` (o la BD a provar, p. ex. Neon `dev`) i `python manage.py migrate --database=migrator`.
+3. Servidor amb, com a mínim: `DATABASE_URL_APP`/`DATABASE_URL_MIGRATOR` de la BD a provar, `TEST_DATABASE_URL_*` **buides** (tenen prioritat), `FIREBASE_AUTH_EMULATOR_HOST`, `FIRESTORE_EMULATOR_HOST`, `GCLOUD_PROJECT=demo-refugis-lliures`, `REDIS_URL` local (si no, `env/.env.development` porta el Redis remot) i `R2_*` ficticis amb un endpoint inabastable (`users/{uid}` i `admin/media-reports` creen el client R2 encara que no el facin servir).
+4. `bash scripts/e2e/e2e_chunk1.sh` (`BASE_URL`, `AUTH_EMULATOR` configurables).
+- **Firestore Emulator i credencials**: amb l'emulador d'Auth, `firebase_admin` s'inicialitza sense credencial i el client de Firestore demana ADC (`DefaultCredentialsError`, health 503). Cal `GOOGLE_APPLICATION_CREDENTIALS` apuntant a un service account **fictici** (clau RSA generada al moment, `project_id` `demo-refugis-lliures`); l'emulador no la valida.
+- Amb Postgres inabastable, `/api/health/` torna 503 `unhealthy` en ~10 s (`connect_timeout`).
 
 ## Estructura
 ```

@@ -56,10 +56,13 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django.contrib.gis',
+    'django.contrib.postgres',
     'rest_framework',
     'corsheaders',
     'drf_yasg',
     'django_crontab',
+    'domain.core',
     'api',
 ]
 
@@ -72,6 +75,7 @@ MIDDLEWARE = [
     #'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'api.middleware.FirebaseAuthenticationMiddleware',  # Firebase Auth Middleware
+    'api.middleware.HealthDatabaseErrorMiddleware',  # 503 del health check si Postgres és inabastable
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
@@ -100,6 +104,52 @@ WSGI_APPLICATION = 'refugis_lliures.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
+# `default` = PostgreSQL/PostGIS (Neon en runtime) amb el rol `app` (només DML, subjecte a RLS) i una transacció per
+# petició (`ATOMIC_REQUESTS`, §7.3 del disseny); `migrator` = rol propietari dels objectes (DDL, migracions, càrrega).
+# Les variables `TEST_DATABASE_URL_*` (Postgres local, scripts/dev/setup_local_postgres.sh) tenen prioritat sobre
+# `DATABASE_URL_APP` / `DATABASE_URL_MIGRATOR`. Sense cap URL es manté SQLite, només perquè els tests amb mocks
+# (que no toquen la BD) puguin carregar la configuració.
+_LOCAL_DB_HOSTS = {'localhost', '127.0.0.1', '::1', 'host.docker.internal'}
+
+
+def _postgres_database(url_vars, pooled, atomic_requests):
+    """Config d'una BD Postgres/PostGIS a partir de la primera variable d'entorn definida de `url_vars` (o None)."""
+    from urllib.parse import urlparse, unquote, parse_qs
+
+    url = next((v for v in (config(name, default='') for name in url_vars) if v), '')
+    if not url:
+        return None
+    parsed = urlparse(url)
+    host = parsed.hostname or ''
+    options = {
+        # El pooler de Neon (PgBouncer, mode transacció) no admet sentències preparades ni el paràmetre
+        # d'arrencada `options` (§1.5): per això no hi ha `options` i es desactiven les preparades.
+        'prepare_threshold': None,
+        # Sense límit, un host inabastable (o un cold start de Neon fallit) deixaria el worker penjat (també el
+        # health check): libpq no té cap timeout de connexió per defecte.
+        'connect_timeout': 10,
+    }
+    sslmode = (parse_qs(parsed.query).get('sslmode') or [None])[0]
+    if not sslmode and host not in _LOCAL_DB_HOSTS and not host.endswith('.localhost'):
+        sslmode = 'require'
+    if sslmode:
+        options['sslmode'] = sslmode
+    return {
+        'ENGINE': 'django.contrib.gis.db.backends.postgis',
+        'NAME': parsed.path.lstrip('/'),
+        'USER': unquote(parsed.username or ''),
+        'PASSWORD': unquote(parsed.password or ''),
+        'HOST': host,
+        'PORT': parsed.port or 5432,
+        'OPTIONS': options,
+        'ATOMIC_REQUESTS': atomic_requests,
+        # Amb el pooler no es poden usar cursors de servidor.
+        'DISABLE_SERVER_SIDE_CURSORS': pooled,
+        'CONN_MAX_AGE': 60 if pooled else 0,
+        'CONN_HEALTH_CHECKS': pooled,
+    }
+
+
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
@@ -107,42 +157,13 @@ DATABASES = {
     }
 }
 
-
-def _neon_database(url_var, pooled):
-    """Construeix la config d'una BD de Neon a partir d'una variable d'entorn amb la URL (o None)."""
-    from urllib.parse import urlparse, unquote
-
-    url = config(url_var, default='')
-    if not url:
-        return None
-    parsed = urlparse(url)
-    # GeoDjango (PostGIS) requereix GDAL/GEOS: a Cloud Run vénen a la imatge Docker.
-    # En locals sense GDAL es manté el backend postgresql estàndard (SQL pla amb PostGIS).
-    use_gis = config('NEON_USE_POSTGIS_ENGINE', default=False, cast=bool)
-    return {
-        'ENGINE': 'django.contrib.gis.db.backends.postgis' if use_gis else 'django.db.backends.postgresql',
-        'NAME': parsed.path.lstrip('/'),
-        'USER': unquote(parsed.username or ''),
-        'PASSWORD': unquote(parsed.password or ''),
-        'HOST': parsed.hostname,
-        'PORT': parsed.port or 5432,
-        'OPTIONS': {'sslmode': 'require'},
-        # Amb el pooler (PgBouncer, mode transacció) no es poden usar cursors de servidor.
-        'DISABLE_SERVER_SIDE_CURSORS': pooled,
-        'CONN_MAX_AGE': 60 if pooled else 0,
-        'CONN_HEALTH_CHECKS': pooled,
-        # Els tests no han de crear bases de dades de test a Neon: s'emmirallen a `default`.
-        'TEST': {'MIRROR': 'default'},
-    }
-
-
-# Neon (Postgres): variables a env/.env.development o env/.env.production (fora de git).
-# Alias `neon` = rol `app` pel pooler (només DML); `neon_migrator` = rol `migrator` per l'endpoint directe (DDL, migracions).
-# Firestore continua sent la BD de domini fins a la migració dels DAOs.
-for _alias, _var, _pooled in (('neon', 'DATABASE_URL_APP', True), ('neon_migrator', 'DATABASE_URL_MIGRATOR', False)):
-    _db = _neon_database(_var, _pooled)
-    if _db:
-        DATABASES[_alias] = _db
+_app_db = _postgres_database(('TEST_DATABASE_URL_APP', 'DATABASE_URL_APP'), pooled=True, atomic_requests=True)
+if _app_db:
+    DATABASES['default'] = _app_db
+_migrator_db = _postgres_database(('TEST_DATABASE_URL_MIGRATOR', 'DATABASE_URL_MIGRATOR'), pooled=False,
+                                  atomic_requests=False)
+if _migrator_db:
+    DATABASES['migrator'] = _migrator_db
 
 
 # Password validation

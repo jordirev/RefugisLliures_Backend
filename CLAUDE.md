@@ -4,8 +4,9 @@ API REST (Django 5.1 + DRF) de l'app Refugis Lliures: refugis de muntanya, fotos
 Documentació detallada a [`docs/`](docs/README.md). Llegenda als docs: **[FET]** / **[INFERÈNCIA]** / **[NO VERIFICAT]**.
 
 ## Stack
-- **Firestore** és la BD real (via `firebase-admin`). SQLite (`db.sqlite3`) només per a apps internes de Django; cap model de domini és un model Django.
-- **Firebase Auth**: ID token `Bearer` verificat al middleware; admin = custom claim `role == 'admin'`.
+- **PostgreSQL + PostGIS (Neon)** és la BD `default` de Django (rol `app`, `ATOMIC_REQUESTS`, RLS; àlies `migrator` per a DDL) des del chunk 1 de la migració; **requereix GDAL/GEOS** (`django.contrib.gis` sempre actiu). Sense URL de Postgres, `default` cau a SQLite (només per a tests sense BD).
+- **Firestore** (via `firebase-admin`) continua sent la BD del domini fins als chunks següents de la migració (`docs/migration/`); cap model de domini és encara un model Django.
+- **Firebase Auth**: ID token `Bearer` verificat al middleware; admin = custom claim `role == 'admin'`. Un hook (`api/rls_hook.py`) fixa el context de RLS (`app.uid`, `app.is_admin`) a la transacció de cada petició. Per a e2e locals, `FIREBASE_AUTH_EMULATOR_HOST` (mai en producció).
 - **Cloudflare R2** (boto3) per a media; bucket privat, URLs presignades d'1 h.
 - **Redis** (django-redis) com a cache; errors de Redis s'empassen silenciosament.
 - Deploy a **Render** (gunicorn, 1 worker); CI, ping i procés diari a **GitHub Actions**.
@@ -13,8 +14,10 @@ Documentació detallada a [`docs/`](docs/README.md). Llegenda als docs: **[FET]*
 ## Comandes
 ```bash
 pip install -r requirements.txt
-python manage.py runserver            # requereix env/ local + Redis + variables R2_* exportades
-pytest                                # tots els tests (api/tests)
+python manage.py runserver            # requereix env/ local + Postgres (DATABASE_URL_APP) + Redis + GDAL; R2_* només per als endpoints de media
+python manage.py migrate --database=migrator   # SEMPRE amb el rol migrator (app no té DDL)
+python manage.py check_neon --alias default    # (o migrator) comprova Postgres/PostGIS
+pytest                                # tots els tests (api/tests); els de BD volen TEST_DATABASE_URL_APP/MIGRATOR (scripts/dev/setup_local_postgres.sh); a Windows, en un contenidor Linux amb GDAL (docs/guides/testing.md)
 pytest api/tests/renovation -q        # un domini
 pytest -m views                       # per marker (pytest.ini, --strict-markers)
 tox                                   # com a CI: pytest + coverage.xml
@@ -52,7 +55,8 @@ api/views  api/serializers  api/controllers  api/daos  api/services   + api/mapp
 7. `R2MediaService.delete_file` retorna `False`, no llança: comprova el booleà. Tota pujada (única via: upload-intents + `confirm`) ha de passar per `MediaUploadController.process_and_publish` (neteja EXIF, tipus real, claus UUID); no facis `put_object` de bytes de l'usuari directament.
 8. Variables `R2_*` es llegeixen amb `os.getenv`; `decouple` no omple `os.environ` → exporta-les a l'entorn.
 9. Canviar el text d'un error pot canviar el codi HTTP.
-10. Els tests de vistes muten `view.cls.permission_classes`; usa `patch.object`. `api/tests/conftest.py` bloqueja Firestore real i mocka `AuditLogService.log` i `get_user_for_permissions` (markers `real_audit_log`, `real_permissions` per desactivar-ho).
+10. El context de RLS (`set_config(..., true)`) és local a la transacció i només el posa el hook a peticions HTTP; en comandes/jobs usa `rls_context()`/`system_context()`. Migracions sempre `--database=migrator`. `ATOMIC_REQUESTS` no desfà escriptures a Firestore/R2.
+11. Els tests de vistes muten `view.cls.permission_classes`; usa `patch.object`. `api/tests/conftest.py` bloqueja Firestore real i mocka `AuditLogService.log` i `get_user_for_permissions` (markers `real_audit_log`, `real_permissions` per desactivar-ho).
 
 ## Seguretat
 - **No llegeixis ni imprimeixis** fitxers de `env/` (service accounts, `.env.*`, `api-keys.env`). No estan versionats; només se'n poden esmentar els noms de variables.
@@ -67,6 +71,7 @@ api/views  api/serializers  api/controllers  api/daos  api/services   + api/mapp
 - `docs/recipes/` — add-endpoint · add-service · add-model.
 - `docs/guides/` — passos per executar/configurar: local-setup · testing · firebase-credentials · r2-render-setup · admin-management · client-auth-usage · daily-visits-process · cloudflare-domain-csam (futur: domini + CSAM).
 - `docs/design/` — patterns (detall dels patrons) · decisions (ADR: APIView, auth DRF+middleware, custom claims) · postgres-schema (disseny físic de la BD PostgreSQL/Neon de la migració).
+- `docs/migration/` — PLAN · PROGRESS (estat dels chunks) · DECISIONS_AUTONOMES · EQUIP (rols dels agents) · documents d'arquitectura i UML de la migració Firestore → PostgreSQL.
 - `docs/deep-dives/` — condition-average · refuge-proposals-payload · user-deletion (enllaçats des dels fluxos pare).
 
 ## En canviar codi

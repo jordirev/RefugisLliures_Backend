@@ -10,7 +10,7 @@ class Command(BaseCommand):
     help = 'Comprova la connexió a Neon, PostGIS, pg_trgm/unaccent i una consulta ST_DWithin'
 
     def add_arguments(self, parser):
-        parser.add_argument('--alias', default='neon_migrator', choices=['neon', 'neon_migrator'],
+        parser.add_argument('--alias', default='migrator', choices=['default', 'migrator'],
                             help="Alias de DATABASES a provar (per defecte el rol migrator, endpoint directe)")
 
     def handle(self, *args, **options):
@@ -27,6 +27,8 @@ class Command(BaseCommand):
 
             cur.execute("SELECT similarity(unaccent('Refugi de Cap de Llauset'), 'refugi cap llauset')")
             self.stdout.write(f'pg_trgm + unaccent: similarity = {cur.fetchone()[0]:.2f}')
+
+            self._check_bootstrap(cur)
 
             cur.execute(
                 'CREATE TEMP TABLE _check_refuges '
@@ -50,3 +52,22 @@ class Command(BaseCommand):
         if len(rows) != 1 or rows[0][0] != 'Refugi de prova A':
             raise CommandError('ST_DWithin no ha retornat el resultat esperat')
         self.stdout.write(self.style.SUCCESS(f"Neon OK (alias '{alias}')"))
+
+    def _check_bootstrap(self, cur):
+        """Avisa si falta algun requisit del bootstrap del propietari (§1.3 del disseny)."""
+        cur.execute("SELECT extname FROM pg_extension WHERE extname IN ('postgis', 'pg_trgm', 'unaccent', 'btree_gist')")
+        missing = {'postgis', 'pg_trgm', 'unaccent', 'btree_gist'} - {row[0] for row in cur.fetchall()}
+        # Els grants són del rol `migrator` (qui aplica les migracions), sigui quin sigui l'àlies connectat:
+        # amb `default` (rol `app`) mirar `current_user` donava falsos avisos.
+        cur.execute("SELECT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'migrator')")
+        if cur.fetchone()[0]:
+            cur.execute("SELECT has_database_privilege('migrator', current_database(), 'CREATE'), "
+                        "has_schema_privilege('migrator', 'public', 'CREATE')")
+            db_create, public_create = cur.fetchone()
+        else:
+            db_create = public_create = False
+        for ok, msg in ((not missing, f'extensions que falten: {sorted(missing)}'),
+                        (db_create, 'falta GRANT CREATE ON DATABASE (core.0001 no podra crear els schemas)'),
+                        (public_create, 'falta GRANT CREATE ON SCHEMA public (PG15+: Django no podra crear django_migrations)')):
+            if not ok:
+                self.stdout.write(self.style.WARNING(f'Bootstrap incomplet: {msg}'))

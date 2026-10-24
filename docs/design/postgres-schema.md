@@ -82,12 +82,15 @@ CREATE EXTENSION IF NOT EXISTS pg_trgm;      -- ja existeix [FET]
 CREATE EXTENSION IF NOT EXISTS unaccent;     -- ja existeix [FET]
 CREATE EXTENSION IF NOT EXISTS btree_gist;   -- NOVA
 GRANT CREATE ON DATABASE refugisdb TO migrator;   -- perquè core.0001 pugui fer CREATE SCHEMA (el migrator en serà el propietari)
+GRANT CREATE ON SCHEMA public TO migrator;       -- PG15+ (vegeu la nota de sota): per a django_migrations i les taules de Django
 ALTER ROLE app      NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS;
 ALTER ROLE migrator NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS;
 ALTER ROLE app SET statement_timeout = '20s';
 ALTER ROLE app SET lock_timeout = '5s';
 ALTER ROLE app SET idle_in_transaction_session_timeout = '30s';
 ```
+
+**`GRANT CREATE ON SCHEMA public TO migrator` (PG15+).** PostgreSQL 15 va treure `CREATE` a `PUBLIC` sobre el schema `public`, i Django crea a `public` `django_migrations` i les taules de `auth`/`admin`/`sessions` (el rol `migrator` les ha de poder crear). **Decisió: mantenir-lo** (afegit al *bootstrap* local `scripts/dev/setup_local_postgres.sh` al chunk 1; a Neon `dev` encara **[NO VERIFICAT]**: `python manage.py check_neon` avisa si falta). Alternativa descartada: moure les taules internes de Django a un schema `django` amb `search_path` (més configuració per a un benefici mínim, i `search_path` no és fiable amb el pooler, §1.5).
 
 Les extensions viuen a `public` (on les espera `django.contrib.gis` i on resolen `similarity()`, `%`, `gin_trgm_ops`, `ST_*`). Les funcions pròpies viuen a `core` i es **qualifiquen sempre** (`core.norm_name(...)`). **Entorn local de proves**: PostgreSQL 16 + PostGIS 3 **natius instal·lats amb apt** (el dimoni de Docker no hi és; els paquets `postgresql-16`, `postgresql-16-postgis-3` i `postgresql-contrib` inclouen `pg_trgm`, `unaccent` i `btree_gist`). Cal reproduir el *bootstrap* d'aquesta secció (extensions pel superusuari local, rols `app` i `migrator` amb els mateixos atributs; feina del chunk 1). **Diferència de versions**: local = 16, Neon `dev`/`production` = 17. Cap funcionalitat d'aquest disseny requereix >16 (`UNIQUE NULLS NOT DISTINCT` és de la 15, `bit_count` de la 14, `gen_random_uuid` del nucli des de la 13; `uuidv7()` és de la 18 i no s'usa). Cal repetir els tests de RLS i les migracions també a Neon `dev` (e2e), perquè les diferències de planificador/pooler només s'hi veuen.
 

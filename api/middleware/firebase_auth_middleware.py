@@ -76,7 +76,7 @@ class FirebaseAuthenticationMiddleware(MiddlewareMixin):
             
             request.user = FirebaseUser(decoded_token.get('uid'), decoded_token)
             
-            logger.info(f"Token verificat correctament per a l'usuari: {request.user_uid}")
+            logger.debug("Token verificat correctament")  # sense l'UID: no es registren identificadors personals
             return None
             
         except auth.ExpiredIdTokenError:
@@ -92,8 +92,9 @@ class FirebaseAuthenticationMiddleware(MiddlewareMixin):
             return self._unauthorized_response('Token invàlid')
             
         except Exception as e:
-            logger.error(f"Error verificant token: {str(e)}")
-            return self._unauthorized_response('Error verificant el token: ' + str(e))
+            # El detall de l'error (configuració, certificats, xarxa) no es retorna al client.
+            logger.error(f"Error verificant token ({type(e).__name__})")
+            return self._unauthorized_response('Error verificant el token')
     
     def _is_path_excluded(self, path):
         """Comprova si el path està exclòs de l'autenticació"""

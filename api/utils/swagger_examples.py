@@ -380,13 +380,15 @@ EXAMPLE_HEALTH_CHECK_RESPONSE = {
     'message': 'OK',
     'firebase': True,
     'firestore': True,
-    'collections_count': 5
+    'collections_count': 5,
+    'database': True
 }
 
 EXAMPLE_HEALTH_CHECK_UNHEALTHY = {
     'status': 'unhealthy',
-    'message': 'Error connecting to Firebase',
-    'firebase': False
+    'message': 'Database unavailable',
+    'firebase': False,
+    'database': False
 }
 
 # ========== EXEMPLES D'AVATAR ==========

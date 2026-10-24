@@ -20,9 +20,16 @@ Variables (noms) a `env/.env.development` i `env/.env.production`: `SECRET_KEY, 
 ## GitHub Actions (`.github/workflows/`)
 | Workflow | Disparador | Què fa |
 |---|---|---|
-| `django.yml` | push/PR a `main`, `develop` | Python 3.10 → `pip install tox` → `tox -e py` (pytest + coverage XML) → Codecov (`CODECOV_TOKEN`) → SonarQube scan (`SONAR_TOKEN`) |
+| `django.yml` | push/PR a `main`, `develop`, `migration` | Servei `postgis/postgis:17-3.5` → `apt-get install gdal-bin libgdal-dev postgresql-client` → Python 3.10 → `pip install tox` → *bootstrap* de la BD de proves (`scripts/dev/setup_local_postgres.sh`, amb `PGHOST=localhost`, `PG_START_CLUSTER=0`; exporta `TEST_DATABASE_URL_*` a `$GITHUB_ENV`) → `tox -e py` (pytest + coverage XML) → Codecov (`CODECOV_TOKEN`) → SonarQube scan (`SONAR_TOKEN`) |
 | `ping-website.yml` | cron `*/9 * * * *` + manual | `curl` a `/swagger/`; falla si no és 200/301/302 |
 | `process-visits.yml` | cron `0 3 * * *` (UTC) + manual | `pip install -r requirements.txt` → `python manage.py process_yesterday_visits` amb secrets `R2_*`, `FIREBASE_SERVICE_ACCOUNT_KEY` i `PRODUCTION='true'` |
+
+### CI i PostgreSQL (migració, chunk 1) [FET]
+- El servei de Postgres és efímer (contrasenya de superusuari només per a CI, no secreta) i de la **mateixa versió major que Neon (17)**. La Neon real **no** s'usa mai a CI.
+- El *bootstrap* de la BD de proves escriu la sortida de l'script a un fitxer (`$RUNNER_TEMP/pg.env`) abans de fer `eval`, de manera que si falla **el pas falla en veu alta** (dins d'`eval "$(...)"` l'error s'ignoraria i els tests caurien a SQLite sense avisar), i després comprova que `TEST_DATABASE_URL_APP` i `TEST_DATABASE_URL_MIGRATOR` no són buides **[FET]**.
+- GDAL/GEOS són necessaris perquè `django.contrib.gis` sempre és actiu (vegeu [neon.md](neon.md)).
+- `tox.ini` té `passenv = TEST_DATABASE_URL_APP, TEST_DATABASE_URL_MIGRATOR`: sense això tox no hi passaria les variables i els tests de BD se saltarien/fallarien.
+- La branca d'integració `migration` és als dos disparadors (`push` i `pull_request`) perquè les PR de cada chunk (`migracio/<chunk>` → `migration`) passin la CI.
 
 ## SonarCloud (`sonar-project.properties`)
 `projectKey=jordirev_RefugisLliures_Backend`, `organization=jordirev`, `sources=api`, coverage de `coverage.xml`. Exclou tests, settings, urls, `__init__`, i del coverage també `services/**` i `utils/**`.
@@ -40,12 +47,14 @@ Variables (noms) a `env/.env.development` i `env/.env.production`: `SECRET_KEY, 
 ## Gotchas
 - `RENDER="1"` vs `RENDER=='true'` a `api/firebase_config.py:21,27` **[NO VERIFICAT]** si Render el sobreescriu.
 - 1 worker sync + timeout 30 s + pujades sense límit → una pujada lenta bloqueja tot el servei **[INFERÈNCIA]**.
-- `tox.ini` declara `py39` però CI executa `tox -e py` amb 3.10 **[FET]**.
+- `tox.ini` declara `py39` però CI executa `tox -e py` amb 3.10 **[FET]**. (Als tests locals en contenidor s'usa Python 3.13: vegeu [guides/testing.md](../guides/testing.md).)
 - `process-visits.yml` no posa `REDIS_URL` → no invalida la cache de producció **[INFERÈNCIA]**.
 - Comentari "3:00 Madrid" a `refugis_lliures/settings.py:276` vs "3:00 UTC" al workflow: el que s'executa és el del workflow (UTC) **[FET]**; com que el procés calcula "ahir" en hora de Madrid, a les 3:00 UTC (4-5 h a Madrid) "ahir" és correcte **[INFERÈNCIA]**.
 
 ## Neon (variables d'entorn) [FET]
-`DATABASE_URL_APP` (rol `app`, pooler), `DATABASE_URL_MIGRATOR` (rol `migrator`, directa), `NEON_BRANCH` i opcionalment `NEON_USE_POSTGIS_ENGINE`. Es llegeixen de `env/.env.*` (o de l'entorn) amb `decouple`. Només hi ha alias Django si són presents; CI no les defineix i els tests no toquen Neon. Detall: [neon.md](neon.md).
+`DATABASE_URL_APP` (rol `app`, pooler), `DATABASE_URL_MIGRATOR` (rol `migrator`, directa) i `NEON_BRANCH`. Es llegeixen de `env/.env.*` (o de l'entorn) amb `decouple`; `TEST_DATABASE_URL_APP` / `TEST_DATABASE_URL_MIGRATOR` (Postgres de proves) tenen prioritat. `default` és Postgres si hi ha alguna URL `app`; l'àlies `migrator` només existeix si hi ha la URL del migrator. CI defineix només les `TEST_*` (cap secret). `NEON_USE_POSTGIS_ENGINE` ja no existeix. Detall: [neon.md](neon.md).
+
+**Pendent de desplegament [NO VERIFICAT]**: ni `build.sh` ni `render.yaml` instal·len GDAL/GEOS ni defineixen `DATABASE_URL_APP`; amb `django.contrib.gis` sempre actiu, un desplegament a Render sense GDAL no arrencaria. El desplegament (Cloud Run amb imatge Docker amb GDAL, segons l'arquitectura) queda fora del chunk 1 ([TECH_DEBT.md](../TECH_DEBT.md) P1). Les migracions no s'executen al build: `python manage.py migrate --database=migrator`.
 
 ## Guies relacionades
 [firebase-credentials.md](../guides/firebase-credentials.md) · [r2-render-setup.md](../guides/r2-render-setup.md) · [daily-visits-process.md](../guides/daily-visits-process.md) · [testing.md](../guides/testing.md)

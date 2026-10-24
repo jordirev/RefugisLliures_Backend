@@ -71,10 +71,10 @@ class HealthCheckAPIView(APIView):
                 return Response(health_data, status=status.HTTP_200_OK)
             
         except Exception as e:
-            logger.error(f'Health check failed: {str(e)}')
+            logger.error(f'Health check failed: {type(e).__name__}')
             error_data = {
                 'status': 'unhealthy',
-                'message': f'Error: {str(e)}',
+                'message': 'Health check failed',
                 'firebase': False
             }
             return Response(error_data, status=status.HTTP_503_SERVICE_UNAVAILABLE)

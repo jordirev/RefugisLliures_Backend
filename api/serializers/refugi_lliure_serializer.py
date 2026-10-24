@@ -202,3 +202,4 @@ class HealthCheckResponseSerializer(serializers.Serializer):
     firebase = serializers.BooleanField()
     firestore = serializers.BooleanField(required=False)
     collections_count = serializers.IntegerField(required=False)
+    database = serializers.BooleanField(required=False)

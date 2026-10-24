@@ -195,8 +195,9 @@ class TestRefugiController:
         for refugi in result['results']:
             assert 'visitors' not in refugi or refugi.get('visitors') == []
     
+    @patch('api.controllers.refugi_lliure_controller.check_database', return_value=True)
     @patch('api.controllers.refugi_lliure_controller.RefugiLliureDAO')
-    def test_health_check_success(self, mock_dao_class):
+    def test_health_check_success(self, mock_dao_class, mock_check_db):
         """Test health check exitós"""
         mock_dao = mock_dao_class.return_value
         mock_dao.health_check.return_value = {
@@ -212,9 +213,11 @@ class TestRefugiController:
         assert error is None
         assert result['status'] == 'healthy'
         assert result['firebase'] is True
+        assert result['database'] is True
     
+    @patch('api.controllers.refugi_lliure_controller.check_database', return_value=True)
     @patch('api.controllers.refugi_lliure_controller.RefugiLliureDAO')
-    def test_health_check_failure(self, mock_dao_class):
+    def test_health_check_failure(self, mock_dao_class, mock_check_db):
         """Test health check amb error"""
         mock_dao = mock_dao_class.return_value
         mock_dao.health_check.side_effect = Exception('Connection error')
@@ -394,10 +397,11 @@ class TestRefugiLliureControllerExtended:
         assert res is None
         assert "Internal server error" in error
 
+    @patch('api.controllers.refugi_lliure_controller.check_database', return_value=True)
     @patch('api.controllers.refugi_lliure_controller.r2_media_service')
     @patch('api.controllers.refugi_lliure_controller.RefugiLliureDAO')
     @patch('api.controllers.refugi_lliure_controller.UserDAO')
-    def test_health_check_errors(self, mock_user_dao_class, mock_ref_dao_class, mock_r2):
+    def test_health_check_errors(self, mock_user_dao_class, mock_ref_dao_class, mock_r2, mock_check_db):
         """Test health_check errors"""
         ctrl = RefugiLliureController()
         mock_ref_dao = mock_ref_dao_class.return_value
@@ -405,7 +409,7 @@ class TestRefugiLliureControllerExtended:
         mock_ref_dao.health_check.side_effect = Exception("Health Error")
         res, error = ctrl.health_check()
         assert res['status'] == 'unhealthy'
-        assert "Health Error" in error
+        assert "Health Error" not in error and "Health Error" not in res['message']
 
     @patch('api.controllers.refugi_lliure_controller.r2_media_service')
     @patch('api.controllers.refugi_lliure_controller.RefugiLliureDAO')

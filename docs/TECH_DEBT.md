@@ -35,7 +35,7 @@
 | M8 | Error path del PATCH d'experiència fa `None.to_dict()`. | `api/views/experience_views.py:310-312` | FET |
 | M9 | Payload de proposta es desa en brut (sense coerció de tipus del serializer niat). | `api/serializers/refuge_proposal_serializer.py:160-166` | FET |
 | M10 | Esborrat d'usuari: tota fallada es retorna com a 404; el compte de Firebase Auth no s'esborra al backend. | `api/views/user_views.py:268-271`; cap `auth.delete_user` a `api/` | FET |
-| M11 | Configuració insegura per defecte: `DEBUG=True`, `ALLOWED_HOSTS='*'`, CORS obert, CSRF middleware comentat. | `refugis_lliures/settings.py:45-47,72,169` | FET (valors en producció: NO VERIFICAT) |
+| M11 | Configuració insegura per defecte: `DEBUG=True`, `ALLOWED_HOSTS='*'`, CORS obert, CSRF middleware comentat. **Severitat mitjana: cal un default segur (`DEBUG=False`, `ALLOWED_HOSTS` explícit) abans de desplegar a Cloud Run**, on no hi ha l'`env/` ni el dashboard de Render que avui ho sobreescriuen (detectat per l'agent de seguretat del chunk 1). | `refugis_lliures/settings.py:45-47,72,169` | FET (valors en producció: NO VERIFICAT) |
 
 ## Baix
 
@@ -44,7 +44,7 @@
 | B1 | `active_only` de `GET /refuges/{id}/renovations/` és paràmetre del mètode, no es llegeix de la query → sempre `False`. | `api/views/refugi_lliure_views.py:282-286` | FET |
 | B2 | Cerca per nom exacta (`==`) però Swagger diu parcial i case-insensitive. | `api/daos/refugi_lliure_dao.py:204-226` | FET |
 | B3 | Qualsevol usuari autenticat pot llegir el perfil complet d'un altre (llistes, claus de fotos). | `api/views/user_views.py:155-156` | FET |
-| B4 | Health check depèn de les variables R2 (el controller crea el client R2) i no comprova Redis. | `api/controllers/refugi_lliure_controller.py:22` | FET |
+| B4 | **RESOLT al chunk 1 de la migració** (el client R2 de `RefugiLliureController` es crea sota demanda: el health check ja no depèn de `R2_*`, i comprova Postgres amb `SELECT 1`). Continua sense comprovar Redis (decisió: l'error de Redis s'empassa a propòsit). | `api/controllers/refugi_lliure_controller.py` (propietat `media_service`, `health_check`), `api/services/database_health.py` | FET |
 | B5 | `get_visits_by_user` fa scan de tota la col·lecció `refuge_visits`; els documents processats mai s'esborren. | `api/daos/refuge_visit_dao.py:207-248` | FET |
 | B6 | DAOs de llistes d'usuari retornen tuples truthy → el controller no detecta fallades. | `api/daos/user_dao.py:199,235,245,260` | FET |
 | B7 | **RESOLT** (models usen `logging`). Imports `from venv import logger` / `from asyncio.log import logger` als models. | `api/models/user.py:6`, `api/models/experience.py:9`, `api/models/refugi_lliure.py:4` | FET |
@@ -65,6 +65,22 @@
 | I3 | En esborrar un usuari no s'anonimitza `reporter_uid` a `media_reports` ni s'esborren `moderation_notices`; `audit_logs` caduca per TTL (12 mesos). Cal decidir la retenció (obligació legal vs. dret a l'oblit). | `UserController.delete_user` | FET |
 | I4 | `IsNotBlocked` llegeix l'usuari amb cache de 10 min: un bloqueig fet fora de `UserDAO.set_blocked` pot trigar a fer efecte. | `api/permissions.py:get_user_for_permissions` | INFERÈNCIA |
 | I5 | `moderation_hash_blocklist` es carrega sencera (pHash) a memòria/cache: no escala a llistes grans; caldria un índex BK-tree o un servei extern. | `HashBlocklistProvider._load_phashes` | FET |
+
+## Nou deute (migració Firestore → PostgreSQL, chunk 1: infraestructura)
+
+| # | Problema | Evidència | Tipus |
+|---|---|---|---|
+| P1 | **Runtime sense GDAL/GEOS**: `django.contrib.gis` és sempre a `INSTALLED_APPS`, així que qualsevol procés Django (gunicorn a Render, `manage.py`, jobs d'Actions com `process-visits.yml`) necessita GDAL/GEOS al sistema. `build.sh`/`render.yaml` no els instal·len ni defineixen `DATABASE_URL_APP`; el pla és Cloud Run amb imatge Docker amb GDAL (fora de l'abast del chunk). Fins llavors el desplegament actual no arrencaria amb aquesta branca. `process-visits.yml` també caldria que instal·lés GDAL. | `refugis_lliures/settings.py` (`INSTALLED_APPS`), `render.yaml`, `build.sh`, `.github/workflows/process-visits.yml` | FET (config) + INFERÈNCIA (efecte a Render) |
+| P2 | `GRANT CREATE ON SCHEMA public TO migrator` (PG15+) afegit a l'script local perquè Django creï `django_migrations` i les taules de `auth`/`admin`/`sessions`; **no s'ha verificat a Neon `dev`** (el *bootstrap* de §1.3 del disseny no ho incloïa). Cal fer-ho amb el rol propietari abans del primer `migrate --database=migrator`. | `scripts/dev/setup_local_postgres.sh`, `docs/design/postgres-schema.md` §1.3 | FET (local) + NO VERIFICAT (Neon) |
+| P3 | Sense `DATABASE_URL_APP`/`TEST_DATABASE_URL_APP`, `default` cau a SQLite en silenci (només per carregar la configuració als tests sense BD): una instància mal configurada arrencaria i fallaria a la primera petició (hook de RLS) en lloc de fallar en arrencar. Millor fer-ho explícit quan hi hagi `DEBUG=False`/Render. | `refugis_lliures/settings.py` (`DATABASES`) | FET + INFERÈNCIA (efecte) |
+| P4 | `ATOMIC_REQUESTS` només cobreix Postgres: les escriptures a Firestore/R2/Redis no es desfan si la petició acaba amb excepció. S'agreuja durant la migració (dominis a mitges entre Firestore i Postgres) i s'ha de tractar dins cada chunk (A6 continua obert per al que quedi a Firestore). | `refugis_lliures/settings.py` (`ATOMIC_REQUESTS`) | FET |
+| P5 | Cost per petició: el hook fa un `set_config` (1 consulta) a **totes** les peticions, també a les anònimes i públiques, i `ATOMIC_REQUESTS` obre una transacció a Neon. Pot pesar en latència i en connexions del pooler mentre el domini encara és a Firestore. | `api/rls_hook.py`, `refugis_lliures/settings.py` | FET (patró) + INFERÈNCIA (impacte) |
+| P6 | Validació només local: pooler PgBouncer i Postgres 17 de Neon no s'han provat (tests a Postgres local i CI `postgis:17-3.5` sense pooler); el PO ha d'executar `scripts/e2e/` contra Neon `dev` (D3 de `migration/DECISIONS_AUTONOMES.md`). | `docs/migration/PROGRESS.md` | NO VERIFICAT |
+| P7 | Els tests dels chunks corren en local amb Python 3.13 (contenidor) i a CI amb 3.10; `tox.ini` declara `py39` (B13). Una divergència de versions podria amagar errors. | `.github/workflows/django.yml`, `tox.ini` | INFERÈNCIA |
+| P8 | `django_db_setup` dona al rol `app` DML sobre les taules de Django de `public` només a la BD de proves (per a `force_authenticate` amb `auth.User`); a producció `app` no hi té grants (§7.2), així que codi que en depengui fallaria fora dels tests. | `api/tests/conftest.py` | FET |
+| P9 | **Baixa**: `PUBLIC` té `TEMP` sobre la BD per defecte, de manera que `app` (i qualsevol rol) pot crear taules temporànies. Proposta: afegir `REVOKE TEMP ON DATABASE refugisdb FROM PUBLIC` al *bootstrap* del propietari (§1.3 del disseny) i a l'script local; `check_neon` la podria verificar. | `docs/design/postgres-schema.md` §1.3, `scripts/dev/setup_local_postgres.sh` | INFERÈNCIA (comportament per defecte de Postgres) |
+| P10 | `check_neon` (comanda que usa taula temporal) i `django_db_setup` assumeixen que `TEMP` està permès; si s'aplica P9 caldrà `GRANT TEMP` només on calgui. | `api/management/commands/check_neon.py` | INFERÈNCIA |
+| P11 | **Baixa**: `FirebaseAuthentication` (DRF) registra `str(e)` d'una excepció inesperada de verificació de token (`logger.error(f"Error verificant token: {str(e)}")`); el middleware ja només registra el tipus. | `api/authentication.py:69` | FET |
 
 ## Codi mort o sense ús aparent
 
