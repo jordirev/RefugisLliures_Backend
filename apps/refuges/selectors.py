@@ -80,7 +80,9 @@ def get_visitor_uids(refuge_id) -> list:
 def get_media_by_key(refuge_id, key: str) -> Optional[RefugeMedia]:
     """Un mitjà del refugi (la RLS només deixa veure'l si és visible, propi o l'espectador és admin)."""
     pk = parse_refuge_id(refuge_id)
-    return None if pk is None else RefugeMedia.objects.filter(pk=key, refuge_id=pk).first()
+    if pk is None or chr(0) in key:                 # Postgres no admet NUL en un `text`: seria un 500, no un «no existeix»
+        return None
+    return RefugeMedia.objects.filter(pk=key, refuge_id=pk).first()
 
 
 # ---------- Llista sense filtres (vista refuge_map) ----------
