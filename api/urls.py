@@ -1,14 +1,5 @@
-from django.urls import path
+from django.urls import include, path
 from .views.health_check_views import HealthCheckAPIView
-from .views.refugi_lliure_views import (
-    RefugiLliureDetailAPIView,
-    RefugiLliureCollectionAPIView,
-    RefugeRenovationsAPIView
-)
-from .views.refugi_media_views import (
-    RefugiMediaAPIView,
-    RefugiMediaDeleteAPIView
-)
 from .views.experience_views import (
     ExperienceListAPIView,
     ExperienceDetailAPIView
@@ -38,6 +29,7 @@ from .views.media_views import (
     AdminMediaReportDetailAPIView,
 )
 from .views.renovation_views import (
+    RefugeRenovationsAPIView,
     RenovationListAPIView,
     RenovationAPIView,
     RenovationParticipantsAPIView,
@@ -61,17 +53,13 @@ urlpatterns = [
     path('health/', HealthCheckAPIView.as_view(), name='health_check'),
     
     # Refugis endpoints 
-    path('refuges/', RefugiLliureCollectionAPIView.as_view(), name='refugi_lliure_collection'),
-    path('refuges/<str:id>/', RefugiLliureDetailAPIView.as_view(), name='refugi_lliure_detail'),
+    # /refuges/, /refuges/{id}/, /refuges/{id}/media/, /refuges/{id}/media/{key}/ → app `refuges` (migrada a PostgreSQL)
+    path('refuges/', include('apps.refuges.urls')),
     path('refuges/<str:id>/renovations/', RefugeRenovationsAPIView.as_view(), name='refuge_renovations'),  # GET /refuges/{id}/renovations/
     
     # Refuge visits endpoints
     path('refuges/<str:refuge_id>/visits/', RefugeVisitsAPIView.as_view(), name='refuge_visits'),  # GET /refuges/{id}/visits/
     path('refuges/<str:refuge_id>/visits/<str:visit_date>/', RefugeVisitDetailAPIView.as_view(), name='refuge_visit_detail'),  # POST + PATCH + DELETE /refuges/{id}/visits/{date}/
-    
-    # Refugi media endpoints
-    path('refuges/<str:id>/media/', RefugiMediaAPIView.as_view(), name='refugi_media'),  # GET /refuges/{id}/media/
-    path('refuges/<str:id>/media/<path:key>/', RefugiMediaDeleteAPIView.as_view(), name='refugi_media_delete'),  # DELETE /refuges/{id}/media/{key}/
     
     # Pujada directa de mitjans (presigned PUT + confirm) i moderació
     path('media/upload-intents/', UploadIntentsAPIView.as_view(), name='media_upload_intents'),  # POST

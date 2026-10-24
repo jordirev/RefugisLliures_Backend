@@ -13,7 +13,7 @@
 | PATCH / DELETE | `/api/renovations/{id}/` | `.patch` (L288) / `.delete` (L369) | IsAuthenticated; `IsRenovationCreator` declarat (L182-190) però **no s'executa** → el controller comprova el creador |
 | POST | `/api/renovations/{id}/participants/` | `RenovationParticipantsAPIView.post` (L448) | IsAuthenticated |
 | DELETE | `/api/renovations/{id}/participants/{uid}/` | `RenovationParticipantDetailAPIView.delete` (L540) | IsAuthenticated; controller: creador o el propi participant |
-| GET | `/api/refuges/{id}/renovations/` | `RefugeRenovationsAPIView` (`api/views/refugi_lliure_views.py:282`) | IsAuthenticated |
+| GET | `/api/refuges/{id}/renovations/` | `RefugeRenovationsAPIView` (`api/views/renovation_views.py`, ruta a `api/urls.py`) | IsAuthenticated |
 
 Col·lecció `renovations/{autoId}` = `{id, creator_uid, refuge_id, ini_date:'YYYY-MM-DD', fin_date, description, materials_needed, group_link, participants_uids[], expelled_uids[]}` (`api/models/renovation.py:8-20`). Comptador a l'usuari: `users.num_renovated_refuges`.
 

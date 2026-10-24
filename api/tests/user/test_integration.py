@@ -246,10 +246,9 @@ class TestUserIntegration:
         
         # Executar a través del controller
         user_controller = UserController()
-        refugi_controller = RefugiLliureController()
         
-        # Verificar que el refugi existeix
-        refugi, refugi_error = refugi_controller.get_refugi_by_id('refugi_001', is_authenticated=True)
+        # Verificar que el refugi existeix (el detall de refugi ja no passa per aquest controller)
+        refugi = mock_refugi_dao.get_by_id('refugi_001')
         assert refugi is not None
         
         # Afegir refugi als favorits

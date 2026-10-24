@@ -80,7 +80,7 @@ def test_anonim_no_pot_falsificar_uid_ni_admin_amb_capcaleres(client, quien):
 
 def test_is_system_sempre_false_en_una_peticio(client, quien):
     """Encara que la transacció envoltant tingués is_system=true, la petició el reinicia."""
-    from domain.core.rls import system_context
+    from apps.core.rls import system_context
     with system_context():
         j = _get(client, {'uid': 'u1', 'role': 'admin'}).json()
     assert j['is_system'] is False

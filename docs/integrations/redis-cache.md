@@ -8,6 +8,8 @@
 - `REDIS_URL` és a `env/.env.development` i `env/.env.production` (només nom) **[FET]**. Proveïdor de Redis a producció: **[NO VERIFICAT]**.
 - No hi ha backend alternatiu (locmem) per a dev: cal Redis local o les operacions de cache fallaran silenciosament **[FET + INFERÈNCIA]**.
 
+> **Refugis sense cache (chunk 2).** Les lectures de refugis (`apps/refuges`) van directes a PostgreSQL, sense Redis; la cerca, la llista de coordenades i el detall ja no es cachegen **[FET]**. Dels prefixos de refugi només `refugi_detail` continua en ús, pel `RefugiLliureDAO` legacy (que fan servir altres dominis, p. ex. per comprovar que un refugi existeix). `refugi_search` i `refugi_coords` ja no els escriu ningú: el DAO de propostes encara els invalida (`delete_pattern`), sense efecte. El `CACHE_TIMEOUTS` conserva les tres entrades fins al chunk 11.
+
 ## `CacheService` (`api/services/cache_service.py`)
 Singleton (L14-53), instància global `cache_service` (L317), exportat a `api/services/__init__.py`.
 
@@ -26,10 +28,10 @@ Singleton (L14-53), instància global `cache_service` (L317), exportat a `api/se
 `refugi_detail` 600 · `refugi_search` 600 · `refugi_coords` 3600 · `user_detail` 600 · `renovation_detail/list` 600 · `experience_detail/list` 600 · `proposal_detail/list` 600 · `refuge_visit_detail` / `refuge_visits_list` 600 · `doubt_detail/list` 600. Prefixos sense entrada (`user_refugis_info`, `renovation_refuge`) → 600 per defecte.
 
 ### ID caching
-Per a llistes: es desa la **llista d'IDs** a la clau de llista i cada element a `<detail_prefix>:<id_param>:<id>`. En un hit, es llegeix cada detall i, si falta, es recupera amb `fetch_single_fn`. Llistes i GET individual **comparteixen** les claus de detall. Implementat a `get_or_fetch_list`, usat per `RenovationDAO.get_all_renovations` (`api/daos/renovation_dao.py:111-176`), experiències, dubtes, propostes, visites i cerca de refugis.
+Per a llistes: es desa la **llista d'IDs** a la clau de llista i cada element a `<detail_prefix>:<id_param>:<id>`. En un hit, es llegeix cada detall i, si falta, es recupera amb `fetch_single_fn`. Llistes i GET individual **comparteixen** les claus de detall. Implementat a `get_or_fetch_list`, usat per `RenovationDAO.get_all_renovations` (`api/daos/renovation_dao.py:111-176`), experiències, dubtes, propostes i visites (la cerca de refugis ja no en fa servir).
 
 ### Claus en ús (exemples reals)
-`refugi_detail:refugi_id:<id>` · `refugi_coords:document:all` · `refugi_search:<filtres>` · `user_detail:uid:<uid>` · `user_refugis_info:list_name:<L>:uid:<uid>` · `renovation_detail:renovation_id:<id>` · `renovation_list:date:<avui>:list_type:active` · `proposal_detail:proposal_id:<id>` · `doubt_list:refuge_id:<id>`.
+`refugi_detail:refugi_id:<id>` (només DAO legacy) · `user_detail:uid:<uid>` · `user_refugis_info:list_name:<L>:uid:<uid>` · `renovation_detail:renovation_id:<id>` · `renovation_list:date:<avui>:list_type:active` · `proposal_detail:proposal_id:<id>` · `doubt_list:refuge_id:<id>`.
 
 ## Comportament si Redis cau
 Totes les excepcions s'empassen → les lectures fan miss i van a Firestore; les invalidacions no es fan però tampoc hi ha res cachejat **[FET]**. Els endpoints admin `cache/stats` retornen `connected:false` amb 200.

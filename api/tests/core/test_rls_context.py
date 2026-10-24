@@ -11,7 +11,7 @@ CTX = 'SELECT core.uid(), core.is_admin(), core.is_system()'
 
 @pytest.fixture
 def ctx():
-    from domain.core.rls import rls_context, system_context
+    from apps.core.rls import rls_context, system_context
     return rls_context, system_context
 
 
@@ -193,7 +193,7 @@ def test_rls_context_imbricat_amb_excepcio_restaura_l_extern(app_db, ctx):
 @pytest.fixture
 def taula_amb_rls(migrator_db):
     """Taula `core.zz_rls_probe` amb polítiques generades pel helper (la crea el migrator i s'esborra al final)."""
-    from domain.core.rls import create_policy_sql
+    from apps.core.rls import create_policy_sql
     with migrator_db.cursor() as cur:
         cur.execute('DROP TABLE IF EXISTS core.zz_rls_probe')
         cur.execute('CREATE TABLE core.zz_rls_probe (id int PRIMARY KEY, owner_uid text NOT NULL)')

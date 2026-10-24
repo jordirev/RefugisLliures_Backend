@@ -1,4 +1,4 @@
-"""Test d'arquitectura: TOTES les vistes d'`api/views` apliquen el context RLS a `initial()` (§7.3).
+"""Test d'arquitectura: TOTES les vistes (`api/views` i `apps/*/views.py`) apliquen el context RLS a `initial()` (§7.3).
 
 No depèn del nom de la classe base: executa `initial()` de cada vista amb el cursor intervingut i exigeix
 una sentència `set_config` (app.uid / app.is_admin / app.is_system) **abans** de les comprovacions de permisos.
@@ -15,14 +15,25 @@ from rest_framework.request import Request
 from rest_framework.views import APIView
 
 import api.views
+import apps
 
 pytestmark = [pytest.mark.unit, pytest.mark.rls]
 
 
+def _view_modules():
+    for mod_info in pkgutil.iter_modules(api.views.__path__):
+        yield importlib.import_module(f'api.views.{mod_info.name}')
+    for mod_info in pkgutil.iter_modules(apps.__path__):          # apps migrades (una app per feature)
+        try:
+            yield importlib.import_module(f'apps.{mod_info.name}.views')
+        except ModuleNotFoundError as exc:
+            if exc.name != f'apps.{mod_info.name}.views':
+                raise
+
+
 def _all_view_classes():
     classes = {}
-    for mod_info in pkgutil.iter_modules(api.views.__path__):
-        mod = importlib.import_module(f'api.views.{mod_info.name}')
+    for mod in _view_modules():
         for name, obj in vars(mod).items():
             if inspect.isclass(obj) and issubclass(obj, APIView) and obj is not APIView \
                     and obj.__module__ == mod.__name__:

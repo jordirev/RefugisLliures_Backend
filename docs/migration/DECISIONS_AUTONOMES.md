@@ -1,6 +1,8 @@
 # Decisions preses per l'orquestrador sense validació del PO
 
-> Des del 24/10/2026 el PO ha delegat les decisions: quan hi ha un dubte, l'orquestrador tria l'opció recomanada i l'apunta aquí amb les alternatives perquè el PO la pugui revisar i revertir.
+> **En pausa des del 24/10/2026 (tarda): el PO ja no delega decisions.** Cada dubte o desviació es pregunta al PO abans de fer-la; aquí no s'hi afegeixen entrades noves fins que el PO ho reactivi.
+>
+> Abans: des del 24/10/2026 el PO havia delegat les decisions: quan hi ha un dubte, l'orquestrador tria l'opció recomanada i l'apunta aquí amb les alternatives perquè el PO la pugui revisar i revertir.
 > Format: **Decisió** · context · alternatives descartades · com revertir-la. Les decisions validades explícitament pel PO són a [`PLAN.md`](PLAN.md) i a `docs/design/postgres-schema.md` §11.
 
 | # | Data | Chunk | Decisió presa | Alternatives | Impacte / com revertir |

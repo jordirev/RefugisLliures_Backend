@@ -26,8 +26,8 @@ Servei amb mètodes estàtics: **només calcula**, no escriu a Firestore. El DAO
 |---|---|---|
 | Aprovar proposta **create** amb `condition` | `CreateRefugeStrategy` (`api/daos/refuge_proposal_dao.py`) | `initialize_condition` |
 | Aprovar proposta **update** amb `condition` | `UpdateRefugeStrategy` | llegeix `condition` i `num_contributed_conditions` actuals → `calculate_condition_average` → un sol `update()` |
-| Seeding | comanda `assign_conditions` | condició inicial a partir d'`info_comp` |
-| Lectura | `RefugiSerializer.to_representation` | `round(condition)` → el client veu un enter |
+| Seeding | `puntua_refugi` a `load_refuges` (`apps/refuges/management/commands/load_refuges.py`; substitueix `assign_conditions`) | nota 0–3 a partir d'`info_comp`, desada com a decimal amb `num_contributed_conditions = 0` |
+| Lectura i filtre (PostgreSQL, chunk 2) | `RefugiSerializer.to_representation` (`apps/refuges/serializers.py`) i `core.round_half_even(condition)` | `round()` half-to-even → el client veu un enter 0–3; el filtre de cerca fa el mateix a SQL (2,5 → 2, 1,5 → 2) |
 
 Validació d'entrada: `RefugeProposalPayloadSerializer.condition` (enter 0–3). Si el valor no és vàlid a l'estratègia, no s'actualitza i es registra un warning.
 

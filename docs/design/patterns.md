@@ -33,28 +33,18 @@ Recursos a `api/urls.py` (`/refuges/`, `/users/`, `/experiences/`…), verbs GET
 
 ## De disseny
 
+### Selectors i services per feature (apps migrades a PostgreSQL)
+Les features migrades (`apps/<feature>/`) substitueixen DAO + controller per **`selectors.py`** (lectures; una consulta per cas d'ús, sense cache de dades) i **`services.py`** (escriptures amb `transaction.atomic`; excepcions de domini). La resta de capes (vista fina, serializers, models amb RLS i FK del DDL) i el flux estan a [ARCHITECTURE §3.1](../ARCHITECTURE.md). Referència: `apps/refuges`.
+
+### Errors 500 amb traçabilitat (apps migrades)
+**Errors 500 amb traçabilitat** (política del PO per a les features migrades): la resposta és `{"error": "<missatge específic del punt que ha fallat>", "error_id": "<uuid>"}` i el mateix `error_id` es desa al log amb la traça completa (`logger.exception`). **Mai** es retorna `str(e)` ni el nom/text de l'excepció (pot dur SQL, hosts, bucket, claus o rutes). Ho fa el helper `apps.core.errors.server_error(message, exc, logger=logger)`; el missatge és un text fix per punt ("Error en esborrar el fitxer a R2", "Error de base de dades en cercar refugis", "Error en generar la URL de la imatge"…). Tests de referència: `apps/core/tests/test_errors.py` i `apps/refuges/tests/test_server_errors.py` (forma de la resposta, `error_id` coincident amb el log, cap text d'excepció a la resposta).
+
 ### Strategy
 | On | Interfície | Concrets | Selector |
 |---|---|---|---|
-| Cerca de refugis — `api/daos/search_strategies.py` | `RefugiSearchStrategy` (`execute_query`, `get_strategy_name`) | 15 estratègies (`TypeConditionPlacesAltitude` … `AltitudeOnly`) | `SearchStrategySelector.select_strategy` |
+| Cerca de refugis | _(eliminat al chunk 2: era `api/daos/search_strategies.py` amb 15 estratègies; ara és una sola consulta SQL a `apps/refuges/selectors.py`)_ | — | — |
 | Paths de media — `api/services/r2_media_service.py` | `MediaPathStrategy` (`get_base_path`, `get_allowed_content_types`, `validate_file`, `generate_media_metadata_from_dict`) | `RefugiMediaStrategy`, `UserAvatarStrategy` | factories (vegeu Factory) |
 | Aprovació de propostes — `api/daos/refuge_proposal_dao.py` | estratègia per acció | `Create/Update/DeleteRefugeStrategy` | `ProposalStrategySelector` |
-
-```mermaid
-sequenceDiagram
-    participant DAO as RefugiLliureDAO
-    participant Sel as SearchStrategySelector
-    participant S as ConcreteStrategy
-    participant F as Firestore
-    DAO->>Sel: select_strategy(filters)
-    Sel-->>DAO: strategy
-    DAO->>S: execute_query(db, collection, filters)
-    S->>F: query (com a màxim un rang)
-    F-->>S: docs
-    S->>S: post-filtre en memòria
-    S-->>DAO: resultats
-```
-Ordre de prioritat de les 15 estratègies: [flux 4](../flows/04-refuge-search-detail.md#estratègies-de-cerca-apidaossearch_strategiespy).
 
 **Strategy de moderació (feature images)**: `ModerationProvider` (interfície) amb `HashBlocklistProvider` actiu i stubs desactivats `PhotoDNAProvider` / `GoogleContentSafetyProvider`; `ModerationService` els executa en ordre i el primer que bloqueja guanya (fail-closed si un falla). `api/services/moderation_service.py`, [flux 12](../flows/12-media-moderation.md).
 

@@ -1,7 +1,7 @@
 # Integració — Neon (Postgres + PostGIS)
 
 > **[FET]** comprovat al codi o a Neon · **[INFERÈNCIA]** deducció · **[NO VERIFICAT]** depèn de config externa.
-> Estat: **migració Firestore → PostgreSQL, chunk 1 (Infraestructura) fet**. Postgres/PostGIS ja és la BD `default` de Django amb el rol `app`, però **Firestore continua sent la BD de domini** fins als chunks següents: cap DAO llegeix ni escriu a Postgres encara **[FET]**. Pla: [migration/PLAN.md](../migration/PLAN.md); disseny físic: [design/postgres-schema.md](../design/postgres-schema.md) §1 i §7.
+> Estat: **migració Firestore → PostgreSQL, chunks 1 (Infraestructura) i 2 (Refugis) fets**. Postgres/PostGIS és la BD `default` de Django amb el rol `app`; els **refugis** (catàleg, serveis, enllaços i mitjans) i el mínim d'`accounts` viuen a PostgreSQL (`apps/refuges`, `apps/accounts`), mentre que **Firestore continua sent la BD de la resta del domini** fins als chunks següents **[FET]**. La branca `production` de Neon encara no té ni el *bootstrap* ni les migracions del chunk 2 **[NO VERIFICAT]**. Pla: [migration/PLAN.md](../migration/PLAN.md); disseny físic: [design/postgres-schema.md](../design/postgres-schema.md) §1 i §7.
 
 ## Projecte
 - Projecte `refugislliures`, regió AWS Frankfurt (`aws-eu-central-1`), BD `refugisdb`, **Postgres 17** (Django 5.1 no dona suport oficial a la 18) **[FET]**.
@@ -30,21 +30,27 @@ Creats amb SQL (no amb el CLI, que els faria membres de `neon_superuser`) a `pro
 - **`connect_timeout=10`** a `OPTIONS`: libpq no té cap timeout de connexió per defecte; sense límit, un host inabastable (o un *cold start* de Neon fallit) deixaria el worker penjat, també el health check **[FET]**.
 - **`prepare_threshold=None`** (sense sentències preparades) i **cap `options`** a l'arrencada: el pooler de Neon (PgBouncer, mode transacció) no admet ni les preparades ni el paràmetre d'arrencada `options` (§1.5 del disseny) **[FET]**. Per això el context RLS es fixa amb `set_config(..., true)` dins la transacció, no amb `options`.
 - **Sense cap URL definida**, `default` continua sent SQLite (`db.sqlite3`): només perquè els tests amb mocks (que no toquen la BD) puguin carregar la configuració. Qualsevol petició real sense URL fallaria en el `set_config` del hook de RLS **[FET sobre la configuració; INFERÈNCIA sobre la fallada del hook]** (vegeu [TECH_DEBT.md](../TECH_DEBT.md) P3).
-- `INSTALLED_APPS` afegeix `django.contrib.gis`, `django.contrib.postgres` i `domain.core` **[FET]**. **`django.contrib.gis` sempre és actiu: el runtime necessita GDAL/GEOS** (a Windows local no hi són; s'executa en un contenidor Linux, [guides/local-setup.md](../guides/local-setup.md)). Instal·lar-los a Render/Cloud Run és **pendent de desplegament** ([TECH_DEBT.md](../TECH_DEBT.md) P1).
+- `INSTALLED_APPS` afegeix `django.contrib.gis`, `django.contrib.postgres` i `apps.core` **[FET]**. **`django.contrib.gis` sempre és actiu: el runtime necessita GDAL/GEOS** (a Windows local no hi són; s'executa en un contenidor Linux, [guides/local-setup.md](../guides/local-setup.md)). Instal·lar-los a Render/Cloud Run és **pendent de desplegament** ([TECH_DEBT.md](../TECH_DEBT.md) P1).
 - Dependència: `psycopg[binary]==3.2.9`.
 
 ## Migracions (sempre amb `--database=migrator`) [FET]
 ```bash
 python manage.py migrate --database=migrator
 ```
-El rol `app` no té permisos de DDL: un `migrate` sense `--database=migrator` fallaria (i, si algú li donés DDL, deixaria objectes que no són del propietari). `domain/core` (`core.0001`) crea els schemas (`core`, `refuges`, `users`, `activity`, `proposals`, `moderation`, `audit`), les funcions de `core` (`uid()`, `is_admin()`, `is_system()`, `immutable_unaccent`, `norm_name`, `round_half_even`; disseny §2.0) i els grants base de `app` (§7.1), amb `reverse_sql`. Requereix el *bootstrap* previ del propietari (§1.3).
+El rol `app` no té permisos de DDL: un `migrate` sense `--database=migrator` fallaria (i, si algú li donés DDL, deixaria objectes que no són del propietari). `apps/core` (`core.0001`, `core.0002`) crea els schemas (`core`, `refuges`, `users`, `activity`, `proposals`, `moderation`, `audit`), les funcions de `core` (`uid()`, `is_admin()`, `is_system()`, `immutable_unaccent`, `norm_name`, `round_half_even`; disseny §2.0) i els grants base de `app` (§7.1), amb `reverse_sql`. Requereix el *bootstrap* previ del propietari (§1.3).
 
 ## RLS i context de la petició [FET]
-- `domain/core/rls.py`: `rls_context(uid, is_admin, system, using)` i `system_context()` (reexportats a `domain.core`) i helpers de polítiques (`expand_macros`, `create_policy_sql`, `drop_policy_sql`) per a les migracions dels chunks següents.
+- `apps/core/rls.py`: `rls_context(uid, is_admin, system, using)` i `system_context()` (reexportats a `apps.core`) i helpers de polítiques (`expand_macros`, `create_policy_sql`, `drop_policy_sql`) per a les migracions dels chunks següents.
 - El context (`app.uid`, `app.is_admin`, `app.is_system`) es fixa **sempre amb `set_config(..., true)`**, és a dir, **local a la transacció**: mor al `COMMIT`/`ROLLBACK` i no es filtra a altres clients quan el pooler reutilitza la connexió. Per a peticions HTTP el fixa el hook de `api/rls_hook.py` ([flux 00](../flows/00-auth-request-pipeline.md)); fora d'HTTP (comandes, jobs, tests) s'usa `rls_context`.
 
+## Apps i migracions actuals [FET]
+`core.0001` (schemas, funcions, grants) i `core.0002` (SELECT de `app` a `django_migrations`) → `accounts.0001` (`users.users`, `users.user_public_profiles`) → `refuges.0001` (`refuges.refuges`, `refuge_amenities`, `refuge_links`, `refuge_media`, vista `refuge_map`, índexs GIN trigram, RLS, grants). Les taules les crea `migrator`; `app` només fa DML subjecte a RLS.
+
+## Càrrega inicial del catàleg [FET]
+`python manage.py load_refuges [--dry-run]` (rol `migrator` per defecte) carrega `api/utils/final_data_refuges.json` (1.542 refugis) **una sola vegada**: si ja hi ha refugis acaba amb `CommandError` sense escriure res. A Neon `dev`/`production` el PO l'ha d'executar un cop després del primer `migrate` **[NO VERIFICAT]**.
+
 ## Identificadors
-`api/utils/ids.py: uuid7()` genera els UUID v7 (RFC 9562) de les claus primàries substitutes (disseny §1.4): monòton dins el procés i thread-safe **[FET]**. Encara no hi ha cap model que l'usi.
+`api/utils/ids.py: uuid7()` genera els UUID v7 (RFC 9562) de les claus primàries substitutes (disseny §1.4): monòton dins el procés i thread-safe. Els usen `Refuge` i `RefugeLink` (`apps/refuges/models.py`); `RefugeAmenities` reutilitza la PK del refugi, `RefugeMedia` té la clau R2 i `UserAccount` l'UID de Firebase **[FET]**. L'API exposa els UUID com a *string* opac; **no coincideixen** amb els IDs de Firestore.
 
 ## Verificació
 ```bash

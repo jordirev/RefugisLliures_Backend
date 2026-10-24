@@ -5,10 +5,10 @@ Documentació detallada a [`docs/`](docs/README.md). Llegenda als docs: **[FET]*
 
 ## Stack
 - **PostgreSQL + PostGIS (Neon)** és la BD `default` de Django (rol `app`, `ATOMIC_REQUESTS`, RLS; àlies `migrator` per a DDL) des del chunk 1 de la migració; **requereix GDAL/GEOS** (`django.contrib.gis` sempre actiu). Sense URL de Postgres, `default` cau a SQLite (només per a tests sense BD).
-- **Firestore** (via `firebase-admin`) continua sent la BD del domini fins als chunks següents de la migració (`docs/migration/`); cap model de domini és encara un model Django.
+- **Els refugis ja són a PostgreSQL** (chunk 2 de la migració, `apps/refuges` + el mínim d'`apps/accounts`); **Firestore** (via `firebase-admin`) continua sent la BD de la resta del domini (usuaris, visites, reformes, experiències, dubtes, propostes, moderació…) fins als chunks següents (`docs/migration/`). Els dominis encara a Firestore llegeixen els refugis amb el `RefugiLliureDAO` legacy (que ja no s'alimenta) fins que els migri el seu chunk.
 - **Firebase Auth**: ID token `Bearer` verificat al middleware; admin = custom claim `role == 'admin'`. Un hook (`api/rls_hook.py`) fixa el context de RLS (`app.uid`, `app.is_admin`) a la transacció de cada petició. Per a e2e locals, `FIREBASE_AUTH_EMULATOR_HOST` (mai en producció).
 - **Cloudflare R2** (boto3) per a media; bucket privat, URLs presignades d'1 h.
-- **Redis** (django-redis) com a cache; errors de Redis s'empassen silenciosament.
+- **Redis** (django-redis) com a cache de les features encara a Firestore; errors de Redis s'empassen silenciosament. Les features migrades no usen cache de dades.
 - Deploy a **Render** (gunicorn, 1 worker); CI, ping i procés diari a **GitHub Actions**.
 
 ## Comandes
@@ -17,8 +17,10 @@ pip install -r requirements.txt
 python manage.py runserver            # requereix env/ local + Postgres (DATABASE_URL_APP) + Redis + GDAL; R2_* només per als endpoints de media
 python manage.py migrate --database=migrator   # SEMPRE amb el rol migrator (app no té DDL)
 python manage.py check_neon --alias default    # (o migrator) comprova Postgres/PostGIS
-pytest                                # tots els tests (api/tests); els de BD volen TEST_DATABASE_URL_APP/MIGRATOR (scripts/dev/setup_local_postgres.sh); a Windows, en un contenidor Linux amb GDAL (docs/guides/testing.md)
-pytest api/tests/renovation -q        # un domini
+python manage.py load_refuges [--dry-run]      # UNA sola vegada: càrrega del catàleg de refugis (1.542) amb el rol migrator; error si ja hi ha refugis
+pytest                                # tots els tests (api/tests + apps); els de BD volen TEST_DATABASE_URL_APP/MIGRATOR (scripts/dev/setup_local_postgres.sh); a Windows, en un contenidor Linux amb GDAL (docs/guides/testing.md)
+pytest api/tests/renovation -q        # un domini (Firestore)
+pytest apps/refuges -q                # una app migrada
 pytest -m views                       # per marker (pytest.ini, --strict-markers)
 tox                                   # com a CI: pytest + coverage.xml
 python manage.py process_yesterday_visits
@@ -26,24 +28,36 @@ python scripts/manage_admins.py <add|remove|check|list> [uid]
 ```
 Swagger: `/swagger/`, `/redoc/`. Totes les rutes de l'API sota `/api/` (`api/urls.py`).
 
-## Capes (patró de referència: renovations)
+## Capes
+**Features migrades a PostgreSQL** (una app Django per feature a `apps/`, estil HackSoft; referència: `apps/refuges`):
+```
+View (APIView) → Serializer → selectors (lectures) / services (escriptures) → models (ORM + RLS) [+ R2MediaService]
+apps/<feature>/{views, serializers, selectors, services, models, urls, migrations, management/commands, tests}
+```
+- **View**: fina; declara `permission_classes` (el default global és `AllowAny`!), valida amb el serializer, crida un selector o un service i mapa les excepcions de domini a HTTP. El context de RLS el posa el hook.
+- **Errors 500 amb traçabilitat** (política del PO per a les features migrades): la resposta és `{"error": "<missatge específic del punt que ha fallat>", "error_id": "<uuid>"}` i el mateix `error_id` es desa al log amb la traça completa (`logger.exception`). **Mai** es retorna `str(e)` ni el nom/text de l'excepció (pot dur SQL, hosts, bucket, claus o rutes). Ho fa el helper `apps.core.errors.server_error(message, exc, logger=logger)`; el missatge és un text fix per punt ("Error en esborrar el fitxer a R2", "Error de base de dades en cercar refugis", "Error en generar la URL de la imatge"…).
+- **selectors.py**: lectures (substitueixen el DAO); una consulta per cas d'ús (`select_related`/`Prefetch`/`ArraySubquery`), filtres al `WHERE`, **sense cache**. Els tests comproven el nombre de consultes.
+- **services.py**: escriptures (substitueixen el controller); `transaction.atomic`, `select_for_update` si cal, R2; llancen excepcions de domini (no tuples). Aquí van les **comprovacions de propietat** (a més de la RLS).
+- **models.py + migracions**: `db_table = 'schema"."taula'`, FK `DO_NOTHING` + `db_constraint=False` i la restricció real (`ON DELETE`), la RLS, els grants i els triggers per `RunSQL` a la mateixa migració (`apps.core.migration_utils`). Les rutes de la feature estan a `apps/<feature>/urls.py` i s'inclouen des d'`api/urls.py`.
+
+**Features encara a Firestore** (patró de referència: renovations):
 ```
 View (APIView) → Serializer → Controller → DAO → CacheService / Firestore / R2MediaService
 api/views  api/serializers  api/controllers  api/daos  api/services   + api/mappers, api/models
 ```
-- **View**: declara `permission_classes` (el default global és `AllowAny`!), valida amb `XCreateSerializer`/`XUpdateSerializer`, usa `request.user_uid`, serialitza `XSerializer(model.to_dict())`.
+- **View**: declara `permission_classes`, valida amb `XCreateSerializer`/`XUpdateSerializer`, usa `request.user_uid`, serialitza `XSerializer(model.to_dict())`.
 - **Controller**: retorna `(success, data, error)` o `(success, error)`; captura excepcions → `"Error intern: ..."`; aquí van les **comprovacions de propietat**.
 - **DAO**: `COLLECTION_NAME`, `FirestoreService().get_db()`, `cache_service` (get→Firestore→set; invalida en escriure).
 - **Model**: `@dataclass` amb validació a `__post_init__`, `to_dict`/`from_dict`. **Mapper**: estàtic.
 - La vista tria l'HTTP status **per subcadena del missatge d'error** (`'solapa'`→409, `'not found'`/`'no trobada'`→404…).
 
 ## Convencions
-- Català a docstrings, comentaris i la majoria de missatges; identificadors en anglès (domini refugi en català: `RefugiLliureDAO`, `data_refugis_lliures`).
+- Català a docstrings, comentaris i la majoria de missatges; identificadors en anglès (el domini refugi legacy en català: `RefugiLliureDAO`, `data_refugis_lliures`; a `apps/refuges` tot en anglès).
 - Dates com a strings ISO; zona `Europe/Madrid` via `api/utils/timezone_utils.py`.
-- IDs: auto-ID de Firestore, desat també com a camp `id`; `users/{uid}` usa l'UID de Firebase.
+- IDs: a les apps migrades, UUID v7 (`api/utils/ids.py: uuid7`) exposat com a string opac; a Firestore, auto-ID desat també com a camp `id`; `users/{uid}` usa l'UID de Firebase.
 - Logs: nivells propis CACHE=21, FIRESTORE=22, DAO=23 (`logger.log(23, "Firestore READ: ...")`).
 - Swagger: exemples a `api/utils/swagger_examples.py`, errors a `api/utils/swagger_error_responses.py`.
-- Tests per domini a `api/tests/<domini>/test_{models,mappers,daos,serializers,controllers,views}.py`; es mocka `FirestoreService`/`cache_service` al mòdul del DAO i el controller al mòdul de la vista.
+- Tests per domini a `api/tests/<domini>/test_{models,mappers,daos,serializers,controllers,views}.py`; es mocka `FirestoreService`/`cache_service` al mòdul del DAO i el controller al mòdul de la vista. Les apps migrades tenen els tests a `apps/<feature>/tests/` (contra Postgres real amb el rol `app`: esquema, RLS, models, cerca, contracte HTTP, recomptes de consultes); les fixtures compartides són al `conftest.py` de l'arrel.
 
 ## Top gotchas (llista completa: docs/GOTCHAS.md)
 1. `has_object_permission` **mai s'executa** (cap `check_object_permissions`): `Is*Creator` no protegeix res. Comprova la propietat al controller (experiències ja ho fan; dubtes i respostes **encara no**).
@@ -56,7 +70,10 @@ api/views  api/serializers  api/controllers  api/daos  api/services   + api/mapp
 8. Variables `R2_*` es llegeixen amb `os.getenv`; `decouple` no omple `os.environ` → exporta-les a l'entorn.
 9. Canviar el text d'un error pot canviar el codi HTTP.
 10. El context de RLS (`set_config(..., true)`) és local a la transacció i només el posa el hook a peticions HTTP; en comandes/jobs usa `rls_context()`/`system_context()`. Migracions sempre `--database=migrator`. `ATOMIC_REQUESTS` no desfà escriptures a Firestore/R2.
-11. Els tests de vistes muten `view.cls.permission_classes`; usa `patch.object`. `api/tests/conftest.py` bloqueja Firestore real i mocka `AuditLogService.log` i `get_user_for_permissions` (markers `real_audit_log`, `real_permissions` per desactivar-ho).
+11. Els tests de vistes muten `view.cls.permission_classes`; usa `patch.object`. El `conftest.py` de l'arrel bloqueja Firestore real i mocka `AuditLogService.log` i `get_user_for_permissions` (markers `real_audit_log`, `real_permissions` per desactivar-ho).
+12. A les apps migrades les FK són `DO_NOTHING` + `db_constraint=False`: les cascades i `SET NULL` són del DDL (migració `RunSQL`), no de Django; no depenguis de `on_delete` ni de signals. `load_refuges` és d'un sol ús (sense `--overwrite`).
+13. **Estat intermedi (chunk 2 → 7)**: els dominis encara a Firestore comproven els refugis amb el `RefugiLliureDAO` legacy (catàleg antic, IDs diferents dels UUID de PostgreSQL); les fotos noves i les propostes aprovades escriuen a Firestore i no es veuen a `/api/refuges/`. No usis el DAO legacy en codi nou (GOTCHAS #41–42, TECH_DEBT R1–R7).
+14. Errors 500 a les apps migrades: sempre `server_error(...)` (`{error, error_id}`), mai `str(e)`.
 
 ## Seguretat
 - **No llegeixis ni imprimeixis** fitxers de `env/` (service accounts, `.env.*`, `api-keys.env`). No estan versionats; només se'n poden esmentar els noms de variables.
@@ -68,7 +85,7 @@ api/views  api/serializers  api/controllers  api/daos  api/services   + api/mapp
 - `docs/GOTCHAS.md` — què NO fer · `docs/TECH_DEBT.md` — bugs i deute per severitat.
 - `docs/flows/` — 00 auth · 01 perfil · 02 avatar · 03 fotos refugi · 04 cerca/detall · 05 propostes · 06 visites · 07 renovations · 08 experiències · 09 dubtes · 10 preferits/visitats · 11 admin cache/health · 12 denúncies/moderació/edat/auditoria.
 - `docs/integrations/` — firebase-auth · firestore · cloudflare-r2 · neon · redis-cache · render-deploy-ci.
-- `docs/recipes/` — add-endpoint · add-service · add-model.
+- `docs/recipes/` — add-endpoint · add-service · add-model (cadascuna amb el patró nou `apps/<feature>/` i el legacy de Firestore).
 - `docs/guides/` — passos per executar/configurar: local-setup · testing · firebase-credentials · r2-render-setup · admin-management · client-auth-usage · daily-visits-process · cloudflare-domain-csam (futur: domini + CSAM).
 - `docs/design/` — patterns (detall dels patrons) · decisions (ADR: APIView, auth DRF+middleware, custom claims) · postgres-schema (disseny físic de la BD PostgreSQL/Neon de la migració).
 - `docs/migration/` — PLAN · PROGRESS (estat dels chunks) · DECISIONS_AUTONOMES · EQUIP (rols dels agents) · documents d'arquitectura i UML de la migració Firestore → PostgreSQL.

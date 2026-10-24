@@ -75,21 +75,20 @@ export R2_ACCESS_KEY_ID=...  R2_SECRET_ACCESS_KEY=...  R2_ENDPOINT=...  R2_BUCKE
 ```powershell
 $env:R2_ACCESS_KEY_ID="..."; $env:R2_SECRET_ACCESS_KEY="..."; $env:R2_ENDPOINT="..."; $env:R2_BUCKET_NAME="..."
 ```
-Sense elles, qualsevol controller que creï `R2MediaService` falla. El health check ja **no** en depèn (el client R2 de `RefugiLliureController` es crea sota demanda) **[FET]**.
+Sense elles, qualsevol controller que creï `R2MediaService` falla. El health check ja **no** en depèn (el client R2 de `RefugiLliureController` es crea sota demanda); l'esborrat d'un mitjà de refugi (`apps/refuges/services.py`) sí que necessita R2 **[FET]**.
 
 ## 4. Migracions (sempre amb el rol `migrator`)
 ```bash
 python manage.py migrate --database=migrator
 ```
-El rol `app` (BD `default`) no té permisos de DDL: un `migrate` sense `--database=migrator` fallaria. Crea els schemas i les funcions de `domain/core` (`core.0001`) i les taules internes de Django a `public` (propietat del migrator). Cap model de domini és encara un model Django (el domini continua a Firestore fins als chunks següents) **[FET]**. Cal el *bootstrap* previ del propietari de la BD ([neon.md](../integrations/neon.md)). Sense Postgres configurat només s'afectaria `db.sqlite3`.
+El rol `app` (BD `default`) no té permisos de DDL: un `migrate` sense `--database=migrator` fallaria. Crea els schemas i les funcions de `apps/core` (`core.0001`) i les taules internes de Django a `public` (propietat del migrator). Això també crea les taules de refugis i el mínim de comptes (`accounts.0001`, `refuges.0001`: taules, FK reals, RLS, grants i la vista `refuge_map`); la resta del domini continua a Firestore fins als chunks següents **[FET]**. Cal el *bootstrap* previ del propietari de la BD ([neon.md](../integrations/neon.md)). Sense Postgres configurat només s'afectaria `db.sqlite3`.
 
-## 5. Dades inicials a Firestore (només si la BD és nova)
+## 5. Dades inicials: catàleg de refugis a PostgreSQL (només si la BD és nova)
 ```bash
-python manage.py upload_refugis_to_firestore     # UNA sola vegada (avís a l'inici del fitxer)
-python manage.py extract_coords_to_firestore     # construeix coords_refugis/all_refugis_coords
-python manage.py assign_conditions               # condició inicial a partir d'info_comp
+python manage.py load_refuges --dry-run     # valida i compta, sense escriure
+python manage.py load_refuges               # UNA sola vegada: 1.542 refugis, 1.542 serveis, 2.075 enllaços
 ```
-Vegeu [integrations/firestore.md §Seeding](../integrations/firestore.md#dades-inicials-seeding).
+És **d'un sol ús** i va pel rol propietari (`--database migrator`, per defecte): si la BD ja té refugis acaba amb `CommandError` sense escriure res (no hi ha `--overwrite`). Valida tot el JSON abans (informa de tots els registres invàlids) i fixa la condició inicial amb `puntua_refugi` (`n = 0`). Disseny: [postgres-schema.md §9](../design/postgres-schema.md). Les comandes antigues de Firestore (`upload_refugis_to_firestore`, `assign_conditions`) s'han eliminat; `extract_coords_to_firestore` i `verify_conditions` també s'han eliminat.
 
 ## 6. Arrencar
 ```bash

@@ -62,7 +62,9 @@ INSTALLED_APPS = [
     'corsheaders',
     'drf_yasg',
     'django_crontab',
-    'domain.core',
+    'apps.core',
+    'apps.accounts',
+    'apps.refuges',
     'api',
 ]
 
@@ -310,6 +312,13 @@ LOGGING = {
             'handlers': ['console'],
             'level': 'WARNING',
             'propagate': False,
+        },
+        # Apps migrades a Postgres (apps/*): traces i error_id dels 500 (apps.core.errors.server_error).
+        # propagate=True: l'arrel no té handlers (no es duplica) i caplog dels tests ho captura.
+        'apps': {
+            'handlers': ['console'],
+            'level': 'WARNING',
+            'propagate': True,
         },
     }
 }

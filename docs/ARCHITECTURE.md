@@ -16,7 +16,7 @@
 | Servidor | gunicorn (1 worker sync, timeout 30 s) + whitenoise | `gunicorn.conf.py:12-19`, `refugis_lliures/settings.py:68` |
 | Deploy | Render (`render.yaml`), CI a GitHub Actions | vegeu [integrations/render-deploy-ci.md](integrations/render-deploy-ci.md) |
 
-**Migració Firestore → PostgreSQL en curs** ([migration/PLAN.md](migration/PLAN.md), [migration/PROGRESS.md](migration/PROGRESS.md)). Chunk 1 (infraestructura) fet: `default` és Postgres/PostGIS amb el rol `app` i `ATOMIC_REQUESTS=True`; `migrator` és l'àlies per a DDL (`python manage.py migrate --database=migrator`); `django.contrib.gis` sempre actiu → **el runtime necessita GDAL/GEOS** (pendent de desplegament, [TECH_DEBT.md](TECH_DEBT.md) P1) **[FET]**. **Tots els models de `api/models/` continuen sent `@dataclass` persistits a Firestore**: cap DAO de domini toca encara Postgres; el que ja usa Postgres és el health check, el hook de RLS i `domain/core` **[FET]**. `api/admin.py` no registra cap model **[FET]**.
+**Migració Firestore → PostgreSQL en curs** ([migration/PLAN.md](migration/PLAN.md), [migration/PROGRESS.md](migration/PROGRESS.md)). Chunk 1 (infraestructura) i **chunk 2 (refugis)** fets: `default` és Postgres/PostGIS amb el rol `app` i `ATOMIC_REQUESTS=True`; `migrator` és l'àlies per a DDL (`python manage.py migrate --database=migrator`); `django.contrib.gis` sempre actiu → **el runtime necessita GDAL/GEOS** (pendent de desplegament, [TECH_DEBT.md](TECH_DEBT.md) P1) **[FET]**. **Els refugis (catàleg, serveis, enllaços i mitjans) ja viuen a PostgreSQL** a l'app `apps/refuges` (amb el mínim d'`apps/accounts` que necessita: `users` i `user_public_profiles`); la resta de models de `api/models/` continuen sent `@dataclass` persistits a Firestore, i els dominis que encara llegeixen un refugi (experiències, dubtes, visites, propostes, usuaris…) ho fan amb el `RefugiLliureDAO` legacy de Firestore fins que els migri el seu chunk **[FET]**. Postgres també el fan servir el health check i el hook de RLS **[FET]**. `api/admin.py` no registra cap model **[FET]**.
 
 Si no hi ha cap URL de Postgres (`DATABASE_URL_APP` / `TEST_DATABASE_URL_APP`), `default` cau a SQLite (`db.sqlite3`), només perquè els tests sense BD puguin carregar la configuració **[FET]**.
 
@@ -29,24 +29,45 @@ api/
   views/                APIView per domini (+ cache_views.py amb @api_view)
   serializers/          validació d'entrada i format de sortida (Serializer, mai ModelSerializer)
   controllers/          lògica de negoci; retornen tuples
-  daos/                 accés a Firestore + cache; search_strategies.py (Strategy)
+  daos/                 accés a Firestore + cache
   mappers/              dict Firestore <-> model
   models/               @dataclass amb validació a __post_init__
   services/             singletons: firestore_service, cache_service; R2MediaService, ConditionService
   middleware/           FirebaseAuthenticationMiddleware, HealthDatabaseErrorMiddleware (503 del health si Postgres cau)
   rls_hook.py           hook de RLS: set_config local a la transacció (uid, is_admin, is_system) per petició DRF
   authentication.py     FirebaseAuthentication (DRF)
-  permissions.py        IsSameUser, IsFirebaseAdmin, IsMediaUploader, Is*Creator...
-  management/commands/  seeding, condicions, process_yesterday_visits
+  permissions.py        IsSameUser, IsFirebaseAdmin, Is*Creator...
+  management/commands/  process_yesterday_visits, check_neon (les comandes antigues de refugis s'han eliminat al chunk 2)
   utils/                swagger_examples, swagger_error_responses, timezone_utils, ids.py (uuid7), JSON de dades
-  tests/<domini>/       test_models/daos/mappers/serializers/controllers/views(/integration)
-domain/core/            app de Django de la migració: rls.py (rls_context, system_context, helpers de polítiques RLS), migració core.0001 (schemas, funcions core.*, grants)
-scripts/                manage_admins.py (custom claims), verify_conditions.py, dev/setup_local_postgres.sh (Postgres local de proves)
+  tests/<domini>/       test_models/daos/mappers/serializers/controllers/views(/integration); els de les apps a apps/<feature>/tests/
+apps/                   features migrades a PostgreSQL: una app Django per feature (estil HackSoft; substitueix `api/` feature a feature)
+  core/                 nucli de la BD: errors.py (`server_error`: 500 amb `error_id`), rls.py (rls_context, system_context, helpers de polítiques RLS), migration_utils.py, testing.py, migracions core.0001/0002 (schemas, funcions core.*, grants)
+  accounts/             models UserAccount i UserPublicProfile (mínim del chunk 2; la resta al chunk 3)
+  refuges/              models, selectors (lectures), services (escriptures), serializers, views, urls, management/commands/load_refuges.py, migrations, tests/
+scripts/                manage_admins.py (custom claims), dev/setup_local_postgres.sh (Postgres local de proves)
 docs/                   documentació (aquesta carpeta): flows, integrations, recipes, guides, design, deep-dives
 env/                    .env.* i service accounts — NO versionat, NO llegir valors
 ```
 
-## 3. Capes i contractes (patró de referència: Renovations)
+## 3. Capes i contractes
+
+### 3.1 Features migrades a PostgreSQL (patró nou: `apps/<feature>/`, referència: `apps/refuges`)
+
+```
+HTTP → FirebaseAuthenticationMiddleware → hook de RLS (set_config) → View (APIView) + permission_classes
+     → Serializer (entrada) → selectors (lectures) / services (escriptures) → models (ORM + RLS) [+ R2MediaService]
+```
+
+| Capa | Contracte |
+|---|---|
+| **View** (`views.py`) | `APIView` fina: declara `permission_classes`, valida l'entrada amb el serializer, crida un *selector* o un *service*, tradueix les excepcions de domini a HTTP i serialitza. Sense accés directe a l'ORM. Errors 500: `apps.core.errors.server_error(missatge específic, exc)` → `{error, error_id}` (mateix `error_id` al log amb la traça; mai el text de l'excepció). |
+| **Selectors** (`selectors.py`) | Lectures (substitueixen el DAO): funcions que retornen models, llistes o `QuerySet`. Una consulta (o un `Prefetch`/`ArraySubquery`) per cas d'ús, cap N+1. Sense cache de dades. |
+| **Services** (`services.py`) | Escriptures amb regles de negoci (substitueixen el controller): `transaction.atomic`, `select_for_update`, R2. Llancen excepcions de domini (`MediaForbidden`, `MediaNotFound`…), no tuples. |
+| **Models** (`models.py`) | `django.db.models` amb `db_table = 'schema"."taula'`, FK `DO_NOTHING` + `db_constraint=False` (les cascades i la RLS són del DDL a la migració). |
+| **Serializers** (`serializers.py`) | Contracte JSON (entrada i sortida); sense `ModelSerializer`. |
+| **Migracions** | `RunSQL` amb `reverse_sql` per a FK reals, RLS, grants, triggers i vistes (`apps.core.migration_utils`). |
+
+### 3.2 Features encara a Firestore (patró de referència: Renovations)
 
 ```
 HTTP → FirebaseAuthenticationMiddleware → DRF (FirebaseAuthentication + permission_classes)
@@ -76,13 +97,13 @@ Conseqüència: **canviar el text d'un missatge pot canviar el codi HTTP retorna
 | Ruta | Vista | Mètodes | Permisos efectius |
 |---|---|---|---|
 | `health/` | `HealthCheckAPIView` | GET | públic |
-| `refuges/` | `RefugiLliureCollectionAPIView` | GET | públic (token opcional enriqueix resposta) |
-| `refuges/<id>/` | `RefugiLliureDetailAPIView` | GET | públic |
+| `refuges/` | `apps.refuges.views.RefugeCollectionAPIView` | GET | públic (token opcional: `images_metadata`; `visitors` només admins) |
+| `refuges/<id>/` | `apps.refuges.views.RefugeDetailAPIView` | GET | públic (id UUID; un altre format → 404) |
 | `refuges/<id>/renovations/` | `RefugeRenovationsAPIView` | GET | IsAuthenticated |
 | `refuges/<refuge_id>/visits/` | `RefugeVisitsAPIView` | GET | IsAuthenticated |
 | `refuges/<refuge_id>/visits/<visit_date>/` | `RefugeVisitDetailAPIView` | POST, PATCH, DELETE | IsAuthenticated |
-| `refuges/<id>/media/` | `RefugiMediaAPIView` | GET | IsAuthenticated |
-| `refuges/<id>/media/<path:key>/` | `RefugiMediaDeleteAPIView` | DELETE | IsAuthenticated + IsMediaUploader |
+| `refuges/<id>/media/` | `apps.refuges.views.RefugeMediaListAPIView` | GET | IsAuthenticated |
+| `refuges/<id>/media/<path:key>/` | `apps.refuges.views.RefugeMediaDetailAPIView` | DELETE | IsAuthenticated; propietat al service (autor o admin: 403; mitjà inexistent: 403 / 404 si admin; R2 falla: 500 i la fila es conserva) |
 | `media/upload-intents/` | `UploadIntentsAPIView` | POST | IsAuthenticated + IsNotBlocked + IsAgeConfirmed (+ propietat d'experiència al controller) |
 | `media/upload-intents/confirm/` | `UploadIntentsConfirmAPIView` | POST | IsAuthenticated + IsNotBlocked + IsAgeConfirmed |
 | `media/reports/` | `MediaReportsAPIView` | POST | IsAuthenticated + IsNotBlocked + IsAgeConfirmed |
@@ -127,11 +148,11 @@ Detall complet a [flows/00-auth-request-pipeline.md](flows/00-auth-request-pipel
 6. **[FET]** Permisos nous de la feature *images*: `IsNotBlocked` (403 `user_blocked`) i `IsAgeConfirmed` (403 `age_not_confirmed`), basats en `has_permission` i en `users/{uid}` (cache-first). Els errors amb codi tenen la forma `{error, code, message}` (`coded_error`, `api/permissions.py`). Detall: [flows/12-media-moderation.md](flows/12-media-moderation.md).
 7. **[FET] Context de RLS per petició**: `api/rls_hook.py` (instal·lat a `ApiConfig.ready`) embolcalla `APIView.perform_authentication` i, després d'autenticar i abans de `check_permissions`, fixa amb **un sol** `set_config(..., true)` (local a la transacció d'`ATOMIC_REQUESTS`) `app.uid` (de l'usuari verificat), `app.is_admin` (només si el claim verificat `role == 'admin'`) i `app.is_system=false`, a totes les vistes DRF. Detall: [flows/00-auth-request-pipeline.md](flows/00-auth-request-pipeline.md).
 8. **[FET] Firebase Auth Emulator**: amb `FIREBASE_AUTH_EMULATOR_HOST` Firebase Admin s'inicialitza sense credencials (`projectId` de `GCLOUD_PROJECT`/`GOOGLE_CLOUD_PROJECT` o `demo-refugis-lliures`); prohibit amb `RENDER`/`PRODUCTION` = `true` (Django no arrenca). Només per a e2e locals: [integrations/firebase-auth.md](integrations/firebase-auth.md).
-9. **[FET]** Cap vista crida `check_object_permissions()`, i totes hereten d'`APIView` (no `GenericAPIView`) → **`has_object_permission` de `IsExperienceCreator`, `IsRenovationCreator`, `IsDoubtCreator`, `IsAnswerCreator`, `IsOwnerOrReadOnly` mai s'executa**. Només funcionen els permisos basats en `has_permission`: `IsSameUser`, `IsFirebaseAdmin`, `IsMediaUploader`.
+9. **[FET]** Cap vista crida `check_object_permissions()`, i totes hereten d'`APIView` (no `GenericAPIView`) → **`has_object_permission` de `IsExperienceCreator`, `IsRenovationCreator`, `IsDoubtCreator`, `IsAnswerCreator`, `IsOwnerOrReadOnly` mai s'executa**. Només funcionen els permisos basats en `has_permission`: `IsSameUser`, `IsFirebaseAdmin`.
 
 ## 6. Cache (resum)
 
-Redis amb `KEY_PREFIX='refugis'` i TTL per defecte 300 s (`refugis_lliures/settings.py:185-202`), però `CacheService` aplica els seus propis TTL (600 s gairebé tot, 3600 s coords) (`api/services/cache_service.py:20-48`). Claus `prefix:k1:v1:k2:v2` amb kwargs ordenats (`api/services/cache_service.py:63-85`). Patró **"ID caching"** per a llistes (`get_or_fetch_list`, `api/services/cache_service.py:208`). Errors de Redis s'empassen → fallback silenciós a Firestore. Detall: [integrations/redis-cache.md](integrations/redis-cache.md).
+Redis amb `KEY_PREFIX='refugis'` i TTL per defecte 300 s (`refugis_lliures/settings.py:185-202`), però `CacheService` aplica els seus propis TTL (600 s gairebé tot, 3600 s coords) (`api/services/cache_service.py:20-48`). Claus `prefix:k1:v1:k2:v2` amb kwargs ordenats (`api/services/cache_service.py:63-85`). Patró **"ID caching"** per a llistes (`get_or_fetch_list`, `api/services/cache_service.py:208`). Errors de Redis s'empassen → fallback silenciós a Firestore. **Les features migrades a PostgreSQL (refugis) no usen cache de dades**: els prefixos `refugi_search` i `refugi_coords` ja no els escriu ningú (només els invalida el DAO de propostes) i `refugi_detail` només el fa servir el `RefugiLliureDAO` legacy. Detall: [integrations/redis-cache.md](integrations/redis-cache.md).
 
 ## 7. Patrons de disseny presents [FET]
 
@@ -143,7 +164,7 @@ Detall amb diagrames i motivació: [design/patterns.md](design/patterns.md).
 | Singleton | `FirestoreService` (`api/services/firestore_service.py:13-22`), `CacheService` (`api/services/cache_service.py:14-53`) |
 | DAO | `api/daos/*_dao.py` |
 | Data Mapper | `api/mappers/*_mapper.py` |
-| Strategy (cerca) | 15 estratègies + `SearchStrategySelector` (`api/daos/search_strategies.py:42-583`) |
+| Cerca de refugis | una sola consulta SQL (`apps/refuges/selectors.py: search_queryset`), sense estratègies |
 | Strategy (propostes) | `CreateRefugeStrategy`/`UpdateRefugeStrategy`/`DeleteRefugeStrategy` + `ProposalStrategySelector` (`api/daos/refuge_proposal_dao.py:231-570`) |
 | Strategy (paths R2) | `RefugiMediaStrategy`, `UserAvatarStrategy` (`api/services/r2_media_service.py:44-145`) |
 | Template method | `UserController._manage_refugi_list` (`api/controllers/user_controller.py:279-342`) |
@@ -154,7 +175,7 @@ Detall amb diagrames i motivació: [design/patterns.md](design/patterns.md).
 - **Dates**: zona `Europe/Madrid` via `api/utils/timezone_utils.py` (`get_madrid_now`, `get_madrid_today`). Es desen a Firestore com a **strings ISO** (`YYYY-MM-DD` per a dates; ISO datetime per a `created_at`, `modified_at`...). `settings.TIME_ZONE='UTC'` (`refugis_lliures/settings.py:135`) no s'usa per a la lògica de domini.
 - **IDs**: auto-ID de Firestore (`collection().document()`) i es desa també dins el document com a camp `id` (p. ex. `api/daos/renovation_dao.py:52-54`). Excepció: `users/{uid}` usa l'UID de Firebase.
 - **Logging**: nivells personalitzats `CACHE=21`, `FIRESTORE=22`, `DAO=23` (`refugis_lliures/settings.py:211-218`); els DAOs fan `logger.log(23, "Firestore READ: ...")`. El logger `api` en general només mostra `WARNING`+ (`refugis_lliures/settings.py:251-255`), així que **els `logger.info` dels controllers no surten** **[INFERÈNCIA]**.
-- **Instanciació del controller**: renovations, users, proposals, visits la creen dins de cada mètode; `doubt_views.py`, `experience_views.py`, `refugi_media_views.py` la creen a `__init__` de la vista (`api/views/doubt_views.py:46`, `api/views/experience_views.py:34`, `api/views/refugi_media_views.py:38`). Les dues opcions són equivalents perquè DRF instancia la vista per petició **[INFERÈNCIA]**.
+- **Instanciació del controller**: renovations, users, proposals, visits la creen dins de cada mètode; `doubt_views.py` i `experience_views.py` la creen a `__init__` de la vista (`api/views/doubt_views.py:46`, `api/views/experience_views.py:34`). Les dues opcions són equivalents perquè DRF instancia la vista per petició **[INFERÈNCIA]**.
 - **Serializers**: noms `XSerializer` (sortida), `XCreateSerializer`/`XUpdateSerializer` (entrada). Excepcions: `CreateDoubtSerializer`, `CreateAnswerSerializer`, `CreateRefugeVisitSerializer`, `UpdateRefugeVisitSerializer` (prefix en lloc de sufix) (`api/serializers/doubt_serializer.py:27-33`, `api/serializers/refuge_visit_serializer.py:86-95`).
 - **Swagger**: exemples a `api/utils/swagger_examples.py`, respostes d'error com a `openapi.Response` a `api/utils/swagger_error_responses.py`.
 
@@ -163,12 +184,11 @@ Detall amb diagrames i motivació: [design/patterns.md](design/patterns.md).
 | Excepció | On |
 |---|---|
 | Vistes funció `@api_view` en lloc d'`APIView` | `api/views/cache_views.py:51-151` |
-| Permís que accedeix directament a Firestore (salta DAO i cache) | `IsMediaUploader`, `api/permissions.py:247-276` |
 | Permisos que criden DAO/Controller | `api/permissions.py:141-146`, `185-190`, `316-324`, `365-373` (codi mort, vegeu §5) |
-| DAO amb `self.collection_name` en lloc de `COLLECTION_NAME` | `api/daos/refugi_lliure_dao.py:18-19`, `api/daos/refuge_proposal_dao.py:579` |
+| DAO amb `self.collection_name` en lloc de `COLLECTION_NAME` | `api/daos/refugi_lliure_dao.py:19`, `api/daos/refuge_proposal_dao.py:579` |
 | Lògica de negoci (strategies) dins el DAO | `api/daos/refuge_proposal_dao.py:231-570` (crida controllers d'altres dominis des del DAO) |
-| Body d'error amb un objecte Swagger (`{'error': ERROR_500_INTERNAL_ERROR}`) | 14 ocurrències a `api/views/renovation_views.py`, 4 a `api/views/user_views.py`, 1 a `api/views/refugi_lliure_views.py`. `ERROR_500_INTERNAL_ERROR` és un `openapi.Response` (`api/utils/swagger_error_responses.py:316`). Com es serialitza a JSON: **[NO VERIFICAT]** |
-| Errors 500 que exposen el text de l'excepció | `"Error intern: {str(e)}"` als controllers; `'Internal server error: ...'` a refugis |
+| Body d'error amb un objecte Swagger (`{'error': ERROR_500_INTERNAL_ERROR}`) | 14 ocurrències a `api/views/renovation_views.py`, 4 a `api/views/user_views.py`. `ERROR_500_INTERNAL_ERROR` és un `openapi.Response` (`api/utils/swagger_error_responses.py:316`). Com es serialitza a JSON: **[NO VERIFICAT]** |
+| Errors 500 que exposen el text de l'excepció | `"Error intern: {str(e)}"` als controllers (les features migrades usen `apps.core.errors.server_error`: missatge específic + `error_id`, sense text d'excepció) |
 | DAO de llistes d'usuari que retorna tuples truthy com a "èxit" | `api/daos/user_dao.py:199,235,245,260` |
 | Imports erronis de `logger` | `api/models/user.py:6` (`from venv import logger`), `api/models/experience.py:9` i `api/models/refugi_lliure.py:4` (`from asyncio.log import logger`) |
 
@@ -177,11 +197,11 @@ Detall amb diagrames i motivació: [design/patterns.md](design/patterns.md).
 Guia pràctica (comandes, coverage, per què Firebase no s'inicialitza): [guides/testing.md](guides/testing.md).
 
 
-- Config: `pytest.ini` (`DJANGO_SETTINGS_MODULE=refugis_lliures.settings`, `testpaths=api/tests`, `--strict-markers`, markers `unit, integration, views, serializers, controller(s), daos, mappers, models, edge_cases, slow, db_infra, rls, real_audit_log, real_permissions`).
+- Config: `pytest.ini` (`DJANGO_SETTINGS_MODULE=refugis_lliures.settings`, `testpaths=api/tests apps`, `--strict-markers`, markers `unit, integration, views, serializers, controller(s), daos, mappers, models, edge_cases, slow, db_infra, rls, real_audit_log, real_permissions`).
 - **Tests contra PostgreSQL (chunk 1)** [FET]: `TEST_DATABASE_URL_APP` / `TEST_DATABASE_URL_MIGRATOR` (Postgres local bootstrapat amb `scripts/dev/setup_local_postgres.sh`, o el servei `postgis/postgis:17-3.5` de CI) tenen prioritat sobre `DATABASE_URL_*`; `django_db_setup` (`api/tests/conftest.py`) migra amb `migrator` sobre la BD de proves sense crear `test_*`, i els tests corren com a `app` (RLS activa). La fixture `autouse` `_rls_hook_sense_bd` desactiva el hook als tests sense BD (sense markers `rls`/`django_db`/`db_infra`). Calen GDAL/GEOS; a Windows, contenidor Linux ([guides/testing.md](guides/testing.md)).
-- `conftest.py` (arrel) i `api/tests/conftest.py` fixen `TESTING=true` i variables R2 falses **abans** d'importar res; amb `TESTING`/`pytest` carregat, Firebase **no s'inicialitza** (`api/firebase_config.py:15-17,92-94`).
+- `conftest.py` (arrel: també `django_db_setup`, `app_db`/`migrator_db`, bloqueig de Firestore i mocks d'audit/permisos, compartits amb `apps/*/tests`) i `api/tests/conftest.py` fixen `TESTING=true` i variables R2 falses **abans** d'importar res; amb `TESTING`/`pytest` carregat, Firebase **no s'inicialitza** (`api/firebase_config.py:15-17,92-94`).
 - Mocks habituals: `patch('api.services.firestore_service.FirestoreService')`, `patch('api.services.cache_service.cache_service')` (`api/tests/conftest.py:266-286`); a les vistes es mocka el controller al mòdul de la vista, p. ex. `@patch('api.views.renovation_views.RenovationController')` (`api/tests/renovation/test_views.py:91`).
-- Estructura per domini: `api/tests/<domini>/test_{models,mappers,daos,serializers,controllers,views}.py` (+ `test_integration.py` a refugi_lliure, renovation, user). Transversals: `api/tests/test_auth_middleware_permissions.py`, `api/tests/test_cache_views.py`, `api/tests/management_commands/`.
+- Estructura per domini: `api/tests/<domini>/test_{models,mappers,daos,serializers,controllers,views}.py`; les features migrades tenen els tests a `apps/<feature>/tests/` (esquema, RLS, models, cerca, vistes de contracte contra Postgres, recomptes de consultes) (+ `test_integration.py` a refugi_lliure, renovation, user). Transversals: `api/tests/test_auth_middleware_permissions.py`, `api/tests/test_cache_views.py`, `api/tests/management_commands/` (només `process_yesterday_visits`). `api/tests/refugi_lliure/` conserva només els tests del codi legacy que encara viu a `api/` (DAO/controller/mapper/models de refugi i el health check).
 - Execució: `pytest`, `pytest api/tests/renovation`, `pytest -m views`, `tox` (`tox.ini`: `envlist=py39`, genera `coverage.xml`), `python run_tests.py`.
 - Coverage (`.coveragerc`) **exclou `services/` i `utils/`** → `cache_service`, `r2_media_service`, `firestore_service` no compten al coverage.
 - Fixtures probablement mortes **[INFERÈNCIA]**: `authenticated_client` fa patch de `api.permissions.IsAuthenticated`, que no existeix a `api/permissions.py` (`api/tests/conftest.py:323`); `mock_refugi_dao` fa patch de `RefugiLliureDao` però la classe és `RefugiLliureDAO` (`api/tests/conftest.py:398` vs `api/daos/refugi_lliure_dao.py:14`). Cap test sembla usar-les.
