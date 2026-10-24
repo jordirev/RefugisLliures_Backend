@@ -10,12 +10,15 @@ altra petició que reutilitzi la connexió del pooler.
 - `app.is_admin` és `true` només si els claims verificats tenen exactament `role == 'admin'`.
 - `app.is_system` es reinicia sempre a `false` (només `system_context()` el posa a `true`).
 """
+import logging
 from collections.abc import Mapping
 
 from django.db import connections
 from rest_framework.views import APIView
 
 from domain.core.rls import DEFAULT_ALIAS, apply_context
+
+logger = logging.getLogger(__name__)
 
 ADMIN_ROLE = 'admin'
 
@@ -40,8 +43,15 @@ def is_admin_claims(claims):
 
 def apply_request_rls_context(request):
     """Fixa el context de RLS de la petició a la transacció en curs."""
+    conn = connections[DEFAULT_ALIAS]
+    if not conn.in_atomic_block:
+        # Sense transacció (`@transaction.non_atomic_requests` o `ATOMIC_REQUESTS` desactivat) un `set_config(..., true)`
+        # moriria en la mateixa sentència: la vista queda sense context i la RLS ho denega tot (fail-closed).
+        # S'avisa perquè no sigui un error silenciós (la sentència s'executa igualment: és inofensiva).
+        logger.warning("Hook de RLS: la petició %s no s'executa dins d'una transacció; el context no persistirà.",
+                       getattr(request, 'path', '?'))
     uid, claims = _verified_identity(request)
-    apply_context(connections[DEFAULT_ALIAS], uid, is_admin_claims(claims))
+    apply_context(conn, uid, is_admin_claims(claims))
 
 
 def install():

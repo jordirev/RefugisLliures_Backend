@@ -17,17 +17,48 @@ def _is_testing_environment():
     return 'pytest' in sys.modules or os.environ.get('TESTING') == 'true'
 
 
+def _env_flag(name):
+    """Interpreta una variable com a booleana (`true`, `1`, `yes`, `on`; sense distingir majúscules)."""
+    return (os.environ.get(name) or '').strip().lower() in ('true', '1', 'yes', 'on')
+
+
 def _is_render_environment():
-    return os.environ.get('RENDER') == 'true'
+    return _env_flag('RENDER')
+
+
+# Variables que defineix la plataforma (Cloud Run / Cloud Run Jobs / Render): no depenen de cap configuració manual.
+_PLATFORM_MARKERS = ('K_SERVICE', 'K_REVISION', 'CLOUD_RUN_JOB', 'RENDER_SERVICE_ID')
+
+
+def _is_deployed_platform():
+    """True si s'executa en una plataforma gestionada (Cloud Run o Render), encara que `PRODUCTION` no estigui posada."""
+    return _is_render_environment() or any(os.environ.get(m) for m in _PLATFORM_MARKERS)
 
 
 def _is_production_environment():
     """Detecta si estem en un entorn de producció (Render, GitHub Actions, etc.)"""
     return (
-        os.environ.get('RENDER') == 'true' or 
-        os.environ.get('PRODUCTION') == 'true' or
-        os.environ.get('CI') == 'true'  # GitHub Actions configura CI=true
+        _is_render_environment() or
+        _env_flag('PRODUCTION') or
+        _env_flag('CI')  # GitHub Actions configura CI=true
     )
+
+
+# L'emulador només pot ser a la màquina local (o al host Docker): mai un servei remot.
+_EMULATOR_ALLOWED_HOSTS = frozenset({'localhost', '127.0.0.1', '::1', 'host.docker.internal'})
+
+
+def _emulator_hostname(value):
+    """Nom de host de `host:port` (admet `[::1]:9099`, `::1` i URLs amb esquema)."""
+    value = value.strip().lower()
+    if '://' in value:
+        value = value.split('://', 1)[1]
+    value = value.split('/', 1)[0]
+    if value.startswith('['):
+        return value[1:].split(']', 1)[0]
+    if value.count(':') == 1:
+        return value.split(':', 1)[0]
+    return value
 
 
 def _auth_emulator_host():
@@ -41,9 +72,12 @@ def _initialize_firebase_emulator():
     El SDK detecta `FIREBASE_AUTH_EMULATOR_HOST` i verifica els tokens (sense signatura) contra l'emulador; només
     cal un `projectId` qualsevol (per defecte `demo-refugis-lliures`, o `GCLOUD_PROJECT`/`GOOGLE_CLOUD_PROJECT`).
     """
-    if _is_render_environment() or os.environ.get('PRODUCTION') == 'true':
-        # L'emulador accepta tokens sense signatura: mai en producció.
+    # L'emulador accepta tokens sense signatura: qui en controli el host pot fer-se passar per qualsevol usuari
+    # (admin inclòs). Mai en producció (Render, Cloud Run, PRODUCTION) i només cap a un host local.
+    if _is_deployed_platform() or _env_flag('PRODUCTION'):
         raise ValueError("FIREBASE_AUTH_EMULATOR_HOST no es pot usar en un entorn de producció")
+    if _emulator_hostname(_auth_emulator_host()) not in _EMULATOR_ALLOWED_HOSTS:
+        raise ValueError("FIREBASE_AUTH_EMULATOR_HOST només pot apuntar a localhost, 127.0.0.1, ::1 o host.docker.internal")
     project_id = (
         os.environ.get('GCLOUD_PROJECT')
         or os.environ.get('GOOGLE_CLOUD_PROJECT')
