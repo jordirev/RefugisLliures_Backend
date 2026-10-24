@@ -16,7 +16,7 @@
 | # | Chunk | Branca | Estat | Notes |
 |---|---|---|---|---|
 | 0 | Disseny BD | `migracio/disseny-bd` | fet | `docs/design/postgres-schema.md` tancat (`e611fe3`), PR a `migration` |
-| 1 | Infraestructura | `migracio/infraestructura` | pendent | |
+| 1 | Infraestructura | `migracio/infraestructura` | en curs | equip: tests |
 | 2 | Refugis | `migracio/refugis` | pendent | |
 | 3 | Usuaris | `migracio/usuaris` | pendent | |
 | 4 | Visites | `migracio/visites` | pendent | paral·lel amb 5, 6 |
@@ -37,4 +37,4 @@
 - 2026-10-24 — Disseny tancat (N1–N3 resolts pel PO). El PO delega les decisions: registre a [`DECISIONS_AUTONOMES.md`](DECISIONS_AUTONOMES.md).
 
 ## Pendents / bloquejos
-- Cap.
+- **Neon inaccessible des de l'entorn cloud** (el proxy no admet TCP de BD): e2e en local (D3). El PO ha d'executar `scripts/e2e/` i el bootstrap de §1.3 del disseny a Neon `dev` (D4).
