@@ -90,7 +90,7 @@ GRANT CREATE ON DATABASE ${TEST_DB_NAME} TO migrator;
 GRANT CONNECT ON DATABASE ${TEST_DB_NAME} TO app;
 GRANT CONNECT ON DATABASE ${TEST_DB_NAME} TO migrator;
 GRANT USAGE ON SCHEMA public TO app, migrator;
--- PG15+ treu CREATE a PUBLIC: el migrator ha de poder crear `django_migrations` i les taules de Django a `public`.
+-- PG15+ treu CREATE a PUBLIC: el migrator ha de poder crear django_migrations i les taules de Django a public.
 GRANT CREATE ON SCHEMA public TO migrator;
 SQL
 

@@ -59,6 +59,15 @@ docker run --rm -v "${PWD}:/app" -w /app --add-host=host.docker.internal:host-ga
 ```
 Alternativa: `TEST_DATABASE_URL_APP` i `TEST_DATABASE_URL_MIGRATOR` a `env/.env.development` amb host `host.docker.internal` (no cal l'`eval`; no imprimeixis els valors). El contenidor corre Python 3.13 i CI 3.10: un test que depengui de la versió pot divergir **[INFERÈNCIA]**.
 
+## E2E local (servidor real + Firebase Emulators) [FET]
+Script: `scripts/e2e/e2e_chunk1.sh` (health amb `database`, 401/403/404/200 amb tokens d'usuari normal i d'admin; surt amb 1 si algun cas falla). Així s'ha validat el chunk 1 el 24/10/2026 contra un Postgres local migrat (12/12).
+1. Emuladors: carpeta amb `firebase.json` (`{"emulators":{"auth":{"port":9099,"host":"0.0.0.0"},"firestore":{"port":8085,"host":"0.0.0.0"},"ui":{"enabled":false}}}`) i `npx -y firebase-tools emulators:start --only auth,firestore --project demo-refugis-lliures` (cal Node i Java).
+2. BD: `TEST_DB_NAME=refugisdb_e2e scripts/dev/setup_local_postgres.sh` (o la BD a provar, p. ex. Neon `dev`) i `python manage.py migrate --database=migrator`.
+3. Servidor amb, com a mínim: `DATABASE_URL_APP`/`DATABASE_URL_MIGRATOR` de la BD a provar, `TEST_DATABASE_URL_*` **buides** (tenen prioritat), `FIREBASE_AUTH_EMULATOR_HOST`, `FIRESTORE_EMULATOR_HOST`, `GCLOUD_PROJECT=demo-refugis-lliures`, `REDIS_URL` local (si no, `env/.env.development` porta el Redis remot) i `R2_*` ficticis amb un endpoint inabastable (`users/{uid}` i `admin/media-reports` creen el client R2 encara que no el facin servir).
+4. `bash scripts/e2e/e2e_chunk1.sh` (`BASE_URL`, `AUTH_EMULATOR` configurables).
+- **Firestore Emulator i credencials**: amb l'emulador d'Auth, `firebase_admin` s'inicialitza sense credencial i el client de Firestore demana ADC (`DefaultCredentialsError`, health 503). Cal `GOOGLE_APPLICATION_CREDENTIALS` apuntant a un service account **fictici** (clau RSA generada al moment, `project_id` `demo-refugis-lliures`); l'emulador no la valida.
+- Amb Postgres inabastable, `/api/health/` torna 503 `unhealthy` en ~10 s (`connect_timeout`).
+
 ## Estructura
 ```
 api/tests/

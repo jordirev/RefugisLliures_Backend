@@ -57,9 +57,15 @@ class Command(BaseCommand):
         """Avisa si falta algun requisit del bootstrap del propietari (§1.3 del disseny)."""
         cur.execute("SELECT extname FROM pg_extension WHERE extname IN ('postgis', 'pg_trgm', 'unaccent', 'btree_gist')")
         missing = {'postgis', 'pg_trgm', 'unaccent', 'btree_gist'} - {row[0] for row in cur.fetchall()}
-        cur.execute("SELECT has_database_privilege(current_user, current_database(), 'CREATE'), "
-                    "has_schema_privilege(current_user, 'public', 'CREATE')")
-        db_create, public_create = cur.fetchone()
+        # Els grants són del rol `migrator` (qui aplica les migracions), sigui quin sigui l'àlies connectat:
+        # amb `default` (rol `app`) mirar `current_user` donava falsos avisos.
+        cur.execute("SELECT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'migrator')")
+        if cur.fetchone()[0]:
+            cur.execute("SELECT has_database_privilege('migrator', current_database(), 'CREATE'), "
+                        "has_schema_privilege('migrator', 'public', 'CREATE')")
+            db_create, public_create = cur.fetchone()
+        else:
+            db_create = public_create = False
         for ok, msg in ((not missing, f'extensions que falten: {sorted(missing)}'),
                         (db_create, 'falta GRANT CREATE ON DATABASE (core.0001 no podra crear els schemas)'),
                         (public_create, 'falta GRANT CREATE ON SCHEMA public (PG15+: Django no podra crear django_migrations)')):
