@@ -8,13 +8,39 @@ El backend (Django 5.1 + DRF) desa tot el domini a Firestore amb DAOs/mappers fe
 ## Decisions preses amb l'usuari
 - **users** privat i minimitzat: uid (PK), language, created_at, age_confirmed_at, age_threshold, moderation_strikes, is_blocked, blocked_reason/at. Sense email ni data de naixement. **user_public_profiles**: uid, username, avatar (lectura oberta).
 - **RLS**: polítiques amb `migrations.RunSQL` (executades pel rol `migrator`, amb `reverse_sql`); a cada petició, dins la transacció, `SELECT set_config('app.uid', %s, true)` i `app.is_admin` (sempre local a la transacció pel pooler en mode transacció). El rol `app` no és propietari → sense `FORCE`. Se suma als permisos de Django.
-- **IDs**: totes les PK subrogades són **UUID v7** (timestamp dins l'UUID), exposades com a string a l'API; `users.uid` continua sent l'UID de Firebase (text).
-- **condition**: taula de vots `refuge_condition_votes` + agregació (AVG/COUNT, vista).
+- **condition**: ~~taula de vots~~. Substituït per la decisió del 24/10 (vegeu més avall).
 - **Visitats**: taula d'unió única `user_visited_refuges` (fi de les còpies `visitors`/`visited_refuges`).
 - **Esborrat d'usuari**: CASCADE de denúncies, avisos de moderació i audit logs de l'usuari (propostes i reformes passades: SET NULL, com l'actual anonimització).
 - **Tests**: unitaris/integració contra Postgres+PostGIS **efímer en Docker** (`postgis/postgis:16`), mai Neon. **E2E de Claude contra la branca Neon `dev`**, amb tokens del **Firebase Auth Emulator** (usuari normal + admin amb claim `role=admin`).
 - **Branques**: branca d'integració `migration` (ja existeix a origin; primer s'hi porta `develop` amb un merge). Cada chunk a `migracio/<chunk>` creada des de `migration`, PR a `migration`; l'orquestrador la fusiona quan l'equip valida i CI és verd (si només fallen SonarQube/Codecov, també). Al final, **una sola PR `migration` → `develop`**, que només fusiona l'usuari.
 - **Credencials de Neon**: mai per xat. L'usuari les afegeix a la configuració de l'entorn cloud (menú de l'entorn al títol de la sessió → Edit → secrets / variables d'entorn) com a `DATABASE_URL_APP` i `DATABASE_URL_MIGRATOR` (branca `dev`); les agafa una sessió nova. Fins llavors es treballa en tot el que no les necessita (disseny, tests i codi contra Docker).
+
+## Decisions sobre els dubtes del disseny (§11 de `docs/design/postgres-schema.md`), 24/10
+Estat: esborrany del disseny fet a `migracio/disseny-bd` (commit `0ce1fbe`). Cal que l'agent de disseny el revisi amb això:
+- **Perfil obligatori (#6)**: 403 `profile_required` a tot endpoint autenticat, excepte `POST /users/`, si no hi ha fila a `users`. Les lectures públiques no canvien. `manage_admins.py add` crea la fila de l'admin. **Frontend**: davant `profile_required`, mostra "Hi ha hagut un problema, torna a iniciar sessió" i fa logout; en tornar a entrar, el flux de login crea el perfil. Si torna a passar, es repeteix el mateix.
+- **Perfil d'un altre usuari (#4)**: `GET /users/{uid}/` d'un altre retorna només `uid`, `username`, `avatar_metadata`. El perfil propi no canvia.
+- **CSAM (#9)**: cascada general, però les denúncies i l'audit relacionats amb CSAM es conserven anonimitzats (SET NULL). El mitjà a `moderation-hold/` es manté.
+- **#1**: es permeten reformes d'un dia: `CHECK (ini_date <= fin_date)`, la mateixa regla al serializer i al model (tanca A1).
+- **Condition, que substitueix la taula de vots (#2, #21, #24)**: **no hi ha entitat vot.**
+  - El refugi desa `condition` (float, la mitjana) i `num_contributed_conditions` (n).
+  - L'experiència té un atribut `condition` smallint **obligatori**, 0–3.
+  - POST d'experiència, dins la transacció i amb `select_for_update` del refugi o `UPDATE` atòmic: c=(c·n+v)/(n+1), n+1.
+  - PATCH que canvia v→v': c=c+(v'−v)/n, n igual.
+  - Esborrar una experiència o un compte **no toca** el refugi: el valor no és una dada personal.
+  - Proposta aprovada amb `condition`: c=valor directament, n=1. Una experiència creada abans d'aquest reset i que després canviï la condition per PATCH compta com a vot nou (n+1) [INFERÈNCIA del PO; queda documentat].
+  - Arrodoniment **només en serialitzar**: half-to-even (`round()` de Python).
+  - El filtre de cerca accepta 0–3 sobre el valor arrodonit.
+- **Valor inicial en la càrrega**: funció `puntua_refugi(info_comp)` (escalfor, dormir, aigua; normalitzat a 0–3; `manque_un_mur` ⇒ ≤1) amb **n=0**. Substitueix la lògica d'`assign_conditions`.
+- **#13**: purga de les **visites de data concreta** (`visits` + participants) de més de 12 mesos. `user_visited_refuges` no es purga mai.
+- **#18 surname**: es desa, però de moment no surt a l'API.
+- **#20**: `expelled_uids` no s'exposa; el backend valida en unir-se i retorna error o èxit. `group_link` només és visible per al creador i els participants.
+- **La resta** (#3, 5, 7, 8, 10, 11, 12, 14, 15, 16, 17, 19, 22, 23): s'accepten els defaults de §11.
+- **Canvis al frontend** (agent en paral·lel quan arribi el chunk corresponent):
+  - logout amb `profile_required` (chunk 3);
+  - perfil aliè reduït (chunk 3);
+  - `condition` obligatòria en crear o editar una experiència (chunk 7);
+  - `group_link` i `expelled_uids` no sempre presents (chunk 5);
+  - `surname` absent.
 
 ## Metodologia (per chunk)
 Equip: orquestrador (Opus) + agents Sonnet. Pipeline seqüencial:
