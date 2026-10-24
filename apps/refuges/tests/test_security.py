@@ -102,7 +102,6 @@ def test_claus_amb_traversal_o_codificades_no_esborren_res(client, RM, two_refug
 
 
 @pytest.mark.views
-@pytest.mark.xfail(strict=True, reason='PREGUNTA PER AL PO: `unquote(key)` decodifica dues vegades (Django ja ho fa)')
 def test_la_clau_es_decodifica_una_sola_vegada(client, RM, two_refuges):
     """Doble decodificació (`unquote` sobre un path que Django ja ha decodificat): `%2561` no ha de ser un àlies de `a`."""
     a, _ = two_refuges

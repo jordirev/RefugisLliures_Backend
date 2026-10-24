@@ -389,7 +389,7 @@ Restriccions:
 | `refuges_altitude_idx` | `(altitude) WHERE altitude IS NOT NULL` | filtre `altitude >= / <=` |
 | *(cap)* | índex sobre `core.round_half_even(condition)` | filtre per condició: **no es crea** (1,5 mil files: l'avaluació de la funció és negligible). Si el catàleg superés ~50 mil refugis: `(core.round_half_even(condition)) WHERE condition IS NOT NULL` |
 
-Les 15 estratègies de Firestore existien només per als índexs compostos de Firestore: a SQL és **una sola consulta dinàmica** (§5.3). Amb ~1,5 mil files el planificador farà `Seq Scan` als filtres numèrics (i és correcte); els tres índexs `btree` són barats i es mantenen pel creixement, però **el GIST i el GIN són els que importen**. `ANALYZE` després de la càrrega.
+Les 15 estratègies de Firestore existien només per als índexs compostos de Firestore: a SQL és **una sola consulta dinàmica** (§5.3). Amb ~1,5 mil files el planificador farà `Seq Scan` als filtres numèrics (i és correcte); els tres índexs `btree` són barats i es mantenen pel creixement, però **el GIST i el GIN són els que importen**. `VACUUM (ANALYZE)` després de la càrrega (un `ANALYZE` sol no actualitza les estadístiques de la metapàgina dels GIN i el planificador no els usaria fins a l'autovacuum).
 
 RLS:
 ```sql
@@ -1804,7 +1804,7 @@ def puntua_refugi(info):
 ```
    - si `--dry-run`: `transaction.set_rollback(True)` al final.
 5. **Verificació** dins la transacció (si falla, *rollback*): `count(refuges) = n_nous`, `count(refuge_amenities)` igual, `count(refuge_links)` = enllaços carregats, `count(refuges WHERE condition IS NOT NULL AND num_contributed_conditions = 0)` = nous, i tots els valors de `condition` ∈ {0,1,2,3}.
-6. **Postcàrrega**: `ANALYZE` de les 4 taules; informe final (llegits, nous, amenities, enllaços i distribució de la condició inicial). Una segona execució és rebutjada (`CommandError`: càrrega d'un sol ús). Segona execució ⇒ `0 nous` (idempotent).
+6. **Postcàrrega**: `VACUUM (ANALYZE)` de les 4 taules (fora de la transacció de càrrega); informe final (llegits, nous, amenities, enllaços i distribució de la condició inicial). Una segona execució és rebutjada (`CommandError`: càrrega d'un sol ús). Segona execució ⇒ `0 nous` (idempotent).
 
 ### 9.2 Mapatge del JSON (1.542 registres) **[FET: inspeccionat amb Python]**
 

@@ -7,7 +7,6 @@ El contracte JSON és el d'abans (IDs *string*, `coord: {lat, long}`, `info_comp
 admins) i `condition` (0-3, arrodonida half-to-even).
 """
 import logging
-from urllib.parse import unquote
 
 from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
@@ -257,10 +256,9 @@ class RefugeMediaDetailAPIView(APIView):
         },
     )
     def delete(self, request, id, key):
-        decoded_key = unquote(key)
         _, uid, admin = _viewer(request)
         try:
-            services.delete_media(refuge_id=id, key=decoded_key, actor_uid=uid, is_admin=admin)
+            services.delete_media(refuge_id=id, key=key, actor_uid=uid, is_admin=admin)
         except services.MediaForbidden as exc:
             return Response({'error': str(exc)}, status=status.HTTP_403_FORBIDDEN)
         except services.MediaNotFound as exc:
@@ -269,4 +267,4 @@ class RefugeMediaDetailAPIView(APIView):
             return server_error(ERR_R2_DELETE, exc, logger=logger)
         except Exception as exc:
             return server_error(ERR_DELETE, exc, logger=logger)
-        return Response({'success': True, 'message': 'Mitjà eliminat correctament', 'key': decoded_key})
+        return Response({'success': True, 'message': 'Mitjà eliminat correctament', 'key': key})

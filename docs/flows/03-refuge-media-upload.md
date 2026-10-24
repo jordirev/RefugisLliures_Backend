@@ -158,6 +158,6 @@ sequenceDiagram
 - Les claus R2 contenen `/`, `.` i `-`: per escriure una entrada del map cal `FieldPath('media_metadata', key).to_api_repr()` (escapa amb backticks). **Mai** `update({'media_metadata.' + key: ...})` **[FET]**.
 - El processament és **síncron** dins la petició de `confirm` (1 worker a Render): 10 vídeos de 50 MB poden acostar-se al timeout de gunicorn **[INFERÈNCIA]** — vegeu [TECH_DEBT](../TECH_DEBT.md).
 - Totes les pujades exigeixen `IsAgeConfirmed` (ja no hi ha camins que l'esquivin) **[FET]**.
-- `unquote` a la vista sobre un path que Django ja ha decodificat → doble decodificació de `%25` **[INFERÈNCIA]** (es manté a `RefugeMediaDetailAPIView.delete`).
+- La clau del DELETE es decodifica **una sola vegada** (la decodifica Django; la vista ja no fa `unquote`): `%2561.webp` no és un àlies de `a.webp` **[FET]** (`apps/refuges/tests/test_security.py`).
 - Swagger documenta 204 per al DELETE però retorna 200 **[FET]**.
 - Configuració necessària al bucket (CORS per a PUT, lifecycle de `quarantine/`): [integrations/cloudflare-r2.md](../integrations/cloudflare-r2.md).

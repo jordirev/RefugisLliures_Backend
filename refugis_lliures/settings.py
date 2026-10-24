@@ -313,6 +313,13 @@ LOGGING = {
             'level': 'WARNING',
             'propagate': False,
         },
+        # Apps migrades a Postgres (apps/*): traces i error_id dels 500 (apps.core.errors.server_error).
+        # propagate=True: l'arrel no té handlers (no es duplica) i caplog dels tests ho captura.
+        'apps': {
+            'handlers': ['console'],
+            'level': 'WARNING',
+            'propagate': True,
+        },
     }
 }
 
