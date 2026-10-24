@@ -41,7 +41,7 @@ def test_es_troben_les_vistes():
     assert any('cache_views' in k for k in VIEWS), "també les vistes de funció @api_view"
 
 
-def _recorded_sql(view_cls, authenticated):
+def _recorded_sql(view_cls, authenticated, django_db_blocker):
     """SQL executat per `initial()` d'una vista, amb el cursor i la BD interceptats."""
     recorded = []
 
@@ -61,9 +61,7 @@ def _recorded_sql(view_cls, authenticated):
     view.request = drf_request
     view.headers = view.default_response_headers
     with patch('django.db.backends.utils.CursorWrapper.execute', fake_execute), \
-            patch('django.db.backends.base.base.BaseDatabaseWrapper.ensure_connection', lambda self: None), \
-            patch('django.db.backends.utils.CursorWrapper.fetchone', lambda self: (None,) * 3), \
-            patch('django.db.backends.utils.CursorWrapper.fetchall', lambda self: []):
+            django_db_blocker.unblock():
         try:
             view.initial(drf_request)
         except Exception:   # permisos/autenticació/BD simulada: ens interessa només el que s'ha executat abans
@@ -73,8 +71,8 @@ def _recorded_sql(view_cls, authenticated):
 
 @pytest.mark.parametrize('name', sorted(VIEWS))
 @pytest.mark.parametrize('authenticated', [False, True], ids=['anonim', 'autenticat'])
-def test_totes_les_vistes_apliquen_el_context_rls(name, authenticated):
-    recorded = _recorded_sql(VIEWS[name], authenticated)
+def test_totes_les_vistes_apliquen_el_context_rls(name, authenticated, django_db_blocker):
+    recorded = _recorded_sql(VIEWS[name], authenticated, django_db_blocker)
     cfg = [r for r in recorded if 'set_config' in r[0]]
     assert len(cfg) == 1, f"{name}: initial() ha d'executar exactament un set_config (n'ha fet {len(cfg)})"
     sql, params = cfg[0]
@@ -86,7 +84,7 @@ def test_totes_les_vistes_apliquen_el_context_rls(name, authenticated):
         assert 'u1' not in list(params or [])
 
 
-def test_la_base_no_ha_d_afegir_permisos_que_se_saltin_el_context():
+def test_la_base_no_ha_d_afegir_permisos_que_se_saltin_el_context(django_db_blocker):
     """El context s'ha de fixar abans que `check_permissions` (HasProfile llegeix `users` amb RLS)."""
     order = []
     original_perm = APIView.check_permissions
@@ -108,7 +106,7 @@ def test_la_base_no_ha_d_afegir_permisos_que_se_saltin_el_context():
     view.headers = view.default_response_headers
     with patch.object(APIView, 'check_permissions', spy_perm), \
             patch('django.db.backends.utils.CursorWrapper.execute', fake_execute), \
-            patch('django.db.backends.base.base.BaseDatabaseWrapper.ensure_connection', lambda self: None):
+            django_db_blocker.unblock():
         try:
             view.initial(drf_request)
         except Exception:

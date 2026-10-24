@@ -23,7 +23,7 @@ def _settings_en_subproces(extra_env, treure=()):
         " 'migrator': {k: v for k, v in d.get('migrator', {}).items() if k != 'PASSWORD'},"
         " 'apps': s.INSTALLED_APPS}, default=str))"
     )
-    out = subprocess.run([sys.executable, '-I', '-c', code], capture_output=True, text=True, cwd=str(ROOT), env=env)
+    out = subprocess.run([sys.executable, '-c', code], capture_output=True, text=True, cwd=str(ROOT), env=env)
     assert out.returncode == 0, out.stderr[-2000:]
     return json.loads(out.stdout.strip().splitlines()[-1])
 
