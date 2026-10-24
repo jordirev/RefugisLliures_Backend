@@ -14,6 +14,10 @@ def _settings_en_subproces(extra_env, treure=()):
     """Importa settings en un procés net (mai amb credencials reals) i en retorna un resum JSON."""
     env = {k: v for k, v in os.environ.items()
            if not k.startswith(('DATABASE_URL', 'TEST_DATABASE_URL', 'NEON_')) and k not in treure}
+    # `settings` també llegeix `env/.env.development` (fora de git); la variable d'entorn, encara que buida, hi té
+    # prioritat: així el test no depèn de les URLs de la màquina on s'executa.
+    env.update({k: '' for k in ('DATABASE_URL_APP', 'DATABASE_URL_MIGRATOR',
+                                'TEST_DATABASE_URL_APP', 'TEST_DATABASE_URL_MIGRATOR')})
     env.update(extra_env)
     env['PYTHONPATH'] = str(ROOT)
     code = (

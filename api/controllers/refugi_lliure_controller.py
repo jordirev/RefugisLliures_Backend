@@ -10,6 +10,7 @@ from ..daos.user_dao import UserDAO
 from ..models.refugi_lliure import Refugi, RefugiCoordinates, RefugiSearchFilters
 from ..services import r2_media_service
 from ..services import audit_log_service as audit
+from ..services.database_health import check_database
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +20,18 @@ class RefugiLliureController:
     def __init__(self):
         self.refugi_dao = RefugiLliureDAO()
         self.user_dao = UserDAO()
-        self.media_service = r2_media_service.get_refugi_media_service()
+        self._media_service = None
+
+    @property
+    def media_service(self):
+        """Servei R2, creat sota demanda (el health check i les lectures no han de dependre d'R2)"""
+        if self._media_service is None:
+            self._media_service = r2_media_service.get_refugi_media_service()
+        return self._media_service
+
+    @media_service.setter
+    def media_service(self, value):
+        self._media_service = value
     
     @staticmethod
     def filter_media_for_viewer(items, viewer_uid: Optional[str] = None, is_admin: bool = False):
@@ -119,30 +131,41 @@ class RefugiLliureController:
     
     def health_check(self) -> Tuple[Dict[str, Any], Optional[str]]:
         """
-        Comprovar l'estat de l'API i la connexió amb Firebase
+        Comprovar l'estat de l'API, la connexió amb PostgreSQL (`SELECT 1`) i amb Firebase
         Returns: (Dades de health check, missatge d'error o None)
         """
+        database_ok = check_database()
         try:
             health_data = self.refugi_dao.health_check()
-            
-            response = {
-                'status': 'healthy',
-                'message': 'API is running correctly',
-                'firebase': health_data['firebase'],
-                'firestore': health_data['firestore'],
-                'collections_count': health_data['collections_count']
-            }
-            
-            return response, None
-            
         except Exception as e:
             logger.error(f'Health check failed: {str(e)}')
             response = {
                 'status': 'unhealthy',
-                'message': f'Error: {str(e)}',
-                'firebase': False
+                'message': f'Error: {str(e)}' if database_ok else 'Database unavailable',
+                'firebase': False,
+                'database': database_ok
             }
             return response, f"Health check failed: {str(e)}"
+
+        if not database_ok:
+            return {
+                'status': 'unhealthy',
+                'message': 'Database unavailable',
+                'firebase': health_data['firebase'],
+                'firestore': health_data['firestore'],
+                'collections_count': health_data['collections_count'],
+                'database': False
+            }, "Health check failed: database unavailable"
+
+        response = {
+            'status': 'healthy',
+            'message': 'API is running correctly',
+            'firebase': health_data['firebase'],
+            'firestore': health_data['firestore'],
+            'collections_count': health_data['collections_count'],
+            'database': True
+        }
+        return response, None
     
     def get_refugi_media(self, refugi_id: str, expiration: int = 3600, viewer_uid: Optional[str] = None,
                          is_admin: bool = False) -> Tuple[Optional[List[Dict[str, Any]]], Optional[str]]:

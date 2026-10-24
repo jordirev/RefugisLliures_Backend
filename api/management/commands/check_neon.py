@@ -10,7 +10,7 @@ class Command(BaseCommand):
     help = 'Comprova la connexió a Neon, PostGIS, pg_trgm/unaccent i una consulta ST_DWithin'
 
     def add_arguments(self, parser):
-        parser.add_argument('--alias', default='neon_migrator', choices=['neon', 'neon_migrator'],
+        parser.add_argument('--alias', default='migrator', choices=['default', 'migrator'],
                             help="Alias de DATABASES a provar (per defecte el rol migrator, endpoint directe)")
 
     def handle(self, *args, **options):

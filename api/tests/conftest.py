@@ -550,3 +550,54 @@ def fetch_all(conn, sql, params=None):
 def fetch_one(conn, sql, params=None):
     rows = fetch_all(conn, sql, params)
     return rows[0] if rows else None
+
+
+@pytest.fixture(scope='session')
+def django_db_setup(django_test_environment, django_db_blocker):
+    """Sobreescriu la fixture de pytest-django (§6.5, §7 del disseny).
+
+    Amb el Postgres local configurat (`TEST_DATABASE_URL_*`) no es crea cap `test_*`: s'apliquen les migracions
+    amb el rol `migrator` sobre la BD de proves (idempotent) i la connexió `default` es manté com a `app`,
+    de manera que la RLS s'aplica als tests. Sense Postgres es manté el comportament per defecte (SQLite).
+    """
+    from django.conf import settings
+    from django.core.management import call_command
+    from django.db import connections
+
+    if 'migrator' in settings.DATABASES:
+        with django_db_blocker.unblock():
+            call_command('migrate', database='migrator', interactive=False, verbosity=0)
+            # Només per als tests: alguns creen un `django.contrib.auth.User` per a `force_authenticate`. Aquestes
+            # taules de Django (a `public`, del migrator) no formen part del disseny de domini ni dels grants de
+            # producció (§7.2): el rol `app` hi accedeix només a la BD de proves.
+            with connections['migrator'].cursor() as cur:
+                cur.execute("SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tableowner = current_user")
+                for (table,) in cur.fetchall():
+                    cur.execute(f'GRANT SELECT, INSERT, UPDATE, DELETE ON public."{table}" TO app')
+                cur.execute("SELECT sequencename FROM pg_sequences WHERE schemaname = 'public' "
+                            "AND sequenceowner = current_user")
+                for (seq,) in cur.fetchall():
+                    cur.execute(f'GRANT USAGE, SELECT ON SEQUENCE public."{seq}" TO app')
+        yield
+        with django_db_blocker.unblock():
+            connections.close_all()
+    else:
+        from django.test.utils import setup_databases, teardown_databases
+        with django_db_blocker.unblock():
+            db_cfg = setup_databases(verbosity=0, interactive=False)
+        yield
+        with django_db_blocker.unblock():
+            teardown_databases(db_cfg, verbosity=0)
+
+
+@pytest.fixture(autouse=True)
+def _rls_hook_sense_bd(request):
+    """Els tests sense BD (vistes amb controllers mockejats) no poden executar el `set_config` del hook de RLS.
+
+    El hook té els seus propis tests (marker `rls`) i els de BD (`django_db`, `db_infra`) l'executen de debò.
+    """
+    if any(request.node.get_closest_marker(m) for m in ('rls', 'django_db', 'db_infra')):
+        yield
+        return
+    with patch('api.rls_hook.apply_context'):
+        yield

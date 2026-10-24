@@ -30,6 +30,29 @@ def _is_production_environment():
     )
 
 
+def _auth_emulator_host():
+    """Host del Firebase Auth Emulator (e2e locals) o cadena buida si no n'hi ha."""
+    return (os.environ.get('FIREBASE_AUTH_EMULATOR_HOST') or '').strip()
+
+
+def _initialize_firebase_emulator():
+    """
+    Inicialitza Firebase Admin per al Firebase Auth Emulator: no cal cap service account (ni fitxer ni variable).
+    El SDK detecta `FIREBASE_AUTH_EMULATOR_HOST` i verifica els tokens (sense signatura) contra l'emulador; només
+    cal un `projectId` qualsevol (per defecte `demo-refugis-lliures`, o `GCLOUD_PROJECT`/`GOOGLE_CLOUD_PROJECT`).
+    """
+    if _is_render_environment() or os.environ.get('PRODUCTION') == 'true':
+        # L'emulador accepta tokens sense signatura: mai en producció.
+        raise ValueError("FIREBASE_AUTH_EMULATOR_HOST no es pot usar en un entorn de producció")
+    project_id = (
+        os.environ.get('GCLOUD_PROJECT')
+        or os.environ.get('GOOGLE_CLOUD_PROJECT')
+        or 'demo-refugis-lliures'
+    )
+    logger.info(f"Entorn: Firebase Auth Emulator ({_auth_emulator_host()}), projectId={project_id}")
+    firebase_admin.initialize_app(options={'projectId': project_id})
+
+
 def _initialize_firebase_production():
     logger.info("🌐 Entorn: PRODUCCIÓ (Render/GitHub Actions/CI)")
     firebase_creds = os.environ.get('FIREBASE_SERVICE_ACCOUNT_KEY')
@@ -82,6 +105,7 @@ def initialize_firebase():
     Inicialitza Firebase Admin SDK si encara no s'ha inicialitzat.
     - En producció (Render/GitHub Actions): usa la variable d'entorn FIREBASE_SERVICE_ACCOUNT_KEY
     - En local: carrega les variables d'entorn des de env/.env.development i busca el fitxer JSON
+    - Amb FIREBASE_AUTH_EMULATOR_HOST (Firebase Auth Emulator): sense credencials, només un projectId
     - En tests: no inicialitza Firebase
     
     Detecta automàticament l'entorn segons les variables:
@@ -95,7 +119,9 @@ def initialize_firebase():
     
     if not firebase_admin._apps:
         try:
-            if _is_production_environment():
+            if _auth_emulator_host():
+                _initialize_firebase_emulator()
+            elif _is_production_environment():
                 _initialize_firebase_production()
             else:
                 _initialize_firebase_local()

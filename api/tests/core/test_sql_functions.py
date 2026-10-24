@@ -18,10 +18,10 @@ def test_les_proves_corren_com_a_rol_app(app_db):
 # ---------- norm_name / immutable_unaccent ----------
 
 @pytest.mark.parametrize('entrada,esperat', [
-    ('Refugi d’Àrreu', 'refugi d’arreu'),
+    ('Refugi d’Àrreu', "refugi d'arreu"),      # unaccent també normalitza l'apòstrof tipogràfic (U+2019) a '
     ('ÉLÈVE', 'eleve'),
     ('Çà Ñandú Öl', 'ca nandu ol'),
-    ('Cabane de l’Ôrri', 'cabane de l’orri'),
+    ('Cabane de l’Ôrri', "cabane de l'orri"),
     ('already lower', 'already lower'),
     ('', ''),
 ])
