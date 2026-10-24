@@ -61,5 +61,5 @@ Mostra la versió de Postgres i PostGIS, `similarity` amb `unaccent` i una consu
 
 ## Pendent
 - Executar `check_neon --alias migrator` (avisa del *bootstrap* incomplet), verificar el `GRANT CREATE ON SCHEMA public` a Neon `dev` i executar el primer `migrate --database=migrator` **[NO VERIFICAT]**.
-- Validar contra Neon (pooler PgBouncer, PG17) el que només s'ha provat en local (Postgres 16/17 sense pooler): el PO ha d'executar `scripts/e2e/` des d'una màquina amb accés TCP ([migration/DECISIONS_AUTONOMES.md](../migration/DECISIONS_AUTONOMES.md) D3) **[NO VERIFICAT]**.
+- Validar contra Neon (pooler PgBouncer, PG17) el que només s'ha provat en local (Postgres 17 en Docker, sense pooler): el PO ha d'executar `scripts/e2e/` des d'una màquina amb accés TCP ([migration/DECISIONS_AUTONOMES.md](../migration/DECISIONS_AUTONOMES.md) D3) **[NO VERIFICAT]**.
 - Imatge/entorn de desplegament amb GDAL/GEOS, pas a Launch i compute 0,25–2 CU **[NO VERIFICAT]**.
