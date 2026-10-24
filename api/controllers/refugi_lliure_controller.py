@@ -138,14 +138,14 @@ class RefugiLliureController:
         try:
             health_data = self.refugi_dao.health_check()
         except Exception as e:
-            logger.error(f'Health check failed: {str(e)}')
+            logger.error(f'Health check failed: {type(e).__name__}')
             response = {
                 'status': 'unhealthy',
-                'message': f'Error: {str(e)}' if database_ok else 'Database unavailable',
+                'message': 'Health check failed' if database_ok else 'Database unavailable',
                 'firebase': False,
                 'database': database_ok
             }
-            return response, f"Health check failed: {str(e)}"
+            return response, "Health check failed"
 
         if not database_ok:
             return {

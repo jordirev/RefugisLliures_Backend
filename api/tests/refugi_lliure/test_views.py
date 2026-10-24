@@ -163,7 +163,8 @@ class TestRefugiViews:
         # Verifica que retorna error 503
         assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
         assert response.data['status'] == 'unhealthy'
-        assert 'Error: Database connection failed' in response.data['message']
+        assert response.data['message'] == 'Health check failed'
+        assert 'Database connection failed' not in str(response.data)
         assert response.data['firebase'] is False
     
     @patch('api.views.refugi_lliure_views.RefugiLliureController')

@@ -409,7 +409,7 @@ class TestRefugiLliureControllerExtended:
         mock_ref_dao.health_check.side_effect = Exception("Health Error")
         res, error = ctrl.health_check()
         assert res['status'] == 'unhealthy'
-        assert "Health Error" in error
+        assert "Health Error" not in error and "Health Error" not in res['message']
 
     @patch('api.controllers.refugi_lliure_controller.r2_media_service')
     @patch('api.controllers.refugi_lliure_controller.RefugiLliureDAO')
