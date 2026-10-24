@@ -17,8 +17,8 @@
 |---|---|---|---|---|
 | 0 | Disseny BD | `migracio/disseny-bd` | fet | `docs/design/postgres-schema.md` tancat (`e611fe3`), PR a `migration` |
 | 1 | Infraestructura | `migracio/infraestructura` | fet (PR [#42](https://github.com/jordirev/RefugisLliures_Backend/pull/42) fusionada, `7d9073f`) | 1666 tests; D9 confirmada a Neon `dev` |
-| 2 | Refugis | `migracio/refugis` | revisions del disseny implementades (Django 5.2 + Python 3.14 + PG18); e2e 31/31 (+ chunk 1 12/12); PR #43 | 2010 tests |
-| 3 | Usuaris | `migracio/usuaris` | pendent | |
+| 2 | Refugis | `migracio/refugis` | fet (PR [#43](https://github.com/jordirev/RefugisLliures_Backend/pull/43) fusionada, `49f15ed`) | 2010 tests; Django 5.2 + Python 3.14 + PG18; e2e 31/31 |
+| 3 | Usuaris | `migracio/usuaris` | en curs: agent de tests | D19–D21 (coexistència amb Firestore) |
 | 4 | Visites | `migracio/visites` | pendent | paral·lel amb 5, 6 |
 | 5 | Renovations | `migracio/renovations` | pendent | paral·lel amb 4, 6 |
 | 6 | Dubtes | `migracio/dubtes` | pendent | paral·lel amb 4, 5 |
