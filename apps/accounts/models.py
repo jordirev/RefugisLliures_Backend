@@ -11,6 +11,8 @@ from django.db.models import F, Q, Value
 from django.db.models.functions import Length, Now, Trim
 from django.db.models.lookups import Exact, GreaterThanOrEqual
 
+from apps.core.db_functions import TransactionNow
+
 
 class Language(models.Model):
     """`users.languages`: catàleg obert dels idiomes (un idioma nou és un `INSERT` en una migració de dades)."""
@@ -126,3 +128,50 @@ class UserAvatar(models.Model):
 
     def __str__(self):
         return f'{self.user_id}: {self.key}'
+
+
+class _UserRefugeList(models.Model):
+    """
+    Base abstracta de les llistes d'un usuari (preferits i visitats): PK composta `(user_uid, refuge_id)`, sense `id`.
+
+    Afegir dues vegades és un `INSERT ... ON CONFLICT DO NOTHING` (no una carrera); `created_at` conserva l'ordre
+    d'inserció (decisió del PO, com l'`ArrayUnion` de Firestore). Les FK reals (`ON DELETE CASCADE`) i la RLS són a
+    la migració per `RunSQL` (§6.3).
+    """
+
+    pk = models.CompositePrimaryKey('user', 'refuge')
+    user = models.ForeignKey(
+        UserAccount, on_delete=models.DO_NOTHING, db_constraint=False, db_index=False, db_column='user_uid',
+        related_name='+')
+    refuge = models.ForeignKey(
+        'refuges.Refuge', on_delete=models.DO_NOTHING, db_constraint=False, db_index=False, db_column='refuge_id',
+        related_name='+')
+    created_at = models.DateTimeField(db_default=TransactionNow())
+
+    class Meta:
+        abstract = True
+
+    def __str__(self):
+        return f'{self.user_id}: {self.refuge_id}'
+
+
+class FavouriteRefuge(_UserRefugeList):
+    """`users.user_favourite_refuges` (§2.3): privada (només el propi usuari)."""
+
+    class Meta:
+        db_table = 'users"."user_favourite_refuges'
+        indexes = [
+            models.Index(fields=['user', '-created_at', 'refuge'], name='favourites_user_created_idx'),   # keyset
+            models.Index(fields=['refuge'], name='favourites_refuge_idx'),                                   # FK/cascada
+        ]
+
+
+class VisitedRefuge(_UserRefugeList):
+    """`users.user_visited_refuges` (§2.4): font de veritat de «visitats» i de `refuge.visitors` (admins)."""
+
+    class Meta:
+        db_table = 'users"."user_visited_refuges'
+        indexes = [
+            models.Index(fields=['user', '-created_at', 'refuge'], name='visited_user_created_idx'),      # keyset
+            models.Index(fields=['refuge', 'user'], name='visited_refuge_user_idx'),                       # visitors + FK
+        ]
