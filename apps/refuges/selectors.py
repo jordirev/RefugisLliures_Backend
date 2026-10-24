@@ -98,10 +98,9 @@ def has_active_filters(filters: dict) -> bool:
         or any(filters.get(k) is not None for k in ('places_min', 'places_max', 'altitude_min', 'altitude_max')))
 
 
-def search_refuges(filters: dict, viewer_uid: Optional[str] = None, authenticated: bool = False,
-                   is_admin: bool = False) -> list:
+def search_queryset(filters: dict) -> QuerySet:
     """
-    Cerca amb filtres: una sola consulta SQL (+1 de mitjans en bloc si l'espectador és autenticat).
+    `QuerySet` de la cerca amb filtres (una sola consulta SQL; vegeu `search_refuges`).
 
     - `name`: coincidència parcial i sense accents ni majúscules sobre `name` i `surname`
       (`core.norm_name` + `pg_trgm`: similitud o subcadena; usa els índexs GIN); ordena per similitud descendent.
@@ -114,9 +113,11 @@ def search_refuges(filters: dict, viewer_uid: Optional[str] = None, authenticate
     if name:
         wanted = norm_name(Value(name))
         qs = qs.alias(name_n=norm_name(F('name')), surname_n=norm_name(F('surname')))
+        # `surname IS NOT NULL` a cada braç (OR pla): sense ell el planificador no pot usar l'índex GIN parcial de l'àlies.
         qs = qs.filter(
             Q(name_n__trigram_similar=wanted) | Q(name_n__contains=wanted)
-            | Q(surname_n__trigram_similar=wanted) | Q(surname_n__contains=wanted))
+            | Q(surname__isnull=False, surname_n__trigram_similar=wanted)
+            | Q(surname__isnull=False, surname_n__contains=wanted))
         qs = qs.alias(similarity=Greatest(
             TrigramSimilarity(norm_name(F('name')), wanted),
             Coalesce(TrigramSimilarity(norm_name(F('surname')), wanted), 0.0))).order_by('-similarity', 'name', 'id')
@@ -134,7 +135,13 @@ def search_refuges(filters: dict, viewer_uid: Optional[str] = None, authenticate
         qs = qs.alias(condition_rounded=Func(F('condition'), function='core.round_half_even',
                                              output_field=IntegerField()))
         qs = qs.filter(condition_rounded__in=filters['condition'])
+    return qs
 
+
+def search_refuges(filters: dict, viewer_uid: Optional[str] = None, authenticated: bool = False,
+                   is_admin: bool = False) -> list:
+    """Cerca amb filtres: 1 consulta (+1 de mitjans en bloc, amb `Prefetch`, si l'espectador és autenticat)."""
+    qs = search_queryset(filters)
     if authenticated:
         qs = qs.prefetch_related(Prefetch('media', queryset=_ordered_media(viewer_uid, is_admin),
                                           to_attr='media_list'))

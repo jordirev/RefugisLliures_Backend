@@ -214,3 +214,11 @@ def test_el_gist_s_usa_per_a_la_caixa_del_mapa(named):
     plan = _explain("SELECT id FROM refuges.refuges "
                     "WHERE coord && ST_MakeEnvelope(0.8, 42.5, 1.0, 42.7, 4326)::geography")
     assert 'refuges_coord_gist' in plan, plan
+
+
+def test_la_consulta_real_de_la_cerca_per_nom_usa_els_dos_gin_trigram(named):
+    """No només el SQL a mà: el `QuerySet` que executa la vista fa `BitmapOr` sobre els GIN del nom i de l'àlies."""
+    from apps.refuges import selectors
+    sql, params = selectors.search_queryset({'name': 'colomers'}).query.sql_with_params()
+    plan = _explain(sql, params)
+    assert 'refuges_name_trgm_gin' in plan and 'refuges_surname_trgm_gin' in plan, plan
