@@ -72,6 +72,10 @@ USER_TOKEN=$(auth_call accounts:signInWithPassword "$USER_EMAIL" | json_field id
 ADMIN_TOKEN=$(auth_call accounts:signInWithPassword "$ADMIN_EMAIL" | json_field idToken)
 U=(-H "Authorization: Bearer $USER_TOKEN")
 A=(-H "Authorization: Bearer $ADMIN_TOKEN")
+# Des del chunk 3 tot endpoint autenticat exigeix perfil (403 profile_required): es creen els dos perfils
+for T in "$USER_TOKEN" "$ADMIN_TOKEN"; do
+  curl -s -m 30 -o /dev/null -X POST -H "Authorization: Bearer $T" -H 'Content-Type: application/json' \n    -d '{"birth_date":"1990-01-01"}' "$API/users/"
+done
 
 # --- Llista sense filtres (mapa: consulta directa a refuges)
 check_json "llista: {count, results}, sense has_filters" \
