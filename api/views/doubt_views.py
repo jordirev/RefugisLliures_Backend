@@ -10,7 +10,7 @@ from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 
 from ..controllers.doubt_controller import DoubtController
-from ..permissions import IsDoubtCreator, IsAnswerCreator
+from ..permissions import HasProfile, IsDoubtCreator, IsAnswerCreator
 from ..serializers.doubt_serializer import (
     DoubtSerializer,
     CreateDoubtSerializer,
@@ -41,7 +41,7 @@ class DoubtListAPIView(APIView):
     GET /api/doubts/?refuge_id={refuge_id}
     POST /api/doubts/
     """
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, HasProfile]
     
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -190,7 +190,7 @@ class DoubtDetailAPIView(APIView):
     Gestiona l'eliminació d'un dubte.
     DELETE /api/doubts/{doubt_id}/
     """
-    permission_classes = [IsAuthenticated, IsDoubtCreator]
+    permission_classes = [IsAuthenticated, HasProfile, IsDoubtCreator]
     
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -268,7 +268,7 @@ class AnswerListAPIView(APIView):
     Gestiona la creació de respostes a un dubte.
     POST /api/doubts/{doubt_id}/answers/
     """
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, HasProfile]
     
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -374,10 +374,10 @@ class AnswerReplyAPIView(APIView):
         Assigna permisos segons el mètode HTTP
         """
         if self.request.method == 'POST':
-            return [IsAuthenticated()]
+            return [IsAuthenticated(), HasProfile()]
         elif self.request.method == 'DELETE':
-            return [IsAuthenticated(), IsAnswerCreator()]
-        return [IsAuthenticated()]
+            return [IsAuthenticated(), HasProfile(), IsAnswerCreator()]
+        return [IsAuthenticated(), HasProfile()]
     
     @swagger_auto_schema(
         tags=['Refuge Doubts'],

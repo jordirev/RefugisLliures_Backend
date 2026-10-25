@@ -10,17 +10,7 @@ from .views.doubt_views import (
     AnswerListAPIView,
     AnswerReplyAPIView
 )
-from .views.user_views import (
-    UsersCollectionAPIView,
-    UserDetailAPIView,
-    UserFavouriteRefugesAPIView,
-    UserFavouriteRefugesDetailAPIView,
-    UserVisitedRefugesAPIView,
-    UserVisitedRefugesDetailAPIView,
-    UserAvatarAPIView,
-    UserAgeConfirmationAPIView,
-    UserModerationNoticesAPIView,
-)
+from .views.user_views import UserModerationNoticesAPIView
 from .views.media_views import (
     UploadIntentsAPIView,
     UploadIntentsConfirmAPIView,
@@ -79,15 +69,9 @@ urlpatterns = [
     path('doubts/<str:doubt_id>/answers/<str:answer_id>/', AnswerReplyAPIView.as_view(), name='answer_reply'),  # POST + DELETE /refuges/{refuge_id}/doubts/{doubt_id}/answers/{answer_id}/
     
     # Users endpoints
-    path('users/', UsersCollectionAPIView.as_view(), name='users_collection'),  # POST /users/ (crear)
-    path('users/<str:uid>/', UserDetailAPIView.as_view(), name='user_detail'),  # GET + PATCH + DELETE /users/{uid}/
-    path('users/<str:uid>/avatar/', UserAvatarAPIView.as_view(), name='user_avatar'),  # DELETE /users/{uid}/avatar/
-    path('users/<str:uid>/age-confirmation/', UserAgeConfirmationAPIView.as_view(), name='user_age_confirmation'),  # PATCH
+    # /users/, /users/{uid}/, avatar, age-confirmation i les llistes de preferits/visitats → app `accounts` (PostgreSQL)
+    path('users/', include('apps.accounts.urls')),
     path('users/<str:uid>/moderation-notices/', UserModerationNoticesAPIView.as_view(), name='user_moderation_notices'),  # GET
-    path('users/<str:uid>/favorite-refuges/', UserFavouriteRefugesAPIView.as_view(), name='user_refugis_preferits'),  # GET + POST /users/{uid}/favorite-refuges/
-    path('users/<str:uid>/favorite-refuges/<str:refuge_id>/', UserFavouriteRefugesDetailAPIView.as_view(), name='user_favourite_refuges_delete'),  # DELETE /users/{uid}/favorite-refuges/{refuge_id}/
-    path('users/<str:uid>/visited-refuges/', UserVisitedRefugesAPIView.as_view(), name='user_visited_refuges'),  # GET + POST /users/{uid}/visited-refuges/
-    path('users/<str:uid>/visited-refuges/<str:refuge_id>/', UserVisitedRefugesDetailAPIView.as_view(), name='user_visited_refuges_delete'),  # DELETE /users/{uid}/visited-refuges/{refuge_id}/
     path('users/<str:uid>/visits/', UserVisitsAPIView.as_view(), name='user_visits'),  # GET /users/{uid}/visits/
     
     # Renovations endpoints

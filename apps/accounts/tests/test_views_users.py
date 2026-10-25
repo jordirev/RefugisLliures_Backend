@@ -216,7 +216,8 @@ def test_get_altre_usuari_nomes_uid_username_i_avatar(client):
     assert (data['uid'], data['username']) == ('u2', 'Bernat')
     assert set(data['avatar_metadata']) == MEDIA_ITEM_KEYS
     body = r_.content.decode()
-    for leaked in ('language', 'favourite', 'visited', 'uploaded', 'created_at', 'age_confirmed', 'num_'):
+    # (`uploaded_at` és de l'avatar, un MediaItem: el que no ha de sortir és `uploaded_photos_keys`)
+    for leaked in ('language', 'favourite', 'visited', 'uploaded_photos', 'created_at', 'age_confirmed', 'num_'):
         assert leaked not in body
 
 

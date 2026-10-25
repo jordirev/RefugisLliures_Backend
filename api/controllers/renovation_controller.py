@@ -5,7 +5,6 @@ import logging
 from typing import List, Optional, Dict, Any, Tuple
 from datetime import datetime
 from ..daos.renovation_dao import RenovationDAO
-from ..daos.user_dao import UserDAO
 from ..models.renovation import Renovation
 
 logger = logging.getLogger(__name__)
@@ -16,7 +15,6 @@ class RenovationController:
     def __init__(self):
         """Inicialitza el controller"""
         self.renovation_dao = RenovationDAO()
-        self.user_dao = UserDAO()
     
     def create_renovation(self, renovation_data: Dict[str, Any], creator_uid: str) -> Tuple[bool, Optional[Renovation], Optional[str]]:
         """
@@ -49,9 +47,6 @@ class RenovationController:
             renovation = self.renovation_dao.create_renovation(renovation_data)
             if not renovation:
                 return False, None, "Error creant renovation a la base de dades"
-            
-            # Incrementar el comptador de refugis renovats del creador
-            self.user_dao.increment_renovated_refuges(creator_uid)
             
             logger.info(f"Renovation creada correctament amb ID: {renovation.id}")
             return True, renovation, None
@@ -179,15 +174,6 @@ class RenovationController:
             if not success:
                 return False, "Error eliminant renovation de la base de dades"
             
-            # Decrementar el comptador de refugis renovats del creador
-            if creator_uid_from_dao:
-                self.user_dao.decrement_renovated_refuges(creator_uid_from_dao)
-            
-            # Decrementar el comptador de refugis renovats dels participants
-            if participants:
-                for participant_uid in participants:
-                    self.user_dao.decrement_renovated_refuges(participant_uid)
-            
             logger.info(f"Renovation eliminada correctament: {renovation_id}")
             return True, None
             
@@ -228,9 +214,6 @@ class RenovationController:
                 else:
                     return False, None, "Error afegint participant"
             
-            # Incrementar el comptador de refugis renovats del participant
-            self.user_dao.increment_renovated_refuges(participant_uid)
-            
             # Obtenir la renovation actualitzada
             renovation = self.renovation_dao.get_renovation_by_id(renovation_id)
             
@@ -270,9 +253,6 @@ class RenovationController:
             success = self.renovation_dao.remove_participant(renovation_id, participant_uid, is_expulsion=is_expulsion)
             if not success:
                 return False, None, "Error eliminant participant o no és participant"
-            
-            # Decrementar el comptador de refugis renovats del participant
-            self.user_dao.decrement_renovated_refuges(participant_uid)
             
             # Obtenir la renovation actualitzada
             renovation = self.renovation_dao.get_renovation_by_id(renovation_id)
@@ -317,11 +297,6 @@ class RenovationController:
             success, participants, error = self.renovation_dao.delete_current_renovations_by_creator(creator_uid)
             if not success:
                 return False, error
-            
-            # Decrementem el comptador de refugis renovats dels participants
-            if participants:
-                for participant_uid, count in participants.items():
-                    self.user_dao.decrement_renovated_refuges(participant_uid, count=count)
             
             logger.info(f"Renovations actuals eliminades correctament per al creador {creator_uid}")
             return True, None

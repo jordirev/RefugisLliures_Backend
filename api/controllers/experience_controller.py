@@ -8,7 +8,6 @@ from datetime import datetime
 from ..daos.experience_dao import ExperienceDAO
 from ..daos.refugi_lliure_dao import RefugiLliureDAO
 from ..controllers.refugi_lliure_controller import RefugiLliureController
-from ..daos.user_dao import UserDAO
 from ..models.experience import Experience
 from ..models.media_metadata import RefugeMediaMetadata
 from ..services import r2_media_service
@@ -27,7 +26,6 @@ class ExperienceController:
         self.experience_dao = ExperienceDAO()
         self.refugi_dao = RefugiLliureDAO()
         self.refugi_controller = RefugiLliureController()
-        self.user_dao = UserDAO()
         self.media_service = r2_media_service.get_refugi_media_service()
     
     def _attach_media_items(self, experiences: List[Experience], refuge_id: str,
@@ -118,9 +116,6 @@ class ExperienceController:
             experience = self.experience_dao.create_experience(experience_data)
             if not experience:
                 return None, "Error creating experience"
-            
-            # Actualitzem el comptador d'experiencies compartides de l'usuari
-            self.user_dao.increment_shared_experiences(creator_uid)
             
             # Obtenir l'experiència creada amb totes les dades
             experience = self.experience_dao.get_experience_by_id(experience.id)
@@ -228,9 +223,6 @@ class ExperienceController:
             success, error = self.experience_dao.delete_experience(experience_id)
             if not success:
                 return False, error or "Error deleting experience"
-            
-            # Actualitzar el comptador d'experiencies compartides de l'usuari
-            self.user_dao.decrement_shared_experiences(creator_uid)
             
             return True, None
             

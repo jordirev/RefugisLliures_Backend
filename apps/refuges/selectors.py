@@ -15,6 +15,8 @@ from django.db.models import CharField, F, FloatField, Func, IntegerField, Outer
 from django.db.models.functions import Cast
 from django.db.models.functions import Coalesce, Greatest
 
+from apps.accounts.models import VisitedRefuge
+
 from .models import Refuge, RefugeLink, RefugeMedia, RefugeType, norm_name
 
 
@@ -71,12 +73,15 @@ def get_refuge_media(refuge_id, viewer_uid: Optional[str] = None, is_admin: bool
 
 def get_visitor_uids(refuge_id) -> list:
     """
-    UIDs dels visitants del refugi (només es mostren als admins).
+    UIDs dels visitants del refugi, de `users.user_visited_refuges` (1 consulta; només es mostren als admins).
 
-    La font serà `users.user_visited_refuges`, que arriba al chunk 3 (`accounts.0002`); fins llavors no hi ha
-    cap visitant a PostgreSQL i la llista és buida.
+    La RLS només deixa veure totes les files a admin/sistema; un usuari normal només veuria la pròpia.
     """
-    return []
+    pk = parse_refuge_id(refuge_id)
+    if pk is None:
+        return []
+    return list(VisitedRefuge.objects.filter(refuge_id=pk).order_by('created_at', 'user_id')
+                .values_list('user_id', flat=True))
 
 
 def get_media_by_key(refuge_id, key: str) -> Optional[RefugeMedia]:

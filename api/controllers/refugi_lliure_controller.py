@@ -7,7 +7,6 @@ import logging
 from typing import Dict, Any, List, Optional, Tuple
 
 from ..daos.refugi_lliure_dao import RefugiLliureDAO
-from ..daos.user_dao import UserDAO
 from ..services import r2_media_service
 from ..services.database_health import check_database
 
@@ -18,7 +17,6 @@ class RefugiLliureController:
     
     def __init__(self):
         self.refugi_dao = RefugiLliureDAO()
-        self.user_dao = UserDAO()
         self._media_service = None
 
     @property
@@ -138,20 +136,6 @@ class RefugiLliureController:
                 
                 return False, "Error deleting files from storage"
 
-            # Eliminar les keys de l'array de fotos pujades per usuari que no han fallat (agrupat per creator_uid)
-            user_photo_keys = {}
-            for metadata in metadata_backup_list:
-                if metadata['key'] not in failed_keys:
-                    creator_uid = metadata.get('creator_uid')
-                    if creator_uid:
-                        if creator_uid not in user_photo_keys:
-                            user_photo_keys[creator_uid] = []
-                        user_photo_keys[creator_uid].append(metadata['key'])
-            
-            # Eliminar keys per cada usuari
-            for creator_uid, keys in user_photo_keys.items():
-                self.user_dao.remove_uploaded_photos_keys(creator_uid, keys)
-            
             logger.info(f"Eliminats correctament {len(metadata_backup_list)} mitjans del refugi {refugi_id}")
             return True, None
             

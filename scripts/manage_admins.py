@@ -37,12 +37,24 @@ def add_admin(uid):
         
         print(f"✓ Usuari {uid} ({user.email}) ara és administrador")
         print("⚠️  L'usuari ha de renovar el seu token (logout/login)")
-        return True
     except auth.UserNotFoundError:
         print(f"✗ Error: Usuari {uid} no trobat")
         return False
     except Exception as e:
         print(f"✗ Error: {str(e)}")
+        return False
+
+    # Tot endpoint autenticat exigeix perfil (403 `profile_required`): s'hi crea la fila de `users` + perfil públic
+    # (idempotent; no trepitja un perfil existent).
+    try:
+        from apps.accounts import services
+        from apps.core.rls import system_context
+        with system_context():
+            services.ensure_user(uid)
+        print(f"✓ Perfil de {uid} assegurat a PostgreSQL")
+        return True
+    except Exception as e:
+        print(f"✗ Error creant el perfil a PostgreSQL ({type(e).__name__}); torna a executar 'add'")
         return False
 
 

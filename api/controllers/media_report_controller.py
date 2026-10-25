@@ -11,7 +11,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from ..daos.media_report_dao import MediaReportDAO, DUPLICATE_REPORT_ERROR
 from ..daos.moderation_notice_dao import ModerationNoticeDAO
 from ..daos.refugi_lliure_dao import RefugiLliureDAO
-from ..daos.user_dao import UserDAO
+from apps.accounts import services as account_services
 from ..daos.experience_dao import ExperienceDAO
 from ..models.media_metadata import MEDIA_STATUS_HIDDEN, MEDIA_STATUS_REMOVED, MEDIA_STATUS_VISIBLE
 from ..models.media_report import (
@@ -47,7 +47,7 @@ class MediaReportController:
         self.report_dao = MediaReportDAO()
         self.notice_dao = ModerationNoticeDAO()
         self.refugi_dao = RefugiLliureDAO()
-        self.user_dao = UserDAO()
+        self.accounts = account_services          # moderació d'usuaris a PostgreSQL (D20)
         self.experience_dao = ExperienceDAO()
         self.media_service = r2_media_service.get_refugi_media_service()
 
@@ -229,14 +229,14 @@ class MediaReportController:
 
                 if creator_uid:
                     if action == REPORT_ACTION_REMOVE_AND_STRIKE:
-                        strikes = self.user_dao.increment_moderation_strikes(creator_uid)
+                        strikes = self.accounts.increment_moderation_strikes(creator_uid)
                     self._notify(creator_uid,
                                  NOTICE_STRIKE if action == REPORT_ACTION_REMOVE_AND_STRIKE else NOTICE_CONTENT_REMOVED,
                                  statement, report, action, now, strikes=strikes)
 
                     if is_csam or (strikes is not None and strikes >= STRIKES_TO_BLOCK):
                         block_reason = 'csam_confirmed' if is_csam else 'strikes'
-                        user_blocked = self.user_dao.set_blocked(creator_uid, True, reason=block_reason, blocked_at=now)
+                        user_blocked = self.accounts.set_blocked(creator_uid, True, reason=block_reason, blocked_at=now)
                         self._notify(creator_uid, NOTICE_ACCOUNT_BLOCKED,
                                      "El compte s'ha bloquejat: " + (
                                          "contingut d'abús sexual infantil confirmat." if is_csam
@@ -299,8 +299,6 @@ class MediaReportController:
                 logger.error(f"No s'ha pogut retenir {key} a moderation-hold/")
         if backup.get('experience_id'):
             self.experience_dao.remove_media_key(backup['experience_id'], media_key)
-        if backup.get('creator_uid'):
-            self.user_dao.remove_uploaded_photos_keys(backup['creator_uid'], [media_key])
 
     # ------------------------------------------------------------------
     # Avisos a l'usuari

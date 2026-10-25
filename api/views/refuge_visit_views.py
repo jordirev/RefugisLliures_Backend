@@ -14,7 +14,7 @@ from ..serializers.refuge_visit_serializer import (
     CreateRefugeVisitSerializer,
     UpdateRefugeVisitSerializer
 )
-from ..permissions import IsSameUser
+from ..permissions import HasProfile, IsSameUser
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +26,7 @@ class RefugeVisitsAPIView(APIView):
     Gestiona les visites d'un refugi específic
     GET: Obté totes les visites actuals i futures del refugi
     """
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, HasProfile]
     
     @swagger_auto_schema(
         tags=['Refuge Visits'],
@@ -98,7 +98,7 @@ class UserVisitsAPIView(APIView):
     Gestiona les visites d'un usuari específic
     GET: Obté totes les visites de l'usuari
     """
-    permission_classes = [IsAuthenticated, IsSameUser]
+    permission_classes = [IsAuthenticated, HasProfile, IsSameUser]
     
     @swagger_auto_schema(
         tags=['Users'],
@@ -166,7 +166,7 @@ class RefugeVisitDetailAPIView(APIView):
     PATCH: Actualitza el nombre de visitants d'un usuari
     DELETE: Elimina un visitant d'una visita
     """
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, HasProfile]
     
     @swagger_auto_schema(
         tags=['Refuge Visits'],
