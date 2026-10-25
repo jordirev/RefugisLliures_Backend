@@ -193,7 +193,9 @@ def update_avatar_metadata(uid: str, metadata: Dict[str, Any]) -> bool:
     el flux de pujades). `False` si l'usuari no existeix. Els fitxers antics d'R2 els esborra qui crida.
     """
     with system_context():
-        if not UserAccount.objects.filter(pk=uid).exists():
+        # `FOR UPDATE` de la fila d'usuari: serialitza dues substitucions concurrents (si no, totes dues farien
+        # `DELETE` de res i el segon `INSERT` fallaria per `user_avatars_user_uq`).
+        if not UserAccount.objects.select_for_update().filter(pk=uid).exists():
             return False
         UserAvatar.objects.filter(user_id=uid).delete()
         UserAvatar.objects.create(

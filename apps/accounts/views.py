@@ -41,7 +41,6 @@ from apps.core.errors import server_error
 from . import selectors, services
 from .serializers import (
     AgeConfirmationSerializer,
-    PublicUserSerializer,
     RefugeIdSerializer,
     UserCreateSerializer,
     UserRefugeInfoSerializer,
@@ -187,6 +186,8 @@ class UserDetailAPIView(APIView):
         if uid == request.user_uid:
             user, error = _fetch_own_profile(uid)
             return error or _own_profile_response(user, uid)
+        if '\x00' in uid:           # un UID amb NUL no pot existir (i psycopg el rebutja: evita un 500 absurd)
+            return Response({'error': f'Usuari amb UID {uid} no trobat'}, status=status.HTTP_404_NOT_FOUND)
         try:
             profile = selectors.get_public_profile(uid)
         except Exception as exc:

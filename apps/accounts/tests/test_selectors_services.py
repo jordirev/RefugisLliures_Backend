@@ -260,3 +260,13 @@ def test_update_avatar_metadata_reemplaca_l_antic(services):
 def test_update_avatar_metadata_usuari_inexistent(services):
     with rls_context(uid='u1'):
         assert services.update_avatar_metadata('fantasma', _meta()) is False
+
+
+def test_update_avatar_metadata_bloqueja_la_fila_d_usuari(services):
+    """Revisor SQL: `FOR UPDATE` serialitza dues substitucions concurrents de l'avatar."""
+    from django.db import connection
+    from django.test.utils import CaptureQueriesContext
+    make_user('u1')
+    with rls_context(uid='u1'), CaptureQueriesContext(connection) as ctx:
+        assert services.update_avatar_metadata('u1', _meta()) is True
+    assert any('FOR UPDATE' in q['sql'] and 'users"."users' in q['sql'] for q in ctx.captured_queries)
