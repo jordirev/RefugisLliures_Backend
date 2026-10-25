@@ -61,7 +61,7 @@ def call(client, method, path, claims, body=None):
 def test_sense_perfil_403_profile_required(client, method, path, body):
     r = call(client, method, path, user_claims('ghost'), body)
     assert r.status_code == 403, (r.status_code, r.content)
-    assert r.json()['error'] == PROFILE_REQUIRED
+    assert r.json().get('error') == PROFILE_REQUIRED, r.content
 
 
 @pytest.mark.parametrize('method,path,body', AUTHENTICATED[:12])

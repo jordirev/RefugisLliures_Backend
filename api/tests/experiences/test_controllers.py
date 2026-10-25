@@ -14,10 +14,9 @@ class TestExperienceController:
     @patch('api.controllers.experience_controller.ExperienceDAO')
     @patch('api.controllers.experience_controller.RefugiLliureDAO')
     @patch('api.controllers.experience_controller.RefugiLliureController')
-    @patch('api.controllers.experience_controller.UserDAO')
     @patch('api.controllers.experience_controller.r2_media_service.get_refugi_media_service')
     @patch('api.controllers.experience_controller.get_madrid_now')
-    def test_get_experiences_by_refuge_success(self, mock_time, mock_r2, mock_user_dao, mock_refugi_controller, mock_refugi_dao_class, mock_exp_dao_class):
+    def test_get_experiences_by_refuge_success(self, mock_time, mock_r2, mock_refugi_controller, mock_refugi_dao_class, mock_exp_dao_class):
         """Test obtenció d'experiències per refugi exitosa"""
         mock_refugi_dao = mock_refugi_dao_class.return_value
         mock_exp_dao = mock_exp_dao_class.return_value
@@ -35,14 +34,12 @@ class TestExperienceController:
     @patch('api.controllers.experience_controller.ExperienceDAO')
     @patch('api.controllers.experience_controller.RefugiLliureDAO')
     @patch('api.controllers.experience_controller.RefugiLliureController')
-    @patch('api.controllers.experience_controller.UserDAO')
     @patch('api.controllers.experience_controller.r2_media_service.get_refugi_media_service')
     @patch('api.controllers.experience_controller.get_madrid_now')
-    def test_create_experience_success(self, mock_time, mock_r2, mock_user_dao_class, mock_refugi_controller_class, mock_refugi_dao_class, mock_exp_dao_class):
+    def test_create_experience_success(self, mock_time, mock_r2, mock_refugi_controller_class, mock_refugi_dao_class, mock_exp_dao_class):
         """Test creació d'experiència exitosa sense fitxers"""
         mock_refugi_dao = mock_refugi_dao_class.return_value
         mock_exp_dao = mock_exp_dao_class.return_value
-        mock_user_dao = mock_user_dao_class.return_value
         
         mock_refugi_dao.refugi_exists.return_value = True
         mock_time.return_value.isoformat.return_value = "2024-01-01"
@@ -56,19 +53,16 @@ class TestExperienceController:
         
         assert error is None
         assert experience.id == "exp_1"
-        mock_user_dao.increment_shared_experiences.assert_called_with("user_1")
 
     @patch('api.controllers.experience_controller.ExperienceDAO')
     @patch('api.controllers.experience_controller.RefugiLliureDAO')
     @patch('api.controllers.experience_controller.RefugiLliureController')
-    @patch('api.controllers.experience_controller.UserDAO')
     @patch('api.controllers.experience_controller.r2_media_service.get_refugi_media_service')
     @patch('api.controllers.experience_controller.get_madrid_now')
-    def test_delete_experience_success(self, mock_time, mock_r2, mock_user_dao_class, mock_refugi_controller_class, mock_refugi_dao_class, mock_exp_dao_class):
+    def test_delete_experience_success(self, mock_time, mock_r2, mock_refugi_controller_class, mock_refugi_dao_class, mock_exp_dao_class):
         """Test eliminació d'experiència exitosa"""
         mock_exp_dao = mock_exp_dao_class.return_value
         mock_refugi_controller = mock_refugi_controller_class.return_value
-        mock_user_dao = mock_user_dao_class.return_value
         
         mock_exp = MagicMock(spec=Experience, id="exp_1", refuge_id="ref_1", creator_uid="user_1", media_keys=["key1"])
         mock_exp_dao.get_experience_by_id.return_value = mock_exp
@@ -81,7 +75,6 @@ class TestExperienceController:
         assert success is True
         assert error is None
         mock_refugi_controller.delete_multiple_refugi_media.assert_called()
-        mock_user_dao.decrement_shared_experiences.assert_called_with("user_1")
 
 
 class TestExperienceControllerExtended:
@@ -89,13 +82,11 @@ class TestExperienceControllerExtended:
 
     @patch('api.controllers.experience_controller.get_madrid_now')
     @patch('api.controllers.experience_controller.r2_media_service')
-    @patch('api.controllers.experience_controller.UserDAO')
     @patch('api.controllers.experience_controller.RefugiLliureController')
     @patch('api.controllers.experience_controller.RefugiLliureDAO')
     @patch('api.controllers.experience_controller.ExperienceDAO')
     def test_get_experiences_by_refuge_errors(self, mock_exp_dao_class, mock_ref_dao_class, 
-                                             mock_ref_ctrl_class, mock_user_dao_class, 
-                                             mock_r2, mock_now):
+                                             mock_ref_ctrl_class, mock_r2, mock_now):
         """Test get_experiences_by_refuge errors"""
         mock_refuge_dao = mock_ref_dao_class.return_value
         ctrl = ExperienceController()
@@ -114,13 +105,11 @@ class TestExperienceControllerExtended:
 
     @patch('api.controllers.experience_controller.get_madrid_now')
     @patch('api.controllers.experience_controller.r2_media_service')
-    @patch('api.controllers.experience_controller.UserDAO')
     @patch('api.controllers.experience_controller.RefugiLliureController')
     @patch('api.controllers.experience_controller.RefugiLliureDAO')
     @patch('api.controllers.experience_controller.ExperienceDAO')
     def test_create_experience_errors(self, mock_exp_dao_class, mock_ref_dao_class, 
-                                     mock_ref_ctrl_class, mock_user_dao_class, 
-                                     mock_r2, mock_now):
+                                     mock_ref_ctrl_class, mock_r2, mock_now):
         """Test create_experience errors"""
         mock_now.return_value.isoformat.return_value = "2024-01-01T00:00:00"
         mock_refuge_dao = mock_ref_dao_class.return_value
@@ -143,13 +132,11 @@ class TestExperienceControllerExtended:
 
     @patch('api.controllers.experience_controller.get_madrid_now')
     @patch('api.controllers.experience_controller.r2_media_service')
-    @patch('api.controllers.experience_controller.UserDAO')
     @patch('api.controllers.experience_controller.RefugiLliureController')
     @patch('api.controllers.experience_controller.RefugiLliureDAO')
     @patch('api.controllers.experience_controller.ExperienceDAO')
     def test_update_experience_errors(self, mock_exp_dao_class, mock_ref_dao_class, 
-                                     mock_ref_ctrl_class, mock_user_dao_class, 
-                                     mock_r2, mock_now):
+                                     mock_ref_ctrl_class, mock_r2, mock_now):
         """Test update_experience errors"""
         mock_now.return_value.isoformat.return_value = "2024-01-01T00:00:00"
         mock_exp_dao = mock_exp_dao_class.return_value
@@ -175,13 +162,11 @@ class TestExperienceControllerExtended:
 
     @patch('api.controllers.experience_controller.get_madrid_now')
     @patch('api.controllers.experience_controller.r2_media_service')
-    @patch('api.controllers.experience_controller.UserDAO')
     @patch('api.controllers.experience_controller.RefugiLliureController')
     @patch('api.controllers.experience_controller.RefugiLliureDAO')
     @patch('api.controllers.experience_controller.ExperienceDAO')
     def test_delete_experience_errors(self, mock_exp_dao_class, mock_ref_dao_class, 
-                                     mock_ref_ctrl_class, mock_user_dao_class, 
-                                     mock_r2, mock_now):
+                                     mock_ref_ctrl_class, mock_r2, mock_now):
         """Test delete_experience errors"""
         mock_exp_dao = mock_exp_dao_class.return_value
         mock_ref_ctrl = mock_ref_ctrl_class.return_value
@@ -214,13 +199,11 @@ class TestExperienceControllerExtended:
 
     @patch('api.controllers.experience_controller.get_madrid_now')
     @patch('api.controllers.experience_controller.r2_media_service')
-    @patch('api.controllers.experience_controller.UserDAO')
     @patch('api.controllers.experience_controller.RefugiLliureController')
     @patch('api.controllers.experience_controller.RefugiLliureDAO')
     @patch('api.controllers.experience_controller.ExperienceDAO')
     def test_delete_experiences_by_creator_errors(self, mock_exp_dao_class, mock_ref_dao_class, 
-                                                 mock_ref_ctrl_class, mock_user_dao_class, 
-                                                 mock_r2, mock_now):
+                                                 mock_ref_ctrl_class, mock_r2, mock_now):
         """Test delete_experiences_by_creator errors"""
         mock_exp_dao = mock_exp_dao_class.return_value
         mock_exp_dao.delete_experiences_by_creator.return_value = (False, "DAO Error")
@@ -240,18 +223,15 @@ class TestExperienceControllerExtended:
 
     @patch('api.controllers.experience_controller.get_madrid_now')
     @patch('api.controllers.experience_controller.r2_media_service')
-    @patch('api.controllers.experience_controller.UserDAO')
     @patch('api.controllers.experience_controller.RefugiLliureController')
     @patch('api.controllers.experience_controller.RefugiLliureDAO')
     @patch('api.controllers.experience_controller.ExperienceDAO')
     def test_create_experience_success(self, mock_exp_dao_class, mock_ref_dao_class, 
-                                      mock_ref_ctrl_class, mock_user_dao_class, 
-                                      mock_r2, mock_now):
+                                      mock_ref_ctrl_class, mock_r2, mock_now):
         """Test create_experience èxit"""
         mock_now.return_value.isoformat.return_value = "2024-01-01T00:00:00"
         mock_ref_dao = mock_ref_dao_class.return_value
         mock_exp_dao = mock_exp_dao_class.return_value
-        mock_user_dao = mock_user_dao_class.return_value
         
         mock_ref_dao.refugi_exists.return_value = True
         mock_exp = MagicMock(spec=Experience)
@@ -264,17 +244,14 @@ class TestExperienceControllerExtended:
         
         assert exp == mock_exp
         assert error is None
-        mock_user_dao.increment_shared_experiences.assert_called_with("u1")
 
     @patch('api.controllers.experience_controller.get_madrid_now')
     @patch('api.controllers.experience_controller.r2_media_service')
-    @patch('api.controllers.experience_controller.UserDAO')
     @patch('api.controllers.experience_controller.RefugiLliureController')
     @patch('api.controllers.experience_controller.RefugiLliureDAO')
     @patch('api.controllers.experience_controller.ExperienceDAO')
     def test_update_experience_success(self, mock_exp_dao_class, mock_ref_dao_class, 
-                                      mock_ref_ctrl_class, mock_user_dao_class, 
-                                      mock_r2, mock_now):
+                                      mock_ref_ctrl_class, mock_r2, mock_now):
         """Test update_experience èxit"""
         mock_now.return_value.isoformat.return_value = "2024-01-01T00:00:00"
         mock_exp_dao = mock_exp_dao_class.return_value
@@ -292,16 +269,13 @@ class TestExperienceControllerExtended:
 
     @patch('api.controllers.experience_controller.get_madrid_now')
     @patch('api.controllers.experience_controller.r2_media_service')
-    @patch('api.controllers.experience_controller.UserDAO')
     @patch('api.controllers.experience_controller.RefugiLliureController')
     @patch('api.controllers.experience_controller.RefugiLliureDAO')
     @patch('api.controllers.experience_controller.ExperienceDAO')
     def test_delete_experience_success(self, mock_exp_dao_class, mock_ref_dao_class, 
-                                      mock_ref_ctrl_class, mock_user_dao_class, 
-                                      mock_r2, mock_now):
+                                      mock_ref_ctrl_class, mock_r2, mock_now):
         """Test delete_experience èxit"""
         mock_exp_dao = mock_exp_dao_class.return_value
-        mock_user_dao = mock_user_dao_class.return_value
         
         mock_exp = MagicMock(spec=Experience)
         mock_exp.creator_uid = "u1"
@@ -313,17 +287,14 @@ class TestExperienceControllerExtended:
         success, error = ctrl.delete_experience("e1")
         
         assert success is True
-        mock_user_dao.decrement_shared_experiences.assert_called_with("u1")
 
     @patch('api.controllers.experience_controller.get_madrid_now')
     @patch('api.controllers.experience_controller.r2_media_service')
-    @patch('api.controllers.experience_controller.UserDAO')
     @patch('api.controllers.experience_controller.RefugiLliureController')
     @patch('api.controllers.experience_controller.RefugiLliureDAO')
     @patch('api.controllers.experience_controller.ExperienceDAO')
     def test_controller_exceptions(self, mock_exp_dao_class, mock_ref_dao_class, 
-                                  mock_ref_ctrl_class, mock_user_dao_class, 
-                                  mock_r2, mock_now):
+                                  mock_ref_ctrl_class, mock_r2, mock_now):
         """Test excepcions en mètodes del controlador"""
         ctrl = ExperienceController()
         mock_refuge_dao = mock_ref_dao_class.return_value
@@ -359,13 +330,11 @@ class TestExperienceControllerExtended:
 
     @patch('api.controllers.experience_controller.get_madrid_now')
     @patch('api.controllers.experience_controller.r2_media_service')
-    @patch('api.controllers.experience_controller.UserDAO')
     @patch('api.controllers.experience_controller.RefugiLliureController')
     @patch('api.controllers.experience_controller.RefugiLliureDAO')
     @patch('api.controllers.experience_controller.ExperienceDAO')
     def test_delete_experiences_by_creator_success(self, mock_exp_dao_class, mock_ref_dao_class, 
-                                                  mock_ref_ctrl_class, mock_user_dao_class, 
-                                                  mock_r2, mock_now):
+                                                  mock_ref_ctrl_class, mock_r2, mock_now):
         """Test delete_experiences_by_creator èxit"""
         mock_exp_dao = mock_exp_dao_class.return_value
         mock_exp_dao.delete_experiences_by_creator.return_value = (True, None)

@@ -15,7 +15,7 @@ class TestRefugeVisitController:
     def controller(self):
         with patch('api.controllers.refuge_visit_controller.RefugeVisitDAO'), \
              patch('api.controllers.refuge_visit_controller.RefugiLliureDAO'), \
-             patch('api.controllers.refuge_visit_controller.UserController'):
+             patch('api.controllers.refuge_visit_controller.account_services'):
             return RefugeVisitController()
 
     def test_get_refuge_visits_success(self, controller):
@@ -200,15 +200,15 @@ class TestRefugeVisitControllerExtended:
 
     @patch('api.controllers.refuge_visit_controller.RefugiLliureDAO')
     @patch('api.controllers.refuge_visit_controller.RefugeVisitDAO')
-    @patch('api.controllers.refuge_visit_controller.UserController')
+    @patch('api.controllers.refuge_visit_controller.system_context')
+    @patch('api.controllers.refuge_visit_controller.account_services')
     @patch('api.controllers.refuge_visit_controller.get_madrid_today')
-    def test_process_yesterday_visits_scenarios(self, mock_today, mock_user_ctrl_class, 
+    def test_process_yesterday_visits_scenarios(self, mock_today, mock_accounts, _mock_system_context,
                                               mock_visit_dao_class, mock_refuge_dao_class):
         """Test process_yesterday_visits diferents escenaris"""
         ctrl = RefugeVisitController()
         mock_visit_dao = mock_visit_dao_class.return_value
         mock_refuge_dao = mock_refuge_dao_class.return_value
-        mock_user_ctrl = mock_user_ctrl_class.return_value
         mock_today.return_value = date(2024, 1, 2)
         
         # Case 1: Empty visit (deleted)
@@ -243,7 +243,7 @@ class TestRefugeVisitControllerExtended:
         success, stats, error = ctrl.process_yesterday_visits()
         assert success is True
         assert stats['updated_refuges'] == 1
-        mock_user_ctrl.add_refugi_visitat.assert_called()
+        mock_accounts.add_visited.assert_called()          # llista de visitats a PostgreSQL (chunk 3)
         
         # Case 4: update_refugi_visitors failure
         mock_refuge_dao.update_refugi_visitors.return_value = False

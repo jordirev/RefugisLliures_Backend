@@ -7,7 +7,7 @@ import pytest
 from rest_framework import status
 from rest_framework.test import APIRequestFactory, force_authenticate
 
-from api.models.user import User
+from apps.accounts.models import UserAccount as User
 from api.views.media_views import (
     UploadIntentsAPIView, UploadIntentsConfirmAPIView, MediaReportsAPIView,
     AdminMediaReportsAPIView, AdminMediaReportDetailAPIView,
@@ -87,7 +87,7 @@ class TestUploadIntentsView:
     @patch('api.views.media_views.MediaUploadController')
     @patch('api.permissions.get_user_for_permissions')
     def test_blocked_user_gets_403_user_blocked(self, mock_lookup, mock_ctrl, factory):
-        mock_lookup.return_value = User(uid='user_1', username='u', age_confirmed_at='2025-01-01', is_blocked=True)
+        mock_lookup.return_value = User(uid='user_1', age_confirmed_at='2025-01-01', is_blocked=True)
         response = UploadIntentsAPIView.as_view()(authed(factory.post('/x', INTENT_BODY, format='json')))
         assert response.status_code == status.HTTP_403_FORBIDDEN
         assert response.data['error'] == 'user_blocked'
@@ -98,7 +98,7 @@ class TestUploadIntentsView:
     @patch('api.views.media_views.MediaUploadController')
     @patch('api.permissions.get_user_for_permissions')
     def test_age_not_confirmed_gets_403(self, mock_lookup, mock_ctrl, factory):
-        mock_lookup.return_value = User(uid='user_1', username='u')
+        mock_lookup.return_value = User(uid='user_1')
         response = UploadIntentsAPIView.as_view()(authed(factory.post('/x', INTENT_BODY, format='json')))
         assert response.status_code == status.HTTP_403_FORBIDDEN
         assert response.data['error'] == 'age_not_confirmed'
@@ -106,10 +106,11 @@ class TestUploadIntentsView:
     @pytest.mark.real_permissions
     @patch('api.views.media_views.MediaUploadController')
     @patch('api.permissions.get_user_for_permissions')
-    def test_missing_user_doc_is_age_not_confirmed(self, mock_lookup, mock_ctrl, factory):
+    def test_missing_user_doc_is_profile_required(self, mock_lookup, mock_ctrl, factory):
+        """Chunk 3: sense fila a `users.users`, `HasProfile` (que va abans d'`IsAgeConfirmed`) respon `profile_required`."""
         mock_lookup.return_value = None
         response = UploadIntentsAPIView.as_view()(authed(factory.post('/x', INTENT_BODY, format='json')))
-        assert response.data['error'] == 'age_not_confirmed'
+        assert response.data['error'] == 'profile_required'
 
     def test_unauthenticated(self, factory):
         response = UploadIntentsAPIView.as_view()(factory.post('/x', INTENT_BODY, format='json'))
@@ -187,7 +188,7 @@ class TestReportView:
     @pytest.mark.real_permissions
     @patch('api.permissions.get_user_for_permissions')
     def test_blocked_user_cannot_report(self, mock_lookup, factory):
-        mock_lookup.return_value = User(uid='user_1', username='u', age_confirmed_at='x', is_blocked=True)
+        mock_lookup.return_value = User(uid='user_1', age_confirmed_at='x', is_blocked=True)
         response = MediaReportsAPIView.as_view()(authed(factory.post('/x', REPORT_BODY, format='json')))
         assert response.status_code == 403 and response.data['error'] == 'user_blocked'
 
@@ -243,8 +244,8 @@ class TestAdminViews:
 @pytest.mark.unit
 class TestPermissionHelpers:
     @pytest.mark.real_permissions
-    @patch('api.daos.user_dao.UserDAO.get_user_by_uid')
-    def test_lookup_uses_user_dao(self, mock_get):
+    @patch('apps.accounts.selectors.get_user')
+    def test_lookup_uses_postgres_selector(self, mock_get):
         from api.permissions import get_user_for_permissions
         mock_get.return_value = 'user'
         assert get_user_for_permissions('u1') == 'user'
