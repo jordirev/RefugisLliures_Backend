@@ -7,12 +7,12 @@ Cobreix la part RGPD/DSA de la feature *images*: notificació i retirada (art. 1
 ## Endpoints
 | Mètode | URL | Vista | Permisos |
 |---|---|---|---|
-| POST | `/api/media/reports/` | `MediaReportsAPIView` (`api/views/media_views.py:163`) | IsAuthenticated + IsNotBlocked + IsAgeConfirmed |
+| POST | `/api/media/reports/` | `MediaReportsAPIView` (`api/views/media_views.py:163`) | IsAuthenticated + HasProfile + IsNotBlocked + IsAgeConfirmed |
 | GET | `/api/admin/media-reports/?status=pending\|resolved` | `AdminMediaReportsAPIView` (`:224`) | IsAuthenticated + IsFirebaseAdmin |
 | PATCH | `/api/admin/media-reports/{id}/` | `AdminMediaReportDetailAPIView` (`:262`) | IsAuthenticated + IsFirebaseAdmin |
-| GET | `/api/users/{uid}/moderation-notices/` | `UserModerationNoticesAPIView` (`api/views/user_views.py`) | IsAuthenticated + IsSameUser |
+| GET | `/api/users/{uid}/moderation-notices/` | `UserModerationNoticesAPIView` (`api/views/user_views.py`, Firestore) | IsAuthenticated + HasProfile + IsSameUser |
 | POST | `/api/users/` (+ `birth_date`) | `UsersCollectionAPIView` | IsAuthenticated |
-| PATCH | `/api/users/{uid}/age-confirmation/` | `UserAgeConfirmationAPIView` | IsAuthenticated + IsSameUser |
+| PATCH | `/api/users/{uid}/age-confirmation/` | `apps.accounts.views.UserAgeConfirmationAPIView` | IsAuthenticated + HasProfile + IsSameUser |
 
 ## Contracte [FET]
 ```
@@ -42,7 +42,7 @@ Errors amb codi: `{"error": "<codi>", "code": "<codi>", "message": "<text>"}`.
 | `moderation_notices/{autoId}` | `{uid, type, statement, created_at, refuge_id, media_key, reason, action, report_id, automated, strikes}` | `type ∈ content_hidden, content_restored, content_removed, strike, account_blocked, upload_blocked`; l'API hi afegeix `redress` (via de recurs) |
 | `moderation_hash_blocklist/{id}` | `{sha256?, phash?, category, source, added_at}` | Es manté a mà (consola/script); els pHash es cachegen 10 min |
 | `audit_logs/{autoId}` | `{actor_uid, action, target_type, target_id, metadata, timestamp (ISO), expire_at (Timestamp +12 mesos)}` | TTL de Firestore sobre `expire_at` |
-| `users/{uid}` | `age_confirmed_at`, `age_threshold` (16), `moderation_strikes`, `is_blocked`, `blocked_reason`, `blocked_at` | **Mai** es desa la data de naixement; l'API només exposa `age_confirmed` (bool) |
+| `users.users` (**PostgreSQL**, chunk 3) | `age_confirmed_at`, `age_threshold` (16), `moderation_strikes`, `is_blocked`, `blocked_reason` (`csam_confirmed`/`strikes`/`moderation_hash_match`), `blocked_at` | **Mai** es desa la data de naixement; l'API només exposa `age_confirmed` (bool). Strikes i bloqueig els escriu `accounts.services` dins `system_context()` (D20): `fn_users_guard` impedeix canviar-los com a usuari corrent |
 | `data_refugis_lliures/{id}.media_metadata[key].status` | `visible \| hidden_pending_review \| removed` | Escrit amb `FieldPath` |
 
 ## Diagrama — denúncia i resolució
@@ -56,7 +56,7 @@ sequenceDiagram
     participant RD as RefugiLliureDAO
     participant MR as MediaReportDAO
     participant N as ModerationNoticeDAO
-    participant UD as UserDAO
+    participant UD as accounts.services (PostgreSQL)
     participant R2 as R2
 
     U->>RC: create_report(refuge_id, media_key, reason)
@@ -94,14 +94,16 @@ sequenceDiagram
 - Coincidència (`MediaUploadController._handle_moderation_block`): el fitxer **no** es publica, l'original es mou a `moderation-hold/{uid}/{upload_id}`, `is_blocked=true`, denúncia `child_sexual_abuse` `priority=high` `source=automatic` (reporter `system`), avís `account_blocked` i dues entrades d'auditoria. L'admin **no** rep previsualització de l'evidència retinguda.
 - Futur (domini propi a Cloudflare + CSAM Scanning Tool + PhotoDNA/NCMEC): [guides/cloudflare-domain-csam.md](../guides/cloudflare-domain-csam.md).
 
-## Permisos nous (`api/permissions.py`)
-- `IsNotBlocked` (L409): 403 `user_blocked` si `users/{uid}.is_blocked`. S'aplica a intents/confirm, denúncies i POST/PATCH/DELETE d'experiències.
-- `IsAgeConfirmed` (L429): 403 `age_not_confirmed` si no hi ha `age_confirmed_at` (o no existeix `users/{uid}`). S'aplica a intents/confirm i denúncies.
-- Tots dos llegeixen l'usuari amb `get_user_for_permissions` (L397, `UserDAO.get_user_by_uid`, cache-first 10 min): un bloqueig pot trigar fins a 10 min a fer efecte si no s'invalida la cache **[INFERÈNCIA]** — `UserDAO.set_blocked` sí que invalida `user_detail`.
+## Permisos (`api/permissions.py`)
+- `HasProfile` (chunk 3): 403 `profile_required` si no hi ha fila a `users.users`. S'aplica a tot endpoint autenticat llevat de `POST /users/` i `/api/cache/*`; va **abans** d'`IsNotBlocked`/`IsAgeConfirmed`.
+- `IsNotBlocked`: 403 `user_blocked` si `users.users.is_blocked`. S'aplica a intents/confirm, denúncies i POST/PATCH/DELETE d'experiències.
+- `IsAgeConfirmed`: 403 `age_not_confirmed` si no hi ha `age_confirmed_at`. Com que `HasProfile` ja ha exigit la fila, el cas «usuari inexistent» només es veu aquí si algú crida el permís sense `HasProfile`.
+- Els tres llegeixen `users.users` amb `get_user_for_permissions` → `selectors.get_user` (**1 consulta per petició**: cau a `request._account_cache`; **sense Redis**). Un bloqueig té efecte immediat (abans podia trigar fins a 10 min per la cache de `user_detail`; [TECH_DEBT I4](../TECH_DEBT.md) resolt) **[FET]**.
+- Els tests mocken `get_user_for_permissions` (usuari confirmat i no bloquejat) llevat del marker `real_permissions`.
 
 ## Edat
-- `POST /api/users/` amb `birth_date`: < 16 → 403 `underage` i **no** es crea l'usuari; ≥ 16 → `age_confirmed_at` + `age_threshold=16`. Sense `birth_date` (p. ex. Google) l'usuari es crea amb `age_confirmed=false` i l'app mostra la pantalla d'edat.
-- `PATCH /api/users/{uid}/age-confirmation/`: mateixa regla. El càlcul (`api/utils/age_utils.py`) usa la data d'avui a Europe/Madrid. La data de naixement no es desa ni es registra a l'auditoria.
+- `POST /api/users/` amb `birth_date`: < 16 → 403 `underage` i **no** es crea l'usuari; ≥ 16 → `age_confirmed_at` + `age_threshold=16` (`services.create_user`); data futura o anterior a 1900 → 400. Sense `birth_date` (p. ex. Google) l'usuari es crea amb `age_confirmed=false` i l'app mostra la pantalla d'edat.
+- `PATCH /api/users/{uid}/age-confirmation/` (`services.confirm_age`, respon 200 amb el perfil propi): mateixa regla. El càlcul (`api/utils/age_utils.py`) usa la data d'avui a Europe/Madrid. La data de naixement no es desa ni es registra a l'auditoria.
 
 ## Auditoria (`api/services/audit_log_service.py`)
 Accions: `media.upload_intent`, `media.upload_confirm`, `avatar.upload`, `media.delete`, `media.list` (accés a la llista de mitjans), `media.report`, `moderation.auto_hide`, `moderation.hash_block`, `moderation.user_blocked`, `moderation.resolve`, `moderation.reports_list`, `user.age_confirmed`. `log()` mai llança (un error de Firestore només es registra al log).

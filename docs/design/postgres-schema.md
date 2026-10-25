@@ -2360,6 +2360,8 @@ Resposta del product owner a la primera versió d'aquesta secció (`PLAN.md`, «
 
 ## 12. Canvis de contracte per al frontend
 
+> **Estat (chunk 3, 25/10)**: implementats els punts 1 (`profile_required`), 2 (perfil d'un altre reduït, també per a un admin: D23) i 11 (idioma per defecte `en` i catàleg `users.languages`). A més, per a usuaris: `PATCH /users/{uid}/` ja no reseteja `language` (només `{}` o camps desconeguts → 400; `username=''` és vàlid); `POST /users/` rep `birth_date` futura o < 1900 → 400; els preferits/visitats retornen 404 per a un `refuge_id` que no és un UUID de PostgreSQL (IDs antics de Firestore) i el DELETE d'un element absent és 204; `uploaded_photos_keys` només inclou fotos de `refuges.refuge_media`; `num_shared_experiences`/`num_renovated_refuges` són provisionals (`count()` de Firestore, D19) i el perfil propi falla amb 500 si Firestore no respon. Els errors 500 porten `error_id`.
+
 Resum dels canvis de l'API respecte a l'actual (els que no hi són, es mantenen):
 1. **`profile_required`**: qualsevol endpoint autenticat llevat de `POST /users/` pot retornar `403 {error: 'profile_required'}` si l'UID no té fila a `users`; el client ha de fer *logout* i el login crea el perfil (chunk 3).
 2. **`GET /users/{uid}/` d'un altre usuari**: només `uid`, `username`, `avatar_metadata` (chunk 3).

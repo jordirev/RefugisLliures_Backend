@@ -75,27 +75,31 @@ Script: `scripts/e2e/e2e_chunk1.sh` (health amb `database`, 401/403/404/200 amb 
 ## Estructura
 ```
 conftest.py                         (arrel) django_db_setup, app_db/migrator_db, bloqueig de Firestore, mocks d'audit i permisos
-apps/<feature>/tests/               tests de les features migrades (apps/core, apps/refuges: Postgres real, rol app)
+apps/<feature>/tests/               tests de les features migrades (apps/core, apps/refuges, apps/accounts: Postgres real, rol app)
 api/tests/
   conftest.py                       fixtures compartides i mocks
-  <domini>/test_{models,mappers,daos,serializers,controllers,views}.py   (+ test_integration.py a renovation, user)
+  <domini>/test_{models,mappers,daos,serializers,controllers,views}.py   (+ test_integration.py a renovation; el domini user ja és a apps/accounts/tests)
   test_auth_middleware_permissions.py, test_cache_views.py
   management_commands/
 ```
-Dominis: `doubts`, `experiences`, `refuge_proposal`, `refuge_visit`, `refugi_lliure` (només el codi legacy que queda a `api/`), `renovation`, `user`. Les comandes antigues de refugis (`assign_conditions`, `upload_refugis_to_firestore`, `extract_coords_to_firestore`, `verify_conditions`) i els seus tests s'han eliminat; `load_refuges` es prova a `apps/refuges/tests/test_load_refuges.py`.
+Dominis: `doubts`, `experiences`, `refuge_proposal`, `refuge_visit`, `refugi_lliure` (només el codi legacy que queda a `api/`), `renovation` (`api/tests/user/` només té `test_age_and_moderation.py`; la resta de tests d'usuari són a `apps/accounts/tests/`). Les comandes antigues de refugis (`assign_conditions`, `upload_refugis_to_firestore`, `extract_coords_to_firestore`, `verify_conditions`) i els seus tests s'han eliminat; `load_refuges` es prova a `apps/refuges/tests/test_load_refuges.py`.
 
 ## Aïllament automàtic (feature images) [FET]
-El `conftest.py` de l'arrel (compartit per `api/tests` i `apps/*/tests`) té tres fixtures `autouse`:
+El `conftest.py` de l'arrel (compartit per `api/tests` i `apps/*/tests`) té quatre fixtures `autouse`:
 - `_block_real_firestore`: `FirestoreService._initialize_firebase` llança → cap test pot connectar-se a Firestore real encara que `env/` tingui credencials. Si un test peta amb "Els tests no poden connectar-se a Firestore real", et falta un mock.
 - `_mock_audit_log`: `AuditLogService.log` mockat. Marker `@pytest.mark.real_audit_log` per provar el servei.
-- `_mock_permission_user_lookup`: `get_user_for_permissions` retorna un usuari amb edat confirmada i no bloquejat. Marker `@pytest.mark.real_permissions` per provar `IsNotBlocked`/`IsAgeConfirmed` (i patcheja tu `api.permissions.get_user_for_permissions`).
+- `_mock_permission_user_lookup`: `get_user_for_permissions` retorna un `UserAccount` (no desat) amb edat confirmada i no bloquejat, així que `HasProfile`, `IsNotBlocked` i `IsAgeConfirmed` passen **sense tocar PostgreSQL**. Marker `@pytest.mark.real_permissions` per provar-los de veritat contra la BD (`apps/accounts/tests/test_permissions.py` el fa servir) o patcheja tu `api.permissions.get_user_for_permissions`.
+- `_restore_view_policies`: desa `permission_classes` i `authentication_classes` de totes les subclasses d'`APIView` abans de cada test i les restaura després. Els tests antics muten `view.cls.permission_classes = []` i abans la mutació es filtrava als tests següents (segons l'ordre d'execució, els de permisos d'`apps/accounts` fallaven). **No et refiïs-hi per a codi nou**: usa `patch.object` ([GOTCHAS #54](../GOTCHAS.md)).
 
 Domini `api/tests/media/`: processament real amb Pillow/ffmpeg (imatges JPEG amb GPS generades en memòria i MP4 generats amb el ffmpeg d'imageio-ffmpeg, marker `slow`) i `helpers.fake_r2_service()`, un `R2MediaService` real amb el client boto3 mockat sobre un dict.
+
+## Tests d'`apps/accounts` (chunk 3) [FET]
+`apps/accounts/tests/`: `test_schema` (DDL, FK, índexs, grants), `test_models_constraints`, `test_rls` (anònim, propi, aliè, admin, sistema), `test_serializers`, `test_selectors_services`, `test_views_users`, `test_views_lists`, `test_permissions` (`real_permissions`), `test_query_counts` (`django_assert_num_queries`), `test_refuge_visitors` i `test_security_review`. Corren contra Postgres real amb el rol `app`; Firestore i R2 es mocken (`api.services.firestore_service`, `get_legacy_counts`, el servei R2).
 
 ## Escriure tests (resum)
 - DAO: `@patch('api.daos.<domini>_dao.FirestoreService')` + `@patch('api.daos.<domini>_dao.cache_service')`.
 - Vista: mocka el controller **al mòdul de la vista** (`@patch('api.views.<domini>_views.<X>Controller')`) i usa `APIRequestFactory`; posa `request.user_uid`.
-- Desactiva permisos amb `patch.object(Vista, 'permission_classes', [])`, **no** assignant `view.cls.permission_classes = []` (muta la classe per a tota la sessió).
+- Desactiva permisos amb `patch.object(Vista, 'permission_classes', [])`, **no** assignant `view.cls.permission_classes = []` (muta la classe; ara `_restore_view_policies` ho restaura després de cada test, però no t'hi basis). Per a una vista amb `get_permissions()` (p. ex. `UserDetailAPIView`) cal patchejar `get_permissions`, no `permission_classes`.
 - Admin: `request.user_claims = {'role': 'admin', ...}`.
 - Detall pas a pas per a un endpoint nou: [recipes/add-endpoint.md §6](../recipes/add-endpoint.md).
 

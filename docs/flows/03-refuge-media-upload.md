@@ -7,7 +7,7 @@ Des de la feature *images* l'única pujada és **directa a R2 amb URL PUT prefir
 ## Contracte d'API (compartit amb el frontend) [FET]
 
 ```
-POST /api/media/upload-intents/                         IsAuthenticated + IsNotBlocked + IsAgeConfirmed
+POST /api/media/upload-intents/                         IsAuthenticated + HasProfile + IsNotBlocked + IsAgeConfirmed
   {target: "refuge"|"experience"|"avatar", refuge_id?, experience_id?,
    rights_confirmed: true, files: [{content_type, size}]}            (màx. 10 fitxers)
   → 201 {uploads: [{upload_id, put_url, headers: {"Content-Type": ...}, expires_in: 600}]}
@@ -31,7 +31,7 @@ MediaItem = {key, url, thumb_url, media_type: "image"|"video", width, height, bl
 ## Endpoints
 | Mètode | URL | Vista | Permisos | Body |
 |---|---|---|---|---|
-| POST | `/api/media/upload-intents/` | `UploadIntentsAPIView` (`api/views/media_views.py:62`) | IsAuthenticated + IsNotBlocked + IsAgeConfirmed | JSON (contracte) |
+| POST | `/api/media/upload-intents/` | `UploadIntentsAPIView` (`api/views/media_views.py:62`) | IsAuthenticated + HasProfile + IsNotBlocked + IsAgeConfirmed | JSON (contracte) |
 | POST | `/api/media/upload-intents/confirm/` | `UploadIntentsConfirmAPIView` (`:120`) | idem | JSON `{upload_ids}` |
 | GET | `/api/refuges/{id}/media/` | `RefugeMediaListAPIView.get` (`apps/refuges/views.py`; PostgreSQL) | IsAuthenticated | — |
 | DELETE | `/api/refuges/{id}/media/{key}/` | `RefugeMediaDetailAPIView.delete` (`apps/refuges/views.py`; PostgreSQL) | IsAuthenticated; autor o admin (al service) | — (`key` és `path:`) |
@@ -42,7 +42,7 @@ MediaItem = {key, url, thumb_url, media_type: "image"|"video", width, height, bl
 - R2: `refugis-lliures/{refuge_id}/{uuid}.webp` (imatge, 2048 px de costat llarg) + `{uuid}_thumb.webp` (400 px); vídeo `{uuid}.mp4|.mov|.webm` + `{uuid}_thumb.webp` (pòster). Les claus són **UUID** (no previsibles; el nom original no s'usa mai). Temporals: `quarantine/{upload_id}`. Evidència retinguda: `moderation-hold/...`.
 - Firestore `data_refugis_lliures/{id}.media_metadata["<clau>"]` = `{creator_uid, uploaded_at, taken_at, experience_id, media_type, content_type, width, height, size, thumb_key, blurhash, status, rights_confirmed_at}`. `status ∈ visible | hidden_pending_review | removed`. `taken_at` (DateTimeOriginal de l'EXIF) **només** es desa aquí; al fitxer publicat no hi ha cap metadada.
 - Items antics (abans de la feature) només tenen `creator_uid`, `uploaded_at`, `experience_id`: es tracten com `status=visible`, `thumb_url = url`, `media_type` inferit de l'extensió i la resta `null` (`MediaMetadata.from_stored`, `api/models/media_metadata.py`).
-- `users/{uid}.uploaded_photos_keys` (ArrayUnion/ArrayRemove) i `experiences/{id}.media_keys` (ArrayUnion).
+- `experiences/{id}.media_keys` (ArrayUnion). **`users.uploaded_photos_keys` ja no existeix** (chunk 3, D19): el perfil el deriva de `refuges.refuge_media.creator_uid`, així que la pujada ja no escriu res a l'usuari; per això, mentre les pujades de fotos de refugi escriguin només a Firestore (R3), `uploaded_photos_keys` del perfil no les mostra.
 - `upload_intents/{upload_id}` = `{uid, target, content_type, size, quarantine_key, refuge_id, experience_id, status: pending|confirmed|failed, rights_confirmed_at, created_at, expire_at (Timestamp, +1 dia), result_key, failure_reason}`.
 
 ## Diagrama — pujada directa (flux nou)
@@ -59,11 +59,10 @@ sequenceDiagram
     participant IP as ImageProcessingService
     participant MS as ModerationService
     participant RD as RefugiLliureDAO
-    participant UD as UserDAO
 
     C->>V: POST upload-intents {target, refuge_id, rights_confirmed, files}
-    V->>P: users/{uid}: is_blocked? age_confirmed_at?
-    P-->>C: 403 user_blocked / age_not_confirmed
+    V->>P: users.users (PostgreSQL): fila? is_blocked? age_confirmed_at?
+    P-->>C: 403 profile_required / user_blocked / age_not_confirmed
     V->>MC: create_upload_intents
     MC->>RD: refugi_exists (Firestore legacy fins al chunk 7: 404 si l'ID no hi és) / experiència + propietari (404/403)
     MC->>R2: presign PUT quarantine/{id} (Content-Type + Content-Length, 600 s)
@@ -85,7 +84,6 @@ sequenceDiagram
         end
         MC->>R2: PUT {uuid}.webp + {uuid}_thumb.webp
         MC->>RD: update(FieldPath media_metadata.`clau`) (atòmic)
-        MC->>UD: ArrayUnion uploaded_photos_keys
         alt qualsevol escriptura falla
             MC->>R2: rollback (delete_file comprovat; orfes → log)
         end
@@ -147,7 +145,7 @@ sequenceDiagram
 | Cas | HTTP |
 |---|---|
 | Validació de l'intent (tipus, mida, > 10 fitxers, `rights_confirmed` ≠ true, target sense id) | 400 |
-| Usuari bloquejat / edat no confirmada / no és el creador de l'experiència | 403 `user_blocked` / `age_not_confirmed` / `not_owner` |
+| Sense perfil / usuari bloquejat / edat no confirmada / no és el creador de l'experiència | 403 `profile_required` / `user_blocked` / `age_not_confirmed` / `not_owner` |
 | Refugi o experiència no trobats | 404 |
 | Fitxer rebutjat en confirmar | 200 amb `failed[].reason` |
 | `POST`/`PATCH` a `/api/refuges/{id}/media/` o `/api/users/{uid}/avatar/` | 405 |

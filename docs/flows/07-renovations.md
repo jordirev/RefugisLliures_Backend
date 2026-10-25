@@ -15,7 +15,7 @@
 | DELETE | `/api/renovations/{id}/participants/{uid}/` | `RenovationParticipantDetailAPIView.delete` (L540) | IsAuthenticated; controller: creador o el propi participant |
 | GET | `/api/refuges/{id}/renovations/` | `RefugeRenovationsAPIView` (`api/views/renovation_views.py`, ruta a `api/urls.py`) | IsAuthenticated |
 
-Col·lecció `renovations/{autoId}` = `{id, creator_uid, refuge_id, ini_date:'YYYY-MM-DD', fin_date, description, materials_needed, group_link, participants_uids[], expelled_uids[]}` (`api/models/renovation.py:8-20`). Comptador a l'usuari: `users.num_renovated_refuges`.
+Col·lecció `renovations/{autoId}` = `{id, creator_uid, refuge_id, ini_date:'YYYY-MM-DD', fin_date, description, materials_needed, group_link, participants_uids[], expelled_uids[]}` (`api/models/renovation.py:8-20`). Comptador a l'usuari: derivat (`count()` de Firestore al perfil; vegeu sota).
 
 ## Diagrama — crear
 
@@ -27,7 +27,6 @@ sequenceDiagram
     participant S as RenovationCreateSerializer
     participant RC as RenovationController
     participant RD as RenovationDAO
-    participant UD as UserDAO
     participant K as CacheService
     participant F as Firestore
 
@@ -45,7 +44,6 @@ sequenceDiagram
     RD->>F: document().set(data amb dates ISO)
     RD->>K: delete_pattern renovation_list:, renovation_refuge:
     RD-->>RC: Renovation (o None si el model peta)
-    RC->>UD: increment_renovated_refuges(uid) (Increment(1))
     V-->>C: 201 RenovationSerializer
 ```
 
@@ -58,7 +56,6 @@ sequenceDiagram
     participant V as RenovationParticipant*APIView
     participant RC as RenovationController
     participant RD as RenovationDAO
-    participant UD as UserDAO
     participant F as Firestore
 
     C->>V: POST /renovations/{id}/participants/
@@ -70,7 +67,6 @@ sequenceDiagram
     else ja participant
         V-->>C: 409
     end
-    RC->>UD: increment_renovated_refuges(uid)
     V-->>C: 200 renovation
 
     C->>V: DELETE /renovations/{id}/participants/{p_uid}/
@@ -78,14 +74,13 @@ sequenceDiagram
     RC->>RC: requester ∈ {p_uid, creador} si no 403
     RC->>RD: remove_participant(is_expulsion = creador i p_uid≠creador)
     RD->>F: reescriu participants_uids (+ expelled_uids)
-    RC->>UD: decrement_renovated_refuges(p_uid)
     V-->>C: 200 renovation
 ```
 
 ## Passos (amb línies)
 - Controller complet: `api/controllers/renovation_controller.py` — `create_renovation` (L21-61), `get_renovation_by_id` (L63-82), `get_all_renovations` (L84-98), `update_renovation` (L100-154), `delete_renovation` (L156-196), `add_participant` (L198-242), `remove_participant` (L244-285), `get_renovations_by_refuge` (L287-303), funcions de cascada d'esborrat d'usuari (L305-397).
 - DAO: `api/daos/renovation_dao.py` — `create_renovation` (L25-67), `get_renovation_by_id` (L69-109, cache `renovation_detail`), `get_all_renovations` (L111-176, ID caching `renovation_list:date:<avui>:list_type:active`), `check_overlapping_renovations` (L345-402), participants (L404-507).
-- Comptadors: `UserDAO.increment_renovated_refuges` / `decrement_renovated_refuges` (`api/daos/user_dao.py:334-365`, `537-578`).
+- Comptadors: **`users.num_renovated_refuges` ja no existeix** (chunk 3, D19): el perfil el calcula amb un `count()` a Firestore (`renovations.creator_uid` + `participants_uids array_contains`) a `apps/accounts/selectors.get_legacy_counts`, i les reformes ja no escriuen cap comptador a l'usuari. El chunk 5 el substituirà per SQL.
 
 ## Errors
 | Cas | HTTP |
@@ -104,6 +99,6 @@ sequenceDiagram
 - Un admin **no** pot editar/esborrar renovations d'altres: el controller compara només `creator_uid` (L119, L174) tot i que `IsRenovationCreator` pretenia deixar passar admins **[FET]**.
 - PATCH invalida només `renovation_detail`, no les llistes (L178-226) **[FET]**.
 - No es comprova que `refuge_id` existeixi en crear **[FET]**.
-- Join/leave fan read-modify-write de `participants_uids` en lloc d'`ArrayUnion`/`ArrayRemove` **[FET]**; els comptadors d'usuari es poden desquadrar **[INFERÈNCIA]**.
+- Join/leave fan read-modify-write de `participants_uids` en lloc d'`ArrayUnion`/`ArrayRemove` **[FET]**; (els comptadors d'usuari ja no es desquadren: es calculen en llegir el perfil, D19).
 - `where fin_date >= …` + `order_by ini_date`: Firestore exigeix tradicionalment que el primer `order_by` sigui el camp de la desigualtat; que funcioni depèn de la versió/índexs **[NO VERIFICAT]** (`api/daos/renovation_dao.py:131-133`).
 - La vista decideix el 409 buscant `'solapa'` al missatge (`api/views/renovation_views.py:150`) **[FET]**.
