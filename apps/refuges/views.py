@@ -138,11 +138,12 @@ class RefugeCollectionAPIView(APIView):
             return server_error(ERR_SEARCH, exc, logger=logger)
         try:
             presign = _presigner() if authenticated else None
+            visitors = selectors.get_visitor_uids_by_refuge([r.pk for r in refuges]) if admin else None
             results = [
                 refuge_to_dict(
                     r,
                     media=[media_to_dict(m, presign) for m in selectors.media_of(r)] if authenticated else None,
-                    visitors=selectors.get_visitor_uids(r.pk) if admin else None)
+                    visitors=visitors.get(r.pk, []) if admin else None)
                 for r in refuges]
         except Exception as exc:
             return server_error(ERR_PRESIGN, exc, logger=logger)

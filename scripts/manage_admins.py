@@ -27,16 +27,7 @@ if not firebase_admin._apps:
 def add_admin(uid):
     """Afegeix permisos d'administrador a un usuari"""
     try:
-        # Obtenir claims actuals
         user = auth.get_user(uid)
-        current_claims = user.custom_claims or {}
-        
-        # Afegir rol admin
-        current_claims['role'] = 'admin'
-        auth.set_custom_user_claims(uid, current_claims)
-        
-        print(f"✓ Usuari {uid} ({user.email}) ara és administrador")
-        print("⚠️  L'usuari ha de renovar el seu token (logout/login)")
     except auth.UserNotFoundError:
         print(f"✗ Error: Usuari {uid} no trobat")
         return False
@@ -44,17 +35,27 @@ def add_admin(uid):
         print(f"✗ Error: {str(e)}")
         return False
 
-    # Tot endpoint autenticat exigeix perfil (403 `profile_required`): s'hi crea la fila de `users` + perfil públic
-    # (idempotent; no trepitja un perfil existent).
+    # Tot endpoint autenticat exigeix perfil (403 `profile_required`): primer es crea la fila de `users` + perfil
+    # públic (idempotent; no trepitja un perfil existent) i només després el claim, perquè cap admin quedi sense perfil.
     try:
         from apps.accounts import services
         from apps.core.rls import system_context
         with system_context():
             services.ensure_user(uid)
         print(f"✓ Perfil de {uid} assegurat a PostgreSQL")
-        return True
     except Exception as e:
         print(f"✗ Error creant el perfil a PostgreSQL ({type(e).__name__}); torna a executar 'add'")
+        return False
+
+    try:
+        current_claims = user.custom_claims or {}
+        current_claims['role'] = 'admin'
+        auth.set_custom_user_claims(uid, current_claims)
+        print(f"✓ Usuari {uid} ({user.email}) ara és administrador")
+        print("⚠️  L'usuari ha de renovar el seu token (logout/login)")
+        return True
+    except Exception as e:
+        print(f"✗ Error: {str(e)}")
         return False
 
 

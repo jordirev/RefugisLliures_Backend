@@ -71,6 +71,19 @@ def get_refuge_media(refuge_id, viewer_uid: Optional[str] = None, is_admin: bool
     return list(_ordered_media(viewer_uid, is_admin).filter(refuge_id=refuge_id))
 
 
+def get_visitor_uids_by_refuge(refuge_ids: Iterable) -> dict:
+    """
+    UIDs dels visitants de diversos refugis en 1 consulta (cerca amb filtres d'un admin; evita l'N+1 de R8):
+    `{refuge_id: [uid, ...]}` amb el mateix ordre que `get_visitor_uids`; un refugi sense visitants no hi surt.
+    """
+    out = {}
+    rows = (VisitedRefuge.objects.filter(refuge_id__in=list(refuge_ids))
+            .order_by('refuge_id', 'created_at', 'user_id').values_list('refuge_id', 'user_id'))
+    for refuge_id, uid in rows:
+        out.setdefault(refuge_id, []).append(uid)
+    return out
+
+
 def get_visitor_uids(refuge_id) -> list:
     """
     UIDs dels visitants del refugi, de `users.user_visited_refuges` (1 consulta; només es mostren als admins).
