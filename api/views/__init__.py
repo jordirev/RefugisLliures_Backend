@@ -5,14 +5,9 @@ creat per a cada endpoint perquè altres mòduls (p. ex. `api.urls`) puguin
 importar-les de manera neta.
 """
 
-# Views d'usuaris
-from .user_views import UsersCollectionAPIView, UserDetailAPIView
-
 # Views de health check
 from .health_check_views import HealthCheckAPIView
 
 __all__ = [
-	'UsersCollectionAPIView',
-	'UserDetailAPIView',
 	'HealthCheckAPIView',
 ]

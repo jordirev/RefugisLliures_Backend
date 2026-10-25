@@ -15,6 +15,8 @@ from django.db.models import CharField, F, FloatField, Func, IntegerField, Outer
 from django.db.models.functions import Cast
 from django.db.models.functions import Coalesce, Greatest
 
+from apps.accounts.models import VisitedRefuge
+
 from .models import Refuge, RefugeLink, RefugeMedia, RefugeType, norm_name
 
 
@@ -69,14 +71,30 @@ def get_refuge_media(refuge_id, viewer_uid: Optional[str] = None, is_admin: bool
     return list(_ordered_media(viewer_uid, is_admin).filter(refuge_id=refuge_id))
 
 
+def get_visitor_uids_by_refuge(refuge_ids: Iterable) -> dict:
+    """
+    UIDs dels visitants de diversos refugis en 1 consulta (cerca amb filtres d'un admin; evita l'N+1 de R8):
+    `{refuge_id: [uid, ...]}` amb el mateix ordre que `get_visitor_uids`; un refugi sense visitants no hi surt.
+    """
+    out = {}
+    rows = (VisitedRefuge.objects.filter(refuge_id__in=list(refuge_ids))
+            .order_by('refuge_id', 'created_at', 'user_id').values_list('refuge_id', 'user_id'))
+    for refuge_id, uid in rows:
+        out.setdefault(refuge_id, []).append(uid)
+    return out
+
+
 def get_visitor_uids(refuge_id) -> list:
     """
-    UIDs dels visitants del refugi (només es mostren als admins).
+    UIDs dels visitants del refugi, de `users.user_visited_refuges` (1 consulta; només es mostren als admins).
 
-    La font serà `users.user_visited_refuges`, que arriba al chunk 3 (`accounts.0002`); fins llavors no hi ha
-    cap visitant a PostgreSQL i la llista és buida.
+    La RLS només deixa veure totes les files a admin/sistema; un usuari normal només veuria la pròpia.
     """
-    return []
+    pk = parse_refuge_id(refuge_id)
+    if pk is None:
+        return []
+    return list(VisitedRefuge.objects.filter(refuge_id=pk).order_by('created_at', 'user_id')
+                .values_list('user_id', flat=True))
 
 
 def get_media_by_key(refuge_id, key: str) -> Optional[RefugeMedia]:

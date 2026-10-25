@@ -18,7 +18,6 @@ THUMB = 'refugis-lliures/ref_1/abc_thumb.webp'
 @pytest.fixture
 def ctrl():
     with patch('api.controllers.refugi_lliure_controller.RefugiLliureDAO'), \
-            patch('api.controllers.refugi_lliure_controller.UserDAO'), \
             patch('api.controllers.refugi_lliure_controller.r2_media_service'):
         controller = RefugiLliureController()
         controller.media_service = MagicMock()

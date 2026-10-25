@@ -75,7 +75,9 @@ check "cache/stats sense token" 401 "$API/cache/stats/"
 check "cache/stats token invàlid" 401 -H 'Authorization: Bearer x.y.z' "$API/cache/stats/"
 check "cache/stats usuari normal" 403 "${U[@]}" "$API/cache/stats/"
 check "cache/stats admin" 200 "${A[@]}" "$API/cache/stats/"
-check "users/{propi} sense perfil" 404 "${U[@]}" "$API/users/$USER_UID/"
+check "users/{propi} sense perfil (profile_required, chunk 3)" 403 "${U[@]}" "$API/users/$USER_UID/"
+# Des del chunk 3 tot endpoint autenticat exigeix perfil: es crea el de l'admin
+check "POST /users/ admin" 201 -X POST "${A[@]}" -H 'Content-Type: application/json' -d '{}' "$API/users/"
 check "users/{propi} sense token" 401 "$API/users/$USER_UID/"
 check "users/{aliè} PATCH" 403 -X PATCH "${U[@]}" -H 'Content-Type: application/json' \
   -d '{"language":"en"}' "$API/users/$ADMIN_UID/"

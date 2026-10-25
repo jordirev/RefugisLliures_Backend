@@ -89,7 +89,7 @@ sequenceDiagram
 - **Doble aprovació possible** durant 600 s: la invalidació usa `...:{id}:*` però la clau és `proposal_detail:proposal_id:{id}` (L620 vs L770/L806) → `approve` torna a llegir `pending` de cache **[FET format / INFERÈNCIA efecte]**. Vegeu [TECH_DEBT C2](../TECH_DEBT.md).
 - **Esborrat a mitges**: les claus de fotos es llegeixen (L409) abans d'esborrar experiències; si totes eren d'experiències, `delete_multiple_media_metadata` retorna `False` i l'aprovació falla amb 500 després d'haver esborrat dubtes i experiències **[FET]**.
 - Cap escriptura de les strategies és transaccional; `coords_refugis/all_refugis_coords` es reescriu sencer (lost updates amb aprovacions concurrents) **[FET patró / INFERÈNCIA carrera]**.
-- Update no invalida `refugi_search` (L375) ni `user_refugis_info` **[FET]**.
+- Update no invalida `refugi_search` (L375) (`user_refugis_info` ja no existeix, chunk 3) **[FET]**.
 - Delete no neteja `refuge_visits` ni les llistes de preferits/visitats dels usuaris (acceptat explícitament a L394-395) **[FET]**.
 - El payload es desa en brut (sense coerció de tipus) **[FET]**: `"altitude": "1200"` es desaria com a string **[INFERÈNCIA]**.
 - La lògica de negoci (strategies que criden controllers d'altres dominis) viu dins el **DAO**, excepció al patró de capes **[FET]**.

@@ -7,7 +7,7 @@ import pytest
 from rest_framework.test import APIRequestFactory, force_authenticate
 
 from api.models.media_metadata import MediaMetadata
-from api.models.user import User
+from apps.accounts.models import UserAccount as User
 from api.serializers.media_serializer import (
     MediaItemSerializer, UploadIntentCreateSerializer, MediaReportCreateSerializer, MediaReportResolveSerializer,
 )
@@ -67,7 +67,7 @@ class TestMediaListBlockedUser:
     @patch('apps.refuges.views.selectors')
     def test_blocked_user_can_still_list(self, mock_selectors, mock_lookup):
         from apps.refuges.views import RefugeMediaListAPIView
-        mock_lookup.return_value = User(uid='u1', username='u', is_blocked=True)
+        mock_lookup.return_value = User(uid='u1', is_blocked=True)
         mock_selectors.refuge_exists.return_value = True
         mock_selectors.get_refuge_media.return_value = []
         request = APIRequestFactory().get('/x')

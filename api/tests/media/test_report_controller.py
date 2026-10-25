@@ -22,7 +22,7 @@ def ctrl():
     controller.report_dao = MagicMock()
     controller.notice_dao = MagicMock()
     controller.refugi_dao = MagicMock()
-    controller.user_dao = MagicMock()
+    controller.accounts = MagicMock()
     controller.experience_dao = MagicMock()
     controller.media_service = fake_r2_service()
     controller.refugi_dao.get_media_entry.return_value = (True, {'creator_uid': 'author', 'status': 'visible'})
@@ -30,7 +30,7 @@ def ctrl():
     controller.report_dao.count_distinct_pending_reporters.return_value = 1
     controller.report_dao.resolve_reports.return_value = True
     controller.refugi_dao.update_media_status.return_value = True
-    controller.user_dao.set_blocked.return_value = True
+    controller.accounts.set_blocked.return_value = True
     return controller
 
 
@@ -126,7 +126,7 @@ class TestResolveReport:
         assert updates['status'] == 'resolved' and updates['action'] == 'dismiss'
         assert updates['resolved_by'] == 'admin' and updates['statement'] == 'No incompleix les normes'
         assert ctrl.notice_dao.create_notice.call_args.args[0]['type'] == 'content_restored'
-        ctrl.user_dao.increment_moderation_strikes.assert_not_called()
+        ctrl.accounts.increment_moderation_strikes.assert_not_called()
 
     def test_remove_sets_removed_and_notifies(self, ctrl):
         ctrl.report_dao.get_report.return_value = pending_report()
@@ -141,22 +141,22 @@ class TestResolveReport:
     def test_strike_below_threshold_does_not_block(self, ctrl):
         ctrl.report_dao.get_report.return_value = pending_report()
         ctrl.report_dao.list_reports_for_media.return_value = []
-        ctrl.user_dao.increment_moderation_strikes.return_value = 2
+        ctrl.accounts.increment_moderation_strikes.return_value = 2
         result, _ = ctrl.resolve_report('r', 'remove_and_strike', 'Motiu', 'admin')
         assert result['strikes'] == 2 and result['user_blocked'] is False
-        ctrl.user_dao.set_blocked.assert_not_called()
+        ctrl.accounts.set_blocked.assert_not_called()
 
     def test_three_strikes_blocks_user(self, ctrl):
         ctrl.report_dao.get_report.return_value = pending_report()
         ctrl.report_dao.list_reports_for_media.return_value = []
-        ctrl.user_dao.increment_moderation_strikes.return_value = 3
+        ctrl.accounts.increment_moderation_strikes.return_value = 3
 
         result, error = ctrl.resolve_report('r', 'remove_and_strike', 'Tercera infracció', 'admin')
 
         assert error is None
         assert result['strikes'] == 3 and result['user_blocked'] is True
-        assert ctrl.user_dao.set_blocked.call_args.args[:2] == ('author', True)
-        assert ctrl.user_dao.set_blocked.call_args.kwargs['reason'] == 'strikes'
+        assert ctrl.accounts.set_blocked.call_args.args[:2] == ('author', True)
+        assert ctrl.accounts.set_blocked.call_args.kwargs['reason'] == 'strikes'
         types = [c.args[0]['type'] for c in ctrl.notice_dao.create_notice.call_args_list]
         assert types == ['strike', 'account_blocked']
 
@@ -173,14 +173,13 @@ class TestResolveReport:
 
         assert error is None
         assert result['user_blocked'] is True and result['media_status'] == 'held'
-        ctrl.user_dao.increment_moderation_strikes.assert_not_called()
-        assert ctrl.user_dao.set_blocked.call_args.kwargs['reason'] == 'csam_confirmed'
+        ctrl.accounts.increment_moderation_strikes.assert_not_called()
+        assert ctrl.accounts.set_blocked.call_args.kwargs['reason'] == 'csam_confirmed'
         store = ctrl.media_service.store
         assert KEY not in store and thumb not in store
         assert store[f'moderation-hold/{KEY}'] == b'img'
         assert store[f'moderation-hold/{thumb}'] == b'thumb'
         ctrl.experience_dao.remove_media_key.assert_called_once_with('exp_1', KEY)
-        ctrl.user_dao.remove_uploaded_photos_keys.assert_called_once_with('author', [KEY])
 
     def test_resolve_persistence_failure(self, ctrl):
         ctrl.report_dao.get_report.return_value = pending_report()

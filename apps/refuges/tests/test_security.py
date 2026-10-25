@@ -38,11 +38,11 @@ def _denied(stmt):
 @pytest.mark.parametrize('view,perm', [
     (views.RefugeCollectionAPIView, 'AllowAny'),
     (views.RefugeDetailAPIView, 'AllowAny'),
-    (views.RefugeMediaListAPIView, 'IsAuthenticated'),
-    (views.RefugeMediaDetailAPIView, 'IsAuthenticated'),
+    (views.RefugeMediaListAPIView, 'IsAuthenticated,HasProfile'),          # chunk 3: tot endpoint autenticat exigeix perfil
+    (views.RefugeMediaDetailAPIView, 'IsAuthenticated,HasProfile'),
 ])
 def test_permission_classes_de_cada_vista(view, perm):
-    assert [p.__name__ for p in view.permission_classes] == [perm]
+    assert ','.join(p.__name__ for p in view.permission_classes) == perm
     assert 'permission_classes' in vars(view), 'declarada a la vista, no heretada del default global'
 
 

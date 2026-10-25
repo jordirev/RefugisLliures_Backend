@@ -585,19 +585,19 @@ class TestDoubtViews:
         view = AnswerReplyAPIView()
         view.request = factory.post('/api/doubts/doubt_1/answers/ans_1/')
         permissions = view.get_permissions()
-        assert len(permissions) == 1
+        assert len(permissions) == 2          # IsAuthenticated + HasProfile
 
     def test_answer_reply_get_permissions_delete(self, factory):
         """Test permisos per DELETE en AnswerReplyAPIView"""
         view = AnswerReplyAPIView()
         view.request = factory.delete('/api/doubts/doubt_1/answers/ans_1/')
         permissions = view.get_permissions()
-        # DELETE requereix IsAuthenticated i IsAnswerCreator
-        assert len(permissions) == 2
+        # DELETE requereix IsAuthenticated, HasProfile i IsAnswerCreator
+        assert len(permissions) == 3
 
     def test_answer_reply_get_permissions_other(self, factory):
         """Test permisos per altres mètodes en AnswerReplyAPIView"""
         view = AnswerReplyAPIView()
         view.request = factory.get('/api/doubts/doubt_1/answers/ans_1/')
         permissions = view.get_permissions()
-        assert len(permissions) == 1
+        assert len(permissions) == 2

@@ -15,7 +15,7 @@ from ..serializers.refuge_proposal_serializer import (
     RefugeProposalResponseSerializer,
     RefugeProposalRejectSerializer
 )
-from ..permissions import IsFirebaseAdmin
+from ..permissions import HasProfile, IsFirebaseAdmin
 from ..utils.swagger_examples import (
     EXAMPLE_REFUGE_PROPOSAL_CREATE,
     EXAMPLE_REFUGE_PROPOSAL_UPDATE,
@@ -47,8 +47,8 @@ class RefugeProposalCollectionAPIView(APIView):
     def get_permissions(self):
         """Permisos diferents per GET (admin) i POST (autenticat)"""
         if self.request.method == 'GET':
-            return [IsFirebaseAdmin()]
-        return [IsAuthenticated()]
+            return [IsAuthenticated(), HasProfile(), IsFirebaseAdmin()]
+        return [IsAuthenticated(), HasProfile()]
     
     @swagger_auto_schema(
         operation_description=(
@@ -206,7 +206,7 @@ class MyRefugeProposalCollectionAPIView(APIView):
     - GET: Llistar les propostes de l'usuari autenticat
     """
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, HasProfile]
 
     @swagger_auto_schema(
         operation_description=(
@@ -279,7 +279,7 @@ class RefugeProposalApproveAPIView(APIView):
     """
     Aprova una proposta de refugi (només admins)
     """
-    permission_classes = [IsFirebaseAdmin]
+    permission_classes = [IsAuthenticated, HasProfile, IsFirebaseAdmin]
     
     @swagger_auto_schema(
         operation_description=(
@@ -352,7 +352,7 @@ class RefugeProposalRejectAPIView(APIView):
     """
     Rebutja una proposta de refugi (només admins)
     """
-    permission_classes = [IsFirebaseAdmin]
+    permission_classes = [IsAuthenticated, HasProfile, IsFirebaseAdmin]
     
     @swagger_auto_schema(
         operation_description=(

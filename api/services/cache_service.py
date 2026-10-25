@@ -23,9 +23,6 @@ class CacheService:
         'refugi_search': 600,      # 10 minuts
         'refugi_coords': 3600,     # 1 hora
         
-        # Usuaris
-        'user_detail': 600,        # 10 minuts
-        
         # Renovations
         'renovation_detail': 600,  # 10 minuts
         'renovation_list': 600,    # 10 minuts

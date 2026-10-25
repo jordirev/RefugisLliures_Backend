@@ -12,7 +12,6 @@ os.environ['R2_BUCKET_NAME'] = 'test-bucket'
 
 import pytest
 from unittest.mock import Mock, MagicMock, patch
-from api.models.user import User
 from api.models.refugi_lliure import Refugi, Coordinates, InfoComplementaria, RefugiSearchFilters
 from api.utils.timezone_utils import get_madrid_now
 
@@ -30,31 +29,6 @@ def setup_test_environment():
     """
     yield
     # No fem cleanup de les variables d'entorn ja que altres tests podrien necessitar-les
-
-
-# ============= FIXTURES D'USUARIS =============
-
-@pytest.fixture
-def sample_user_data():
-    """Dades d'usuari de mostra per tests"""
-    return {
-        'uid': 'test_uid_12345',
-        'username': 'testuser',
-        'avatar': 'https://example.com/avatar.jpg',
-        'language': 'ca',
-        'favourite_refuges': [],
-        'visited_refuges': [],
-        'num_uploaded_photos': 0,
-        'num_shared_experiences': 0,
-        'num_renovated_refuges': 0,
-        'created_at': get_madrid_now().isoformat()
-    }
-
-
-@pytest.fixture
-def sample_user(sample_user_data):
-    """Instància de User per tests"""
-    return User.from_dict(sample_user_data)
 
 
 @pytest.fixture
@@ -370,13 +344,6 @@ def mock_authenticated_request():
 # ============= FIXTURES DE CONTROLLERS =============
 
 @pytest.fixture
-def mock_user_controller():
-    """Mock del UserController"""
-    with patch('api.controllers.user_controller.UserController') as MockController:
-        yield MockController.return_value
-
-
-@pytest.fixture
 def mock_refugi_controller():
     """Mock del RefugiLliureController"""
     with patch('api.controllers.refugi_lliure_controller.RefugiLliureController') as MockController:
@@ -384,13 +351,6 @@ def mock_refugi_controller():
 
 
 # ============= FIXTURES DE DAOs =============
-
-@pytest.fixture
-def mock_user_dao():
-    """Mock del UserDAO"""
-    with patch('api.daos.user_dao.UserDAO') as MockDAO:
-        yield MockDAO.return_value
-
 
 @pytest.fixture
 def mock_refugi_dao():
@@ -401,11 +361,6 @@ def mock_refugi_dao():
 
 # ============= FIXTURES DE MAPPERS =============
 
-@pytest.fixture
-def user_mapper():
-    """Instància real del UserMapper (no mockejada)"""
-    from api.mappers.user_mapper import UserMapper
-    return UserMapper()
 
 
 @pytest.fixture

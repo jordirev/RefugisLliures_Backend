@@ -17,12 +17,14 @@ Endpoints que el requereixen: `GET /api/refuges-proposals/`, `POST /api/refuges-
 ## 2. Afegir / treure / consultar admins (`scripts/manage_admins.py`)
 Requereix credencials locals (el script fa `django.setup()` i, si cal, inicialitza Firebase amb `settings.GOOGLE_APPLICATION_CREDENTIALS`) — vegeu [firebase-credentials.md](firebase-credentials.md).
 ```bash
-python scripts/manage_admins.py add <uid>      # posa role='admin' (conserva la resta de claims)
+python scripts/manage_admins.py add <uid>      # posa role='admin' (conserva la resta de claims) i crea la fila de users + perfil a PostgreSQL
 python scripts/manage_admins.py remove <uid>   # elimina el claim 'role'
 python scripts/manage_admins.py check <uid>    # mostra email, si és admin i tots els claims
 python scripts/manage_admins.py list           # taula de tots els usuaris amb el rol
 ```
-Alternativa puntual (`python manage.py shell`):
+**Perfil a PostgreSQL (chunk 3).** Tot endpoint autenticat exigeix fila a `users.users` (`HasProfile`, 403 `profile_required`), i això també val per als admins (inclosos `/api/refuges-proposals/` i `/api/admin/media-reports/`; no `/api/cache/*`). Per això `add` també crea la fila d'usuari + perfil públic amb `services.ensure_user` dins `system_context()` (`INSERT … ON CONFLICT DO NOTHING`: no trepitja un perfil existent; idempotent). Requereix `DATABASE_URL_APP` (rol `app`) a l'entorn del script; si falla el pas de PostgreSQL, el claim ja s'ha posat: torna a executar `add`. `remove` **no** esborra la fila d'usuari. L'admin pot, alternativament, fer `POST /api/users/` des de l'app.
+
+Alternativa puntual (`python manage.py shell`; **no** crea el perfil):
 ```python
 from firebase_admin import auth
 auth.set_custom_user_claims('<uid>', {'role': 'admin'})   # ⚠️ sobreescriu els altres claims
@@ -63,6 +65,7 @@ request.user_uid = 'test-admin-uid'
 | Símptoma | Causa / solució |
 |---|---|
 | 403 just després de fer admin un usuari | Token antic: refresca'l (pas 3) |
+| 403 `profile_required` a un endpoint d'admin | L'admin no té fila a `users.users`: torna a executar `manage_admins.py add <uid>` o `POST /api/users/` |
 | 403 amb token refrescat | `check <uid>`: el claim ha de ser exactament `role: "admin"` |
 | 401 | Token absent, mal format o caducat ([flux 0](../flows/00-auth-request-pipeline.md)) |
 | 400 a `invalidate` | Falta `pattern` |

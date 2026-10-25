@@ -24,7 +24,7 @@ from ..controllers.media_report_controller import (
     MediaReportController, ERROR_OWN_MEDIA, ERROR_ALREADY_REPORTED, ERROR_ALREADY_RESOLVED,
 )
 from ..permissions import (
-    IsAgeConfirmed, IsNotBlocked, IsFirebaseAdmin, is_firebase_admin, coded_error,
+    HasProfile, IsAgeConfirmed, IsNotBlocked, IsFirebaseAdmin, is_firebase_admin, coded_error,
 )
 from ..serializers.media_serializer import (
     UploadIntentCreateSerializer, UploadIntentResponseSerializer, UploadConfirmSerializer,
@@ -61,7 +61,7 @@ def _invalid_data(errors):
 
 class UploadIntentsAPIView(APIView):
     """Crea intents de pujada directa (URL PUT prefirmades a quarantine/)"""
-    permission_classes = [IsAuthenticated, IsNotBlocked, IsAgeConfirmed]
+    permission_classes = [IsAuthenticated, HasProfile, IsNotBlocked, IsAgeConfirmed]
 
     @swagger_auto_schema(
         tags=['Media Upload'],
@@ -119,7 +119,7 @@ class UploadIntentsAPIView(APIView):
 
 class UploadIntentsConfirmAPIView(APIView):
     """Confirma i processa fitxers pujats a quarantine/"""
-    permission_classes = [IsAuthenticated, IsNotBlocked, IsAgeConfirmed]
+    permission_classes = [IsAuthenticated, HasProfile, IsNotBlocked, IsAgeConfirmed]
 
     @swagger_auto_schema(
         tags=['Media Upload'],
@@ -162,7 +162,7 @@ class UploadIntentsConfirmAPIView(APIView):
 
 class MediaReportsAPIView(APIView):
     """Denúncia d'un mitjà per part d'un usuari"""
-    permission_classes = [IsAuthenticated, IsNotBlocked, IsAgeConfirmed]
+    permission_classes = [IsAuthenticated, HasProfile, IsNotBlocked, IsAgeConfirmed]
 
     @swagger_auto_schema(
         tags=['Media Moderation'],
@@ -223,7 +223,7 @@ class MediaReportsAPIView(APIView):
 
 class AdminMediaReportsAPIView(APIView):
     """Llistat de denúncies per a moderadors"""
-    permission_classes = [IsAuthenticated, IsFirebaseAdmin]
+    permission_classes = [IsAuthenticated, HasProfile, IsFirebaseAdmin]
 
     @swagger_auto_schema(
         tags=['Media Moderation'],
@@ -261,7 +261,7 @@ class AdminMediaReportsAPIView(APIView):
 
 class AdminMediaReportDetailAPIView(APIView):
     """Resolució d'una denúncia per un moderador"""
-    permission_classes = [IsAuthenticated, IsFirebaseAdmin]
+    permission_classes = [IsAuthenticated, HasProfile, IsFirebaseAdmin]
 
     @swagger_auto_schema(
         tags=['Media Moderation'],

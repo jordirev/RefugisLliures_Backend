@@ -15,9 +15,8 @@ from api.models.renovation import Renovation
 class TestRenovationIntegration:
     """Tests d'integració per renovations"""
 
-    @patch('api.controllers.renovation_controller.UserDAO')
     @patch('api.controllers.renovation_controller.RenovationDAO')
-    def test_create_renovation_complete_flow(self, mock_renovation_dao_class, mock_user_dao_class):
+    def test_create_renovation_complete_flow(self, mock_renovation_dao_class):
         """Test flux complet: Controller -> DAO per crear renovation"""
         # Preparar dades
         today = date.today()
@@ -48,8 +47,6 @@ class TestRenovationIntegration:
         mock_renovation_dao.check_overlapping_renovations.return_value = None
         mock_renovation_dao.create_renovation.return_value = Renovation.from_dict(created_renovation_data)
         
-        mock_user_dao = mock_user_dao_class.return_value
-        mock_user_dao.increment_renovated_refuges.return_value = True
         
         # Executar a través del controller
         controller = RenovationController()
@@ -66,7 +63,6 @@ class TestRenovationIntegration:
         # Verificar crides al DAO
         mock_renovation_dao.check_overlapping_renovations.assert_called_once()
         mock_renovation_dao.create_renovation.assert_called_once()
-        mock_user_dao.increment_renovated_refuges.assert_called_once_with('user_001')
 
     @patch('api.controllers.renovation_controller.RenovationDAO')
     def test_get_renovation_detail_complete_flow(self, mock_dao_class):
@@ -194,9 +190,8 @@ class TestRenovationIntegration:
         mock_dao.get_renovation_by_id.assert_called_once_with('renovation_001')
         mock_dao.delete_renovation.assert_called_once_with('renovation_001')
 
-    @patch('api.controllers.renovation_controller.UserDAO')
     @patch('api.controllers.renovation_controller.RenovationDAO')
-    def test_add_participant_complete_flow(self, mock_renovation_dao_class, mock_user_dao_class):
+    def test_add_participant_complete_flow(self, mock_renovation_dao_class):
         """Test flux complet: Controller -> DAO per afegir participant"""
         # Preparar dades
         today = datetime.now(ZoneInfo('UTC'))
@@ -227,8 +222,6 @@ class TestRenovationIntegration:
             Renovation.from_dict(updated_renovation_data)
         ]
         
-        mock_user_dao = mock_user_dao_class.return_value
-        mock_user_dao.increment_renovated_refuges.return_value = True
         
         # Executar a través del controller
         controller = RenovationController()
@@ -241,7 +234,6 @@ class TestRenovationIntegration:
         
         # Verificar crides als DAOs
         mock_renovation_dao.add_participant.assert_called_once()
-        mock_user_dao.increment_renovated_refuges.assert_called_once_with('user_002')
 
     @patch('api.controllers.renovation_controller.RenovationDAO')
     def test_get_renovation_not_found(self, mock_dao_class):

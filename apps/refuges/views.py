@@ -15,7 +15,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from api.permissions import is_firebase_admin
+from api.permissions import HasProfile, is_firebase_admin
 from api.services import audit_log_service as audit
 from api.services import r2_media_service
 from api.utils.swagger_error_responses import (
@@ -138,11 +138,12 @@ class RefugeCollectionAPIView(APIView):
             return server_error(ERR_SEARCH, exc, logger=logger)
         try:
             presign = _presigner() if authenticated else None
+            visitors = selectors.get_visitor_uids_by_refuge([r.pk for r in refuges]) if admin else None
             results = [
                 refuge_to_dict(
                     r,
                     media=[media_to_dict(m, presign) for m in selectors.media_of(r)] if authenticated else None,
-                    visitors=selectors.get_visitor_uids(r.pk) if admin else None)
+                    visitors=visitors.get(r.pk, []) if admin else None)
                 for r in refuges]
         except Exception as exc:
             return server_error(ERR_PRESIGN, exc, logger=logger)
@@ -194,7 +195,7 @@ class RefugeDetailAPIView(APIView):
 
 class RefugeMediaListAPIView(APIView):
     """GET /api/refuges/{id}/media/: mitjans del refugi (la pujada és `POST /api/media/upload-intents/` + confirm)."""
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, HasProfile]
 
     @swagger_auto_schema(
         tags=['Refuge Media'],
@@ -232,7 +233,7 @@ class RefugeMediaListAPIView(APIView):
 
 class RefugeMediaDetailAPIView(APIView):
     """DELETE /api/refuges/{id}/media/{key}/: esborra un mitjà (autor o admin)."""
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, HasProfile]
 
     @swagger_auto_schema(
         tags=['Refuge Media'],

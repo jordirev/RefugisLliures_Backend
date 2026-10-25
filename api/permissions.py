@@ -293,6 +293,7 @@ from rest_framework import exceptions as drf_exceptions
 
 ERROR_CODE_AGE_NOT_CONFIRMED = 'age_not_confirmed'
 ERROR_CODE_USER_BLOCKED = 'user_blocked'
+ERROR_CODE_PROFILE_REQUIRED = 'profile_required'
 
 
 def coded_error(code: str, message: str) -> dict:
@@ -308,29 +309,61 @@ def _request_uid(request):
 
 
 def get_user_for_permissions(uid):
-    """Obté el model User (cache-first) per a les comprovacions d'edat i bloqueig"""
+    """Fila de `users.users` de PostgreSQL (la RLS del context de la petició la deixa veure). 1 consulta; sense cache."""
     if not uid:
         return None
-    from .daos.user_dao import UserDAO
-    return UserDAO().get_user_by_uid(uid)
+    from apps.accounts import selectors
+    return selectors.get_user(uid)
+
+
+_UNSET = object()
+
+
+def _request_account(request):
+    """
+    Usuari (`UserAccount` o `None`) de la petició, llegit **una sola vegada** per petició encara que hi hagi
+    `HasProfile` + `IsNotBlocked` + `IsAgeConfirmed` (§7.3.6). La cau viu a l'objecte `request`, no a Redis.
+    """
+    uid = _request_uid(request)
+    cached = getattr(request, '_account_cache', _UNSET)
+    if cached is not _UNSET and cached[0] == uid:
+        return cached[1]
+    user = get_user_for_permissions(uid)
+    request._account_cache = (uid, user)
+    return user
 
 
 def _is_authenticated(request) -> bool:
     return bool(request.user and getattr(request.user, 'is_authenticated', False))
 
 
+class HasProfile(permissions.BasePermission):
+    """
+    Requereix que l'usuari autenticat tingui fila a `users.users` (el perfil es crea amb `POST /users/`).
+    Falla amb 403 {error: 'profile_required'}. Va just després d'`IsAuthenticated` a tot endpoint autenticat
+    llevat de `POST /users/`.
+    """
+
+    def has_permission(self, request, view):
+        if not _is_authenticated(request):
+            return False
+        if _request_account(request) is None:
+            raise drf_exceptions.PermissionDenied(coded_error(
+                ERROR_CODE_PROFILE_REQUIRED, "Cal crear el perfil d'usuari abans d'usar l'aplicació."))
+        return True
+
+
 class IsNotBlocked(permissions.BasePermission):
     """
-    Denega l'accés als usuaris bloquejats per moderació (users/{uid}.is_blocked).
+    Denega l'accés als usuaris bloquejats per moderació (users.users.is_blocked).
     Falla amb 403 {error: 'user_blocked'}.
     """
 
     def has_permission(self, request, view):
         # L'autenticació la comprova IsAuthenticated (va abans a la llista); aquí només el bloqueig
-        uid = _request_uid(request)
-        if not uid:
+        if not _request_uid(request):
             return _is_authenticated(request)
-        user = get_user_for_permissions(uid)
+        user = _request_account(request)
         if user is not None and getattr(user, 'is_blocked', False) is True:
             raise drf_exceptions.PermissionDenied(coded_error(
                 ERROR_CODE_USER_BLOCKED,
@@ -341,14 +374,14 @@ class IsNotBlocked(permissions.BasePermission):
 
 class IsAgeConfirmed(permissions.BasePermission):
     """
-    Requereix que l'usuari hagi confirmat que té 16 anys o més (users/{uid}.age_confirmed_at).
+    Requereix que l'usuari hagi confirmat que té 16 anys o més (users.users.age_confirmed_at).
     Falla amb 403 {error: 'age_not_confirmed'}.
     """
 
     def has_permission(self, request, view):
         if not _is_authenticated(request):
             return False
-        user = get_user_for_permissions(_request_uid(request))
+        user = _request_account(request)
         if user is None or not getattr(user, 'age_confirmed_at', None):
             raise drf_exceptions.PermissionDenied(coded_error(
                 ERROR_CODE_AGE_NOT_CONFIRMED,

@@ -61,4 +61,4 @@ Vegeu [flows/00-auth-request-pipeline.md](../flows/00-auth-request-pipeline.md).
 [firebase-credentials.md](../guides/firebase-credentials.md) (configurar el service account) · [admin-management.md](../guides/admin-management.md) (fer/treure admins) · [client-auth-usage.md](../guides/client-auth-usage.md) (enviar el token des del client).
 
 ## Edat i bloqueig (feature images) [FET]
-No són custom claims: l'edat confirmada (`age_confirmed_at`) i el bloqueig (`is_blocked`) viuen a `users/{uid}` de Firestore i els comproven `IsAgeConfirmed` / `IsNotBlocked` ([flux 12](../flows/12-media-moderation.md)). El backend no deshabilita el compte de Firebase Auth en bloquejar un usuari.
+No són custom claims: l'edat confirmada (`age_confirmed_at`) i el bloqueig (`is_blocked`) viuen a `users.users` de PostgreSQL (chunk 3) i els comproven `IsAgeConfirmed` / `IsNotBlocked`; tot endpoint autenticat exigeix a més fila a `users.users` (`HasProfile`, 403 `profile_required`) ([flux 12](../flows/12-media-moderation.md), [flux 1](../flows/01-user-profile.md)). El backend no deshabilita el compte de Firebase Auth en bloquejar un usuari.

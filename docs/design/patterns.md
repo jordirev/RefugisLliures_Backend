@@ -52,7 +52,7 @@ Les features migrades (`apps/<feature>/`) substitueixen DAO + controller per **`
 `CacheService` i `FirestoreService` amb `__new__` + instància global (`cache_service`, `firestore_service`). Compte: `CacheService.__init__` es re-executa a cada `CacheService()` ([recipes/add-service.md](../recipes/add-service.md)).
 
 ### DAO + Data Mapper
-Un DAO i un mapper per entitat: `RefugiLliureDAO`, `UserDAO`, `ExperienceDAO`, `DoubtDAO`, `RenovationDAO`, `RefugeProposalDAO`, `RefugeVisitDAO`; mappers homònims a `api/mappers/`. El DAO integra la cache (get → miss → Firestore → set):
+Un DAO i un mapper per entitat (els dominis migrats —refugis, usuaris— usen selectors/services en lloc seu): `RefugiLliureDAO`, `ExperienceDAO`, `DoubtDAO`, `RenovationDAO`, `RefugeProposalDAO`, `RefugeVisitDAO`; mappers homònims a `api/mappers/`. El DAO integra la cache (get → miss → Firestore → set):
 ```mermaid
 sequenceDiagram
     participant C as Controller
@@ -74,7 +74,7 @@ sequenceDiagram
 - **Factory method** als models: `@classmethod from_dict(cls, data)` crea instàncies sense que el client cridi el constructor i permet que una subclasse (p. ex. `RefugeMediaMetadata`) en creï de pròpies (`api/models/media_metadata.py`).
 
 ### Template Method (+ hook)
-- `UserController._manage_refugi_list` defineix l'esquelet comú (validar usuari i refugi → operar sobre la llista → **hook** → resposta). El hook `_update_refugi_visitor_list` només actua per a `visited_refuges` (afegeix/treu l'UID de `visitors` del refugi); per a preferits no fa res. Ho usen `add/remove_refugi_preferit` i `add/remove_refugi_visitat` ([flux 10](../flows/10-favourite-visited.md)).
+- (Eliminat al chunk 3: `UserController._manage_refugi_list` i el seu hook de `visitors`. Els preferits i els visitats comparteixen ara la classe abstracta `_UserRefugeList` i les funcions `_add`/`_remove` d'`apps/accounts/services.py`; no hi ha hook: `visitors` surt de `user_visited_refuges`.)
 - `to_dict()` de `RefugeMediaMetadata` crida `super().to_dict()` i hi afegeix `creator_uid`/`experience_id`: la base dona la plantilla, la subclasse l'especialitza.
 
 ### Decorator

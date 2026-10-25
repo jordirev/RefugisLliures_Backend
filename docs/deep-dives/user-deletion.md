@@ -1,9 +1,11 @@
 # Deep dive — Esborrat d'usuari: criteris, abast i manteniment
 
 > **[FET]** comprovat al codi · **[INFERÈNCIA]** deducció · **[NO VERIFICAT]** depèn de config externa.
-> Document pare: [flux 1 — Perfil d'usuari](../flows/01-user-profile.md#esborrat-en-cascada--diagrama) (diagrama i taula dels 11 passos amb línies de codi). Aquí: **per què** cada pas, què toca i com mantenir-ho.
+> Document pare: [flux 1 — Perfil d'usuari](../flows/01-user-profile.md#esborrat--provisional-d21-d22) (diagrama). Aquí: **per què** cada pas, què toca i com mantenir-ho.
 
-Punt d'entrada: `UserController.delete_user(uid) -> (success, error)` (`api/controllers/user_controller.py:125-276`), cridat per `DELETE /api/users/{uid}/`.
+> **Chunk 3 (D21/D22): procediment provisional.** `UserController` ha desaparegut. El punt d'entrada és `apps.accounts.services.delete_user(uid)`, cridat per `DELETE /api/users/{uid}/`, que executa **(1)** els passos de Firestore dels dominis encara no migrats (via els seus controllers: experiències, dubtes, respostes, propostes, reformes ×4, visites), **(2)** l'esborrat a R2 d'avatar, miniatura i fotos pujades (`refuges.refuge_media.creator_uid`) i **(3)** `DELETE FROM users.users`, que cascadeja perfil, avatar, preferits, visitats i les files de `refuge_media` (FK reals `ON DELETE CASCADE`). Fail-fast: qualsevol pas que falla → `UserDeletionError` → 500 `{error, error_id}`, l'usuari es conserva i el DELETE és reintentable. El procediment únic en una transacció, amb la cua `media_deletion_queue`, és el **chunk 10**; el que segueix descriu els criteris (vàlids) i, on cal, l'estat anterior.
+
+Punt d'entrada: `services.delete_user(uid)` (abans `UserController.delete_user`).
 
 ## Criteri per tipus de dada
 | Dada | Tractament | Motiu |
@@ -19,8 +21,10 @@ Punt d'entrada: `UserController.delete_user(uid) -> (success, error)` (`api/cont
 | `media_reports` (com a denunciant o autor), `moderation_notices` | **Es conserven** (pendent de decidir, [TECH_DEBT I3](../TECH_DEBT.md)) | Obligacions DSA i possible evidència |
 | `moderation-hold/` (R2) | **Es conserva** | Evidència retinguda per obligació legal |
 | `audit_logs` | Caduca per TTL (12 mesos) | Registre art. 32 RGPD |
-| `visitors` dels refugis visitats i entrades a `refuge_visits` | Treure l'UID / l'entrada | No deixar referències |
-| `users/{uid}` | **Esborrar** (últim) | — |
+| `visitors` dels refugis visitats | **Cascada** (`user_visited_refuges`; ja no hi ha array `visitors`) | No deixar referències |
+| Entrades a `refuge_visits` (Firestore) | Treure l'UID / l'entrada | No deixar referències |
+| Preferits i visitats (`user_*_refuges`), perfil públic i avatar (PostgreSQL) | **Cascada** de `DELETE users.users` | — |
+| `users.users` | **Esborrar** (últim) | — |
 
 Per permetre l'anonimització, el model `Renovation` accepta `group_link=None` quan `creator_uid=='unknown'` (`api/models/renovation.py:36-38`) i el serializer d'update té `allow_null=True` a `group_link`.
 
@@ -31,19 +35,19 @@ Per permetre l'anonimització, el model `Renovation` accepta `group_link=None` q
 | `doubts` i `doubts/{id}/answers` (via `collection_group('answers')`) | DELETE + recompte d'`answers_count` |
 | `refuges_proposals` | UPDATE `creator_uid` |
 | `renovations` | DELETE (vigents) / UPDATE (passades, participants, expulsats) |
-| `data_refugis_lliures` | UPDATE `visitors`, `media_metadata` |
+| `data_refugis_lliures` (legacy) | ja no es toca des de l'esborrat d'usuari |
 | `experiences` d'altres usuaris | UPDATE `media_keys` (si hi havia fotos de l'usuari) |
 | `refuge_visits` | UPDATE `visitors`, `total_visitors` |
-| `users` | DELETE |
-| R2 | DELETE fotos (`refugis-lliures/{refuge_id}/...`, agrupades per refugi) i avatar |
+| PostgreSQL `users.users` | DELETE (cascada: perfil, avatar, preferits, visitats, `refuge_media`) |
+| R2 | `delete_files` d'avatar + miniatura + fotos pujades (+ miniatures), en un sol lot |
 | Firebase Auth | **cap** — el compte no s'esborra al backend |
 
 ## Estratègia d'errors
-**Fail-fast**: cada pas que falla retorna `(False, "Error ...")` i atura el procés — inclosos fotos i avatar **[FET]**. Única excepció tolerada: un refugi de `uploaded_photos_keys` que ja no existeix (warning i continua).
+**Fail-fast**: cada pas de Firestore que falla (`(False, error)`), o un lot d'R2 amb fitxers fallits, atura el procés amb `UserDeletionError` **[FET]**. (Ja no hi ha l'excepció de «refugi de `uploaded_photos_keys` inexistent».)
 
-Com que no hi ha transaccions, "aturar" **no desfà** els passos anteriors: un error al pas 7 deixa experiències i dubtes ja esborrats i l'usuari encara existent. Reintentar el DELETE és segur en la majoria de passos (consultes per `creator_uid` que ja no troben res) **[INFERÈNCIA]**. La vista retorna sempre 404 en cas d'error ([TECH_DEBT M10](../TECH_DEBT.md)).
+Com que no hi ha transaccions, "aturar" **no desfà** els passos anteriors: un error a R2 deixa els passos de Firestore ja aplicats i l'usuari encara existent. Reintentar el DELETE és segur en la majoria de passos (consultes per `creator_uid` que ja no troben res) **[INFERÈNCIA]**. La vista retorna 500 `{error, error_id}` (404 només si l'usuari no existeix); abans retornava sempre 404 ([TECH_DEBT M10](../TECH_DEBT.md), resolt pel que fa al codi d'estat).
 
-Bugs coneguts del procés: decrement de `total_visitors` en 1 i no en `num_visitors` ([TECH_DEBT M3](../TECH_DEBT.md)); escriptures no atòmiques entre passos ([TECH_DEBT A6](../TECH_DEBT.md)). Des de la feature *images* l'esborrat de fotos i avatar comprova el resultat de `delete_file` (A4 resolt) i `uploaded_photos_keys`/`media_metadata` s'escriuen atòmicament.
+Bugs coneguts del procés: decrement de `total_visitors` en 1 i no en `num_visitors` ([TECH_DEBT M3](../TECH_DEBT.md)); escriptures no atòmiques entre Firestore, R2 i PostgreSQL ([TECH_DEBT A6, U2](../TECH_DEBT.md)). L'esborrat d'R2 comprova el resultat (`delete_files` retorna `failed`; A4 resolt).
 
 ## Privacitat (dret a l'oblit)
 - S'eliminen totes les dades identificables de l'usuari al backend.
@@ -54,6 +58,6 @@ Bugs coneguts del procés: decrement de `total_visitors` en 1 i no en `num_visit
 Si s'afegeix una col·lecció o relació amb `creator_uid` o UIDs d'usuari:
 1. Decideix el criteri (esborrar vs anonimitzar) segons la taula de dalt.
 2. Afegeix mètodes `*_by_creator` al DAO i al controller del domini.
-3. Afegeix el pas a `UserController.delete_user` respectant l'ordre (dependents abans que l'usuari; fotos d'experiències abans d'esborrar les seves claus).
-4. Invalida la cache de detall i de llistes afectades.
-5. Actualitza aquesta taula i la del [flux 1](../flows/01-user-profile.md). Vegeu també [recipes/add-model.md §6](../recipes/add-model.md).
+3. Si el domini és a Firestore: afegeix el pas a `services._firestore_steps` d'`apps/accounts/services.py` (abans de R2 i del `DELETE users.users`). Si és a PostgreSQL: usa una FK `ON DELETE CASCADE`/`SET NULL` al DDL (no de Django) o, per anonimitzar, un pas explícit.
+4. Invalida la cache de detall i de llistes afectades (dominis a Firestore).
+5. Actualitza aquesta taula i el [flux 1](../flows/01-user-profile.md). Vegeu també [recipes/add-model.md §6](../recipes/add-model.md).

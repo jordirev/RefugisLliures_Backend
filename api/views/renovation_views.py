@@ -14,7 +14,7 @@ from ..serializers.renovation_serializer import (
     RenovationCreateSerializer,
     RenovationUpdateSerializer
 )
-from ..permissions import IsRenovationCreator
+from ..permissions import HasProfile, IsRenovationCreator
 from ..utils.swagger_examples import (
     EXAMPLE_RENOVATIONS_LIST,
     EXAMPLE_RENOVATION_1,
@@ -52,7 +52,7 @@ class RenovationListAPIView(APIView):
     - GET: Obtenir totes les renovations (requereix autenticació)
     - POST: Crear una nova renovation (requereix autenticació)
     """
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, HasProfile]
     
     @swagger_auto_schema(
         operation_description="Obté la llista de totes les renovations actives (i.e., no finalitzades).",
@@ -186,8 +186,8 @@ class RenovationAPIView(APIView):
         - PATCH/DELETE: IsAuthenticated + IsRenovationCreator
         """
         if self.request.method == 'GET':
-            return [IsAuthenticated()]
-        return [IsAuthenticated(), IsRenovationCreator()]
+            return [IsAuthenticated(), HasProfile()]
+        return [IsAuthenticated(), HasProfile(), IsRenovationCreator()]
     
     @swagger_auto_schema(
         operation_description="Obté una renovation específica",
@@ -413,7 +413,7 @@ class RenovationParticipantsAPIView(APIView):
     Gestiona l'afegiment de participants a una renovation:
     - POST: Afegir l'usuari autenticat com a participant
     """
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, HasProfile]
     
     @swagger_auto_schema(
         operation_description=(
@@ -499,7 +499,7 @@ class RenovationParticipantDetailAPIView(APIView):
     Gestiona l'eliminació de participants d'una renovation:
     - DELETE: Eliminar un participant
     """
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, HasProfile]
     
     @swagger_auto_schema(
         operation_description=(
@@ -583,7 +583,7 @@ class RefugeRenovationsAPIView(APIView):
     Gestiona operacions sobre les renovations d'un refugi:
     - GET: Obtenir totes les renovations actives d'un refugi (requereix autenticació)
     """
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, HasProfile]
     
     @swagger_auto_schema(
         tags=['Refuges'],

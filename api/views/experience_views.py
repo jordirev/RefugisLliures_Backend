@@ -12,7 +12,7 @@ from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 
 from ..controllers.experience_controller import ExperienceController, ERROR_NOT_OWNER
-from ..permissions import IsExperienceCreator, IsNotBlocked, is_firebase_admin, coded_error
+from ..permissions import HasProfile, IsExperienceCreator, IsNotBlocked, is_firebase_admin, coded_error
 from ..serializers.experience_serializer import (
     ExperienceCreateSerializer,
     ExperienceUpdateSerializer,
@@ -29,13 +29,13 @@ class ExperienceListAPIView(APIView):
     GET /api/experiences/?refuge_id={refuge_id}
     POST /api/experiences/
     """
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, HasProfile]
     parser_classes = [JSONParser]
 
     def get_permissions(self):
         """GET: IsAuthenticated · POST: IsAuthenticated + IsNotBlocked"""
         if self.request.method == 'POST':
-            return [IsAuthenticated(), IsNotBlocked()]
+            return [IsAuthenticated(), HasProfile(), IsNotBlocked()]
         return [permission() for permission in self.permission_classes]
     
     def __init__(self, **kwargs):
@@ -197,7 +197,7 @@ class ExperienceDetailAPIView(APIView):
     PATCH + DELETE /api/experiences/{experience_id}/
     La propietat es comprova al controller (403 not_owner; els admins hi tenen accés).
     """
-    permission_classes = [IsAuthenticated, IsNotBlocked, IsExperienceCreator]
+    permission_classes = [IsAuthenticated, HasProfile, IsNotBlocked, IsExperienceCreator]
     parser_classes = [JSONParser]
     
     def __init__(self, **kwargs):

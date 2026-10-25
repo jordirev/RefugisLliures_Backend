@@ -32,13 +32,19 @@ async function callAPI(path, options = {}) {
     headers: { ...options.headers, Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
   });
   if (res.status === 401) throw new Error('Token invàlid o expirat');   // refrescar / login
-  if (res.status === 403) throw new Error('Permís denegat');            // p. ex. uid d'un altre usuari
+  if (res.status === 403) {                                              // p. ex. uid d'un altre usuari
+    const body = await res.clone().json().catch(() => ({}));
+    if (body.error === 'profile_required') throw new Error('profile_required');   // cal fer POST /api/users/
+    throw new Error('Permís denegat');
+  }
   if (!res.ok) throw new Error(`Error ${res.status}`);
   return res.status === 204 ? null : res.json();
 }
 
 const me = await callAPI(`/api/users/${auth.currentUser.uid}/`);
 ```
+**Perfil obligatori (chunk 3).** Un usuari acabat de registrar a Firebase Auth encara no té perfil al backend: tots els endpoints autenticats (tret de `POST /api/users/` i `/api/cache/*`) responen **403 `{"error": "profile_required"}`**. El client ha de cridar `POST /api/users/` (`{username?, language?, birth_date?}`) just després del registre o, si rep `profile_required`, fer-ho i reintentar. `GET /api/users/{uid}/` d'un altre usuari només retorna `{uid, username, avatar_metadata}`.
+
 Les pujades de fitxers (fotos de refugi, d'experiència i avatar) **no** passen pel backend en multipart: demana `POST /api/media/upload-intents/` (JSON), fes `PUT` a la URL prefirmada de R2 amb el `Content-Type` retornat i confirma amb `POST /api/media/upload-intents/confirm/` ([flux 3](../flows/03-refuge-media-upload.md)). Les experiències (`POST`/`PATCH /api/experiences/`) són només JSON.
 
 ## 3. Provar amb cURL

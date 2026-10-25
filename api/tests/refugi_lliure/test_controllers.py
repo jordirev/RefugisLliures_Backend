@@ -93,8 +93,7 @@ class TestRefugiLliureControllerExtended:
     @patch('api.controllers.refugi_lliure_controller.check_database', return_value=True)
     @patch('api.controllers.refugi_lliure_controller.r2_media_service')
     @patch('api.controllers.refugi_lliure_controller.RefugiLliureDAO')
-    @patch('api.controllers.refugi_lliure_controller.UserDAO')
-    def test_health_check_errors(self, mock_user_dao_class, mock_ref_dao_class, mock_r2, mock_check_db):
+    def test_health_check_errors(self, mock_ref_dao_class, mock_r2, mock_check_db):
         """Test health_check errors"""
         ctrl = RefugiLliureController()
         mock_ref_dao = mock_ref_dao_class.return_value
@@ -107,9 +106,8 @@ class TestRefugiLliureControllerExtended:
 
     @patch('api.controllers.refugi_lliure_controller.r2_media_service')
     @patch('api.controllers.refugi_lliure_controller.RefugiLliureDAO')
-    @patch('api.controllers.refugi_lliure_controller.UserDAO')
     @patch('api.controllers.refugi_lliure_controller.ExperienceDAO', create=True)
-    def test_delete_multiple_refugi_media_errors(self, mock_exp_dao_class, mock_user_dao_class, mock_ref_dao_class, mock_r2):
+    def test_delete_multiple_refugi_media_errors(self, mock_exp_dao_class, mock_ref_dao_class, mock_r2):
         """Test delete_multiple_refugi_media errors"""
         ctrl = RefugiLliureController()
         mock_ref_dao = mock_ref_dao_class.return_value
@@ -138,13 +136,11 @@ class TestRefugiLliureControllerExtended:
 
     @patch('api.controllers.refugi_lliure_controller.r2_media_service')
     @patch('api.controllers.refugi_lliure_controller.RefugiLliureDAO')
-    @patch('api.controllers.refugi_lliure_controller.UserDAO')
     @patch('api.controllers.refugi_lliure_controller.ExperienceDAO', create=True)
-    def test_delete_multiple_refugi_media_success(self, mock_exp_dao_class, mock_user_dao_class, mock_ref_dao_class, mock_r2):
+    def test_delete_multiple_refugi_media_success(self, mock_exp_dao_class, mock_ref_dao_class, mock_r2):
         """Test delete_multiple_refugi_media èxit"""
         ctrl = RefugiLliureController()
         mock_ref_dao = mock_ref_dao_class.return_value
-        mock_user_dao = mock_user_dao_class.return_value
         mock_media_service = mock_r2.get_refugi_media_service.return_value
         
         mock_ref_dao.delete_multiple_media_metadata.return_value = (True, [{'key': 'k1', 'creator_uid': 'u1', 'experience_id': 'e1'}])
@@ -153,5 +149,4 @@ class TestRefugiLliureControllerExtended:
         res, error = ctrl.delete_multiple_refugi_media("r1", ["k1"])
         assert res is True
         assert error is None
-        mock_user_dao.remove_uploaded_photos_keys.assert_called()
 

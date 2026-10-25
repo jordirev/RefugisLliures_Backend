@@ -16,7 +16,7 @@ from api.controllers.media_upload_controller import (
 from api.models.experience import Experience
 from api.models.media_metadata import MediaMetadata
 from api.models.upload_intent import UploadIntent
-from api.models.user import User
+from apps.accounts.models import UserAvatar
 from api.services.moderation_service import ModerationResult
 from api.services.image_processing_service import IMAGE_MAX_BYTES
 from api.utils.timezone_utils import get_madrid_now
@@ -30,7 +30,9 @@ def ctrl():
     controller = MediaUploadController()
     controller.intent_dao = MagicMock()
     controller.refugi_dao = MagicMock()
-    controller.user_dao = MagicMock()
+    controller.accounts = MagicMock()
+    controller.account_selectors = MagicMock()
+    controller.account_selectors.get_avatar.return_value = None
     controller.experience_dao = MagicMock()
     controller.report_dao = MagicMock()
     controller.notice_dao = MagicMock()
@@ -43,7 +45,6 @@ def ctrl():
     controller.refugi_dao.refugi_exists.return_value = True
     controller.refugi_dao.add_media_metadata.return_value = True
     controller.refugi_dao.delete_media_metadata.return_value = (True, {})
-    controller.user_dao.add_uploaded_photos_keys.return_value = True
     controller.experience_dao.add_media_keys_to_experience.return_value = (True, None)
     return controller
 
@@ -156,7 +157,6 @@ class TestConfirmUploadIntents:
         assert metadata['taken_at'] == '2024-07-15T10:20:30+02:00'
         assert metadata['thumb_key'] == thumb_key
         assert metadata['rights_confirmed_at']
-        ctrl.user_dao.add_uploaded_photos_keys.assert_called_once_with('user_1', [item['key']])
         ctrl.intent_dao.mark_confirmed.assert_called_once_with('up_1', item['key'])
 
     def test_non_image_bytes_declared_jpeg_is_invalid_type(self, ctrl):
@@ -231,17 +231,6 @@ class TestConfirmUploadIntents:
         assert result['failed'] == [{'upload_id': 'up_1', 'reason': 'processing_error'}]
         assert [k for k in ctrl.refugi_media_service.store if k.startswith('refugis-lliures/')] == []
 
-    def test_user_keys_failure_rolls_back_metadata(self, ctrl):
-        ctrl.refugi_media_service.store['quarantine/up_1'] = make_png((40, 40))
-        ctrl.intent_dao.get_intent.return_value = make_intent(content_type='image/png')
-        ctrl.user_dao.add_uploaded_photos_keys.return_value = False
-
-        result, _ = ctrl.confirm_upload_intents('user_1', ['up_1'])
-
-        assert result['failed'][0]['reason'] == 'processing_error'
-        ctrl.refugi_dao.delete_media_metadata.assert_called_once()
-        assert [k for k in ctrl.refugi_media_service.store if k.startswith('refugis-lliures/')] == []
-
     def test_moderation_error_fails_closed(self, ctrl):
         ctrl.refugi_media_service.store['quarantine/up_1'] = make_png((40, 40))
         ctrl.intent_dao.get_intent.return_value = make_intent(content_type='image/png')
@@ -267,7 +256,7 @@ class TestModerationBlock:
         assert store['moderation-hold/user_1/up_1'] == data
         assert not any(k.startswith('refugis-lliures/') for k in store)
         ctrl.refugi_dao.add_media_metadata.assert_not_called()
-        assert ctrl.user_dao.set_blocked.call_args.args[:2] == ('user_1', True)
+        assert ctrl.accounts.set_blocked.call_args.args[:2] == ('user_1', True)
         report = ctrl.report_dao.create_report.call_args.args[0]
         assert report.reason == 'child_sexual_abuse'
         assert report.priority == 'high'
@@ -289,10 +278,9 @@ class TestAvatarPublish:
     def test_new_avatar_saved_before_old_deleted(self, ctrl):
         old_key = 'users-avatars/user_1/old.jpg'
         ctrl.avatar_service.store[old_key] = b'old'
-        ctrl.user_dao.get_user_by_uid.return_value = User(
-            uid='user_1', username='u', avatar_metadata=MediaMetadata(key=old_key, url='http://old'))
+        ctrl.account_selectors.get_avatar.return_value = UserAvatar(key=old_key, user_id='user_1', content_type='image/jpeg')
         calls = []
-        ctrl.user_dao.update_avatar_metadata.side_effect = lambda uid, md: calls.append(('update', md['key'])) or True
+        ctrl.accounts.update_avatar_metadata.side_effect = lambda uid, md: calls.append(('update', md['key'])) or True
         original_delete = ctrl.avatar_service.delete_file
 
         def tracking_delete(key):
@@ -310,12 +298,11 @@ class TestAvatarPublish:
         published = Image.open(io.BytesIO(ctrl.avatar_service.store[item['key']]))
         assert dict(published.getexif()) == {}
 
-    def test_old_avatar_kept_when_firestore_fails(self, ctrl):
+    def test_old_avatar_kept_when_the_database_write_fails(self, ctrl):
         old_key = 'users-avatars/user_1/old.jpg'
         ctrl.avatar_service.store[old_key] = b'old'
-        ctrl.user_dao.get_user_by_uid.return_value = User(
-            uid='user_1', username='u', avatar_metadata=MediaMetadata(key=old_key, url='http://old'))
-        ctrl.user_dao.update_avatar_metadata.return_value = False
+        ctrl.account_selectors.get_avatar.return_value = UserAvatar(key=old_key, user_id='user_1', content_type='image/jpeg')
+        ctrl.accounts.update_avatar_metadata.return_value = False
 
         item, reason = ctrl.process_and_publish(make_png((100, 100)), 'image/png', 'avatar', 'user_1')
 
@@ -323,8 +310,7 @@ class TestAvatarPublish:
         assert list(ctrl.avatar_service.store) == [old_key]  # l'antic es conserva i el nou s'esborra
 
     def test_avatar_confirm_via_intent(self, ctrl):
-        ctrl.user_dao.get_user_by_uid.return_value = User(uid='user_1', username='u')
-        ctrl.user_dao.update_avatar_metadata.return_value = True
+        ctrl.accounts.update_avatar_metadata.return_value = True
         ctrl.refugi_media_service.store['quarantine/up_1'] = make_png((600, 600))
         ctrl.intent_dao.get_intent.return_value = make_intent(target='avatar', refuge_id=None, content_type='image/png')
         result, _ = ctrl.confirm_upload_intents('user_1', ['up_1'])

@@ -19,7 +19,9 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from ..daos.upload_intent_dao import UploadIntentDAO
 from ..daos.refugi_lliure_dao import RefugiLliureDAO
-from ..daos.user_dao import UserDAO
+from apps.accounts import selectors as account_selectors
+from apps.accounts import services as account_services
+from apps.accounts.serializers import avatar_to_dict
 from ..daos.experience_dao import ExperienceDAO
 from ..daos.media_report_dao import MediaReportDAO
 from ..daos.moderation_notice_dao import ModerationNoticeDAO
@@ -61,7 +63,8 @@ class MediaUploadController:
     def __init__(self):
         self.intent_dao = UploadIntentDAO()
         self.refugi_dao = RefugiLliureDAO()
-        self.user_dao = UserDAO()
+        self.accounts = account_services                # escriptures d'usuari a PostgreSQL (D20)
+        self.account_selectors = account_selectors
         self.experience_dao = ExperienceDAO()
         self.report_dao = MediaReportDAO()
         self.notice_dao = ModerationNoticeDAO()
@@ -252,9 +255,9 @@ class MediaUploadController:
         if not intent.result_key:
             return None
         if intent.target == UPLOAD_TARGET_AVATAR:
-            user = self.user_dao.get_user_by_uid(intent.uid)
-            if user and user.avatar_metadata and user.avatar_metadata.key == intent.result_key:
-                return user.avatar_metadata.to_dict()
+            avatar = self.account_selectors.get_avatar(intent.uid)
+            if avatar and avatar.key == intent.result_key:
+                return avatar_to_dict(avatar, intent.uid, lambda k: self.avatar_service.generate_presigned_url(k))
             return None
         exists, entry = self.refugi_dao.get_media_entry(intent.refuge_id, intent.result_key)
         if not exists or entry is None:
@@ -360,14 +363,9 @@ class MediaUploadController:
             self._rollback_files(written)
             return None, REASON_PROCESSING_ERROR
 
-        if not self.user_dao.add_uploaded_photos_keys(uid, [key]):
-            self._rollback_media(refuge_id, key, written)
-            return None, REASON_PROCESSING_ERROR
-
         if experience_id:
             success, _ = self.experience_dao.add_media_keys_to_experience(experience_id, [key])
             if not success:
-                self.user_dao.remove_uploaded_photos_keys(uid, [key])
                 self._rollback_media(refuge_id, key, written)
                 return None, REASON_PROCESSING_ERROR
 
@@ -376,11 +374,9 @@ class MediaUploadController:
 
     def _publish_avatar(self, uid: str, processed: ProcessedMedia,
                         uploaded_at: Optional[str]) -> Tuple[Optional[Dict[str, Any]], Optional[str]]:
-        user = self.user_dao.get_user_by_uid(uid)
-        if not user:
-            return None, REASON_PROCESSING_ERROR
-        old_key = user.avatar_metadata.key if user.avatar_metadata else None
-        old_thumb = getattr(user.avatar_metadata, 'thumb_key', None) if user.avatar_metadata else None
+        old = self.account_selectors.get_avatar(uid)
+        old_key = old.key if old else None
+        old_thumb = old.thumb_key if old else None
 
         service = self.avatar_service
         key = service.build_media_key(uid, processed.extension)
@@ -399,7 +395,7 @@ class MediaUploadController:
             'size': processed.size,
             'content_type': processed.content_type,
         }
-        if not self.user_dao.update_avatar_metadata(uid, metadata):
+        if not self.accounts.update_avatar_metadata(uid, metadata):
             self._rollback_files([key], service)
             return None, REASON_PROCESSING_ERROR
 
@@ -449,7 +445,7 @@ class MediaUploadController:
         except Exception as e:
             logger.error(f"Error desant l'evidència de moderació: {str(e)}")
 
-        self.user_dao.set_blocked(uid, True, reason='moderation_hash_match', blocked_at=now)
+        self.accounts.set_blocked(uid, True, reason='moderation_hash_match', blocked_at=now)
 
         report_refuge = refuge_id or target
         try:

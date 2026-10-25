@@ -26,7 +26,7 @@ Convencions: paràmetres `<str:...>`, `name` en snake_case, URL en anglès amb b
 ## 2. Serializers — `api/serializers/<domini>_serializer.py`
 - Entrada: `XCreateSerializer` / `XUpdateSerializer` (`serializers.Serializer`, no `ModelSerializer`). Reutilitza mixins de validació (p. ex. `DateValidationMixin`, `api/serializers/renovation_serializer.py:9-45`).
 - Sortida: `XSerializer` que rep `model.to_dict()`.
-- **No** posis `default=` en camps opcionals d'un update (bug `api/serializers/user_serializer.py:150`).
+- **No** posis `default=` en camps opcionals d'un update (bug que tenia `UserUpdateSerializer`, corregit al chunk 3 a `apps/accounts/serializers.py`).
 - Assegura't que les regles coincideixen amb el `__post_init__` del model (bug `ini_date == fin_date`).
 
 ## 3. Controller — `api/controllers/<domini>_controller.py`
@@ -56,7 +56,7 @@ Patró: `api/controllers/renovation_controller.py:63-82` (lectura) i `:100-154` 
 ## 5. Vista — `api/views/<domini>_views.py`
 ```python
 class RenovationSummaryAPIView(APIView):
-    permission_classes = [IsAuthenticated]   # el default global és AllowAny!
+    permission_classes = [IsAuthenticated, HasProfile]   # el default global és AllowAny!
 
     @swagger_auto_schema(
         operation_description="...",
@@ -83,11 +83,11 @@ class RenovationSummaryAPIView(APIView):
 - El mapatge error→HTTP es fa per subcadena del missatge: si en crees un de nou, documenta'l i fes-lo coincidir amb el controller.
 
 ### Errors amb codi i permisos de moderació
-Si el client ha de distingir l'error, retorna `coded_error('<codi>', '<missatge>')` (`api/permissions.py`) → `{"error", "code", "message"}`. Per a endpoints que publiquen o denuncien contingut afegeix `IsNotBlocked` (i `IsAgeConfirmed` si és contingut nou) a `permission_classes`, després d'`IsAuthenticated`.
+Si el client ha de distingir l'error, retorna `coded_error('<codi>', '<missatge>')` (`api/permissions.py`) → `{"error", "code", "message"}`. **Tot endpoint autenticat** ha de dur `HasProfile` just després d'`IsAuthenticated` (`[IsAuthenticated, HasProfile, …]`; 403 `profile_required` si no hi ha fila a `users.users`); l'única excepció és `POST /users/` (el crea) i `/api/cache/*`. Per a endpoints que publiquen o denuncien contingut afegeix `IsNotBlocked` (i `IsAgeConfirmed` si és contingut nou) **després** de `HasProfile`: l'ordre fa que un usuari sense perfil rebi `profile_required` i no `age_not_confirmed`.
 
 ## 6. Tests — `api/tests/<domini>/`
 - Vista: mocka el controller **al mòdul de la vista**: `@patch('api.views.renovation_views.RenovationController')`; crea la request amb `APIRequestFactory` i posa `request.user_uid` (`api/tests/renovation/test_views.py:66-89`).
-  - ⚠️ Els tests existents fan `view.cls.permission_classes = []` (`api/tests/renovation/test_views.py:101-102`), que **muta la classe** per a la resta del procés de test **[FET]**. Preferible `patch.object(View, 'permission_classes', [])`.
+  - ⚠️ Els tests existents fan `view.cls.permission_classes = []` (`api/tests/renovation/test_views.py:101-102`), que **muta la classe**; des del chunk 3 el `conftest.py` arrel la restaura després de cada test (`_restore_view_policies`), però és preferible `patch.object(View, 'permission_classes', [])` **[FET]**.
 - Controller: mocka els DAOs al mòdul del controller.
 - DAO: `@patch('api.daos.<domini>_dao.FirestoreService')` + `@patch('api.daos.<domini>_dao.cache_service')` (`api/tests/renovation/test_daos.py:60-82`).
 - Afegeix el marker si cal (`pytest.ini`, `--strict-markers`: només markers declarats).

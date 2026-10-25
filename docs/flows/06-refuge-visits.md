@@ -13,7 +13,7 @@ Un usuari indica que anirà a un refugi en una data (amb `num_visitors`). Cada n
 | POST | `/api/refuges/{refuge_id}/visits/{YYYY-MM-DD}/` | `RefugeVisitDetailAPIView.post` (L202) | IsAuthenticated | `{num_visitors ≥ 1}` |
 | PATCH | idem | `.patch` (L286) | IsAuthenticated | `{num_visitors}` |
 | DELETE | idem | `.delete` (L359) | IsAuthenticated | — |
-| GET | `/api/users/{uid}/visits/` | `UserVisitsAPIView.get` (L133) | IsAuthenticated + IsSameUser | — |
+| GET | `/api/users/{uid}/visits/` | `UserVisitsAPIView.get` (L133) | IsAuthenticated + HasProfile + IsSameUser | — |
 
 L'UID sempre surt del token: només es pot actuar sobre la pròpia entrada **[FET]**.
 
@@ -65,7 +65,7 @@ sequenceDiagram
     participant VC as RefugeVisitController
     participant VD as RefugeVisitDAO
     participant RD as RefugiLliureDAO
-    participant UC as UserController
+    participant AS as accounts.services (PostgreSQL)
     participant F as Firestore
 
     GH->>CMD: python manage.py process_yesterday_visits (PRODUCTION=true)
@@ -76,9 +76,9 @@ sequenceDiagram
             VC->>VD: delete_visit
         else
             VC->>RD: get_by_id (cache) → unió de visitors (set)
-            VC->>RD: update_refugi_visitors (sobreescriu array)
+            VC->>RD: update_refugi_visitors (sobreescriu array; refugi legacy de Firestore)
             loop per cada visitant
-                VC->>UC: add_refugi_visitat(uid, rid) → ArrayUnion users.visited_refuges
+                VC->>AS: add_visited(uid, rid) dins system_context() → INSERT user_visited_refuges ON CONFLICT DO NOTHING
             end
         end
     end
@@ -90,7 +90,7 @@ sequenceDiagram
 - Sortir: `delete_visit` (controller L210-240) → `remove_visitor_from_visit` (DAO L328-385). Retorna 200, no 204.
 - Llistar per refugi: ID caching `refuge_visits_list:from_date:<avui>:refuge_id:X`, query `refuge_id==, date>=avui, order_by date`.
 - Llistar per usuari: `get_visits_by_user` (DAO L207-248) fa **stream de tota la col·lecció** i filtra en Python **[FET]**.
-- Procés diari: `api/management/commands/process_yesterday_visits.py:15-38` → `RefugeVisitController.process_yesterday_visits` (controller L242-312); `RefugiLliureDAO.update_refugi_visitors` (`api/daos/refugi_lliure_dao.py:406-440`).
+- Procés diari: `api/management/commands/process_yesterday_visits.py` → `RefugeVisitController.process_yesterday_visits`. **Chunk 3**: la llista de visitats de cada usuari s'escriu a PostgreSQL (`add_visited` per visitant, dins `system_context()`: el job no té context d'usuari; idempotent). El job **encara** llegeix el refugi i n'actualitza `visitors` al document legacy de Firestore (`RefugiLliureDAO`, fins al chunk 6); aquest array ja no el llegeix cap endpoint: els `visitors` que veuen els admins surten de `user_visited_refuges`. Si el refugi legacy no existeix (`continue`), tampoc s'afegeix res a PostgreSQL per a aquella visita. Mentre les visites siguin a Firestore, el `refuge_id` d'una visita antiga pot no ser un UUID de PostgreSQL: es salta amb un warning (`RefugeNotFound`) i un error inesperat per visitant també es registra i continua.
 - Com executar-lo (Actions, manual, crontab): [guides/daily-visits-process.md](../guides/daily-visits-process.md).
 - Planificació real: `.github/workflows/process-visits.yml:1-37` (cron `0 3 * * *` UTC, `PRODUCTION='true'`). Alternatives no actives: `CRONJOBS` a `refugis_lliures/settings.py:275-278` (django-crontab, mai instal·lat) i `run_process_visits.sh` / `run_process_visits.bat` (manual) **[FET]**.
 
@@ -108,4 +108,5 @@ sequenceDiagram
 - Esborrar un usuari resta 1 a `total_visitors` en lloc de `num_visitors` (`api/daos/refuge_visit_dao.py:529`) **[FET]**.
 - El procés diari no esborra les visites processades (només les buides) → la col·lecció creix i el scan per usuari empitjora **[FET]**.
 - El workflow no defineix `REDIS_URL` → no invalida la cache de producció **[INFERÈNCIA]**.
-- `add_refugi_visitat` torna a escriure `visitors` del refugi després de `update_refugi_visitors` (escriptura redundant) **[FET segons traça del controller]**.
+- (Chunk 3: l'escriptura de `visitors` al refugi legacy de Firestore continua però és morta per a l'API; la font de veritat és `user_visited_refuges`. S'elimina quan es migrin les visites.)
+- El job necessita accés a PostgreSQL (`DATABASE_URL_APP`); el workflow `process-visits.yml` no el declara encara ([TECH_DEBT U3](../TECH_DEBT.md)).

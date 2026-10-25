@@ -2,19 +2,17 @@
 
 > **[FET]** comprovat al codi · **[INFERÈNCIA]** deducció · **[NO VERIFICAT]** depèn de config externa.
 
-> **Estat intermedi (chunk 2 → chunk 3).** Els refugis ja viuen a PostgreSQL (IDs UUID v7), però aquest domini encara comprova i llegeix els refugis amb el `RefugiLliureDAO` legacy de Firestore, que ja no s'alimenta: les seves comprovacions d'existència de refugi miren el catàleg antic de Firestore (ids diferents dels UUID de PostgreSQL). Vegeu [GOTCHAS #41](../GOTCHAS.md) i [TECH_DEBT R1](../TECH_DEBT.md).
+> **Migrat a PostgreSQL (chunk 3).** Taules `users.user_favourite_refuges` i `users.user_visited_refuges` ([postgres-schema §2.3–2.4](../design/postgres-schema.md)), **PK composta `(user_uid, refuge_id)`** (sense `id`) amb `created_at`, FK reals `ON DELETE CASCADE` a `users` i a `refuges.refuges`. Ja no hi ha `ArrayUnion`, cache `user_refugis_info` ni escriptura a `visitors` des dels endpoints d'usuari (només el job diari encara toca el `visitors` legacy de Firestore): **`refuge.visitors` (només admins) es llegeix de `user_visited_refuges`** (`apps/refuges/selectors.get_visitor_uids`). Els refugis són ja els de PostgreSQL: l'«estat intermedi» del chunk 2 per a aquest domini s'ha acabat (un ID antic de Firestore, que no és un UUID, dona 404).
 
-## Endpoints (`api/views/user_views.py`)
-| Mètode | URL | Vista | Controller |
-|---|---|---|---|
-| GET / POST | `/api/users/{uid}/favorite-refuges/` | `UserFavouriteRefugesAPIView` (L285-391) | `get_refugis_preferits_info` / `add_refugi_preferit` |
-| DELETE | `/api/users/{uid}/favorite-refuges/{refuge_id}/` | `UserFavouriteRefugesDetailAPIView` (L396-437) | `remove_refugi_preferit` |
-| GET / POST | `/api/users/{uid}/visited-refuges/` | `UserVisitedRefugesAPIView` (L442-548) | `get_refugis_visitats_info` / `add_refugi_visitat` |
-| DELETE | `/api/users/{uid}/visited-refuges/{refuge_id}/` | `UserVisitedRefugesDetailAPIView` (L553-594) | `remove_refugi_visitat` |
+## Endpoints (`apps/accounts/views.py`)
+| Mètode | URL | Vista |
+|---|---|---|
+| GET / POST | `/api/users/{uid}/favorite-refuges/` | `UserFavouriteRefugesAPIView` |
+| DELETE | `/api/users/{uid}/favorite-refuges/{refuge_id}/` | `UserFavouriteRefugesDetailAPIView` |
+| GET / POST | `/api/users/{uid}/visited-refuges/` | `UserVisitedRefugesAPIView` |
+| DELETE | `/api/users/{uid}/visited-refuges/{refuge_id}/` | `UserVisitedRefugesDetailAPIView` |
 
-Permisos: IsAuthenticated + IsSameUser. Body del POST: `UserRefugiSerializer` → `{refuge_id}` (`api/serializers/user_serializer.py:165-171`).
-
-Dades: `users/{uid}.favourite_refuges[]`, `users/{uid}.visited_refuges[]`; per als visitats també `data_refugis_lliures/{id}.visitors[]`.
+Permisos: `IsAuthenticated` + `HasProfile` + `IsSameUser`. Body del POST: `RefugeIdSerializer` → `{refuge_id}`.
 
 ## Diagrama
 
@@ -23,48 +21,46 @@ sequenceDiagram
     autonumber
     participant C as Client
     participant V as UserVisitedRefugesAPIView
-    participant UC as UserController._manage_refugi_list
-    participant UD as UserDAO
-    participant RD as RefugiLliureDAO
-    participant K as CacheService
-    participant F as Firestore
+    participant S as services (add_visited / remove_visited)
+    participant SEL as selectors
+    participant DB as PostgreSQL (RLS)
 
     C->>V: POST /api/users/{uid}/visited-refuges/ {refuge_id}
-    V->>UC: add_refugi_visitat(uid, refuge_id)
-    UC->>UD: user_exists (404)
-    UC->>RD: get_by_id(refuge_id) (404)
-    UC->>UD: add_refugi_to_list(uid, 'visited_refuges', id)
-    UD->>F: users/{uid}.update(ArrayUnion([id]))
-    UD->>K: delete user_detail, user_refugis_info
-    UC->>RD: add_visitor_to_refugi(id, uid) (només visitats)
-    RD->>F: read-modify-write data_refugis_lliures/{id}.visitors
-    RD->>K: delete refugi_detail
-    V-->>C: 200 {id, name, region, places, coord, images_metadata:[1a foto]}
+    V->>S: add_visited(uid, refuge_id)
+    S->>SEL: parse_refuge_id + refuge_exists (404 si no és UUID o no existeix)
+    S->>DB: INSERT ... ON CONFLICT DO NOTHING (bulk_create ignore_conflicts)
+    V->>SEL: get_refuge_with_first_media (2 consultes)
+    V-->>C: 200 {id, name, region, places, coord, images_metadata:[1a foto visible] | null}
+
+    C->>V: GET /api/users/{uid}/visited-refuges/
+    V->>SEL: list_refuges('visited', uid)
+    SEL->>DB: 1 JOIN amb refugis + 1 consulta (DISTINCT ON refuge_id) de la 1a imatge visible
+    V-->>C: 200 {count, results:[{id, name, region, places, coord, images_metadata}]}
 
     C->>V: DELETE /api/users/{uid}/visited-refuges/{id}/
-    V->>UC: remove_refugi_visitat
-    UC->>UD: remove_refugi_from_list → llegeix usuari DE CACHE, treu, update(llista sencera)
-    UC->>RD: remove_visitor_from_refugi (read-modify-write)
+    V->>S: remove_visited → DELETE WHERE (user_uid, refuge_id)
     V-->>C: 204
 ```
 
 ## Passos
-- Template method: `UserController._manage_refugi_list` (`api/controllers/user_controller.py:279-342`) + hook `_update_refugi_visitor_list` (L344-362).
-- Afegir: `UserDAO.add_refugi_to_list` (`api/daos/user_dao.py:182-216`) — atòmic amb `ArrayUnion`.
-- Treure: `UserDAO.remove_refugi_from_list` (`api/daos/user_dao.py:218-264`) — **no atòmic**, llegeix de cache (L232).
-- Visitants del refugi: `RefugiLliureDAO.add_visitor_to_refugi` / `remove_visitor_from_refugi` (`api/daos/refugi_lliure_dao.py:105-192`).
-- Llegir llista amb info: `UserDAO.get_refugis_info` (`api/daos/user_dao.py:266-332`), cache `user_refugis_info:list_name:L:uid:X` → `{count, results}`; format per `RefugiLliureMapper.dict_to_refugi_info_representation` (`api/mappers/refugi_lliure_mapper.py:39-75`).
+- Afegir és **idempotent** (`INSERT … ON CONFLICT DO NOTHING`): repetir-ho no duplica ni canvia `created_at`; no hi ha carreres. Treure també és idempotent: 204 encara que l'element no hi fos (D23). Refugi inexistent o `refuge_id` invàlid: 404.
+- Ordre de les llistes: `(created_at, refuge_id)` (les taules no tenen `id`). Pressupost de consultes constant (≤ 3 per llista) amb tests de recompte.
+- RLS: preferits, només el propi usuari; visitats, el propi usuari **o admin** (per a `visitors`) o sistema.
+- **Procés diari** (`process_yesterday_visits`): afegeix els visitants a `user_visited_refuges` amb `add_visited` dins `system_context()` (el job no té context d'usuari); un `refuge_id` d'una visita antiga de Firestore que no és UUID o no existeix es **salta amb warning** ([flux 6](06-refuge-visits.md)). L'array `visitors` del refugi legacy de Firestore encara s'hi actualitza, però ningú no el llegeix.
+- **Cap cache**: `user_refugis_info` ha desaparegut.
 
 ## Errors
 | Cas | HTTP |
 |---|---|
-| Usuari o refugi no trobat | 404 |
-| `uid` URL ≠ token | 403 |
+| Sense perfil | 403 `profile_required` |
+| Refugi no trobat / id no UUID | 404 |
+| `uid` URL ≠ token | 403 (`IsSameUser`) |
+| Fallada de BD o de presignat | 500 `{error, error_id}` |
 | POST OK | **200** (no 201) |
-| DELETE OK | 204 |
+| DELETE OK (també si no hi era) | 204 |
 
-## Gotchas i bugs
-- Treure d'una llista llegeix l'usuari **de cache** i reescriu l'array sencer → pot perdre un afegit concurrent **[FET patró / INFERÈNCIA carrera]**. Existeix `ArrayRemove` i s'usa a l'esborrat d'usuari; aquí no.
-- `add_refugi_to_list`/`remove_refugi_from_list` retornen tuples (truthy) → `if not success` del controller (L323) no detecta fallades **[FET]**; ho tapa el `user_exists` previ.
-- `user_refugis_info` no s'invalida quan canvia un refugi (propostes, fotos) → fins a 10 min de dades antigues **[FET]**.
-- Un refugi esborrat queda a les llistes dels usuaris; s'ignora en llegir perquè `doc.exists` és fals **[FET]**.
+## Gotchas
+- A `FavouriteRefuge`/`VisitedRefuge` el PK és compost: **`obj.pk` és una tupla `(user_id, refuge_id)`**, no hi ha `obj.id` ([GOTCHAS #52](../GOTCHAS.md)).
+- `bulk_create(ignore_conflicts=True)` no diu si la fila ja existia: per això el POST retorna sempre el refugi.
+- Un refugi esborrat desapareix de les llistes per la cascada de la FK (abans quedava i s'ignorava en llegir).
+- `refuge.visitors` per a admins encara fa una consulta per refugi a la cerca ([TECH_DEBT R8](../TECH_DEBT.md)).

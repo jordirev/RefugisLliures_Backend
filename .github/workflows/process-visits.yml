@@ -31,6 +31,7 @@ jobs:
           R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
           R2_BUCKET_NAME: ${{ secrets.R2_BUCKET_NAME }}
           FIREBASE_SERVICE_ACCOUNT_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_KEY }}
+          DATABASE_URL_APP: ${{ secrets.DATABASE_URL_APP }}   # visitats a users.user_visited_refuges (chunk 3)
           DJANGO_SETTINGS_MODULE: refugis_lliures.settings
           PRODUCTION: 'true'
         run: |

@@ -22,8 +22,7 @@ def experience(creator='owner', keys=None):
 def ctrl():
     with patch('api.controllers.experience_controller.ExperienceDAO'), \
             patch('api.controllers.experience_controller.RefugiLliureDAO'), \
-            patch('api.controllers.experience_controller.RefugiLliureController'), \
-            patch('api.controllers.experience_controller.UserDAO'):
+            patch('api.controllers.experience_controller.RefugiLliureController'):
         controller = ExperienceController()
         controller.media_service = fake_r2_service()
         yield controller
@@ -138,8 +137,8 @@ class TestExperienceViewsOwnership:
     @patch('api.permissions.get_user_for_permissions')
     @patch('api.views.experience_views.ExperienceController')
     def test_blocked_user_cannot_create(self, mock_ctrl, mock_lookup):
-        from api.models.user import User
-        mock_lookup.return_value = User(uid='intruder', username='u', is_blocked=True)
+        from apps.accounts.models import UserAccount as User
+        mock_lookup.return_value = User(uid='intruder', is_blocked=True)
         request = authed(APIRequestFactory().post('/api/experiences/', {'refuge_id': 'ref_1', 'comment': 'x'}, format='json'))
         response = ExperienceListAPIView.as_view()(request)
         assert response.status_code == 403 and response.data['error'] == 'user_blocked'

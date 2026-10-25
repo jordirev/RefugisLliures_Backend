@@ -57,15 +57,13 @@ def minimal_renovation_data():
 class TestRenovationController:
     """Tests per al controller de renovation"""
     
-    @patch('api.controllers.renovation_controller.UserDAO')
     @patch('api.controllers.renovation_controller.RenovationDAO')
-    def test_create_renovation_success(self, mock_dao_class, mock_user_dao_class, sample_renovation_data, sample_renovation):
+    def test_create_renovation_success(self, mock_dao_class, sample_renovation_data, sample_renovation):
         """Test creació exitosa de renovation"""
         mock_dao = mock_dao_class.return_value
         mock_dao.check_overlapping_renovations.return_value = None
         mock_dao.create_renovation.return_value = sample_renovation
         
-        mock_user_dao = mock_user_dao_class.return_value
         
         controller = RenovationController()
         renovation_data = sample_renovation_data.copy()
@@ -78,7 +76,6 @@ class TestRenovationController:
         assert success is True
         assert renovation is not None
         assert error is None
-        mock_user_dao.increment_renovated_refuges.assert_called_once_with('test_creator')
     
     @patch('api.controllers.renovation_controller.RenovationDAO')
     def test_create_renovation_overlap(self, mock_dao_class, sample_renovation_data, sample_renovation):
@@ -192,23 +189,19 @@ class TestRenovationController:
         assert success is False
         assert 'anterior' in error.lower()
     
-    @patch('api.controllers.renovation_controller.UserDAO')
     @patch('api.controllers.renovation_controller.RenovationDAO')
-    def test_delete_renovation_success(self, mock_dao_class, mock_user_dao_class, sample_renovation):
+    def test_delete_renovation_success(self, mock_dao_class, sample_renovation):
         """Test eliminació exitosa"""
         mock_dao = mock_dao_class.return_value
         mock_dao.get_renovation_by_id.return_value = sample_renovation
         mock_dao.delete_renovation.return_value = (True, sample_renovation.creator_uid, sample_renovation.participants_uids)
         
-        mock_user_dao = mock_user_dao_class.return_value
         
         controller = RenovationController()
         success, error = controller.delete_renovation('test_id', sample_renovation.creator_uid)
         
         assert success is True
         assert error is None
-        # Verificar que es crida decrement per al creador i tots els participants
-        assert mock_user_dao.decrement_renovated_refuges.call_count == 3  # 1 creator + 2 participants
     
     @patch('api.controllers.renovation_controller.RenovationDAO')
     def test_delete_renovation_not_creator(self, mock_dao_class, sample_renovation):
@@ -222,15 +215,13 @@ class TestRenovationController:
         assert success is False
         assert 'creador' in error.lower()
     
-    @patch('api.controllers.renovation_controller.UserDAO')
     @patch('api.controllers.renovation_controller.RenovationDAO')
-    def test_add_participant_success(self, mock_dao_class, mock_user_dao_class, sample_renovation):
+    def test_add_participant_success(self, mock_dao_class, sample_renovation):
         """Test afegir participant amb èxit"""
         mock_dao = mock_dao_class.return_value
         mock_dao.get_renovation_by_id.return_value = sample_renovation
         mock_dao.add_participant.return_value = (True, None)  # (success, error_code)
         
-        mock_user_dao = mock_user_dao_class.return_value
         
         controller = RenovationController()
         success, renovation, error = controller.add_participant('test_id', 'new_participant')
@@ -238,7 +229,6 @@ class TestRenovationController:
         assert success is True
         assert renovation is not None
         assert error is None
-        mock_user_dao.increment_renovated_refuges.assert_called_once_with('new_participant')
     
     @patch('api.controllers.renovation_controller.RenovationDAO')
     def test_add_participant_is_creator(self, mock_dao_class, sample_renovation):
@@ -252,15 +242,13 @@ class TestRenovationController:
         assert success is False
         assert 'creador' in error.lower()
     
-    @patch('api.controllers.renovation_controller.UserDAO')
     @patch('api.controllers.renovation_controller.RenovationDAO')
-    def test_remove_participant_success(self, mock_dao_class, mock_user_dao_class, sample_renovation):
+    def test_remove_participant_success(self, mock_dao_class, sample_renovation):
         """Test eliminar participant amb èxit"""
         mock_dao = mock_dao_class.return_value
         mock_dao.get_renovation_by_id.return_value = sample_renovation
         mock_dao.remove_participant.return_value = True
         
-        mock_user_dao = mock_user_dao_class.return_value
         
         controller = RenovationController()
         success, renovation, error = controller.remove_participant('test_id', 'participant1', 'participant1')
@@ -268,7 +256,6 @@ class TestRenovationController:
         assert success is True
         assert renovation is not None
         assert error is None
-        mock_user_dao.decrement_renovated_refuges.assert_called_once_with('participant1')
     
     @patch('api.controllers.renovation_controller.RenovationDAO')
     def test_remove_participant_expulsion_by_creator(self, mock_dao_class, sample_renovation):
@@ -658,21 +645,18 @@ class TestRenovationController:
         assert renovation is None
         assert 'no trobada' in error.lower()
 
-    @patch('api.controllers.renovation_controller.UserDAO')
     @patch('api.controllers.renovation_controller.RenovationDAO')
-    def test_delete_current_renovations_by_creator_success(self, mock_dao_class, mock_user_dao_class):
+    def test_delete_current_renovations_by_creator_success(self, mock_dao_class):
         """Test eliminació de renovations actuals per creador amb èxit"""
         mock_dao = mock_dao_class.return_value
         mock_dao.delete_current_renovations_by_creator.return_value = (True, {'user1': 2, 'user2': 1}, None)
         
-        mock_user_dao = mock_user_dao_class.return_value
         
         controller = RenovationController()
         success, error = controller.delete_current_renovations_by_creator('creator_uid')
         
         assert success is True
         assert error is None
-        assert mock_user_dao.decrement_renovated_refuges.call_count == 2
 
     @patch('api.controllers.renovation_controller.RenovationDAO')
     def test_delete_current_renovations_by_creator_failure(self, mock_dao_class):
@@ -806,18 +790,15 @@ class TestRenovationController:
         assert success is False
         assert 'Error intern' in error
 
-    @patch('api.controllers.renovation_controller.UserDAO')
     @patch('api.controllers.renovation_controller.RenovationDAO')
-    def test_delete_current_renovations_by_creator_no_participants(self, mock_dao_class, mock_user_dao_class):
+    def test_delete_current_renovations_by_creator_no_participants(self, mock_dao_class):
         """Test eliminació de renovations sense participants"""
         mock_dao = mock_dao_class.return_value
         mock_dao.delete_current_renovations_by_creator.return_value = (True, None, None)  # No participants
         
-        mock_user_dao = mock_user_dao_class.return_value
         
         controller = RenovationController()
         success, error = controller.delete_current_renovations_by_creator('creator_uid')
         
         assert success is True
         assert error is None
-        mock_user_dao.decrement_renovated_refuges.assert_not_called()
