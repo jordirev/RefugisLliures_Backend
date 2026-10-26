@@ -4,12 +4,6 @@ from .views.experience_views import (
     ExperienceListAPIView,
     ExperienceDetailAPIView
 )
-from .views.doubt_views import (
-    DoubtListAPIView,
-    DoubtDetailAPIView,
-    AnswerListAPIView,
-    AnswerReplyAPIView
-)
 from .views.user_views import UserModerationNoticesAPIView
 from .views.media_views import (
     UploadIntentsAPIView,
@@ -63,11 +57,9 @@ urlpatterns = [
     path('experiences/<str:experience_id>/', ExperienceDetailAPIView.as_view(), name='experience_detail'),  # PATCH + DELETE /refuges/{refuge_id}/experiences/{experience_id}/
     
     # Refuge doubts endpoints
-    path('doubts/', DoubtListAPIView.as_view(), name='doubt_list'),  # GET + POST /refuges/{refuge_id}/doubts/
-    path('doubts/<str:doubt_id>/', DoubtDetailAPIView.as_view(), name='doubt_detail'),  # DELETE /refuges/{refuge_id}/doubts/{doubt_id}/
-    path('doubts/<str:doubt_id>/answers/', AnswerListAPIView.as_view(), name='answer_list'),  # POST /refuges/{refuge_id}/doubts/{doubt_id}/answers/
-    path('doubts/<str:doubt_id>/answers/<str:answer_id>/', AnswerReplyAPIView.as_view(), name='answer_reply'),  # POST + DELETE /refuges/{refuge_id}/doubts/{doubt_id}/answers/{answer_id}/
-    
+    # /doubts/, /doubts/{id}/, /doubts/{id}/answers/, /doubts/{id}/answers/{answer_id}/ → app `doubts` (PostgreSQL)
+    path('doubts/', include('apps.doubts.urls')),
+
     # Users endpoints
     # /users/, /users/{uid}/, avatar, age-confirmation i les llistes de preferits/visitats → app `accounts` (PostgreSQL)
     path('users/', include('apps.accounts.urls')),

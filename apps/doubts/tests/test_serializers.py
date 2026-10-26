@@ -9,8 +9,8 @@ Contracte (`apps/doubts/serializers.py`, mateixos noms que els d'`api/serializer
   `created_at` ISO 8601 amb el desplaçament de Madrid).
 - `DoubtSerializer(doubt).data` -> `{id, refuge_id, creator_uid, message, created_at, answers_count[, answers]}` on
   `doubt` és un `Doubt` amb `answers_count` anotat i `answers` precarregades (sortida de `selectors.list_doubts`);
-  `answers` és la llista plana ordenada per `(created_at, id)`. Vegeu la pregunta 1 de l'informe sobre la clau `answers`
-  quan no hi ha respostes (avui falta; els tests accepten tant la clau absent com `[]`).
+  `answers` és la llista plana ordenada per `(created_at, id)`. La clau `answers` surt sempre
+  (`[]` quan no hi ha respostes, D30).
 """
 import uuid
 
@@ -141,7 +141,7 @@ def test_dubte_sense_respostes(S, selectors, world):
         [doubt] = selectors.list_doubts(r1.pk)
         data = S.DoubtSerializer(doubt).data
     assert data['answers_count'] == 0 and answers_of(data) == []
-    assert set(data) - {'answers'} == DOUBT_BASE_KEYS
+    assert set(data) == DOUBT_BASE_KEYS | {'answers'}
 
 
 @pytest.mark.db_infra

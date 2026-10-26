@@ -11,6 +11,13 @@ def DM():
 
 
 @pytest.fixture
+def RM():
+    """Mòdul `apps.refuges.models` (per esborrar refugis com a propietari del catàleg)."""
+    from apps.refuges import models
+    return models
+
+
+@pytest.fixture
 def selectors():
     from apps.doubts import selectors
     return selectors

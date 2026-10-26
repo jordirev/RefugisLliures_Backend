@@ -48,7 +48,7 @@ def test_forma_i_ordre_de_la_llista(client, world):
     body = resp.json()
     assert [d['id'] for d in body] == [new, old]                                  # created_at DESC
     n, o = body
-    assert set(n) - {'answers'} == DOUBT_BASE_KEYS and set(o) == DOUBT_BASE_KEYS | {'answers'}
+    assert set(n) == DOUBT_BASE_KEYS | {'answers'} and set(o) == DOUBT_BASE_KEYS | {'answers'}
     assert (n['answers_count'], answers_of(n)) == (0, [])
     assert o['answers_count'] == 3
     assert [a['id'] for a in o['answers']] == [a1, a2, a3]                        # created_at ASC, llista plana
@@ -105,7 +105,7 @@ def test_post_crea_el_dubte_201(client, world):
     resp = api_post(client, DOUBTS, user_claims('u1'), {'refuge_id': str(r1.pk), 'message': 'Hi ha llenya?'})
     assert resp.status_code == 201, resp.content
     body = resp.json()
-    assert set(body) - {'answers'} == DOUBT_BASE_KEYS and answers_of(body) == []
+    assert set(body) == DOUBT_BASE_KEYS | {'answers'} and answers_of(body) == []
     assert is_uuid(body['id']) and body['refuge_id'] == str(r1.pk)
     assert body['creator_uid'] == 'u1' and body['message'] == 'Hi ha llenya?' and body['answers_count'] == 0
     rows = doubt_rows(r1)
@@ -261,7 +261,7 @@ def test_metodes_no_permesos_al_detall_del_dubte(client, world, method):
     from apps.doubts.tests.helpers import VERIFY
     d = make_doubt(world[0], 'u1')
     with patch(VERIFY, return_value=user_claims('u1')):
-        r = getattr(client, method)(doubt_url(d), data='{}', content_type='application/json',
+        r = client.generic(method.upper(), doubt_url(d), data='{}', content_type='application/json',
                                     HTTP_AUTHORIZATION='Bearer t')
     assert r.status_code == 405
 
@@ -272,6 +272,6 @@ def test_metodes_no_permesos_a_les_respostes_d_un_dubte(client, world, method):
     from apps.doubts.tests.helpers import VERIFY
     d = make_doubt(world[0], 'u1')
     with patch(VERIFY, return_value=user_claims('u1')):
-        r = getattr(client, method)(answers_url(d), data='{}', content_type='application/json',
+        r = client.generic(method.upper(), answers_url(d), data='{}', content_type='application/json',
                                     HTTP_AUTHORIZATION='Bearer t')
     assert r.status_code == 405

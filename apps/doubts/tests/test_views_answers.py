@@ -236,6 +236,6 @@ def test_get_i_put_a_la_resposta_no_estan_permesos(client, world, d):
     a = make_answer(d, 'u2')
     for method in ('get', 'put', 'patch'):
         with patch(VERIFY, return_value=user_claims('u2')):
-            r = getattr(client, method)(answer_url(d, a), data='{}', content_type='application/json',
+            r = client.generic(method.upper(), answer_url(d, a), data='{}', content_type='application/json',
                                         HTTP_AUTHORIZATION='Bearer t')
         assert r.status_code == 405

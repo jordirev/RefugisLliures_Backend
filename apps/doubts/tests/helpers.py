@@ -95,8 +95,8 @@ def answer_ids(doubt_id=None):
 
 
 def answers_of(doubt_json):
-    """`answers` d'un dubte del JSON: la clau pot faltar quan no n'hi ha (comportament actual, pregunta 1)."""
-    return doubt_json.get('answers', [])
+    """`answers` d'un dubte del JSON: la clau hi és sempre, `[]` si no n'hi ha (D30)."""
+    return doubt_json['answers']
 
 
 def is_uuid(value):
