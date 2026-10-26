@@ -34,7 +34,7 @@ Per permetre l'anonimització, el model `Renovation` accepta `group_link=None` q
 | Col·lecció / sistema | Operació |
 |---|---|
 | `experiences` | DELETE |
-| ~~`doubts` i `doubts/{id}/answers`~~ (migrats, chunk 6) | Ara són `activity.doubts`/`activity.answers`: cascada del `DELETE users.users` (FK `creator_uid ON DELETE CASCADE`). Les respostes d'un usuari a dubtes aliens també s'esborren, amb el seu subarbre de rèpliques **[FET]** |
+| ~~`doubts` i `doubts/{id}/answers`~~ (migrats, chunk 6) | Ara són `activity.doubts`/`activity.answers`: cascada del `DELETE users.users` (FK `creator_uid ON DELETE CASCADE`). Les respostes d'un usuari a dubtes aliens també s'esborren, amb el seu subarbre de rèpliques, **també les d'altres usuaris** que hi penjaven (decisió del PO, 26/10: es manté l'esborrat del subarbre, coherent amb l'esborrat manual d'una resposta; no s'anonimitza) **[FET]** |
 | `refuges_proposals` | UPDATE `creator_uid` |
 | `renovations` | DELETE (vigents) / UPDATE (passades, participants, expulsats) |
 | `data_refugis_lliures` (legacy) | ja no es toca des de l'esborrat d'usuari |
