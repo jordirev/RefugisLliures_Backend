@@ -138,7 +138,7 @@ def test_llista_forma_per_a_un_alie_sense_enllac_ni_expulsats(client, world):
 def test_llista_nomes_actives_inclou_la_que_acaba_avui_i_ordena_per_inici(client, world):
     late = make_renovation(world.refuge, 'u1', ini=day(20), fin=day(22))
     ends_today = make_renovation(world.refuge2, 'u1', ini=day(-4), fin=day(0))
-    make_renovation(world.refuge2, 'u1', ini=day(-20), fin=day(-1))                # acabada ahir: fora
+    make_renovation(world.refuge, 'u1', ini=day(-20), fin=day(-1))                 # acabada ahir: fora
     soon = make_renovation(world.refuge, 'u1', ini=day(3), fin=day(4))
     ids = [r['id'] for r in GET(client, RENOVATIONS, 'u3').json()]
     assert ids == [str(ends_today), str(soon), str(late)]

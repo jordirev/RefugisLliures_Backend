@@ -23,6 +23,7 @@ from api.utils.timezone_utils import get_madrid_timezone
 from apps.core.rls import system_context
 from apps.refuges import selectors as refuge_selectors
 from apps.refuges.models import RefugeMedia
+from apps.renovations import services as renovation_services
 
 from . import selectors
 from .models import FavouriteRefuge, UserAccount, UserAvatar, UserPublicProfile, VisitedRefuge
@@ -259,17 +260,12 @@ def _firestore_steps(uid: str):
     from api.controllers.experience_controller import ExperienceController
     from api.controllers.refuge_proposal_controller import RefugeProposalController
     from api.controllers.refuge_visit_controller import RefugeVisitController
-    from api.controllers.renovation_controller import RenovationController
-    doubts, renovations = DoubtController(), RenovationController()
+    doubts = DoubtController()
     return [
         ('experiències', lambda: ExperienceController().delete_experiences_by_creator(uid)),
         ('dubtes', lambda: doubts.delete_doubts_by_creator(uid)),
         ('respostes', lambda: doubts.delete_answers_by_creator(uid)),
         ('propostes', lambda: RefugeProposalController().anonymize_proposals_by_creator(uid)),
-        ('reformes actuals', lambda: renovations.delete_current_renovations_by_creator(uid)),
-        ('reformes anonimitzades', lambda: renovations.anonymize_renovations_by_creator(uid)),
-        ('participacions en reformes', lambda: renovations.remove_user_from_participations(uid)),
-        ('expulsions de reformes', lambda: renovations.remove_user_from_expelled(uid)),
         ('visites', lambda: RefugeVisitController().remove_user_from_all_visits(uid)),
     ]
 
@@ -293,8 +289,8 @@ def _delete_r2_media(uid: str, media_service=None) -> None:
 
 def delete_user(uid: str, media_service=None) -> None:
     """
-    Esborra l'usuari: primer els passos de Firestore (D21), després R2 (D22), el `DELETE` de `users.users` (la BD
-    cascadeja perfil, avatar, preferits, visitats i fotos) i al final el compte de Firebase Auth (U7, D24): primer
+    Esborra l'usuari: primer els passos de Firestore (D21), després R2 (D22), les reformes vigents del creador i el
+    `DELETE` de `users.users` (la BD cascadeja perfil, avatar, preferits, visitats i fotos) i al final el compte de Firebase Auth (U7, D24): primer
     les dades i després el compte, perquè l'usuari pugui reintentar mentre el compte existeixi.
 
     El `DELETE` i Firebase Auth van dins un *savepoint*: si Firebase falla, `UserDeletionError` desfà el `DELETE`
@@ -310,6 +306,10 @@ def delete_user(uid: str, media_service=None) -> None:
             raise UserDeletionError(f'Ha fallat el pas «{name}» a Firestore')
     _delete_r2_media(uid, media_service)
     with transaction.atomic():
+        # Reformes (chunk 5, §8.4): les vigents del creador s'esborren (cascada a participants, expulsats i enllaç);
+        # les passades queden anònimes per la FK `SET NULL` (el *trigger* en treu l'enllaç) i les seves
+        # participacions i expulsions s'esborren per cascada en esborrar l'usuari.
+        renovation_services.delete_current_by_creator(uid)
         if not UserAccount.objects.filter(pk=uid).delete()[0]:
             raise UserNotFound()
         _delete_firebase_account(uid)

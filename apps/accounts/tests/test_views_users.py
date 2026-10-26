@@ -337,10 +337,6 @@ LEGACY_STEPS = [
     ('api.controllers.doubt_controller.DoubtController.delete_doubts_by_creator'),
     ('api.controllers.doubt_controller.DoubtController.delete_answers_by_creator'),
     ('api.controllers.refuge_proposal_controller.RefugeProposalController.anonymize_proposals_by_creator'),
-    ('api.controllers.renovation_controller.RenovationController.delete_current_renovations_by_creator'),
-    ('api.controllers.renovation_controller.RenovationController.anonymize_renovations_by_creator'),
-    ('api.controllers.renovation_controller.RenovationController.remove_user_from_participations'),
-    ('api.controllers.renovation_controller.RenovationController.remove_user_from_expelled'),
     ('api.controllers.refuge_visit_controller.RefugeVisitController.remove_user_from_all_visits'),
 ]
 

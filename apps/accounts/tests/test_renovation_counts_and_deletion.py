@@ -22,10 +22,10 @@ from unittest.mock import patch
 import pytest
 
 from apps.accounts.tests.helpers import (
-    admin_claims, api_delete, api_get, api_patch, count_all, make_refuge, make_user, sql, url, user_claims, user_row,
+    admin_claims, api_delete, api_get, api_patch, count_all, make_refuge, sql, url, user_claims, user_row,
     QueryCounter)
 from apps.renovations.tests.helpers import (
-    LINK, day, expelled_of, link_of, make_renovation, participants_of, reno_url, renovation_row)
+    LINK, make_user, day, expelled_of, link_of, make_renovation, participants_of, reno_url, renovation_row)
 
 pytestmark = [pytest.mark.db_infra, pytest.mark.django_db, pytest.mark.views, pytest.mark.integration,
               pytest.mark.real_permissions, pytest.mark.real_legacy_counts]
@@ -285,7 +285,8 @@ def test_delete_les_reformes_es_desfan_si_falla_el_delete_dels_passos_de_postgre
 
 @pytest.mark.parametrize('claims', [user_claims('u2'), admin_claims('adm')])
 def test_delete_d_un_altre_403_i_no_toca_les_reformes(client, scene, firestore_steps, claims):
-    make_user(claims['uid'])
+    if user_row(claims['uid']) is None:                               # `u2` ja existeix al fixture `world`
+        make_user(claims['uid'])
     assert api_delete(client, url('u1'), claims).status_code == 403
     assert renovation_row(scene.current) is not None and participants_of(scene.current) == ['u2']
 
@@ -300,7 +301,8 @@ def test_delete_idempotent_les_reformes_no_deixen_files_orfes(client, scene, fir
     # Cap enllaç de reformes anònimes (privacitat): les anònimes no en tenen.
     assert sql("SELECT count(*) FROM activity.renovation_group_links l JOIN activity.renovations r "
                "ON r.id = l.renovation_id WHERE r.creator_uid IS NULL")[0][0] == 0
-    assert count_all('activity.renovations') == 2
+    # Queden la passada (anònima) i les dues d'`u2` (`other`, `other2`); les dues vigents d'`u1` s'han esborrat.
+    assert count_all('activity.renovations') == 3
 
 
 def test_delete_les_vigents_s_esborren_amb_el_dia_de_madrid(client, world, firestore_steps):

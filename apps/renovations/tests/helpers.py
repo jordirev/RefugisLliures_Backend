@@ -17,7 +17,8 @@ from datetime import timedelta
 
 from apps.accounts.tests.helpers import (  # noqa: F401  (re-exportats)
     PROFILE_REQUIRED, QueryCounter, T0, VERIFY, account_models, admin_claims, api_delete, api_get, api_patch,
-    api_post, as_owner, at, count_all, make_refuge, make_user, madrid_today, refuge_models, sql, user_claims)
+    api_post, as_owner, at, count_all, make_refuge, madrid_today, refuge_models, sql, user_claims)
+from apps.accounts.tests.helpers import make_user as _make_user
 
 RENOVATIONS = '/api/renovations/'
 LINK = 'https://chat.whatsapp.com/abc123'
@@ -29,6 +30,17 @@ FULL_KEYS = BASE_KEYS | {'group_link'}
 
 T = {'renovations': 'activity.renovations', 'links': 'activity.renovation_group_links',
      'participants': 'activity.renovation_participants', 'expelled': 'activity.renovation_expelled'}
+
+
+def make_user(uid='u1', username='', **fields):
+    """
+    Usuari amb l'edat confirmada per defecte: l'escriptura de contingut de reformes (POST, PATCH, unir-se) exigeix
+    `IsNotBlocked` i `IsAgeConfirmed` (decisió del PO, 26/10). Per provar `age_not_confirmed`, passa
+    `age_confirmed_at=None, age_threshold=None`.
+    """
+    if 'age_confirmed_at' not in fields and 'age_threshold' not in fields:
+        fields.update(age_confirmed_at=at(0), age_threshold=16)
+    return _make_user(uid, username, **fields)
 
 
 def renovation_models():

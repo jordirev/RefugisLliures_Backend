@@ -194,7 +194,8 @@ def test_check_de_group_link_http_i_longitud(migrator_db):
     checks = _constraints(migrator_db, LNK, 'c')
     assert checks, 'cal un CHECK sobre `group_link`'
     definition = ' '.join(checks.values())
-    assert '^https?://' in definition and '2048' in definition and 'char_length' in definition
+    # `pg_get_constraintdef` desparsa `char_length()` com a `length()` (àlies): es comprova el nom que mostra Postgres.
+    assert '^https?://' in definition and '2048' in definition and 'length(' in definition
 
 
 def test_exclusio_de_solapaments_gist_amb_limits_inclusius(migrator_db):

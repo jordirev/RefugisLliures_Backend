@@ -36,7 +36,7 @@ from django.db import connection
 
 from apps.core.rls import rls_context
 from apps.renovations.tests.helpers import (
-    LINK, QueryCounter, day, expelled_of, link_of, make_renovation, missing_uuid, participants_of, renovation_row)
+    LINK, QueryCounter, count_renovations, day, expelled_of, link_of, make_renovation, missing_uuid, participants_of, renovation_row)
 
 pytestmark = [pytest.mark.db_infra, pytest.mark.django_db, pytest.mark.unit, pytest.mark.integration,
               pytest.mark.real_permissions]
@@ -218,9 +218,8 @@ def test_create_es_atomic_si_falla_l_enllac(SV, world):
 
 
 def _count():
-    with connection.cursor() as cur:
-        cur.execute('SELECT count(*) FROM activity.renovations')
-        return cur.fetchone()[0]
+    """Files de `renovations` vistes com a sistema (sense context, la RLS les amagaria totes)."""
+    return count_renovations()
 
 
 # =============================================== services: actualitzar ===============================================
