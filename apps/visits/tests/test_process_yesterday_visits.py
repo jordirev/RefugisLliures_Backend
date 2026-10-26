@@ -214,3 +214,15 @@ def test_les_purgues_i_el_processament_no_depenen_de_l_ordre(scene):
     make_visit(r1, day(-1), {'u1': 1})
     run()
     assert len(visit_rows()) == 1 and visited_ids('u1') == [r1.pk]
+
+
+# ---------- Errors (D28) ----------
+
+@pytest.mark.parametrize('target', ['process_yesterday_visits', 'purge_old_visits'])
+def test_la_comanda_surt_amb_error_si_falla(scene, target):
+    """D28: `CommandError` (codi de sortida != 0) perque el job de GitHub Actions detecti la fallada."""
+    from django.core.management.base import CommandError
+    with mock.patch(f'apps.visits.services.{target}', side_effect=RuntimeError('secret de bd')):
+        with pytest.raises(CommandError) as err:
+            run()
+    assert 'secret' not in str(err.value)

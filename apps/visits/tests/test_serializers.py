@@ -4,7 +4,7 @@ Serializers de `apps/visits/serializers.py` (chunk 4, §2.11, §5.2).
 Contracte:
 - `CreateRefugeVisitSerializer` i `UpdateRefugeVisitSerializer` (mateixos noms que els de Firestore): un sol camp
   `num_visitors`, enter obligatori, `min_value=1` i **`max_value`** (§2.11: «afegir `max_value` al serializer per
-  evitar valors absurds»; el valor exacte es la pregunta 1 de l'informe: s'accepta fins a 50 i es rebutja 100000).
+  evitar valors absurds»; D27: `max_value = 100`; s'accepta 100 i es rebutja 101).
 - `RefugeVisitListSerializer` (sortida): rep un objecte amb els atributs `date` (`datetime.date`), `refuge_id`
   (`UUID`), `total_visitors`, `is_visitor`, `num_visitors` (els del `VisitSummary` que retornen selectors/services) i
   emet exactament `{date: 'YYYY-MM-DD', refuge_id: '<uuid>', total_visitors, is_visitor, num_visitors}`. **No** calcula
@@ -33,7 +33,7 @@ class TestInput:
         assert s.is_valid(), s.errors
         assert s.validated_data == {'num_visitors': 2}
 
-    @pytest.mark.parametrize('value', [1, 50])
+    @pytest.mark.parametrize('value', [1, 50, 100])
     def test_limits_acceptats(self, name, value):
         assert getattr(_ser(), name)(data={'num_visitors': value}).is_valid()
 
@@ -43,7 +43,7 @@ class TestInput:
         s = getattr(_ser(), name)(data=data)
         assert not s.is_valid() and 'num_visitors' in s.errors
 
-    @pytest.mark.parametrize('value', [100000, 2 ** 31 - 1, 2 ** 31])
+    @pytest.mark.parametrize('value', [101, 100000, 2 ** 31 - 1, 2 ** 31])
     def test_te_max_value_contra_valors_absurds(self, name, value):
         s = getattr(_ser(), name)(data={'num_visitors': value})
         assert not s.is_valid() and 'num_visitors' in s.errors

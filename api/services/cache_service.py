@@ -35,10 +35,6 @@ class CacheService:
         'proposal_detail': 600,    # 10 minuts
         'proposal_list': 600,      # 10 minuts
         
-        # Visits
-        'refuge_visit_detail': 600,  # 10 minuts
-        'refuge_visits_list': 600,   # 10 minuts
-        
         # Doubts
         'doubt_detail': 600,       # 10 minuts
         'doubt_list': 600,         # 10 minuts

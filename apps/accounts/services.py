@@ -258,7 +258,6 @@ def _firestore_steps(uid: str):
     from api.controllers.doubt_controller import DoubtController
     from api.controllers.experience_controller import ExperienceController
     from api.controllers.refuge_proposal_controller import RefugeProposalController
-    from api.controllers.refuge_visit_controller import RefugeVisitController
     from api.controllers.renovation_controller import RenovationController
     doubts, renovations = DoubtController(), RenovationController()
     return [
@@ -270,7 +269,6 @@ def _firestore_steps(uid: str):
         ('reformes anonimitzades', lambda: renovations.anonymize_renovations_by_creator(uid)),
         ('participacions en reformes', lambda: renovations.remove_user_from_participations(uid)),
         ('expulsions de reformes', lambda: renovations.remove_user_from_expelled(uid)),
-        ('visites', lambda: RefugeVisitController().remove_user_from_all_visits(uid)),
     ]
 
 
