@@ -106,6 +106,7 @@ sequenceDiagram
 | Visita no trobada (DELETE; data invàlida inclosa) | 404 | `Visita no trobada` |
 | Data amb format invàlid (POST) | 400 | `Format de data invàlid. Utilitza YYYY-MM-DD` |
 | Data passada (POST) | 400 | `La data de la visita ha de ser igual o posterior a avui` |
+| Data a més de 12 mesos vista (POST, D36) | 400 | `La data de la visita no pot ser a més de 12 mesos vista` |
 | Ja registrat (POST) | 400 | `Ja estàs registrat a aquesta visita` |
 | No registrat (PATCH, DELETE) | 400 | `No estàs registrat a aquesta visita` |
 | `num_visitors` fora de 1–100 o absent | 400 | errors del serializer |

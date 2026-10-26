@@ -29,6 +29,7 @@ from .selectors import VisitSummary
 logger = logging.getLogger(__name__)
 
 RETENTION_MONTHS = 12            # §8.3, decisió 13: les visites de data concreta es purguen als 12 mesos
+MAX_AHEAD_MONTHS = 12            # D36: una visita no pot ser a més de 12 mesos vista (si no, files que no es purguen mai)
 _DATE_RE = re.compile(r'^\d{4}-\d{2}-\d{2}$')
 
 
@@ -46,6 +47,10 @@ class InvalidDateFormat(Exception):
 
 class VisitDateInPast(Exception):
     """La data de la visita és anterior a avui (Madrid)."""
+
+
+class VisitDateTooFar(Exception):
+    """La data de la visita és a més de `MAX_AHEAD_MONTHS` mesos d'avui (Madrid)."""
 
 
 class AlreadyRegistered(Exception):
@@ -115,12 +120,15 @@ def create_visit(uid: str, refuge_id, visit_date, num_visitors: int) -> VisitSum
     """
     Registra `uid` a la visita `(refugi, data)` i la crea si no existeix (idempotent per a la visita, no per a l'usuari).
     `visit_date` és un `date` (o un text `YYYY-MM-DD`). Ordre de les comprovacions: refugi, format de data, data
-    passada (avui és vàlid), ja registrat.
+    passada (avui és vàlid), data a més de 12 mesos vista (D36), ja registrat.
     """
     pk = _existing_refuge(refuge_id)
     d = parse_visit_date(visit_date)
-    if d < get_madrid_today():
+    today = get_madrid_today()
+    if d < today:
         raise VisitDateInPast()
+    if d > _months_before(today, -MAX_AHEAD_MONTHS):
+        raise VisitDateTooFar()
     with transaction.atomic():
         RefugeVisit.objects.bulk_create([RefugeVisit(refuge_id=pk, visit_date=d)], ignore_conflicts=True)
         visit_id = selectors.visit_id_of(pk, d)

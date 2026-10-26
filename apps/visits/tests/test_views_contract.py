@@ -134,6 +134,21 @@ def test_post_data_d_avui_es_valida(client, scene):
     assert api_post(client, visit_url(r1.pk, day(0)), user_claims('u1'), {'num_visitors': 1}).status_code == 201
 
 
+def test_post_data_a_12_mesos_vista_es_valida_i_l_endema_400(client, scene):
+    """D36: com a molt 12 mesos naturals vista (si no, visites que el job no purga mai)."""
+    from datetime import timedelta
+    from apps.visits.services import MAX_AHEAD_MONTHS, _months_before
+    from api.utils.timezone_utils import get_madrid_today
+    r1, _ = scene
+    limit = _months_before(get_madrid_today(), -MAX_AHEAD_MONTHS)
+    assert api_post(client, visit_url(r1.pk, limit), user_claims('u1'), {'num_visitors': 1}).status_code == 201
+    resp = api_post(client, visit_url(r1.pk, limit + timedelta(days=1)), user_claims('u1'), {'num_visitors': 1})
+    assert resp.status_code == 400
+    assert body(resp) == {'error': 'La data de la visita no pot ser a més de 12 mesos vista'}
+    assert api_post(client, visit_url(r1.pk, '9999-12-31'), user_claims('u1'), {'num_visitors': 1}).status_code == 400
+    assert len(visit_rows()) == 1
+
+
 def test_post_data_passada_400(client, scene):
     r1, _ = scene
     resp = api_post(client, visit_url(r1.pk, day(-1)), user_claims('u1'), {'num_visitors': 1})

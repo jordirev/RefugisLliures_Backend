@@ -29,7 +29,8 @@ ERR_DELETE = 'Error en esborrar el visitant de la visita'
 
 MSG_BAD_DATE = 'Format de data invàlid. Utilitza YYYY-MM-DD'
 MSG_PAST = 'La data de la visita ha de ser igual o posterior a avui'
-MSG_ALREADY = 'Ja estàs registrat a aquesta visita'
+MSG_TOO_FAR = 'La data de la visita no pot ser a més de 12 mesos vista'
+MSG_ALREADY ='Ja estàs registrat a aquesta visita'
 MSG_NOT_REGISTERED = 'No estàs registrat a aquesta visita'
 
 VISIT_SCHEMA = openapi.Schema(type=openapi.TYPE_OBJECT, properties={
@@ -123,6 +124,8 @@ class RefugeVisitDetailAPIView(ContentWritePermissionsMixin, APIView):
             return _error(MSG_BAD_DATE, status.HTTP_400_BAD_REQUEST)
         except services.VisitDateInPast:
             return _error(MSG_PAST, status.HTTP_400_BAD_REQUEST)
+        except services.VisitDateTooFar:
+            return _error(MSG_TOO_FAR, status.HTTP_400_BAD_REQUEST)
         except services.AlreadyRegistered:
             return _error(MSG_ALREADY, status.HTTP_400_BAD_REQUEST)
         except Exception as exc:

@@ -67,10 +67,11 @@ def test_data_mal_formada_post_400_patch_delete_404_i_no_s_escriu_res(client, sc
     assert participant_rows(vid) == {'u1': 2} and len(visit_rows(r)) == 1
 
 
-def test_data_limit_superior_es_valida_i_no_peta(client, scene):
-    """9999-12-31 és una data real: es desa (vegeu TECH_DEBT: sense cota superior) però no provoca cap 500."""
+def test_data_limit_superior_es_rebutja_sense_500(client, scene):
+    """9999-12-31 és una data real però és a més de 12 mesos vista (D36): 400 i no es desa res."""
     resp = api_post(client, visit_url(scene.pk, '9999-12-31'), user_claims('u1'), {'num_visitors': 1})
-    assert resp.status_code == 201 and resp.json()['visit']['date'] == '9999-12-31'
+    assert resp.status_code == 400
+    assert len(visit_rows(scene)) == 0
 
 
 # ---------- Cos amb valors extrems ----------
