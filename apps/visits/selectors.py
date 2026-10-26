@@ -15,7 +15,7 @@ from django.db.models.functions import Coalesce
 
 from api.utils.timezone_utils import get_madrid_today
 
-from .models import RefugeVisit, VisitParticipant
+from .models import RefugeVisit, VisitParticipant, VisitTotal
 
 
 @dataclass(frozen=True, slots=True)
@@ -41,10 +41,21 @@ def _of_user(uid: str):
     return VisitParticipant.objects.filter(visit_id=OuterRef('pk'), user_id=uid)
 
 
+def _total_of(visit_ref: str):
+    """
+    Total de la visita referenciada per `OuterRef(visit_ref)`, com a subconsulta correlacionada sobre la vista.
+
+    Un `LEFT JOIN` amb la vista (`GROUP BY visit_id`) fa que Postgres agregui **tota** la taula de participants i
+    n'enllaci el resultat (un `GroupAggregate` de milions de files per llegir-ne dues desenes). La subconsulta
+    correlacionada hi empeny el `visit_id` i usa l'índex de la PK `(visit_id, user_uid)`: cost proporcional a les files llegides.
+    """
+    return Coalesce(Subquery(VisitTotal.objects.filter(visit_id=OuterRef(visit_ref)).values('total_visitors')[:1]), 0)
+
+
 def _annotated_visits(uid: str):
     mine = _of_user(uid)
     return RefugeVisit.objects.annotate(
-        total=Coalesce(F('totals__total_visitors'), 0),
+        total=_total_of('pk'),
         is_visitor=Exists(mine),
         my_num=Coalesce(Subquery(mine.values('num_visitors')[:1]), 0))
 
@@ -62,7 +73,7 @@ def list_user_visits(uid: str) -> list:
     """Totes les visites on participa `uid` (passades i futures), per `(data DESC, refugi)`: usa `(user_uid) INCLUDE`."""
     rows = (VisitParticipant.objects.filter(user_id=uid)
             .annotate(visit_date=F('visit__visit_date'), refuge_id=F('visit__refuge_id'),
-                      total=Coalesce(F('visit__totals__total_visitors'), 0))
+                      total=_total_of('visit_id'))
             .order_by('-visit_date', 'refuge_id')
             .values_list('visit_date', 'refuge_id', 'total', 'num_visitors'))
     return [VisitSummary(d, rid, total, True, num) for d, rid, total, num in rows]
