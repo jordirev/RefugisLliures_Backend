@@ -10,7 +10,7 @@
 | GET | `/api/refuges/` (sense filtres → punts del mapa) | `RefugeCollectionAPIView.get` | públic; el token és opcional i desbloqueja `images_metadata` (i `visitors` per als admins) |
 | GET | `/api/refuges/?name=&type=&condition=&places_min=&places_max=&altitude_min=&altitude_max=` | idem | idem |
 | GET | `/api/refuges/{id}/` | `RefugeDetailAPIView.get` | públic; l'`id` és un UUID (qualsevol altre format → 404) |
-| GET | `/api/refuges/{id}/renovations/` | `RefugeRenovationsAPIView.get` (`api/views/renovation_views.py`; ruta a `api/urls.py`) | IsAuthenticated |
+| GET | `/api/refuges/{id}/renovations/` | `apps.renovations.views.RefugeRenovationsAPIView.get` (chunk 5; ruta a `api/urls.py`; [flux 7](07-renovations.md)) | IsAuthenticated |
 
 Taules: `refuges.refuges` (+ `refuge_amenities` 1-1, `refuge_links` amb PK `url`, `refuge_media`) i el catàleg `refuges.refuge_types` (FK de `refuges.type`). No hi ha vista `refuge_map`: la llista sense filtres és una consulta directa a `refuges.refuges` (disseny §5.3, recepta 5). Lectura pública per RLS (`USING (true)`); els mitjans només visibles per a tothom (la resta, autor i admin).
 
@@ -69,6 +69,6 @@ sequenceDiagram
 - Cap cache Redis per a refugis: les llistes ja no cal invalidar-les quan una proposta modifica un refugi.
 
 ## Gotchas
-- `GET /refuges/{id}/renovations/`: `active_only` no es llegeix de la query (`api/views/renovation_views.py`, `RefugeRenovationsAPIView.get`) **[FET]**; continua sent la ruta antiga de Firestore.
+- `GET /refuges/{id}/renovations/`: des del chunk 5 és a PostgreSQL i llegeix `?active_only=` (D32: `true`/`1` només vigents; per defecte totes); refugi inexistent → 404 ([flux 7](07-renovations.md)) **[FET]**.
 - Els dominis que encara no s'han migrat (experiències, dubtes, visites, propostes, usuaris) segueixen consultant els refugis al `RefugiLliureDAO` de Firestore, que ja no s'alimenta: fins als seus chunks, les seves comprovacions d'existència de refugi miren el catàleg antic de Firestore (en un entorn nou, buit; en producció, amb IDs diferents dels UUID de PostgreSQL) — [GOTCHAS #41](../GOTCHAS.md).
 - `load_refuges` és d'un sol ús: vegeu [local-setup](../guides/local-setup.md).

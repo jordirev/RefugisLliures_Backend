@@ -11,7 +11,7 @@
 > Els "models" **no** són models de Django: són `@dataclass` persistits a Firestore via DAO. No hi ha migracions.
 
 ## 1. Model — `api/models/<entitat>.py`
-Patró: `api/models/renovation.py`.
+Patró legacy (Firestore): `api/models/renovation.py` (fins al chunk 8). Per a PostgreSQL, el model de referència amb constraints (`CHECK`, `EXCLUDE`), triggers i RLS és `apps/renovations/models.py` + `migrations/0001_initial.py`.
 ```python
 @dataclass
 class Foo:
