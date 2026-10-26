@@ -8,7 +8,7 @@ Pressupost de consultes constant (no depèn del nombre de files): `get_doubt` 1,
 import uuid
 from typing import List, Optional
 
-from django.db.models import Count, Prefetch
+from django.db.models import Prefetch
 
 from .models import Answer, Doubt
 
@@ -39,13 +39,17 @@ def get_answer(doubt_id, answer_id) -> Optional[Answer]:
 
 def list_doubts(refuge_id) -> List[Doubt]:
     """
-    Dubtes d'un refugi per `(created_at, id)` descendent, amb `answers_count` anotat i les respostes precarregades
-    (`doubt.answers.all()`, per `(created_at, id)` ascendent): 2 consultes amb qualsevol nombre de files.
+    Dubtes d'un refugi per `(created_at, id)` descendent, amb les respostes precarregades (`doubt.answers.all()`, per
+    `(created_at, id)` ascendent) i `answers_count` = nombre de respostes precarregades: 2 consultes amb qualsevol
+    nombre de files. El recompte no es fa a la BD (`Count('answers')` feia un `LEFT JOIN` + `GROUP BY` que llegia
+    les respostes dues vegades: ~400 ms amb 3000 dubtes x 16 respostes) perquè ja les tenim totes a la memòria.
     Refugi inexistent o ID que no és UUID: llista buida (l'existència del refugi la comprova la vista).
     """
     pk = parse_id(refuge_id)
     if pk is None:
         return []
     answers = Prefetch('answers', queryset=Answer.objects.order_by('created_at', 'id'))
-    return list(Doubt.objects.filter(refuge_id=pk).annotate(answers_count=Count('answers'))
-                .order_by('-created_at', '-id').prefetch_related(answers))
+    doubts = list(Doubt.objects.filter(refuge_id=pk).order_by('-created_at', '-id').prefetch_related(answers))
+    for doubt in doubts:
+        doubt.answers_count = len(doubt.answers.all())        # de la memòria: el prefetch ja les ha carregat
+    return doubts
