@@ -63,9 +63,9 @@ sequenceDiagram
 ## Esborrat — provisional (D21, D22)
 
 `services.delete_user(uid)` fa, en aquest ordre, i **s'atura al primer pas que falla**:
-1. **Passos de Firestore** (dominis encara no migrats), via els controllers de sempre ([deep-dive](../deep-dives/user-deletion.md)): experiències, dubtes, respostes, propostes (anonimitza) i visites. (Les reformes ja no hi són: són SQL, vegeu el pas 3.)
+1. **Passos de Firestore** (dominis encara no migrats), via els controllers de sempre ([deep-dive](../deep-dives/user-deletion.md)): experiències i propostes (anonimitza). (Visites, reformes i dubtes ja no hi són: són SQL, vegeu el pas 3.)
 2. **R2** (D22, RGPD): avatar i miniatura + fotos pujades per l'usuari (`refuges.refuge_media` amb `creator_uid = uid`, i miniatures), en un `delete_files`. Si hi ha fitxers que fallen → `UserDeletionError`.
-3. **Reformes + `DELETE FROM users.users`** (chunk 5, §8.4), al mateix *savepoint*: `renovations.services.delete_current_by_creator(uid)` esborra les reformes **vigents** creades (cascada a participants, expulsats i enllaç); el `DELETE` cascadeja perfil, avatar, preferits, visitats, participacions i expulsions de reformes, i deixa **anònimes** (`creator_uid` → `NULL`, API `'unknown'`, enllaç esborrat pel trigger) les reformes passades creades (FK reals `ON DELETE`, no de Django).
+3. **Reformes + `DELETE FROM users.users`** (chunk 5, §8.4), al mateix *savepoint*: `renovations.services.delete_current_by_creator(uid)` esborra les reformes **vigents** creades (cascada a participants, expulsats i enllaç); el `DELETE` cascadeja perfil, avatar, preferits, visitats, participacions en visites, participacions i expulsions de reformes, **dubtes i respostes**, i deixa **anònimes** (`creator_uid` → `NULL`, API `'unknown'`, enllaç esborrat pel trigger) les reformes passades creades (FK reals `ON DELETE`, no de Django).
 4. **Compte de Firebase Auth** (U7, D24): `firebase_auth.delete_user(uid)`, dins el mateix *savepoint* que el pas 3. Si Firebase falla, `UserDeletionError` desfà el `DELETE` (l'usuari es conserva i es pot reintentar); si el compte ja no existeix (`UserNotFoundError`), es dona per fet. El client **no** crida `user.delete()`: només reautentica, crida aquest endpoint i fa `signOut` local **[FET]**.
 
 ```mermaid
@@ -81,7 +81,7 @@ sequenceDiagram
 
     C->>V: DELETE /api/users/{uid}/
     V->>S: delete_user(uid)
-    loop 9 passos (experiències … visites)
+    loop 8 passos (experiències … reformes)
         S->>F: pas del controller → (success, error)
     end
     S->>R2: delete_files(avatar + miniatura + fotos + miniatures)

@@ -256,17 +256,11 @@ def delete_avatar(uid: str, media_service=None) -> None:
 
 def _firestore_steps(uid: str):
     """Passos de l'esborrat que encara viuen a Firestore (D21), en l'ordre de sempre: `(nom, callable)`."""
-    from api.controllers.doubt_controller import DoubtController
     from api.controllers.experience_controller import ExperienceController
     from api.controllers.refuge_proposal_controller import RefugeProposalController
-    from api.controllers.refuge_visit_controller import RefugeVisitController
-    doubts = DoubtController()
     return [
         ('experiències', lambda: ExperienceController().delete_experiences_by_creator(uid)),
-        ('dubtes', lambda: doubts.delete_doubts_by_creator(uid)),
-        ('respostes', lambda: doubts.delete_answers_by_creator(uid)),
         ('propostes', lambda: RefugeProposalController().anonymize_proposals_by_creator(uid)),
-        ('visites', lambda: RefugeVisitController().remove_user_from_all_visits(uid)),
     ]
 
 

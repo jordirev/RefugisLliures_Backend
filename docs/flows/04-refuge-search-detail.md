@@ -70,5 +70,5 @@ sequenceDiagram
 
 ## Gotchas
 - `GET /refuges/{id}/renovations/`: des del chunk 5 és a PostgreSQL i llegeix `?active_only=` (D32: `true`/`1` només vigents; per defecte totes); refugi inexistent → 404 ([flux 7](07-renovations.md)) **[FET]**.
-- Els dominis que encara no s'han migrat (experiències, dubtes, visites, propostes, usuaris) segueixen consultant els refugis al `RefugiLliureDAO` de Firestore, que ja no s'alimenta: fins als seus chunks, les seves comprovacions d'existència de refugi miren el catàleg antic de Firestore (en un entorn nou, buit; en producció, amb IDs diferents dels UUID de PostgreSQL) — [GOTCHAS #41](../GOTCHAS.md).
+- Els dominis que encara no s'han migrat (experiències, propostes; visites, reformes i dubtes ja són a PostgreSQL) segueixen consultant els refugis al `RefugiLliureDAO` de Firestore, que ja no s'alimenta: fins als seus chunks, les seves comprovacions d'existència de refugi miren el catàleg antic de Firestore (en un entorn nou, buit; en producció, amb IDs diferents dels UUID de PostgreSQL) — [GOTCHAS #41](../GOTCHAS.md).
 - `load_refuges` és d'un sol ús: vegeu [local-setup](../guides/local-setup.md).

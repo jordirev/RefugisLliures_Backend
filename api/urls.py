@@ -4,12 +4,6 @@ from .views.experience_views import (
     ExperienceListAPIView,
     ExperienceDetailAPIView
 )
-from .views.doubt_views import (
-    DoubtListAPIView,
-    DoubtDetailAPIView,
-    AnswerListAPIView,
-    AnswerReplyAPIView
-)
 from .views.user_views import UserModerationNoticesAPIView
 from .views.media_views import (
     UploadIntentsAPIView,
@@ -25,11 +19,6 @@ from .views.refuge_proposal_views import (
     RefugeProposalRejectAPIView,
     MyRefugeProposalCollectionAPIView
 )
-from .views.refuge_visit_views import (
-    RefugeVisitsAPIView,
-    UserVisitsAPIView,
-    RefugeVisitDetailAPIView
-)
 from .views.cache_views import cache_stats, cache_clear, cache_invalidate
 
 urlpatterns = [
@@ -41,9 +30,8 @@ urlpatterns = [
     path('refuges/', include('apps.refuges.urls')),
     path('refuges/<str:id>/renovations/', RefugeRenovationsAPIView.as_view(), name='refuge_renovations'),  # GET /refuges/{id}/renovations/
     
-    # Refuge visits endpoints
-    path('refuges/<str:refuge_id>/visits/', RefugeVisitsAPIView.as_view(), name='refuge_visits'),  # GET /refuges/{id}/visits/
-    path('refuges/<str:refuge_id>/visits/<str:visit_date>/', RefugeVisitDetailAPIView.as_view(), name='refuge_visit_detail'),  # POST + PATCH + DELETE /refuges/{id}/visits/{date}/
+    # /refuges/{id}/visits/, /refuges/{id}/visits/{date}/, /users/{uid}/visits/ → app `visits` (PostgreSQL)
+    path('', include('apps.visits.urls')),
     
     # Pujada directa de mitjans (presigned PUT + confirm) i moderació
     path('media/upload-intents/', UploadIntentsAPIView.as_view(), name='media_upload_intents'),  # POST
@@ -57,16 +45,13 @@ urlpatterns = [
     path('experiences/<str:experience_id>/', ExperienceDetailAPIView.as_view(), name='experience_detail'),  # PATCH + DELETE /refuges/{refuge_id}/experiences/{experience_id}/
     
     # Refuge doubts endpoints
-    path('doubts/', DoubtListAPIView.as_view(), name='doubt_list'),  # GET + POST /refuges/{refuge_id}/doubts/
-    path('doubts/<str:doubt_id>/', DoubtDetailAPIView.as_view(), name='doubt_detail'),  # DELETE /refuges/{refuge_id}/doubts/{doubt_id}/
-    path('doubts/<str:doubt_id>/answers/', AnswerListAPIView.as_view(), name='answer_list'),  # POST /refuges/{refuge_id}/doubts/{doubt_id}/answers/
-    path('doubts/<str:doubt_id>/answers/<str:answer_id>/', AnswerReplyAPIView.as_view(), name='answer_reply'),  # POST + DELETE /refuges/{refuge_id}/doubts/{doubt_id}/answers/{answer_id}/
-    
+    # /doubts/, /doubts/{id}/, /doubts/{id}/answers/, /doubts/{id}/answers/{answer_id}/ → app `doubts` (PostgreSQL)
+    path('doubts/', include('apps.doubts.urls')),
+
     # Users endpoints
     # /users/, /users/{uid}/, avatar, age-confirmation i les llistes de preferits/visitats → app `accounts` (PostgreSQL)
     path('users/', include('apps.accounts.urls')),
     path('users/<str:uid>/moderation-notices/', UserModerationNoticesAPIView.as_view(), name='user_moderation_notices'),  # GET
-    path('users/<str:uid>/visits/', UserVisitsAPIView.as_view(), name='user_visits'),  # GET /users/{uid}/visits/
     
     # Renovations endpoints
     # /renovations/, /renovations/{id}/, /renovations/{id}/participants/[{uid}/] → app `renovations` (PostgreSQL)

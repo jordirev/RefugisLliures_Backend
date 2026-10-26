@@ -27,18 +27,20 @@ Singleton (L14-53), instància global `cache_service` (L317), exportat a `api/se
 | `get_or_fetch_detail(...)` / `cache_result` | definits, sense ús fora de tests | L283, L321 |
 
 ### TTL (`CACHE_TIMEOUTS`, L20-48)
-`refugi_detail` 600 · `refugi_search` 600 · `refugi_coords` 3600 · ~~`renovation_detail/list` 600~~ (sense ús, chunk 5) · `experience_detail/list` 600 · `proposal_detail/list` 600 · `refuge_visit_detail` / `refuge_visits_list` 600 · `doubt_detail/list` 600. (`user_detail` s'ha eliminat de `CACHE_TIMEOUTS` al chunk 3.) Prefixos sense entrada (`renovation_refuge`) → 600 per defecte.
+`refugi_detail` 600 · `refugi_search` 600 · `refugi_coords` 3600 · ~~`renovation_detail/list` 600~~ (sense ús, chunk 5) · `experience_detail/list` 600 · `proposal_detail/list` 600 · ~~`refuge_visit_detail` / `refuge_visits_list` 600~~ (sense ús, chunk 4) · `doubt_detail/list` 600 (en desús: els dubtes són a PostgreSQL i no usen cache des del chunk 6). (`user_detail` s'ha eliminat de `CACHE_TIMEOUTS` al chunk 3.) Prefixos sense entrada (`renovation_refuge`) → 600 per defecte.
 
 ### ID caching
-Per a llistes: es desa la **llista d'IDs** a la clau de llista i cada element a `<detail_prefix>:<id_param>:<id>`. En un hit, es llegeix cada detall i, si falta, es recupera amb `fetch_single_fn`. Llistes i GET individual **comparteixen** les claus de detall. Implementat a `get_or_fetch_list`, usat per experiències, dubtes, propostes i visites (la cerca de refugis ja no en fa servir).
+Per a llistes: es desa la **llista d'IDs** a la clau de llista i cada element a `<detail_prefix>:<id_param>:<id>`. En un hit, es llegeix cada detall i, si falta, es recupera amb `fetch_single_fn`. Llistes i GET individual **comparteixen** les claus de detall. Implementat a `get_or_fetch_list`, usat per experiències i propostes (la cerca de refugis ja no en fa servir).
 
 ### Claus en ús (exemples reals)
-`refugi_detail:refugi_id:<id>` (només DAO legacy) · ~~`renovation_detail:renovation_id:<id>` · `renovation_list:date:<avui>:list_type:active`~~ (ja no s'escriuen) · `proposal_detail:proposal_id:<id>` · `doubt_list:refuge_id:<id>`.
+`refugi_detail:refugi_id:<id>` (només DAO legacy) · ~~`renovation_detail:renovation_id:<id>` · `renovation_list:date:<avui>:list_type:active`~~ (ja no s'escriuen) · `proposal_detail:proposal_id:<id>`.
 
 > **Usuaris (chunk 3): sense cache.** Les claus `user_detail:uid:<uid>` i `user_refugis_info:*` ja no s'escriuen ni es llegeixen (usuari, perfil, llistes i permisos van directes a PostgreSQL). Les claus d'aquests prefixos que quedin a Redis són orfes i caduquen soles (TTL 600 s) **[FET]**. La lectura d'usuari per als permisos es fa una vegada per petició i es desa a l'objecte `request`, no a Redis.
 
 ## Comportament si Redis cau
 Totes les excepcions s'empassen → les lectures fan miss i van a Firestore; les invalidacions no es fan però tampoc hi ha res cachejat **[FET]**. Els endpoints admin `cache/stats` retornen `connected:false` amb 200.
+
+Les visites (chunk 4) no usen cache: les claus `refuge_visit_detail` / `refuge_visits_list` i els seus TTL han desaparegut.
 
 ## Endpoints admin
 Vegeu [flows/11-admin-cache-health.md](../flows/11-admin-cache-health.md) i, per usar-los, [guides/admin-management.md](../guides/admin-management.md).
@@ -50,3 +52,5 @@ Vegeu [flows/11-admin-cache-health.md](../flows/11-admin-cache-health.md) i, per
 - `TIMEOUT=300` de settings rarament s'aplica: `CacheService` sempre passa el seu TTL **[FET]**.
 - El procés diari a GitHub Actions no té `REDIS_URL` → no pot invalidar la cache de producció **[INFERÈNCIA]**.
 - `.coveragerc` exclou `services/` → `cache_service` no compta al coverage **[FET]**.
+
+> **Dubtes (chunk 6): sense cache.** `doubt_detail:*` i `doubt_list:refuge_id:*` ja no s'escriuen ni es llegeixen (`apps/doubts/selectors.py` va directe a PostgreSQL; la llista són 2 consultes constants). Les claus que quedin a Redis són orfes i caduquen soles (TTL 600 s) **[FET]**. `DoubtDAO` legacy les escriuria si es cridés, però només el crida l'esborrat de refugis per proposta ([TECH_DEBT D1](../TECH_DEBT.md)).

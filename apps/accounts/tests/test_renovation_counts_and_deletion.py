@@ -151,10 +151,7 @@ def test_comptador_amb_pressupost_de_consultes_constant(client, world):
 
 STEPS = [
     'api.controllers.experience_controller.ExperienceController.delete_experiences_by_creator',
-    'api.controllers.doubt_controller.DoubtController.delete_doubts_by_creator',
-    'api.controllers.doubt_controller.DoubtController.delete_answers_by_creator',
     'api.controllers.refuge_proposal_controller.RefugeProposalController.anonymize_proposals_by_creator',
-    'api.controllers.refuge_visit_controller.RefugeVisitController.remove_user_from_all_visits',
 ]
 RENOVATION_STEP_NAMES = {'reformes actuals', 'reformes anonimitzades', 'participacions en reformes',
                          'expulsions de reformes'}
@@ -163,7 +160,7 @@ RENOVATION_STEP_NAMES = {'reformes actuals', 'reformes anonimitzades', 'particip
 @pytest.fixture
 def firestore_steps():
     """Passos que continuen a Firestore (dominis encara no migrats): es mocken i retornen èxit. Els que ja no
-    existeixen (p. ex. quan es fusioni el chunk de visites) s'ometen."""
+    existeixen s'ometen."""
     started = []
     for target in STEPS:
         try:

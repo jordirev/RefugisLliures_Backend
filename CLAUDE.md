@@ -5,10 +5,10 @@ Documentació detallada a [`docs/`](docs/README.md). Llegenda als docs: **[FET]*
 
 ## Stack
 - **PostgreSQL + PostGIS (Neon)** és la BD `default` de Django (rol `app`, `ATOMIC_REQUESTS`, RLS; àlies `migrator` per a DDL) des del chunk 1 de la migració; **requereix GDAL/GEOS** (`django.contrib.gis` sempre actiu). Sense URL de Postgres, `default` cau a SQLite (només per a tests sense BD).
-- **Refugis (chunk 2), usuaris (chunk 3) i reformes (chunk 5) ja són a PostgreSQL** (`apps/refuges`, `apps/accounts`: usuari, perfil públic, avatar, preferits, visitats, moderació d'usuari; `apps/renovations`: reformes, enllaç del grup, participants i expulsats); **Firestore** (via `firebase-admin`) continua sent la BD de la resta del domini (visites, experiències, dubtes, propostes, notificacions de moderació…) fins als chunks següents (`docs/migration/`). Els dominis encara a Firestore llegeixen els refugis amb el `RefugiLliureDAO` legacy (que ja no s'alimenta) fins que els migri el seu chunk; el perfil propi encara compta les experiències a Firestore (D19; les reformes, per SQL) i l'esborrat d'usuari encara toca Firestore (D21).
+- **Refugis (chunk 2), usuaris (chunk 3), visites (chunk 4), reformes (chunk 5) i dubtes i respostes (chunk 6) ja són a PostgreSQL** (`apps/refuges`, `apps/accounts`: usuari, perfil públic, avatar, preferits, visitats, moderació d'usuari; `apps/visits`: visites, participants i job diari; `apps/renovations`: reformes, enllaç del grup, participants i expulsats; `apps/doubts`: dubtes i respostes); **Firestore** (via `firebase-admin`) continua sent la BD de la resta del domini (experiències, propostes, notificacions de moderació…) fins als chunks següents (`docs/migration/`). Els dominis encara a Firestore llegeixen els refugis amb el `RefugiLliureDAO` legacy (que ja no s'alimenta) fins que els migri el seu chunk; el perfil propi encara compta les experiències a Firestore (D19; les reformes, per SQL) i l'esborrat d'usuari encara toca Firestore (D21).
 - **Firebase Auth**: ID token `Bearer` verificat al middleware; admin = custom claim `role == 'admin'`. Un hook (`api/rls_hook.py`) fixa el context de RLS (`app.uid`, `app.is_admin`) a la transacció de cada petició. Per a e2e locals, `FIREBASE_AUTH_EMULATOR_HOST` (mai en producció).
 - **Cloudflare R2** (boto3) per a media; bucket privat, URLs presignades d'1 h.
-- **Redis** (django-redis) com a cache de les features encara a Firestore; errors de Redis s'empassen silenciosament. Les features migrades (refugis, usuaris, reformes) no usen cache de dades (`user_detail` ha desaparegut).
+- **Redis** (django-redis) com a cache de les features encara a Firestore; errors de Redis s'empassen silenciosament. Les features migrades (refugis, usuaris, visites, reformes, dubtes) no usen cache de dades (`user_detail` ha desaparegut).
 - Deploy a **Render** (gunicorn, 1 worker); CI, ping i procés diari a **GitHub Actions**.
 
 ## Comandes
@@ -21,10 +21,10 @@ python manage.py check_neon --alias default    # (o migrator) comprova Postgres/
 python manage.py load_refuges [--dry-run]      # UNA sola vegada: càrrega del catàleg de refugis (1.542) amb el rol migrator; error si ja hi ha refugis
 pytest                                # tots els tests (api/tests + apps); els de BD volen TEST_DATABASE_URL_APP/MIGRATOR (scripts/dev/setup_local_postgres.sh); a Windows, en un contenidor Linux amb GDAL (docs/guides/testing.md)
 pytest api/tests/refugi_lliure -q     # un domini a api/tests (Firestore)
-pytest apps/refuges -q                # una app migrada (també apps/accounts, apps/renovations)
+pytest apps/refuges -q                # una app migrada (també apps/accounts, apps/visits, apps/renovations, apps/doubts)
 pytest -m views                       # per marker (pytest.ini, --strict-markers)
 tox                                   # com a CI: pytest + coverage.xml
-python manage.py process_yesterday_visits
+python manage.py process_yesterday_visits   # apps/visits: visites d'ahir -> user_visited_refuges + purga >12 mesos; CommandError (codi != 0) si falla (D28)
 python scripts/manage_admins.py <add|remove|check|list> [uid]
 ```
 Swagger: `/swagger/`, `/redoc/`. Totes les rutes de l'API sota `/api/` (`api/urls.py`).
@@ -58,11 +58,11 @@ api/views  api/serializers  api/controllers  api/daos  api/services   + api/mapp
 - IDs: a les apps migrades, UUID v7 generat per la BD (`DEFAULT uuidv7()`, Postgres 18; `db_default` als models) exposat com a string opac; a Firestore, auto-ID desat també com a camp `id`; `users/{uid}` usa l'UID de Firebase.
 - Logs: nivells propis CACHE=21, FIRESTORE=22, DAO=23 (`logger.log(23, "Firestore READ: ...")`).
 - Swagger: exemples a `api/utils/swagger_examples.py`, errors a `api/utils/swagger_error_responses.py`.
-- Tests per domini a `api/tests/<domini>/test_{models,mappers,daos,serializers,controllers,views}.py` (domini `user` ja no: és a `apps/accounts/tests/`); es mocka `FirestoreService`/`cache_service` al mòdul del DAO i el controller al mòdul de la vista. Les apps migrades tenen els tests a `apps/<feature>/tests/` (contra Postgres real amb el rol `app`: esquema, RLS, models, cerca, contracte HTTP, recomptes de consultes); les fixtures compartides són al `conftest.py` de l'arrel.
+- Tests per domini a `api/tests/<domini>/test_{models,mappers,daos,serializers,controllers,views}.py` (dominis `user` i `doubts` ja no: són a `apps/accounts/tests/` i `apps/doubts/tests/`); es mocka `FirestoreService`/`cache_service` al mòdul del DAO i el controller al mòdul de la vista. Les apps migrades tenen els tests a `apps/<feature>/tests/` (contra Postgres real amb el rol `app`: esquema, RLS, models, cerca, contracte HTTP, recomptes de consultes); les fixtures compartides són al `conftest.py` de l'arrel.
 
 ## Top gotchas (llista completa: docs/GOTCHAS.md)
-1. `has_object_permission` **mai s'executa** (cap `check_object_permissions`): `Is*Creator` no protegeix res. Comprova la propietat al controller (experiències ja ho fan; dubtes i respostes **encara no**).
-2. El middleware exclou per prefix `/api/refuges/` (també media/visits i `refuges/<id>/renovations/`): la protecció depèn només de `permission_classes`.
+1. `has_object_permission` **mai s'executa** (cap `check_object_permissions`): `Is*Creator` no protegeix res. Comprova la propietat al controller (experiències ho fan al controller; dubtes, respostes i reformes, al service).
+2. El middleware exclou per prefix `/api/refuges/` (també media/visits/renovations): la protecció depèn només de `permission_classes`.
 3. `cache_service.delete_pattern(p)` ja fa `*p*`: **no** afegeixis `:*` al final (bug a propostes → doble aprovació).
 4. No facis read-modify-write d'arrays/maps: usa `ArrayUnion`/`ArrayRemove`/`Increment` o `FieldPath('media_metadata', key).to_api_repr()` / `DELETE_FIELD` (les claus R2 porten `/` i `.`).
 5. Serializer, model i `CHECK` de la BD han d'aplicar les mateixes regles (cas `ini_date <= fin_date` a reformes: un dia és vàlid; als dominis a Firestore, `__post_init__`).
@@ -77,7 +77,8 @@ api/views  api/serializers  api/controllers  api/daos  api/services   + api/mapp
 14. Errors 500 a les apps migrades: sempre `server_error(...)` (`{error, error_id}`), mai `str(e)`.
 15. **`HasProfile`** (403 `profile_required`) va just després d'`IsAuthenticated` a tot endpoint autenticat (excepte `POST /users/` i `/api/cache/*`) i **abans** d'`IsNotBlocked`/`IsAgeConfirmed`: un usuari sense fila rep `profile_required`, mai `age_not_confirmed`. Una vista nova autenticada l'ha d'incloure. Els permisos llegeixen `users.users` **una sola vegada per petició** (cau a `request`, no a Redis).
 16. Les llistes d'usuari tenen **PK composta**: `obj.pk` és una tupla `(user_id, refuge_id)` i no hi ha `obj.id` (GOTCHAS #52). Moderació d'usuari (strikes/bloqueig) i avatar des d'altres dominis s'escriuen a PostgreSQL amb `system_context()` (`fn_users_guard` ho exigeix, D20).
-17. **Reformes (GOTCHAS #63–65)**: `renovations_requires_link` és un *constraint trigger* diferit (l'error surt al `COMMIT`: reforma i enllaç, a la mateixa transacció); `group_link` és un `LEFT JOIN` sota RLS (la clau s'omet a qui no hi té dret; mai `INNER JOIN`); els errors de domini es tradueixen per `constraint_name`, mai pel text.
+17. **Visites (chunk 4)**: el total surt de la vista `refuge_visit_totals`, mai d'un `Sum` sota RLS (GOTCHAS #63); la data és estrictament `YYYY-MM-DD` (#64); POST/PATCH exigeixen `IsNotBlocked` + `IsAgeConfirmed`, DELETE no; el job ha de sortir amb codi != 0 si falla (#65).
+18. **Reformes (GOTCHAS #66–68)**: `renovations_requires_link` és un *constraint trigger* diferit (l'error surt al `COMMIT`: reforma i enllaç, a la mateixa transacció); `group_link` és un `LEFT JOIN` sota RLS (la clau s'omet a qui no hi té dret; mai `INNER JOIN`); els errors de domini es tradueixen per `constraint_name`, mai pel text.
 
 ## Seguretat
 - **No llegeixis ni imprimeixis** fitxers de `env/` (service accounts, `.env.*`, `api-keys.env`). No estan versionats; només se'n poden esmentar els noms de variables.

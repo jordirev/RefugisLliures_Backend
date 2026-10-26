@@ -93,4 +93,4 @@ Els 4 passos de Firestore que ho feien abans han desaparegut de `_firestore_step
 ## Gotchas
 - [GOTCHAS #17](../GOTCHAS.md): serializer, model i `CHECK` apliquen la mateixa regla de dates.
 - [GOTCHAS #9](../GOTCHAS.md): el solapament i «unir-se» són atòmics a la BD.
-- Constraint trigger diferit i `LEFT JOIN` de `group_link` sota RLS: [GOTCHAS #63–65](../GOTCHAS.md).
+- Constraint trigger diferit i `LEFT JOIN` de `group_link` sota RLS: [GOTCHAS #66–68](../GOTCHAS.md).
