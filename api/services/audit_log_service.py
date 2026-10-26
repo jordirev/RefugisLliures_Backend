@@ -15,7 +15,7 @@ from datetime import timedelta
 from typing import Any, Dict, Optional
 
 from .firestore_service import FirestoreService
-from ..utils.timezone_utils import get_madrid_now
+from ..utils.timezone_utils import get_madrid_now, madrid_after
 
 logger = logging.getLogger(__name__)
 
@@ -59,7 +59,7 @@ class AuditLogService:
                 'target_id': target_id,
                 'metadata': metadata or {},
                 'timestamp': now.isoformat(),
-                'expire_at': now + timedelta(days=AUDIT_RETENTION_DAYS),
+                'expire_at': madrid_after(now, timedelta(days=AUDIT_RETENTION_DAYS)),   # durada real (DST)
             }
             db = self.firestore_service.get_db()
             logger.log(23, f"Firestore WRITE: collection={self.COLLECTION_NAME} action={action}")

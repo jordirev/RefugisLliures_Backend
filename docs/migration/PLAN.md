@@ -42,6 +42,13 @@ Estat: esborrany del disseny fet a `migracio/disseny-bd` (commit `0ce1fbe`). Cal
   - `group_link` i `expelled_uids` no sempre presents (chunk 5);
   - `surname` absent.
 
+## Decisions sobre dates i zones horàries, 26/10
+Revisió de discrepàncies de dates (cap dada desada era incorrecta; riscos latents):
+- **Django en hora de Madrid**: `TIME_ZONE = 'Europe/Madrid'` (abans `'UTC'`). L'emmagatzematge no canvia (`timestamptz` en UTC) i la sessió de Postgres continua en UTC; test de guarda contra `CURRENT_DATE`/`now()::date`/`date.today()`/`datetime.now()` naïf. Neon no es toca.
+- **EXIF sense desplaçament**: s'interpreta com a hora de Madrid (es respecta l'`OffsetTimeOriginal` si hi és).
+- **Un sol rellotge**: tots els instants del servidor els posa Postgres (`now()`), no `timezone.now()`.
+- Trobades en revisar-ho i corregides: el TTL d'auditoria i la caducitat dels intents de pujada sumaven en hora de paret (1 h de desfasament si travessaven un canvi d'hora; un test fallava el 26/10) i el `creation_time` dels vídeos (UTC) es desava sense zona.
+
 ## Metodologia (per chunk)
 Equip: orquestrador (Opus) + agents Sonnet. Pipeline seqüencial:
 1. **Tests** escriu tests (unitaris: models/serializers/serveis; integració: views+ORM contra Postgres Docker; tests de contracte de l'API actual) → els executa i comprova que **fallen**.

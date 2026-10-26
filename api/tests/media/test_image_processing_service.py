@@ -143,6 +143,20 @@ class TestProcessImage:
     def test_extract_taken_at_without_exif(self):
         assert extract_taken_at(Image.new('RGB', (5, 5))) is None
 
+    @pytest.mark.parametrize('value, offset, expected', [
+        ('2024:07:15 10:20:30', '+02:00', '2024-07-15T10:20:30+02:00'),    # amb desplaçament: es respecta
+        ('2024:07:15 10:20:30', '-05:00', '2024-07-15T10:20:30-05:00'),
+        ('2024:07:15 10:20:30', None, '2024-07-15T10:20:30+02:00'),        # sense: hora de Madrid (estiu)
+        ('2024:01:15 10:20:30', None, '2024-01-15T10:20:30+01:00'),        # sense: hora de Madrid (hivern)
+        ('2024:01:15 10:20:30', 'garbage', '2024-01-15T10:20:30+01:00'),   # desplaçament invàlid = sense
+        ('2025:02:30 10:00:00', None, None),                               # data impossible
+        ('0000:00:00 00:00:00', None, None),
+    ])
+    def test_parse_exif_date_sense_desplacament_assumeix_madrid(self, value, offset, expected):
+        """Decisió del PO (26/10): un EXIF sense OffsetTime es desaria com a UTC (1-2 h de desfasament)."""
+        from api.services.image_processing_service import _parse_exif_date
+        assert _parse_exif_date(value, offset) == expected
+
 
 @pytest.mark.unit
 @pytest.mark.slow
@@ -157,7 +171,7 @@ class TestProcessVideo:
         assert result.content_type == 'video/mp4'
         assert result.extension == '.mp4'
         assert (result.width, result.height) == (320, 240)
-        assert result.taken_at == '2024-05-01T10:00:00'
+        assert result.taken_at == '2024-05-01T10:00:00+00:00'   # creation_time és UTC: es fa explícit
         dump = ffmpeg_metadata_dump(result.main_bytes)
         assert 'location' not in dump
         assert 'iPhone' not in dump and 'Apple' not in dump

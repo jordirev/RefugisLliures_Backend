@@ -236,7 +236,7 @@ class MediaReportController:
 
                     if is_csam or (strikes is not None and strikes >= STRIKES_TO_BLOCK):
                         block_reason = 'csam_confirmed' if is_csam else 'strikes'
-                        user_blocked = self.accounts.set_blocked(creator_uid, True, reason=block_reason, blocked_at=now)
+                        user_blocked = self.accounts.set_blocked(creator_uid, True, reason=block_reason)
                         self._notify(creator_uid, NOTICE_ACCOUNT_BLOCKED,
                                      "El compte s'ha bloquejat: " + (
                                          "contingut d'abús sexual infantil confirmat." if is_csam

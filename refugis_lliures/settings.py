@@ -208,7 +208,10 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'UTC'
+# Zona de negoci (decisió del PO, 26/10): «avui», `timezone.localdate()`, `__date`/`Trunc*` i els `datetime` naïfs són
+# hora de Madrid. Els instants es continuen desant com a `timestamptz` (UTC) i la sessió de Postgres de Django és UTC
+# (Django la hi força amb USE_TZ): cap SQL pot usar `CURRENT_DATE`/`now()::date` (test de guarda a `apps/core/tests`).
+TIME_ZONE = 'Europe/Madrid'
 
 USE_I18N = True
 
