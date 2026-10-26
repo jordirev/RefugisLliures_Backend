@@ -334,8 +334,6 @@ def test_patch_anonim_401(client):
 
 LEGACY_STEPS = [
     ('api.controllers.experience_controller.ExperienceController.delete_experiences_by_creator'),
-    ('api.controllers.doubt_controller.DoubtController.delete_doubts_by_creator'),
-    ('api.controllers.doubt_controller.DoubtController.delete_answers_by_creator'),
     ('api.controllers.refuge_proposal_controller.RefugeProposalController.anonymize_proposals_by_creator'),
     ('api.controllers.renovation_controller.RenovationController.delete_current_renovations_by_creator'),
     ('api.controllers.renovation_controller.RenovationController.anonymize_renovations_by_creator'),

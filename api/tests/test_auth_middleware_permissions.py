@@ -16,7 +16,6 @@ from api.authentication import FirebaseAuthentication
 from api.permissions import (
     is_firebase_admin, IsOwnerOrReadOnly, IsSameUser, SafeMethodsOnly,
     IsFirebaseAdmin, IsExperienceCreator, IsRenovationCreator,
-    IsDoubtCreator, IsAnswerCreator
 )
 
 
@@ -708,83 +707,6 @@ class TestPermissionsExtended:
             
             mock_dao.get_renovation_by_id.return_value = {'creator_uid': 'user_2'}
             assert perm.has_object_permission(request, view, obj) is False
-
-    @patch('api.controllers.doubt_controller.DoubtController')
-    def test_is_doubt_creator(self, mock_controller_class):
-        """Test IsDoubtCreator"""
-        perm = IsDoubtCreator()
-        request = MagicMock()
-        view = MagicMock()
-        obj = MagicMock()
-        
-        # has_permission
-        request.user.is_authenticated = True
-        assert perm.has_permission(request, view) is True
-        
-        # has_object_permission - Admin
-        with patch('api.permissions.is_firebase_admin', return_value=True):
-            assert perm.has_object_permission(request, view, obj) is True
-            
-        # has_object_permission - Safe Method
-        with patch('api.permissions.is_firebase_admin', return_value=False):
-            request.method = 'GET'
-            assert perm.has_object_permission(request, view, obj) is True
-            
-            # Non-safe method, no doubt_id
-            request.method = 'DELETE'
-            view.kwargs = {}
-            assert perm.has_object_permission(request, view, obj) is True
-            
-            # Non-safe method, with doubt_id
-            view.kwargs = {'doubt_id': 'doubt_1'}
-            request.user_uid = 'user_1'
-            mock_controller = mock_controller_class.return_value
-            mock_doubt = MagicMock()
-            mock_doubt.creator_uid = 'user_1'
-            mock_controller.get_doubt_by_id.return_value = mock_doubt
-            assert perm.has_object_permission(request, view, obj) is True
-            
-            mock_doubt.creator_uid = 'user_2'
-            assert perm.has_object_permission(request, view, obj) is False
-            
-            # Doubt not found
-            mock_controller.get_doubt_by_id.return_value = None
-            assert perm.has_object_permission(request, view, obj) is False
-            
-            # No user_uid
-            request.user_uid = None
-            assert perm.has_object_permission(request, view, obj) is False
-
-    @patch('api.controllers.doubt_controller.DoubtController')
-    def test_is_answer_creator(self, mock_controller_class):
-        """Test IsAnswerCreator"""
-        perm = IsAnswerCreator()
-        request = MagicMock()
-        view = MagicMock()
-        obj = MagicMock()
-        
-        # has_object_permission - Non-safe method, with IDs
-        with patch('api.permissions.is_firebase_admin', return_value=False):
-            request.method = 'DELETE'
-            view.kwargs = {'doubt_id': 'doubt_1', 'answer_id': 'ans_1'}
-            request.user_uid = 'user_1'
-            mock_controller = mock_controller_class.return_value
-            mock_answer = MagicMock()
-            mock_answer.creator_uid = 'user_1'
-            mock_controller.get_answer_by_id.return_value = mock_answer
-            assert perm.has_object_permission(request, view, obj) is True
-            
-            mock_answer.creator_uid = 'user_2'
-            assert perm.has_object_permission(request, view, obj) is False
-            
-            mock_controller.get_answer_by_id.return_value = None
-            assert perm.has_object_permission(request, view, obj) is False
-            
-            # No user_uid
-            request.user_uid = None
-            assert perm.has_object_permission(request, view, obj) is False
-
-
 
 
 # ============= TESTS D'INTEGRACIÓ =============

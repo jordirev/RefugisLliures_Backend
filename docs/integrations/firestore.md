@@ -2,7 +2,7 @@
 
 > **[FET]** comprovat al codi · **[INFERÈNCIA]** deducció · **[NO VERIFICAT]** depèn de config externa.
 
-Firestore és la **base de dades real** del domini **excepte els refugis (chunk 2) i els usuaris (chunk 3)**, que viuen a PostgreSQL (`apps/refuges`, `apps/accounts`). Les col·leccions `data_refugis_lliures` i `coords_refugis` són **legacy**: ja no s'alimenten (la càrrega inicial és `load_refuges` a PostgreSQL) i els dominis encara a Firestore (experiències, dubtes, visites, propostes, usuaris, pujada de mitjans) les segueixen llegint/escrivint amb el `RefugiLliureDAO` fins que els migri el seu chunk ([GOTCHAS #41](../GOTCHAS.md)). No hi ha ORM per a Firestore: els DAOs fan servir el client de `firebase_admin.firestore`.
+Firestore és la **base de dades real** del domini **excepte els refugis (chunk 2), els usuaris (chunk 3) i els dubtes i respostes (chunk 6)**, que viuen a PostgreSQL (`apps/refuges`, `apps/accounts`, `apps/doubts`). Les col·leccions `data_refugis_lliures` i `coords_refugis` són **legacy**: ja no s'alimenten (la càrrega inicial és `load_refuges` a PostgreSQL) i els dominis encara a Firestore (experiències, visites, propostes, usuaris, pujada de mitjans) les segueixen llegint/escrivint amb el `RefugiLliureDAO` fins que els migri el seu chunk ([GOTCHAS #41](../GOTCHAS.md)). No hi ha ORM per a Firestore: els DAOs fan servir el client de `firebase_admin.firestore`.
 
 ## Client
 - `FirestoreService` singleton (`api/services/firestore_service.py:13-22`), instància global `firestore_service` (L78). `get_db()` (L24-38) reaprofita l'app de Firebase ja inicialitzada o la inicialitza.
@@ -17,7 +17,7 @@ Firestore és la **base de dades real** del domini **excepte els refugis (chunk 
 | ~~`users`~~ **(migrada, chunk 3)** | _`UserDAO` eliminat_ | — | Ara és `users.users` (PostgreSQL). **Què en queda a Firestore per a usuaris**: (a) `count()` d'agregació sobre `experiences` i `renovations` per als comptadors del perfil propi (D19, `apps/accounts/selectors.py: get_legacy_counts`); (b) els passos de Firestore de l'esborrat d'usuari (D21); (c) `moderation_notices`, `media_reports`, `audit_logs`… per `uid` (encara no migrats). Les col·leccions de dades d'usuari antigues no es migren (decisió del PO). |
 | `renovations` | `api/daos/renovation_dao.py:18` | auto-ID + camp `id` | |
 | `experiences` | `api/daos/experience_dao.py:18` | auto-ID + camp `id` | |
-| `doubts` + subcol·lecció `answers` | `api/daos/doubt_dao.py:18-19` | auto-ID | `answers` també es consulta amb `collection_group` |
+| ~~`doubts` + subcol·lecció `answers`~~ **(migrades, chunk 6)** | `api/daos/doubt_dao.py:18-19` (només codi legacy, [TECH_DEBT D1](../TECH_DEBT.md)) | auto-ID | Ara són `activity.doubts`/`activity.answers`. Les dades de Firestore no es migren |
 | `refuges_proposals` | `api/daos/refuge_proposal_dao.py:579` | auto-ID + camp `id` | |
 | `refuge_visits` | `api/daos/refuge_visit_dao.py:19` | auto-ID | un per (refugi, data) |
 
@@ -34,12 +34,12 @@ Firestore és la **base de dades real** del domini **excepte els refugis (chunk 
 ## Operacions especials [FET] (grep a `api/`, excloent tests)
 | Operació | On |
 |---|---|
-| `Increment` | `api/daos/doubt_dao.py` (`answers_count`) (els comptadors d'usuari han desaparegut, D19) |
+| `Increment` | `api/daos/doubt_dao.py` (`answers_count`; només codi legacy, cap vista el crida) (els comptadors d'usuari han desaparegut, D19) |
 | `ArrayUnion` | `api/daos/experience_dao.py` (`media_keys`) |
 | `ArrayRemove` | `api/daos/experience_dao.py`, `api/daos/refugi_lliure_dao.py`, `api/daos/renovation_dao.py` |
 | `SERVER_TIMESTAMP` | `api/daos/refuge_proposal_dao.py` |
 | `batch()` | cap (les comandes de gestió que l'usaven — `assign_conditions`, `upload_refugis_to_firestore`, `extract_coords_to_firestore` — s'han eliminat al chunk 2) |
-| `collection_group('answers')` | `api/daos/doubt_dao.py` |
+| `collection_group('answers')` | `api/daos/doubt_dao.py` (només codi legacy; l'esborrat d'usuari ja no el crida) |
 | **Transaccions** | **cap** a `api/` |
 
 ## Queries que probablement requereixen índex compost [INFERÈNCIA]
@@ -47,9 +47,8 @@ No hi ha `firestore.indexes.json` al repo → l'estat dels índexs és **[NO VER
 - `renovations`: `where fin_date >=` + `order_by ini_date` (`api/daos/renovation_dao.py:131-133`), i variants amb `refuge_id ==` (L291-294, L372-375).
 - `refuges_proposals`: diversos `where` + `order_by created_at desc` (`api/daos/refuge_proposal_dao.py:646-734`).
 - `refuge_visits`: `refuge_id ==` + `date >=` + `order_by date`.
-- `experiences`: `refuge_id ==` + `order_by modified_at desc`; `doubts`: `refuge_id ==` + `order_by created_at desc`.
+- `experiences`: `refuge_id ==` + `order_by modified_at desc` (els dubtes ja són a PostgreSQL).
 - (La cerca de refugis ja no usa Firestore: viu a PostgreSQL des del chunk 2, `apps/refuges/selectors.py`.)
-- `answers` (collection group) per `creator_uid` (esborrat d'usuari).
 - **Aggregation queries `count()`** (chunk 3, D19): `experiences where creator_uid ==`, `renovations where creator_uid ==` i `renovations where participants_uids array_contains` (3 per cada lectura del perfil propi). Només igualtat/`array-contains` sobre un sol camp: no necessiten índex compost **[INFERÈNCIA]**.
 
 ## Dades inicials (seeding)

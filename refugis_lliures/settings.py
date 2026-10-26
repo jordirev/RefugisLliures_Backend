@@ -81,6 +81,7 @@ INSTALLED_APPS = [
     'apps.core',
     'apps.accounts',
     'apps.refuges',
+    'apps.doubts',
     'api',
 ]
 
