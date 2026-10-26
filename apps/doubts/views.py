@@ -3,8 +3,8 @@ Vistes de `doubts`: dubtes d'un refugi i les seves respostes (arbre pla per `par
 
 Les vistes només validen l'entrada, criden els `selectors` (lectures) o els `services` (escriptures) i serialitzen.
 El context de RLS el fixa el hook de `api/rls_hook.py`. Dubtes i respostes exigeixen `IsAuthenticated, HasProfile`
-i, de moment, **no** `IsNotBlocked` ni `IsAgeConfirmed` (com abans; pendent de confirmar amb el PO: per canviar-ho,
-afegiu-los a `PERMISSIONS`). La propietat la comprova el service (403 `not_owner`).
+i, per a les escriptures de contingut (POST), també `IsNotBlocked` i `IsAgeConfirmed` (decisió del PO, 26/10). GET i
+DELETE del que és propi no els exigeixen: un usuari bloquejat pot llegir i esborrar el seu contingut (RGPD). La propietat la comprova el service (403 `not_owner`).
 Ordre de comprovacions: permisos -> validació del cos (400) -> existència (404) -> propietat (403).
 """
 import logging
@@ -16,7 +16,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from api.permissions import HasProfile, coded_error, is_firebase_admin
+from api.permissions import HasProfile, IsAgeConfirmed, IsNotBlocked, coded_error, is_firebase_admin
 from api.utils.swagger_error_responses import (
     ERROR_400_INVALID_DATA,
     ERROR_401_UNAUTHORIZED,
@@ -36,6 +36,15 @@ from .serializers import AnswerSerializer, CreateAnswerSerializer, CreateDoubtSe
 logger = logging.getLogger(__name__)
 
 PERMISSIONS = [IsAuthenticated, HasProfile]
+WRITE_PERMISSIONS = [IsAuthenticated, HasProfile, IsNotBlocked, IsAgeConfirmed]
+
+
+class _ContentPermissionsMixin:
+    """POST (escriptura de contingut): bloqueig i edat; la resta de mètodes només perfil."""
+
+    def get_permissions(self):
+        classes = WRITE_PERMISSIONS if self.request.method == 'POST' else PERMISSIONS
+        return [permission() for permission in classes]
 
 ERR_LIST = 'Error de base de dades en obtenir els dubtes'
 ERR_CREATE_DOUBT = 'Error de base de dades en crear el dubte'
@@ -67,9 +76,8 @@ def _path_param(name, description):
     return openapi.Parameter(name, openapi.IN_PATH, description=description, type=openapi.TYPE_STRING, required=True)
 
 
-class DoubtListAPIView(APIView):
+class DoubtListAPIView(_ContentPermissionsMixin, APIView):
     """GET /api/doubts/?refuge_id={id} i POST /api/doubts/."""
-    permission_classes = PERMISSIONS
 
     @swagger_auto_schema(
         tags=['Refuge Doubts'],
@@ -121,9 +129,8 @@ class DoubtListAPIView(APIView):
         return Response(DoubtSerializer(doubt).data, status=status.HTTP_201_CREATED)
 
 
-class DoubtDetailAPIView(APIView):
+class DoubtDetailAPIView(_ContentPermissionsMixin, APIView):
     """DELETE /api/doubts/{doubt_id}/: el creador o un admin (esborra també les respostes)."""
-    permission_classes = PERMISSIONS
 
     @swagger_auto_schema(
         tags=['Refuge Doubts'],
@@ -146,9 +153,8 @@ class DoubtDetailAPIView(APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-class AnswerListAPIView(APIView):
+class AnswerListAPIView(_ContentPermissionsMixin, APIView):
     """POST /api/doubts/{doubt_id}/answers/: resposta directa al dubte."""
-    permission_classes = PERMISSIONS
 
     @swagger_auto_schema(
         tags=['Refuge Doubts'],
@@ -175,9 +181,8 @@ class AnswerListAPIView(APIView):
         return Response(AnswerSerializer(answer).data, status=status.HTTP_201_CREATED)
 
 
-class AnswerReplyAPIView(APIView):
+class AnswerReplyAPIView(_ContentPermissionsMixin, APIView):
     """POST /api/doubts/{doubt_id}/answers/{answer_id}/ (rèplica) i DELETE (resposta i subarbre)."""
-    permission_classes = PERMISSIONS
 
     @swagger_auto_schema(
         tags=['Refuge Doubts'],

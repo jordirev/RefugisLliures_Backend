@@ -20,10 +20,19 @@ from apps.accounts.tests.helpers import (  # noqa: F401  (re-exportats)
     QueryCounter, T0, VERIFY, admin_claims, api_delete, api_get, api_post, as_owner, at, make_refuge, make_user, sql,
     user_claims)
 
+from apps.accounts.tests.helpers import make_user as _make_user
+
 DOUBTS = '/api/doubts/'
 DOUBT_BASE_KEYS = {'id', 'refuge_id', 'creator_uid', 'message', 'created_at', 'answers_count'}
 ANSWER_KEYS = {'id', 'creator_uid', 'message', 'created_at', 'parent_answer_id'}
 NOT_OWNER = 'not_owner'
+
+
+def make_user(uid='u1', username='', **fields):
+    """Usuari amb l'edat confirmada (les escriptures de dubtes exigeixen `IsAgeConfirmed`); es pot sobreescriure."""
+    fields.setdefault('age_confirmed_at', at())
+    fields.setdefault('age_threshold', 16)
+    return _make_user(uid, username, **fields)
 
 
 def doubt_models():

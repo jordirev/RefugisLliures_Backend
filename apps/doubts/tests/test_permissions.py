@@ -2,9 +2,9 @@
 Permisos i seguretat dels endpoints de dubtes (chunk 6; CLAUDE.md gotcha 15, C1).
 
 - Anònim -> 401 a tots; usuari sense fila a `users.users` (també admin) -> 403 `profile_required`.
-- Les quatre vistes porten `IsAuthenticated, HasProfile` en aquest ordre (a cada mètode).
-- Els permisos NO inclouen `IsNotBlocked` ni `IsAgeConfirmed` (com avui): un usuari bloquejat o sense edat confirmada
-  pot crear dubtes i respostes (pregunta 2 de l'informe).
+- Les quatre vistes porten `IsAuthenticated, HasProfile` en aquest ordre (a cada mètode; els POST, a més, bloqueig i edat).
+- Els tres POST exigeixen a més `IsNotBlocked` i `IsAgeConfirmed` (decisió del PO, 26/10); GET i DELETE no: un usuari
+  bloquejat o sense edat confirmada pot llegir i esborrar el seu contingut (RGPD).
 - Les vistes viuen a `apps.doubts.views` i les rutes s'inclouen des d'`apps.doubts.urls`.
 - C1: la propietat la comprova el service (403 `not_owner`) i la RLS; cap IDOR; ids hostils -> 404, mai 500.
 """
@@ -111,18 +111,60 @@ def test_cada_metode_exigeix_is_authenticated_i_despres_has_profile():
     assert checked == 6
 
 
-# ---------- no hi ha IsNotBlocked / IsAgeConfirmed (comportament actual) ----------
+# ---------- bloqueig i edat: només a l'escriptura de contingut (POST; decisió del PO, 26/10) ----------
 
-def test_un_usuari_bloquejat_pot_crear_dubtes_i_respostes(client, world):
+def test_els_tres_post_exigeixen_bloqueig_i_edat_i_la_resta_no():
+    from api.permissions import IsAgeConfirmed, IsNotBlocked
+    factory = APIRequestFactory()
+    for route, cls in _doubt_views().items():
+        for method in ('get', 'post', 'delete'):
+            if not hasattr(cls, method):
+                continue
+            view = cls()
+            view.request = Request(getattr(factory, method)('/x/'))
+            names = [type(p) for p in view.get_permissions()]
+            expected = ([IsAuthenticated, HasProfile, IsNotBlocked, IsAgeConfirmed] if method == 'post'
+                        else [IsAuthenticated, HasProfile])
+            assert names == expected, (route, method, names)
+
+
+def _post_endpoints(world, d):
+    return [(DOUBTS, {'refuge_id': str(world[0].pk), 'message': 'x'}),
+            (answers_url(d), {'message': 'x'}),
+            (answer_url(d, make_answer(d, 'u1')), {'message': 'x'})]
+
+
+def test_un_usuari_bloquejat_no_pot_fer_post_pero_si_llegir_i_esborrar_el_seu(client, world):
     make_user('blk', is_blocked=True, blocked_reason='csam_confirmed', blocked_at=at())
     d = make_doubt(world[0], 'u1')
-    assert api_post(client, DOUBTS, user_claims('blk'), {'refuge_id': str(world[0].pk), 'message': 'x'}).status_code == 201
-    assert api_post(client, answers_url(d), user_claims('blk'), {'message': 'x'}).status_code == 201
+    own_doubt = make_doubt(world[0], 'blk', minutes=1)
+    own_answer = make_answer(d, 'blk', minutes=2)
+    for path, body in _post_endpoints(world, d):
+        r = api_post(client, path, user_claims('blk'), body)
+        assert r.status_code == 403 and r.json()['error'] == 'user_blocked', (path, r.content)
+    assert len(doubt_ids()) == 2 and len(answer_ids(d)) == 2
+    assert api_get(client, f'{DOUBTS}?refuge_id={world[0].pk}', user_claims('blk')).status_code == 200
+    assert api_delete(client, answer_url(d, own_answer), user_claims('blk')).status_code == 204
+    assert api_delete(client, doubt_url(own_doubt), user_claims('blk')).status_code == 204
 
 
-def test_un_usuari_sense_edat_confirmada_pot_crear_dubtes(client, world):
-    assert sql("SELECT age_confirmed_at FROM users.users WHERE uid = 'u1'") == [(None,)]
-    assert api_post(client, DOUBTS, user_claims('u1'), {'refuge_id': str(world[0].pk), 'message': 'x'}).status_code == 201
+def test_un_usuari_sense_edat_confirmada_no_pot_fer_post_pero_si_llegir_i_esborrar_el_seu(client, world):
+    make_user('kid', age_confirmed_at=None, age_threshold=None)
+    d = make_doubt(world[0], 'u1')
+    own_doubt = make_doubt(world[0], 'kid', minutes=1)
+    own_answer = make_answer(d, 'kid', minutes=2)
+    for path, body in _post_endpoints(world, d):
+        r = api_post(client, path, user_claims('kid'), body)
+        assert r.status_code == 403 and r.json()['error'] == 'age_not_confirmed', (path, r.content)
+    assert len(doubt_ids()) == 2 and len(answer_ids(d)) == 2
+    assert api_get(client, f'{DOUBTS}?refuge_id={world[0].pk}', user_claims('kid')).status_code == 200
+    assert api_delete(client, answer_url(d, own_answer), user_claims('kid')).status_code == 204
+    assert api_delete(client, doubt_url(own_doubt), user_claims('kid')).status_code == 204
+
+
+def test_sense_perfil_el_post_dona_profile_required_abans_que_edat(client, world):
+    r = api_post(client, DOUBTS, user_claims('ghost'), {'refuge_id': str(world[0].pk), 'message': 'x'})
+    assert r.status_code == 403 and r.json()['error'] == 'profile_required'
 
 
 # ---------- C1: propietat ----------
