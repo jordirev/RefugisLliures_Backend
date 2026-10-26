@@ -62,6 +62,8 @@ docker run --rm -v "${PWD}:/app" -w /app --add-host=host.docker.internal:host-ga
 ```
 Alternativa: `TEST_DATABASE_URL_APP` i `TEST_DATABASE_URL_MIGRATOR` a `env/.env.development` amb host `host.docker.internal` (no cal l'`eval`; no imprimeixis els valors). El contenidor, CI i l'entorn local (`.venv` amb `py -3.14`) corren Python 3.14 **[FET]**.
 
+**Diverses suites en paral·lel (un worktree per chunk) [FET]**: `scripts/dev/run_tests_docker.sh <nom_bd> [args de pytest]` (Git Bash) munta el directori actual a `/app`, pren les `TEST_DATABASE_URL_*` de `env/.env.development` del checkout principal dins el contenidor (sense imprimir-les), comparteix la xarxa de `rl-postgres` i fixa `TEST_DATABASE_NAME=<nom_bd>`, que a `settings.py` substitueix només el nom de la BD de les URL `TEST_*` (mai `DATABASE_URL_*`). Cada worktree fa servir una BD pròpia (`refugisdb_test_<chunk>`), creada amb les extensions i els grants de `setup_local_postgres.sh` (`TEST_DB_NAME=<nom_bd>`); així dues suites no es trepitgen les dades ni les migracions.
+
 ## E2E local (servidor real + Firebase Emulators) [FET]
 Script: `scripts/e2e/e2e_chunk1.sh` (health amb `database`, 401/403/404/200 amb tokens d'usuari normal i d'admin; surt amb 1 si algun cas falla). Així s'ha validat el chunk 1 el 24/10/2026 contra un Postgres local migrat (12/12).
 1. Emuladors: carpeta amb `firebase.json` (`{"emulators":{"auth":{"port":9099,"host":"0.0.0.0"},"firestore":{"port":8085,"host":"0.0.0.0"},"ui":{"enabled":false}}}`) i `npx -y firebase-tools emulators:start --only auth,firestore --project demo-refugis-lliures` (cal Node i Java).

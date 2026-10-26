@@ -134,11 +134,16 @@ def _postgres_database(url_vars, pooled, atomic_requests):
     """Config d'una BD Postgres/PostGIS a partir de la primera variable d'entorn definida de `url_vars` (o None)."""
     from urllib.parse import urlparse, unquote, parse_qs
 
-    url = next((v for v in (config(name, default='') for name in url_vars) if v), '')
+    name, url = next(((n, v) for n, v in ((n, config(n, default='')) for n in url_vars) if v), ('', ''))
     if not url:
         return None
     parsed = urlparse(url)
     host = parsed.hostname or ''
+    db_name = parsed.path.lstrip('/')
+    # `TEST_DATABASE_NAME` canvia només el nom de la BD de les URL `TEST_*` (una BD de proves per worktree, per
+    # executar suites en paral·lel); mai afecta `DATABASE_URL_*`.
+    if name.startswith('TEST_') and config('TEST_DATABASE_NAME', default=''):
+        db_name = config('TEST_DATABASE_NAME')
     options = {
         # El pooler de Neon (PgBouncer, mode transacció) no admet sentències preparades ni el paràmetre
         # d'arrencada `options` (§1.5): per això no hi ha `options` i es desactiven les preparades.
@@ -154,7 +159,7 @@ def _postgres_database(url_vars, pooled, atomic_requests):
         options['sslmode'] = sslmode
     return {
         'ENGINE': 'django.contrib.gis.db.backends.postgis',
-        'NAME': parsed.path.lstrip('/'),
+        'NAME': db_name,
         'USER': unquote(parsed.username or ''),
         'PASSWORD': unquote(parsed.password or ''),
         'HOST': host,
