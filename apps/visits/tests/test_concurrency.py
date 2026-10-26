@@ -64,7 +64,12 @@ def test_primeres_inscripcions_simultanees_creen_una_sola_visita(commit_world, m
     assert [r[0] for r in results] == ['ok'] * 8, results
     visits, parts = counts(migrator_db)
     assert visits == 1 and parts == {u: 2 for u in uids}
-    assert max(r[1].total_visitors for r in results) == 16          # l'ultim veu tothom
+    # Cada resposta es llegeix abans del seu COMMIT: el total que veu pot no incloure els qui comitegen despres
+    # (READ COMMITTED), de manera que «l'ultim veu tothom» no es garantit. El total final si: 8 x 2.
+    assert all(2 <= r[1].total_visitors <= 16 for r in results)
+    with migrator_db.cursor() as cur:
+        cur.execute('SELECT total_visitors FROM activity.refuge_visit_totals')
+        assert cur.fetchall() == [(16,)]
 
 
 def test_mateix_usuari_dues_vegades_nomes_una_te_exit(commit_world, migrator_db, django_db_blocker):

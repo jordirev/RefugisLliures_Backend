@@ -20,7 +20,7 @@ L'UID sempre surt del token: només es pot actuar sobre la pròpia entrada **[FE
 Col·lecció `refuge_visits/{autoId}` = `{id, date:'YYYY-MM-DD', refuge_id, visitors:[{uid, num_visitors}], total_visitors}` (model `api/models/refuge_visit.py`, mapper `api/mappers/refuge_visit_mapper.py`). Un document per (refugi, data).
 
 ## Privacitat i format de resposta
-Les respostes **mai** exposen la llista `visitors` amb UIDs d'altres usuaris. Cada visita es serialitza com `{date, total_visitors, is_visitor, num_visitors}` (+ `refuge_id` al llistat per usuari), on `is_visitor`/`num_visitors` es calculen respecte a l'usuari del token (`api/serializers/refuge_visit_serializer.py:56-82`) **[FET]**. El llistat per refugi només inclou dates ≥ avui (ordre ascendent); el d'usuari, ordre descendent.
+Les respostes **mai** exposen la llista `visitors` amb UIDs d'altres usuaris. Cada visita es serialitza com `{date, refuge_id, total_visitors, is_visitor, num_visitors}` (`refuge_id` a **tots** els elements, també al llistat per refugi: el serializer sempre l'emet; D27–D29), on `is_visitor`/`num_visitors` es calculen respecte a l'usuari del token (`api/serializers/refuge_visit_serializer.py:56-82`) **[FET]**. El llistat per refugi només inclou dates ≥ avui (ordre ascendent); el d'usuari, ordre descendent.
 
 ## Diagrama — registrar visita
 
