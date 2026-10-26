@@ -17,6 +17,17 @@ from apps.accounts.tests.helpers import (  # noqa: F401  (re-exportats)
     QueryCounter, admin_claims, api_delete, api_get, api_patch, api_post, as_owner, make_refuge, make_user, sql,
     user_claims)
 
+_make_user = make_user
+
+
+def make_user(uid='u1', username='', **fields):
+    """Usuari amb perfil i edat confirmada per defecte (POST/PATCH exigeixen `IsAgeConfirmed`); es pot sobreescriure."""
+    from apps.accounts.tests.helpers import at
+    fields.setdefault('age_confirmed_at', at(0))
+    fields.setdefault('age_threshold', 16)
+    return _make_user(uid, username=username, **fields)
+
+
 PROFILE_REQUIRED = 'profile_required'
 VISIT_KEYS = {'date', 'refuge_id', 'total_visitors', 'is_visitor', 'num_visitors'}
 

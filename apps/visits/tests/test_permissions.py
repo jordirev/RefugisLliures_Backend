@@ -18,7 +18,7 @@ from rest_framework.permissions import IsAuthenticated
 from api.permissions import HasProfile, IsSameUser
 from apps.visits.tests.helpers import (
     PROFILE_REQUIRED, admin_claims, api_delete, api_get, api_patch, api_post, day, make_refuge, make_user, make_visit,
-    participant_rows, refuge_visits_url, user_claims, user_visits_url, visit_rows, visit_url)
+    participant_rows, refuge_visits_url, sql, user_claims, user_visits_url, visit_rows, visit_url)
 
 pytestmark = [pytest.mark.db_infra, pytest.mark.django_db, pytest.mark.views, pytest.mark.integration,
               pytest.mark.real_permissions]
@@ -95,12 +95,52 @@ def test_visites_d_un_altre_usuari_403_tambe_per_a_admin(client, claims):
     assert 'refuge_id' not in resp.content.decode()
 
 
-def test_un_usuari_sense_edat_confirmada_pot_usar_les_visites_com_avui(client):
-    """Els `permission_classes` actuals no inclouen `IsAgeConfirmed`/`IsNotBlocked`: no s'afegeixen."""
-    make_user('u1')                                                    # `age_confirmed_at` NULL
+BLOCK = ("UPDATE users.users SET is_blocked = true, blocked_reason = 'strikes', blocked_at = now() "
+         "WHERE uid = 'u1'")
+
+
+def _scene(blocked=False, adult=True):
+    fields = {} if adult else {'age_confirmed_at': None, 'age_threshold': None}
+    make_user('u1', **fields)
+    if blocked:
+        sql(BLOCK)
     r = make_refuge()
-    assert api_post(client, visit_url(r.pk, DATE), user_claims('u1'), {'num_visitors': 1}).status_code == 201
-    assert api_get(client, user_visits_url('u1'), user_claims('u1')).status_code == 200
+    vid = make_visit(r, day(3), {'u1': 2})
+    return r, vid
+
+
+@pytest.mark.parametrize('blocked,adult,error', [(True, True, 'user_blocked'), (False, False, 'age_not_confirmed'),
+                                                 (True, False, 'user_blocked')])
+@pytest.mark.parametrize('method', ['post', 'patch'])
+def test_bloquejat_o_sense_edat_no_pot_escriure_post_ni_patch(client, method, blocked, adult, error):
+    r, vid = _scene(blocked, adult)
+    path = visit_url(r.pk, day(4) if method == 'post' else day(3))
+    resp = call(client, method, path, user_claims('u1'), {'num_visitors': 5})
+    assert resp.status_code == 403 and resp.json()['error'] == error
+    assert participant_rows(vid) == {'u1': 2} and len(visit_rows(r)) == 1
+
+
+@pytest.mark.parametrize('blocked,adult', [(True, True), (False, False)])
+def test_bloquejat_o_sense_edat_si_pot_llegir_i_esborrar(client, blocked, adult):
+    r, vid = _scene(blocked, adult)
+    u = user_claims('u1')
+    assert api_get(client, refuge_visits_url(r.pk), u).status_code == 200
+    assert api_get(client, user_visits_url('u1'), u).status_code == 200
+    assert api_delete(client, visit_url(r.pk, day(3)), u).status_code == 200
+    assert participant_rows(vid) == {}
+
+
+def test_adult_i_no_bloquejat_pot_escriure(client):
+    r, _ = _scene()
+    assert api_post(client, visit_url(r.pk, day(4)), user_claims('u1'), {'num_visitors': 1}).status_code == 201
+    assert api_patch(client, visit_url(r.pk, day(3)), user_claims('u1'), {'num_visitors': 1}).status_code == 200
+
+
+@pytest.mark.parametrize('method', ['post', 'patch'])
+def test_sense_perfil_profile_required_abans_que_edat(client, method):
+    r = make_refuge()
+    resp = call(client, method, visit_url(r.pk, DATE), user_claims('ghost'), {'num_visitors': 1})
+    assert resp.status_code == 403 and resp.json()['error'] == PROFILE_REQUIRED
 
 
 def test_el_uid_de_l_escriptura_surt_del_token_mai_de_la_url_ni_del_cos(client):

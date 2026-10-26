@@ -13,7 +13,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from api.permissions import HasProfile, IsSameUser
+from api.permissions import HasProfile, IsAgeConfirmed, IsNotBlocked, IsSameUser
 from apps.core.errors import server_error
 
 from . import services
@@ -41,6 +41,22 @@ VISIT_SCHEMA = openapi.Schema(type=openapi.TYPE_OBJECT, properties={
 })
 LIST_SCHEMA = openapi.Schema(type=openapi.TYPE_OBJECT, properties={
     'result': openapi.Schema(type=openapi.TYPE_ARRAY, items=VISIT_SCHEMA)})
+
+
+class ContentWritePermissionsMixin:
+    """
+    Decisió del PO (26/10): tota escriptura de contingut (POST/PATCH) exigeix, a més de `permission_classes`,
+    `IsNotBlocked` i `IsAgeConfirmed` (ordre del gotcha 15: `HasProfile` abans). GET i DELETE no: un usuari bloquejat
+    o sense edat confirmada pot llegir i esborrar el seu contingut (RGPD).
+    """
+    write_methods = ('POST', 'PUT', 'PATCH')
+    write_extra_permission_classes = [IsNotBlocked, IsAgeConfirmed]
+
+    def get_permissions(self):
+        classes = list(self.permission_classes)
+        if self.request is not None and self.request.method in self.write_methods:
+            classes += self.write_extra_permission_classes
+        return [permission() for permission in classes]
 
 
 def _error(message, http_status):
@@ -83,7 +99,7 @@ class UserVisitsAPIView(APIView):
             return server_error(ERR_LIST_USER, exc, logger=logger)
 
 
-class RefugeVisitDetailAPIView(APIView):
+class RefugeVisitDetailAPIView(ContentWritePermissionsMixin, APIView):
     """POST/PATCH/DELETE d'una visita `(refugi, data)`; la data és `YYYY-MM-DD`."""
     permission_classes = [IsAuthenticated, HasProfile]
 
