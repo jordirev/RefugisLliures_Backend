@@ -19,9 +19,9 @@
 | 1 | Infraestructura | `migracio/infraestructura` | fet (PR [#42](https://github.com/jordirev/RefugisLliures_Backend/pull/42) fusionada, `7d9073f`) | 1666 tests; D9 confirmada a Neon `dev` |
 | 2 | Refugis | `migracio/refugis` | fet (PR [#43](https://github.com/jordirev/RefugisLliures_Backend/pull/43) fusionada, `49f15ed`) | 2010 tests; Django 5.2 + Python 3.14 + PG18; e2e 31/31 |
 | 3 | Usuaris | `migracio/usuaris` | fet (PR [#44](https://github.com/jordirev/RefugisLliures_Backend/pull/44) fusionada, `9f9bd5b`) | 2124 tests; e2e 50/50; D19–D23. Després: dates i zones horàries (PR [#45](https://github.com/jordirev/RefugisLliures_Backend/pull/45), `0a1e85e`, 2140 tests) |
-| 4 | Visites | `migracio/visites` | pendent | paral·lel amb 5, 6 |
-| 5 | Renovations | `migracio/renovations` | pendent | paral·lel amb 4, 6 |
-| 6 | Dubtes | `migracio/dubtes` | pendent | paral·lel amb 4, 5 |
+| 4 | Visites | `migracio/visites` | en curs (tests) | paral·lel amb 5, 6; worktree `../wt-visites`, BD `refugisdb_test_visites` |
+| 5 | Renovations | `migracio/renovations` | en curs (tests) | paral·lel amb 4, 6; worktree `../wt-renovations`, BD `refugisdb_test_renovations` |
+| 6 | Dubtes | `migracio/dubtes` | en curs (tests) | paral·lel amb 4, 5; worktree `../wt-dubtes`, BD `refugisdb_test_dubtes` |
 | 7 | Experiències + pujades | `migracio/experiencies` | pendent | |
 | 8 | Propostes | `migracio/propostes` | pendent | |
 | 9 | Moderació + audit | `migracio/moderacio` | pendent | |
@@ -55,6 +55,7 @@
 - 2026-10-25 — **Chunk 3 (Usuaris)**: tests (agent) → implementació (`apps/accounts`: preferits i visitats amb PK composta `accounts.0002`, perfil propi en 1 consulta, perfil aliè reduït, `HasProfile` → 403 `profile_required`, moderació i avatar a PostgreSQL amb `system_context()`, esborrat provisional Firestore → R2 → PostgreSQL) → revisió SQL (carrera de l'avatar), seguretat (NUL → 404, test meta de `HasProfile` a totes les rutes), documentació. L'orquestrador: R8 (visitants de la cerca en 1 consulta), `manage_admins add` crea el perfil abans del claim, `DATABASE_URL_APP` al job diari. Els e2e dels chunks 1 i 2 ara creen el perfil dels usuaris de prova. 2124 tests; e2e chunk 3 50/50, chunks 1 i 2 OK.
 - 2026-10-26 — **Revisió de dates i zones horàries** (PO): cap dada desada era incorrecta. Decisions: `TIME_ZONE = 'Europe/Madrid'` (sessió de Postgres en UTC + test de guarda contra `CURRENT_DATE`/`now()::date`), EXIF sense desplaçament = hora de Madrid, un sol rellotge (Postgres) per als instants. Corregits: TTL d'auditoria i caducitat d'intents sumats en hora de paret (DST), `creation_time` dels vídeos sense zona. PR `migracio/zona-horaria`. 2140 tests; e2e chunks 1–3 OK.
 - 2026-10-26 — **U7 resolt (decisió del PO)**. Backend (`migracio/esborrat-compte-firebase`): `DELETE /users/{uid}/` esborra el compte de Firebase Auth com a últim pas, dins el *savepoint* del `DELETE users.users` (D24); `POST /users/` amb el token d'un compte esborrat → 401 `account_not_found` (D25). Frontend (agent Sonnet, branca `feature/esborrat-compte-backend`, `db6a336`, sense PR: es desplega amb el backend): fora `user.delete()`, error `delete_failed` si el backend falla, `signOut` local si va bé; unit 2483 i integració 288 en verd. Comprovat: als bloquejos **no hi ha cap hash d'email** (els únics hashes són sha256/pHash d'imatges i l'ID de les denúncies); el PO accepta el camí del compte nou amb un altre email (sense hash, telèfon ni dispositiu). 2147 tests.
+- 2026-10-26 — PR #47 (U7) fusionada a `migration` (`e53bec8`). El PO demana fusionar el frontend U7 a `develop` (agent, amb la CI en verd). **Chunks 4–6 en marxa en paral·lel** (D26): worktrees `../wt-{visites,renovations,dubtes}`, BD `refugisdb_test_<chunk>`, PR #48 (`TEST_DATABASE_NAME` + `scripts/dev/run_tests_docker.sh`). Agents de tests dels tres chunks llançats.
 
 ## Traspàs a una sessió nova (26/10)
 Estat: chunks 0–3 fets i fusionats a `migration` (+ PR #45 de dates). **Proper pas: chunks 4 (visites), 5 (reformes) i 6

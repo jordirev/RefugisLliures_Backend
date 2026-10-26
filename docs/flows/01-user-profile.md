@@ -62,9 +62,9 @@ sequenceDiagram
 ## Esborrat — provisional (D21, D22)
 
 `services.delete_user(uid)` fa, en aquest ordre, i **s'atura al primer pas que falla**:
-1. **Passos de Firestore** (dominis encara no migrats), via els controllers de sempre ([deep-dive](../deep-dives/user-deletion.md)): experiències, dubtes, respostes, propostes (anonimitza) i reformes (esborra/anonimitza/treu de participants i expulsats).
+1. **Passos de Firestore** (dominis encara no migrats), via els controllers de sempre ([deep-dive](../deep-dives/user-deletion.md)): experiències, propostes (anonimitza) i reformes (esborra/anonimitza/treu de participants i expulsats).
 2. **R2** (D22, RGPD): avatar i miniatura + fotos pujades per l'usuari (`refuges.refuge_media` amb `creator_uid = uid`, i miniatures), en un `delete_files`. Si hi ha fitxers que fallen → `UserDeletionError`.
-3. **`DELETE FROM users.users`**: la BD cascadeja perfil, avatar, preferits, visitats i participacions en visites (chunk 4: el pas «visites» de Firestore ja no existeix) (FK reals `ON DELETE`, no de Django).
+3. **`DELETE FROM users.users`**: la BD cascadeja perfil, avatar, preferits, visitats, participacions en visites (chunk 4) i **dubtes i respostes** (chunk 6): ja no són passos de Firestore (FK reals `ON DELETE`, no de Django).
 4. **Compte de Firebase Auth** (U7, D24): `firebase_auth.delete_user(uid)`, dins el mateix *savepoint* que el pas 3. Si Firebase falla, `UserDeletionError` desfà el `DELETE` (l'usuari es conserva i es pot reintentar); si el compte ja no existeix (`UserNotFoundError`), es dona per fet. El client **no** crida `user.delete()`: només reautentica, crida aquest endpoint i fa `signOut` local **[FET]**.
 
 ```mermaid

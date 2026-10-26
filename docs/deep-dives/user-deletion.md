@@ -3,7 +3,7 @@
 > **[FET]** comprovat al codi · **[INFERÈNCIA]** deducció · **[NO VERIFICAT]** depèn de config externa.
 > Document pare: [flux 1 — Perfil d'usuari](../flows/01-user-profile.md#esborrat--provisional-d21-d22) (diagrama). Aquí: **per què** cada pas, què toca i com mantenir-ho.
 
-> **Chunk 3 (D21/D22): procediment provisional.** `UserController` ha desaparegut. El punt d'entrada és `apps.accounts.services.delete_user(uid)`, cridat per `DELETE /api/users/{uid}/`, que executa **(1)** els passos de Firestore dels dominis encara no migrats (via els seus controllers: experiències, dubtes, respostes, propostes, reformes ×4), **(2)** l'esborrat a R2 d'avatar, miniatura i fotos pujades (`refuges.refuge_media.creator_uid`) i **(3)** `DELETE FROM users.users`, que cascadeja perfil, avatar, preferits, visitats, les participacions en visites (`refuge_visit_participants`) i les files de `refuge_media` (FK reals `ON DELETE CASCADE`), i **(4)** l'esborrat del compte de Firebase Auth en el mateix *savepoint* (U7: si falla, es desfà el `DELETE`). Fail-fast: qualsevol pas que falla → `UserDeletionError` → 500 `{error, error_id}`, l'usuari es conserva i el DELETE és reintentable. El procediment únic en una transacció, amb la cua `media_deletion_queue`, és el **chunk 10**; el que segueix descriu els criteris (vàlids) i, on cal, l'estat anterior.
+> **Chunk 3 (D21/D22): procediment provisional.** `UserController` ha desaparegut. El punt d'entrada és `apps.accounts.services.delete_user(uid)`, cridat per `DELETE /api/users/{uid}/`, que executa **(1)** els passos de Firestore dels dominis encara no migrats (via els seus controllers: experiències, propostes, reformes ×4), **(2)** l'esborrat a R2 d'avatar, miniatura i fotos pujades (`refuges.refuge_media.creator_uid`) i **(3)** `DELETE FROM users.users`, que cascadeja perfil, avatar, preferits, visitats, les participacions en visites (`refuge_visit_participants`), **dubtes i respostes (chunk 6, `activity.doubts`/`activity.answers` per `creator_uid`)** i les files de `refuge_media` (FK reals `ON DELETE CASCADE`), i **(4)** l'esborrat del compte de Firebase Auth en el mateix *savepoint* (U7: si falla, es desfà el `DELETE`). Fail-fast: qualsevol pas que falla → `UserDeletionError` → 500 `{error, error_id}`, l'usuari es conserva i el DELETE és reintentable. El procediment únic en una transacció, amb la cua `media_deletion_queue`, és el **chunk 10**; el que segueix descriu els criteris (vàlids) i, on cal, l'estat anterior.
 
 Punt d'entrada: `services.delete_user(uid)` (abans `UserController.delete_user`).
 
@@ -34,7 +34,7 @@ Per permetre l'anonimització, el model `Renovation` accepta `group_link=None` q
 | Col·lecció / sistema | Operació |
 |---|---|
 | `experiences` | DELETE |
-| `doubts` i `doubts/{id}/answers` (via `collection_group('answers')`) | DELETE + recompte d'`answers_count` |
+| ~~`doubts` i `doubts/{id}/answers`~~ (migrats, chunk 6) | Ara són `activity.doubts`/`activity.answers`: cascada del `DELETE users.users` (FK `creator_uid ON DELETE CASCADE`). Les respostes d'un usuari a dubtes aliens també s'esborren, amb el seu subarbre de rèpliques, **també les d'altres usuaris** que hi penjaven (decisió del PO, 26/10: es manté l'esborrat del subarbre, coherent amb l'esborrat manual d'una resposta; no s'anonimitza) **[FET]** |
 | `refuges_proposals` | UPDATE `creator_uid` |
 | `renovations` | DELETE (vigents) / UPDATE (passades, participants, expulsats) |
 | `data_refugis_lliures` (legacy) | ja no es toca des de l'esborrat d'usuari |
