@@ -18,7 +18,7 @@
 | 0 | Disseny BD | `migracio/disseny-bd` | fet | `docs/design/postgres-schema.md` tancat (`e611fe3`), PR a `migration` |
 | 1 | Infraestructura | `migracio/infraestructura` | fet (PR [#42](https://github.com/jordirev/RefugisLliures_Backend/pull/42) fusionada, `7d9073f`) | 1666 tests; D9 confirmada a Neon `dev` |
 | 2 | Refugis | `migracio/refugis` | fet (PR [#43](https://github.com/jordirev/RefugisLliures_Backend/pull/43) fusionada, `49f15ed`) | 2010 tests; Django 5.2 + Python 3.14 + PG18; e2e 31/31 |
-| 3 | Usuaris | `migracio/usuaris` | implementat i revisat; e2e 50/50 (+ chunks 1 i 2 OK); PR a `migration` | 2124 tests; D19–D23; pendents PO: secret `DATABASE_URL_APP` al job diari (U3), evasió de bloqueig (U7) |
+| 3 | Usuaris | `migracio/usuaris` | fet (PR [#44](https://github.com/jordirev/RefugisLliures_Backend/pull/44) fusionada, `9f9bd5b`) | 2124 tests; e2e 50/50; D19–D23. Després: dates i zones horàries (PR [#45](https://github.com/jordirev/RefugisLliures_Backend/pull/45), `0a1e85e`, 2140 tests) |
 | 4 | Visites | `migracio/visites` | pendent | paral·lel amb 5, 6 |
 | 5 | Renovations | `migracio/renovations` | pendent | paral·lel amb 4, 6 |
 | 6 | Dubtes | `migracio/dubtes` | pendent | paral·lel amb 4, 5 |
@@ -55,19 +55,43 @@
 - 2026-10-25 — **Chunk 3 (Usuaris)**: tests (agent) → implementació (`apps/accounts`: preferits i visitats amb PK composta `accounts.0002`, perfil propi en 1 consulta, perfil aliè reduït, `HasProfile` → 403 `profile_required`, moderació i avatar a PostgreSQL amb `system_context()`, esborrat provisional Firestore → R2 → PostgreSQL) → revisió SQL (carrera de l'avatar), seguretat (NUL → 404, test meta de `HasProfile` a totes les rutes), documentació. L'orquestrador: R8 (visitants de la cerca en 1 consulta), `manage_admins add` crea el perfil abans del claim, `DATABASE_URL_APP` al job diari. Els e2e dels chunks 1 i 2 ara creen el perfil dels usuaris de prova. 2124 tests; e2e chunk 3 50/50, chunks 1 i 2 OK.
 - 2026-10-26 — **Revisió de dates i zones horàries** (PO): cap dada desada era incorrecta. Decisions: `TIME_ZONE = 'Europe/Madrid'` (sessió de Postgres en UTC + test de guarda contra `CURRENT_DATE`/`now()::date`), EXIF sense desplaçament = hora de Madrid, un sol rellotge (Postgres) per als instants. Corregits: TTL d'auditoria i caducitat d'intents sumats en hora de paret (DST), `creation_time` dels vídeos sense zona. PR `migracio/zona-horaria`. 2140 tests; e2e chunks 1–3 OK.
 
-## Traspàs a sessió local (24/10)
-Proper pas: **implementador del chunk 1** (brief a [`EQUIP.md`](EQUIP.md); abast al prompt de tests, resumit aquí).
-- Executar: venv amb `pip install -r requirements.txt` (a la cloud, `django-crontab` no compilava amb el setuptools del sistema: venv fora del repo); `eval "$(scripts/dev/setup_local_postgres.sh | grep ^export)"` (o Docker `postgis/postgis:17-3.5` + `PG_START_CLUSTER=0 PGHOST=... PGPASSWORD=...`); `pytest -q`.
-- Contracte dels tests per a l'implementador:
-  - Àlies `default` (rol `app`, `ATOMIC_REQUESTS=True`) i `migrator`. Cal sobreescriure `django_db_setup` per migrar amb `migrator` sobre la mateixa BD de test, sense crear `test_*`.
-  - `TEST_DATABASE_URL_*` té prioritat sobre `DATABASE_URL_APP/MIGRATOR`. `sslmode` només per a hosts no locals. `prepare_threshold: None`. Sense `options`. `INSTALLED_APPS` += `domain.core`, `django.contrib.gis`, `django.contrib.postgres`.
-  - `domain.core.rls`: `rls_context` i `system_context`, reexportats a `domain.core`. Un `rls_context` niat restaura el context exterior. Helpers `expand_macros`, `create_policy_sql(name, table, cmd, using=, with_check=, role='app')`, `drop_policy_sql`. Migració `core.0001`: schemas, funcions de §2.0 i grants de §7.1.
-  - Hook RLS: exactament un `set_config` abans de `check_permissions`, a **totes** les vistes (incloses les `@api_view` de cache). `is_admin` surt només dels claims verificats.
-  - `api/utils/ids.py: uuid7()`: crida `time.time_ns()` a través del mòdul `time` (els tests el pategen). Monòton amb el rellotge congelat, si el rellotge torna enrere i si desborda el comptador de 12 bits.
-  - Health: `SELECT 1` literal, camp `database: True/False`, 503 i `status: unhealthy` si la BD falla. Sense R2 (B4). `HealthCheckResponseSerializer` amb el camp `database`.
-  - Firebase Emulator: amb `FIREBASE_AUTH_EMULATOR_HOST`, `initialize_app` amb una credencial que no sigui `Certificate` i un `projectId` no buit (també amb `CI=true`).
-  - CI: `passenv` a tox. Workflow amb servei postgis (**17**, D5), GDAL, l'script de bootstrap i la branca `migration` als dos triggers.
-- Després: revisor, seguretat i documentació en paral·lel; e2e (ara sí contra Neon `dev` si la sessió local hi té accés: cal el bootstrap SQL de §1.3 del disseny amb el rol propietari, D4); PR `migracio/infraestructura` → `migration`.
+## Traspàs a una sessió nova (26/10)
+Estat: chunks 0–3 fets i fusionats a `migration` (+ PR #45 de dates). **Proper pas: chunks 4 (visites), 5 (reformes) i 6
+(dubtes), en paral·lel** (PLAN, taula de chunks), amb el pipeline d'[`EQUIP.md`](EQUIP.md): tests → implementador →
+revisor + seguretat + documentació → e2e de l'orquestrador → PR a `migration` → merge amb la CI en verd.
+
+**Llegir abans de començar** (en aquest ordre): `CLAUDE.md`; `docs/migration/PLAN.md` (decisions del PO, incloses les
+de dates del 26/10); aquest `PROGRESS.md`; `docs/migration/EQUIP.md`; `docs/migration/DECISIONS_AUTONOMES.md` (D1–D23);
+`docs/design/postgres-schema.md` (vinculant: §1–§8, i per als chunks 4–6 §2.10–§2.17, §4, §5, §6, §7, §8.3);
+`docs/ARCHITECTURE.md`; `docs/GOTCHAS.md` (sobretot #41–#62); `docs/TECH_DEBT.md` (seccions R i U); `docs/guides/testing.md`
+i `docs/guides/local-setup.md`. Model a seguir: `apps/refuges/` (chunk 2) i `apps/accounts/` (chunk 3).
+
+**Regles de funcionament**
+- Autonomia: si hi ha un dubte, l'orquestrador tria l'opció recomanada i l'apunta a `DECISIONS_AUTONOMES.md` amb les
+  alternatives (a partir de D24). Les decisions de producte o RGPD es pregunten al PO amb opcions.
+- PR cap a `migration`: les fusiona l'orquestrador amb la CI en verd (si només falla SonarCloud, també). **Mai** cap a
+  `develop`.
+- Agents en Sonnet; mai llegeixen `env/` ni valors de variables, mai toquen Neon ni Firestore reals.
+
+**Entorn local (Windows)**
+- Tests: contenidor `rl-postgres` (`postgis/postgis:18-3.6`) + imatge `rl-testrunner` (`python:3.14-slim-bookworm` + GDAL;
+  Dockerfile a `docs/guides/local-setup.md`). Ordre: un `docker run` de `rl-testrunner` amb el repo muntat a `/app` i les
+  `TEST_DATABASE_URL_*` de `env/.env.development` (host `host.docker.internal`), `python -m pytest api/tests apps -q`.
+  Estat actual: **2140 passed**. La BD de proves és persistent: si es reescriu una migració, cal recrear-la.
+- E2E: BD `refugisdb_e2e` (migrada, 1.542 refugis), contenidor `rl-e2e-server` (port 8000) i emuladors de Firebase (Auth
+  9099, Firestore 8085). Scripts `scripts/e2e/e2e_chunk{1,2,3}.sh`: tots OK el 26/10.
+- `.venv` local amb Python 3.14 + Django 5.2 (GDAL d'OSGeo4W) per a `check_neon` i ordres de gestió.
+
+**Decisions pendents del PO** (no bloquegen els chunks 4–6)
+- **U7, evasió del bloqueig**: avançar que el backend esborri el compte de Firebase Auth a `DELETE /users/{uid}/`
+  (recomanat) i què fa llavors el frontend: deixar de cridar `user.delete()` (recomanat: el backend és l'única font i
+  el frontend només fa `signOut`) o mantenir-lo tolerant `auth/user-not-found`. S'accepta que un compte nou amb un
+  altre email no es pot impedir sense conservar dades (hash d'email: opció extra del PO).
+- **U3**: el secret `DATABASE_URL_APP` del job diari queda ajornat (potser Cloud Run).
+- Frontend: cap canvi pendent pels chunks 0–3 (comprovat el 26/10: `profile_required` es tracta com a perfil absent i
+  el registre i el login amb Google el creen; el perfil aliè reduït ja el suporta el mapper). No hi ha usuaris reals
+  previs: el PO esborrarà els seus comptes de prova de Firebase Auth i els tornarà a crear.
 
 ## Pendents / bloquejos
+- Vegeu «Decisions pendents del PO» a dalt (U7, U3).
 - **Neon inaccessible des de l'entorn cloud** (el proxy no admet TCP de BD): e2e en local (D3). El PO ha d'executar `scripts/e2e/` a Neon `dev`. Bootstrap de §1.3 ja fet (D4 tancat, 24/10).
