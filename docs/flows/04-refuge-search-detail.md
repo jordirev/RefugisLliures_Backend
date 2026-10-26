@@ -70,5 +70,5 @@ sequenceDiagram
 
 ## Gotchas
 - `GET /refuges/{id}/renovations/`: `active_only` no es llegeix de la query (`api/views/renovation_views.py`, `RefugeRenovationsAPIView.get`) **[FET]**; continua sent la ruta antiga de Firestore.
-- Els dominis que encara no s'han migrat (experiències, dubtes, visites, propostes, usuaris) segueixen consultant els refugis al `RefugiLliureDAO` de Firestore, que ja no s'alimenta: fins als seus chunks, les seves comprovacions d'existència de refugi miren el catàleg antic de Firestore (en un entorn nou, buit; en producció, amb IDs diferents dels UUID de PostgreSQL) — [GOTCHAS #41](../GOTCHAS.md).
+- Els dominis que encara no s'han migrat (experiències, visites, propostes; els dubtes ja són a PostgreSQL, chunk 6) segueixen consultant els refugis al `RefugiLliureDAO` de Firestore, que ja no s'alimenta: fins als seus chunks, les seves comprovacions d'existència de refugi miren el catàleg antic de Firestore (en un entorn nou, buit; en producció, amb IDs diferents dels UUID de PostgreSQL) — [GOTCHAS #41](../GOTCHAS.md).
 - `load_refuges` és d'un sol ús: vegeu [local-setup](../guides/local-setup.md).
