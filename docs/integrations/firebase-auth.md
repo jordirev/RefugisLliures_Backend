@@ -6,7 +6,7 @@
 - Verifica els **ID tokens** que envia el client (`Authorization: Bearer`).
 - Llegeix els **custom claims** per decidir qui és admin (`role == 'admin'`).
 - Gestiona els claims d'admin amb un script local.
-- **No** crea ni esborra comptes d'Auth (cap `auth.create_user`/`auth.delete_user` a `api/`) **[FET]**.
+- **No** crea comptes d'Auth (els crea el client). **Sí que els esborra**: `apps.accounts.services.delete_user` crida `auth.delete_user(uid)` com a últim pas de `DELETE /users/{uid}/`, i `create_user` crida `auth.get_user(uid)` per rebutjar (401 `account_not_found`) un `POST /users/` amb el token d'un compte ja esborrat (U7) **[FET]**. Als tests, el `conftest.py` arrel mocka totes dues crides (fixture autouse `firebase_accounts`).
 
 ## Fitxers
 | Fitxer | Rol |

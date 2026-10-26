@@ -4,7 +4,7 @@
 
 > **Migrat a PostgreSQL (chunk 3).** L'usuari, el perfil públic, l'avatar, els preferits i els visitats viuen a PostgreSQL (`apps/accounts/`); ja no hi ha `UserController`, `UserDAO`, `UserMapper`, `User` (dataclass) ni cache Redis d'usuari (`user_detail`). Firestore només es consulta per als dos comptadors provisionals i per als passos de l'esborrat dels dominis encara no migrats (D19, D21). Decisions: [DECISIONS_AUTONOMES D19–D23](../migration/DECISIONS_AUTONOMES.md); disseny: [postgres-schema §2.1–2.4, §5.2](../design/postgres-schema.md).
 
-L'usuari es registra a **Firebase Auth des del client** (el backend no crea comptes d'Auth). Després el client crida `POST /api/users/` per crear la fila de `users.users` + `users.user_public_profiles`. **Fins que no ho fa, tot endpoint autenticat (excepte `POST /users/`) respon 403 `profile_required`** (vegeu [flux 12](12-media-moderation.md#permisos-apipermissionspy)).
+L'usuari es registra a **Firebase Auth des del client** (el backend no crea comptes d'Auth, però sí que els esborra a `DELETE /users/{uid}/`). Després el client crida `POST /api/users/` per crear la fila de `users.users` + `users.user_public_profiles`. **Fins que no ho fa, tot endpoint autenticat (excepte `POST /users/`) respon 403 `profile_required`** (vegeu [flux 12](12-media-moderation.md#permisos-apipermissionspy)).
 
 ## Endpoints (`apps/accounts/views.py`, rutes a `apps/accounts/urls.py`, incloses des d'`api/urls.py` sota `users/`)
 | Mètode | URL | Vista | Permisos |
@@ -41,6 +41,8 @@ sequenceDiagram
     V->>SV: create_user(uid, ...)
     alt birth_date < 16 anys
         SV-->>V: UserUnderage → 403 underage (no es crea res)
+    else compte de Firebase ja esborrat (firebase_auth.get_user → UserNotFoundError)
+        SV-->>V: FirebaseAccountNotFound → 401 account_not_found
     else
         SV->>DB: savepoint: INSERT users + INSERT user_public_profiles
         alt UID ja existeix (IntegrityError + exists)
@@ -63,6 +65,7 @@ sequenceDiagram
 1. **Passos de Firestore** (dominis encara no migrats), via els controllers de sempre ([deep-dive](../deep-dives/user-deletion.md)): experiències, dubtes, respostes, propostes (anonimitza), reformes (esborra/anonimitza/treu de participants i expulsats) i visites.
 2. **R2** (D22, RGPD): avatar i miniatura + fotos pujades per l'usuari (`refuges.refuge_media` amb `creator_uid = uid`, i miniatures), en un `delete_files`. Si hi ha fitxers que fallen → `UserDeletionError`.
 3. **`DELETE FROM users.users`**: la BD cascadeja perfil, avatar, preferits i visitats (FK reals `ON DELETE`, no de Django).
+4. **Compte de Firebase Auth** (U7, D24): `firebase_auth.delete_user(uid)`, dins el mateix *savepoint* que el pas 3. Si Firebase falla, `UserDeletionError` desfà el `DELETE` (l'usuari es conserva i es pot reintentar); si el compte ja no existeix (`UserNotFoundError`), es dona per fet. El client **no** crida `user.delete()`: només reautentica, crida aquest endpoint i fa `signOut` local **[FET]**.
 
 ```mermaid
 sequenceDiagram
@@ -73,6 +76,7 @@ sequenceDiagram
     participant F as Firestore (controllers legacy)
     participant R2 as R2MediaService
     participant DB as PostgreSQL
+    participant FA as Firebase Auth
 
     C->>V: DELETE /api/users/{uid}/
     V->>S: delete_user(uid)
@@ -80,7 +84,8 @@ sequenceDiagram
         S->>F: pas del controller → (success, error)
     end
     S->>R2: delete_files(avatar + miniatura + fotos + miniatures)
-    S->>DB: DELETE users.users WHERE uid (cascada)
+    S->>DB: savepoint: DELETE users.users WHERE uid (cascada)
+    S->>FA: delete_user(uid) (si falla, rollback del savepoint)
     alt un pas falla (UserDeletionError)
         V-->>C: 500 {error, error_id}; l'usuari es conserva i el DELETE és reintentable
     else usuari inexistent
@@ -100,6 +105,7 @@ Ja **no** hi ha els antics passos «esborrar fotos via `RefugiLliureController`�
 | Cos invàlid (idioma fora del catàleg, `birth_date` futura o < 1900, cap camp a PATCH) | 400 `{error, details}` |
 | `birth_date` de menor de 16 anys | 403 `underage` (`coded_error`) |
 | Perfil ja existeix | 409 |
+| `POST /users/` amb el token d'un compte de Firebase ja esborrat | 401 `account_not_found` (`coded_error`) |
 | Usuari no trobat | 404 |
 | `uid` URL ≠ token (PATCH/DELETE) | 403 (`IsSameUser`) |
 | Fallada de BD, de Firestore (comptadors o passos d'esborrat) o d'R2 | 500 `{error, error_id}` |
@@ -107,5 +113,6 @@ Ja **no** hi ha els antics passos «esborrar fotos via `RefugiLliureController`�
 ## Gotchas
 - El perfil propi **depèn de Firestore** (comptadors provisionals): una caiguda de Firestore fa caure `GET/PATCH /users/{uid}/` propi.
 - L'esborrat no és atòmic entre Firestore, R2 i PostgreSQL: un pas que falla deixa els anteriors aplicats (reintentable) **[FET]**.
-- El compte de Firebase Auth **no** s'esborra al backend **[FET]**; s'espera que ho faci el client **[INFERÈNCIA]**.
+- El compte de Firebase Auth l'esborra el **backend** (últim pas de l'esborrat, U7) **[FET]**. Finestra residual: si el `COMMIT` falla després d'esborrar el compte, queden dades sense compte (rar; el chunk 10 ho tanca).
+- **Bloqueig i esborrat (U7)**: un bloqueig és del compte (UID). Esborrar-se i tornar amb el **mateix** UID no és possible: el compte de Firebase ja no existeix i `POST /users/` amb un token encara vigent (fins a 1 h) respon 401 `account_not_found` (`services.create_user` comprova `firebase_auth.get_user`). Un compte **nou** amb un altre email és un UID nou sense *strikes*: s'accepta (decisió del PO, 26/10); no es desa cap hash d'email ni identificador de dispositiu o telèfon. L'abús persistent es tracta bloquejant el compte nou quan reincideix.
 - PostgreSQL comença de zero (decisió del PO): els usuaris de Firestore no es migren; cada usuari ha de fer `POST /users/` (403 `profile_required` fins llavors).

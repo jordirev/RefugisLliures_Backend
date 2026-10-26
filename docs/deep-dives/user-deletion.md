@@ -3,7 +3,7 @@
 > **[FET]** comprovat al codi · **[INFERÈNCIA]** deducció · **[NO VERIFICAT]** depèn de config externa.
 > Document pare: [flux 1 — Perfil d'usuari](../flows/01-user-profile.md#esborrat--provisional-d21-d22) (diagrama). Aquí: **per què** cada pas, què toca i com mantenir-ho.
 
-> **Chunk 3 (D21/D22): procediment provisional.** `UserController` ha desaparegut. El punt d'entrada és `apps.accounts.services.delete_user(uid)`, cridat per `DELETE /api/users/{uid}/`, que executa **(1)** els passos de Firestore dels dominis encara no migrats (via els seus controllers: experiències, dubtes, respostes, propostes, reformes ×4, visites), **(2)** l'esborrat a R2 d'avatar, miniatura i fotos pujades (`refuges.refuge_media.creator_uid`) i **(3)** `DELETE FROM users.users`, que cascadeja perfil, avatar, preferits, visitats i les files de `refuge_media` (FK reals `ON DELETE CASCADE`). Fail-fast: qualsevol pas que falla → `UserDeletionError` → 500 `{error, error_id}`, l'usuari es conserva i el DELETE és reintentable. El procediment únic en una transacció, amb la cua `media_deletion_queue`, és el **chunk 10**; el que segueix descriu els criteris (vàlids) i, on cal, l'estat anterior.
+> **Chunk 3 (D21/D22): procediment provisional.** `UserController` ha desaparegut. El punt d'entrada és `apps.accounts.services.delete_user(uid)`, cridat per `DELETE /api/users/{uid}/`, que executa **(1)** els passos de Firestore dels dominis encara no migrats (via els seus controllers: experiències, dubtes, respostes, propostes, reformes ×4, visites), **(2)** l'esborrat a R2 d'avatar, miniatura i fotos pujades (`refuges.refuge_media.creator_uid`) i **(3)** `DELETE FROM users.users`, que cascadeja perfil, avatar, preferits, visitats i les files de `refuge_media` (FK reals `ON DELETE CASCADE`), i **(4)** l'esborrat del compte de Firebase Auth en el mateix *savepoint* (U7: si falla, es desfà el `DELETE`). Fail-fast: qualsevol pas que falla → `UserDeletionError` → 500 `{error, error_id}`, l'usuari es conserva i el DELETE és reintentable. El procediment únic en una transacció, amb la cua `media_deletion_queue`, és el **chunk 10**; el que segueix descriu els criteris (vàlids) i, on cal, l'estat anterior.
 
 Punt d'entrada: `services.delete_user(uid)` (abans `UserController.delete_user`).
 
@@ -24,7 +24,9 @@ Punt d'entrada: `services.delete_user(uid)` (abans `UserController.delete_user`)
 | `visitors` dels refugis visitats | **Cascada** (`user_visited_refuges`; ja no hi ha array `visitors`) | No deixar referències |
 | Entrades a `refuge_visits` (Firestore) | Treure l'UID / l'entrada | No deixar referències |
 | Preferits i visitats (`user_*_refuges`), perfil públic i avatar (PostgreSQL) | **Cascada** de `DELETE users.users` | — |
-| `users.users` | **Esborrar** (últim) | — |
+| `users.users` | **Esborrar** | — |
+| Compte de Firebase Auth | **Esborrar** (últim, dins el *savepoint* del `DELETE users.users`; U7, D24) | Sense compte no es pot tornar amb el mateix UID per saltar-se un bloqueig |
+| Email o identificadors per impedir un compte nou | **No es desa res** (decisió del PO, 26/10) | Un hash d'email continua sent dada personal (pseudonimitzada) i, per a un esborrat demanat, caldria justificar-ne la retenció; un email nou costa segons, així que el benefici no ho compensa |
 
 Per permetre l'anonimització, el model `Renovation` accepta `group_link=None` quan `creator_uid=='unknown'` (`api/models/renovation.py:36-38`) i el serializer d'update té `allow_null=True` a `group_link`.
 
@@ -40,7 +42,7 @@ Per permetre l'anonimització, el model `Renovation` accepta `group_link=None` q
 | `refuge_visits` | UPDATE `visitors`, `total_visitors` |
 | PostgreSQL `users.users` | DELETE (cascada: perfil, avatar, preferits, visitats, `refuge_media`) |
 | R2 | `delete_files` d'avatar + miniatura + fotos pujades (+ miniatures), en un sol lot |
-| Firebase Auth | **cap** — el compte no s'esborra al backend |
+| Firebase Auth | `auth.delete_user(uid)` (idempotent: `UserNotFoundError` es dona per fet) |
 
 ## Estratègia d'errors
 **Fail-fast**: cada pas de Firestore que falla (`(False, error)`), o un lot d'R2 amb fitxers fallits, atura el procés amb `UserDeletionError` **[FET]**. (Ja no hi ha l'excepció de «refugi de `uploaded_photos_keys` inexistent».)
@@ -52,7 +54,7 @@ Bugs coneguts del procés: decrement de `total_visitors` en 1 i no en `num_visit
 ## Privacitat (dret a l'oblit)
 - S'eliminen totes les dades identificables de l'usuari al backend.
 - Allò que cal conservar per integritat (propostes, renovations passades) s'anonimitza.
-- Pendent: esborrar el compte de **Firebase Auth** (s'espera que ho faci el client) **[INFERÈNCIA]**.
+- El compte de **Firebase Auth** l'esborra el backend després de les dades (U7); el client només tanca la sessió local **[FET]**.
 
 ## Manteniment
 Si s'afegeix una col·lecció o relació amb `creator_uid` o UIDs d'usuari:
