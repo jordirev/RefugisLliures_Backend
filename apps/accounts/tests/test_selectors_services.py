@@ -194,11 +194,13 @@ def test_increment_strikes_usuari_inexistent_retorna_none(services):
 
 def test_set_blocked_i_desbloquejar(services):
     make_user('u1')
-    when = datetime(2025, 3, 1, 12, 0, tzinfo=timezone.utc)
     with rls_context(uid='u1'):                                  # fins i tot dins la peticio del propi usuari (hash match)
-        assert services.set_blocked('u1', True, reason='moderation_hash_match', blocked_at=when) is True
+        assert services.set_blocked('u1', True, reason='moderation_hash_match') is True
     row = user_row('u1')
-    assert (row['is_blocked'], row['blocked_reason'], row['blocked_at']) == (True, 'moderation_hash_match', when)
+    assert (row['is_blocked'], row['blocked_reason']) == (True, 'moderation_hash_match')
+    # `blocked_at` el posa el rellotge de la BD (decisió del PO, 26/10), no l'aplicació
+    db_now = sql('SELECT statement_timestamp()')[0][0]
+    assert row['blocked_at'] is not None and abs((db_now - row['blocked_at']).total_seconds()) < 60
     with rls_context(uid='adm', is_admin=True):
         assert services.set_blocked('u1', False) is True
     row = user_row('u1')
@@ -232,7 +234,7 @@ def test_les_escriptures_de_moderacio_no_deixen_privilegis_de_sistema(services):
 # ---------- avatar (D20): DELETE + INSERT ----------
 
 def _meta(**kw):
-    base = {'key': 'users-avatars/u1/new.webp', 'uploaded_at': '2025-03-01T12:00:00+01:00', 'width': 256,
+    base = {'key': 'users-avatars/u1/new.webp', 'width': 256,
             'height': 128, 'blurhash': 'LEHV6nWB2yk8', 'size': 4096, 'content_type': 'image/webp'}
     base.update(kw)
     return base
@@ -240,13 +242,18 @@ def _meta(**kw):
 
 def test_update_avatar_metadata_insereix_i_mapeja_size(services):
     make_user('u1')
+    meta = _meta(thumb_key='users-avatars/u1/new_t.webp', uploaded_at='2001-01-01T00:00:00+00:00')
     with rls_context(uid='u1'):
-        assert services.update_avatar_metadata('u1', _meta(thumb_key='users-avatars/u1/new_t.webp')) is True
+        assert services.update_avatar_metadata('u1', meta) is True
     rows = sql('SELECT key, thumb_key, content_type, width, height, size_bytes, blurhash, uploaded_at '
                'FROM users.user_avatars WHERE user_uid = %s', ['u1'])
     assert rows[0][:7] == ('users-avatars/u1/new.webp', 'users-avatars/u1/new_t.webp', 'image/webp', 256, 128, 4096,
                            'LEHV6nWB2yk8')
-    assert rows[0][7] == datetime(2025, 3, 1, 11, 0, tzinfo=timezone.utc)
+    # `uploaded_at` = rellotge de la BD (el valor de l'aplicació s'ignora) i torna a `metadata` en hora de Madrid
+    db_now = sql('SELECT statement_timestamp()')[0][0]
+    assert abs((db_now - rows[0][7]).total_seconds()) < 60
+    assert datetime.fromisoformat(meta['uploaded_at']) == rows[0][7]
+    assert meta['uploaded_at'].endswith(('+01:00', '+02:00'))
 
 
 def test_update_avatar_metadata_reemplaca_l_antic(services):

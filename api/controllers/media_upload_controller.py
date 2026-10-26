@@ -43,7 +43,7 @@ from ..services.image_processing_service import (
 )
 from ..services.moderation_service import ModerationService, ModerationInput
 from ..services import audit_log_service as audit
-from ..utils.timezone_utils import get_madrid_now
+from ..utils.timezone_utils import get_madrid_now, madrid_after
 
 logger = logging.getLogger(__name__)
 
@@ -135,7 +135,7 @@ class MediaUploadController:
                     experience_id=experience_id,
                     rights_confirmed_at=rights_confirmed_at,
                     created_at=now.isoformat(),
-                    expire_at=now + INTENT_RETENTION,
+                    expire_at=madrid_after(now, INTENT_RETENTION),   # durada real (DST)
                 ))
                 uploads.append({
                     'upload_id': upload_id,
@@ -386,9 +386,8 @@ class MediaUploadController:
             logger.error(f"Error pujant l'avatar processat: {str(e)}")
             return None, REASON_PROCESSING_ERROR
 
-        metadata = {
+        metadata = {                                    # `uploaded_at` el posa la BD (update_avatar_metadata l'hi torna)
             'key': key,
-            'uploaded_at': uploaded_at or get_madrid_now().isoformat(),
             'width': processed.width,
             'height': processed.height,
             'blurhash': processed.blurhash,
@@ -445,7 +444,7 @@ class MediaUploadController:
         except Exception as e:
             logger.error(f"Error desant l'evidència de moderació: {str(e)}")
 
-        self.accounts.set_blocked(uid, True, reason='moderation_hash_match', blocked_at=now)
+        self.accounts.set_blocked(uid, True, reason='moderation_hash_match')
 
         report_refuge = refuge_id or target
         try:

@@ -23,9 +23,12 @@ import subprocess
 import tempfile
 import warnings
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Optional, Tuple
 
 from PIL import Image, ImageOps
+
+from ..utils.timezone_utils import make_madrid_aware
 
 logger = logging.getLogger(__name__)
 
@@ -200,8 +203,13 @@ def _parse_exif_date(value, offset=None) -> Optional[str]:
             offset = offset.decode('ascii', errors='ignore')
         offset = str(offset).strip()
         if re.match(r'^[+-]\d{2}:\d{2}$', offset):
-            iso += offset
-    return iso
+            return iso + offset
+    # Sense desplaçament a l'EXIF: s'assumeix l'hora de Madrid (decisió del PO, 26/10; DST inclòs). Un naïf es
+    # desaria com a UTC a `taken_at` (timestamptz) i la foto sortiria 1-2 h desplaçada.
+    try:
+        return make_madrid_aware(datetime.fromisoformat(iso)).isoformat()
+    except ValueError:                              # data impossible (p. ex. 2025-02-30): sense taken_at
+        return None
 
 
 def extract_taken_at(img: Image.Image) -> Optional[str]:
@@ -362,7 +370,7 @@ def probe_video(ffmpeg: str, path: str) -> Tuple[bool, Optional[str]]:
     taken_at = None
     match = _CREATION_TIME_RE.search(stderr)
     if match and not match.group(1).startswith('1970') and not match.group(1).startswith('1904'):
-        taken_at = f"{match.group(1)}T{match.group(2)}"
+        taken_at = f"{match.group(1)}T{match.group(2)}+00:00"     # `creation_time` de l'MP4/MOV és UTC (ISO BMFF)
     return has_video, taken_at
 
 

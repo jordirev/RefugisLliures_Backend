@@ -54,7 +54,7 @@ api/views  api/serializers  api/controllers  api/daos  api/services   + api/mapp
 
 ## Convencions
 - Català a docstrings, comentaris i la majoria de missatges; identificadors en anglès (el domini refugi legacy en català: `RefugiLliureDAO`, `data_refugis_lliures`; a `apps/refuges` tot en anglès).
-- Dates com a strings ISO; zona `Europe/Madrid` via `api/utils/timezone_utils.py`.
+- Dates: `TIME_ZONE = 'Europe/Madrid'` (decisió del PO, 26/10): «avui» amb `get_madrid_today()`/`timezone.localdate()`, mai `CURRENT_DATE`/`now()::date` al SQL (la sessió de Postgres és UTC; test de guarda `apps/core/tests/test_timezone.py`). Instants `timestamptz` amb el rellotge de la BD (`Now()`/`db_default`); durades amb `madrid_after()` (GOTCHAS #60–62). L'API emet ISO amb desplaçament de Madrid.
 - IDs: a les apps migrades, UUID v7 generat per la BD (`DEFAULT uuidv7()`, Postgres 18; `db_default` als models) exposat com a string opac; a Firestore, auto-ID desat també com a camp `id`; `users/{uid}` usa l'UID de Firebase.
 - Logs: nivells propis CACHE=21, FIRESTORE=22, DAO=23 (`logger.log(23, "Firestore READ: ...")`).
 - Swagger: exemples a `api/utils/swagger_examples.py`, errors a `api/utils/swagger_error_responses.py`.

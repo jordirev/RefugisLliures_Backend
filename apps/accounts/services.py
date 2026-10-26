@@ -8,17 +8,17 @@ usuari (denúncia) o del mateix (coincidència de hash). Excepcions de domini; c
 """
 import logging
 import uuid
-from datetime import date, datetime
+from datetime import date
 from typing import Any, Dict, Optional
 
 from django.db import IntegrityError, transaction
 from django.db.models import F
 from django.db.models.functions import Now
-from django.utils import timezone
 
 from api.services import audit_log_service as audit
 from api.services import r2_media_service
 from api.utils.age_utils import is_old_enough
+from api.utils.timezone_utils import get_madrid_timezone
 from apps.core.rls import system_context
 from apps.refuges import selectors as refuge_selectors
 from apps.refuges.models import RefugeMedia
@@ -74,7 +74,7 @@ def create_user(*, uid: str, username: str = '', language: Optional[str] = None,
     if birth_date is not None:
         if not is_old_enough(birth_date, AGE_THRESHOLD):
             raise UserUnderage()
-        fields.update(age_confirmed_at=timezone.now(), age_threshold=AGE_THRESHOLD)
+        fields.update(age_confirmed_at=Now(), age_threshold=AGE_THRESHOLD)    # rellotge de la BD (decisió 26/10)
     if language:
         fields['language_id'] = language
     try:
@@ -157,14 +157,6 @@ def remove_visited(uid: str, refuge_id) -> None:
 
 # ---------- Moderació (D20): dins `system_context()` ----------
 
-def _as_datetime(value) -> datetime:
-    if value is None:
-        return timezone.now()
-    if isinstance(value, datetime):
-        return value
-    return datetime.fromisoformat(str(value))
-
-
 def increment_moderation_strikes(uid: str) -> Optional[int]:
     """Suma un *strike* (atòmic, `F()`) i retorna el total; `None` si l'usuari no existeix."""
     with system_context():
@@ -173,12 +165,12 @@ def increment_moderation_strikes(uid: str) -> Optional[int]:
         return UserAccount.objects.filter(pk=uid).values_list('moderation_strikes', flat=True).get()
 
 
-def set_blocked(uid: str, blocked: bool = True, reason: Optional[str] = None, blocked_at=None) -> bool:
+def set_blocked(uid: str, blocked: bool = True, reason: Optional[str] = None) -> bool:
     """
-    Bloqueja (`reason` ∈ `csam_confirmed|strikes|moderation_hash_match`; `blocked_at` `datetime` o ISO, per defecte
-    ara) o desbloqueja (neteja motiu i data) un usuari. `False` si no existeix; un motiu invàlid llança `IntegrityError`.
+    Bloqueja (`reason` ∈ `csam_confirmed|strikes|moderation_hash_match`; `blocked_at` = rellotge de la BD) o
+    desbloqueja (neteja motiu i data) un usuari. `False` si no existeix; un motiu invàlid llança `IntegrityError`.
     """
-    changes = ({'is_blocked': True, 'blocked_reason': reason, 'blocked_at': _as_datetime(blocked_at)} if blocked
+    changes = ({'is_blocked': True, 'blocked_reason': reason, 'blocked_at': Now()} if blocked
                else {'is_blocked': False, 'blocked_reason': None, 'blocked_at': None})
     with system_context():
         return bool(UserAccount.objects.filter(pk=uid).update(**changes))
@@ -189,8 +181,9 @@ def set_blocked(uid: str, blocked: bool = True, reason: Optional[str] = None, bl
 def update_avatar_metadata(uid: str, metadata: Dict[str, Any]) -> bool:
     """
     Substitueix l'avatar: `DELETE` de la fila antiga + `INSERT` de la nova (la PK és la clau R2) en una transacció (D20).
-    `metadata`: `key, uploaded_at (ISO), width, height, blurhash, size, content_type[, thumb_key]` (forma que produeix
-    el flux de pujades). `False` si l'usuari no existeix. Els fitxers antics d'R2 els esborra qui crida.
+    `metadata`: `key, width, height, blurhash, size, content_type[, thumb_key]` (forma que produeix el flux de
+    pujades; un `uploaded_at` s'ignora: el posa el rellotge de la BD, `db_default`). `False` si l'usuari no existeix.
+    Els fitxers antics d'R2 els esborra qui crida.
     """
     with system_context():
         # `FOR UPDATE` de la fila d'usuari: serialitza dues substitucions concurrents (si no, totes dues farien
@@ -198,11 +191,12 @@ def update_avatar_metadata(uid: str, metadata: Dict[str, Any]) -> bool:
         if not UserAccount.objects.select_for_update().filter(pk=uid).exists():
             return False
         UserAvatar.objects.filter(user_id=uid).delete()
-        UserAvatar.objects.create(
+        avatar = UserAvatar.objects.create(
             key=metadata['key'], user_id=uid, thumb_key=metadata.get('thumb_key'),
             content_type=metadata['content_type'], width=metadata.get('width'), height=metadata.get('height'),
-            size_bytes=metadata.get('size'), blurhash=metadata.get('blurhash'),
-            uploaded_at=_as_datetime(metadata.get('uploaded_at')))
+            size_bytes=metadata.get('size'), blurhash=metadata.get('blurhash'))
+    # El valor real (rellotge de la BD, recuperat amb `RETURNING`) torna a `metadata` per a la resposta de la pujada
+    metadata['uploaded_at'] = avatar.uploaded_at.astimezone(get_madrid_timezone()).isoformat()
     return True
 
 
