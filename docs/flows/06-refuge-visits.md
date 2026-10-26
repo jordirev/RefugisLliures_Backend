@@ -2,25 +2,43 @@
 
 > **[FET]** comprovat al codi · **[INFERÈNCIA]** deducció · **[NO VERIFICAT]** depèn de config externa.
 
-> **Estat intermedi (chunk 2 → chunk 4).** Els refugis ja viuen a PostgreSQL (IDs UUID v7), però aquest domini encara comprova i llegeix els refugis amb el `RefugiLliureDAO` legacy de Firestore, que ja no s'alimenta: les seves comprovacions d'existència de refugi miren el catàleg antic de Firestore (ids diferents dels UUID de PostgreSQL). Vegeu [GOTCHAS #41](../GOTCHAS.md) i [TECH_DEBT R1](../TECH_DEBT.md).
+> **Migrat a PostgreSQL (chunk 4).** Les visites viuen a `apps/visits` (schema `activity`); ja no hi ha `RefugeVisitController`, `RefugeVisitDAO`, mapper, dataclass, serializer legacy ni cache Redis de visites. Els refugis es comproven amb `apps.refuges.selectors` (no amb el `RefugiLliureDAO` legacy): un `refuge_id` que no és un UUID existent (p. ex. un ID antic de Firestore) dona 404 **[FET]**.
 
-Un usuari indica que anirà a un refugi en una data (amb `num_visitors`). Cada nit, un procés converteix les visites d'ahir en "refugis visitats".
+Un usuari indica que anirà a un refugi en una data (amb `num_visitors`). Cada nit, un procés converteix les visites d'ahir en «refugis visitats» (`users.user_visited_refuges`) i purga les antigues.
 
-## Endpoints (`api/views/refuge_visit_views.py`)
+## Endpoints (`apps/visits/urls.py`, `apps/visits/views.py`)
+S'inclouen des d'`api/urls.py` a l'arrel de l'API (`path('', include('apps.visits.urls'))`), amb els mateixos paths i `name=` d'abans **[FET]**.
+
 | Mètode | URL | Vista | Permisos | Body |
 |---|---|---|---|---|
-| GET | `/api/refuges/{refuge_id}/visits/` | `RefugeVisitsAPIView.get` (L61) | IsAuthenticated | — |
-| POST | `/api/refuges/{refuge_id}/visits/{YYYY-MM-DD}/` | `RefugeVisitDetailAPIView.post` (L202) | IsAuthenticated | `{num_visitors ≥ 1}` |
-| PATCH | idem | `.patch` (L286) | IsAuthenticated | `{num_visitors}` |
-| DELETE | idem | `.delete` (L359) | IsAuthenticated | — |
-| GET | `/api/users/{uid}/visits/` | `UserVisitsAPIView.get` (L133) | IsAuthenticated + HasProfile + IsSameUser | — |
+| GET | `/api/refuges/{refuge_id}/visits/` | `RefugeVisitsAPIView` | IsAuthenticated + HasProfile | — |
+| POST | `/api/refuges/{refuge_id}/visits/{YYYY-MM-DD}/` | `RefugeVisitDetailAPIView.post` | IsAuthenticated + HasProfile + **IsNotBlocked + IsAgeConfirmed** | `{num_visitors: 1–100}` |
+| PATCH | idem | `.patch` | idem POST | `{num_visitors: 1–100}` |
+| DELETE | idem | `.delete` | IsAuthenticated + HasProfile (sense bloqueig ni edat: RGPD) | — |
+| GET | `/api/users/{uid}/visits/` | `UserVisitsAPIView` | IsAuthenticated + HasProfile + IsSameUser | — |
 
-L'UID sempre surt del token: només es pot actuar sobre la pròpia entrada **[FET]**.
+- Decisió del PO (26/10): `ContentWritePermissionsMixin` afegeix `IsNotBlocked` i `IsAgeConfirmed` només a POST/PUT/PATCH, després de `HasProfile` (GOTCHAS #15). Un usuari bloquejat o sense edat confirmada pot llegir i esborrar la seva visita **[FET]**.
+- L'UID sempre surt del token: només es pot actuar sobre la pròpia participació. A `/users/{uid}/visits/` `IsSameUser` dona 403 si l'`uid` de la URL no és el del token **[FET]**.
+- El middleware exclou `/api/refuges/` per prefix: la protecció és només de `permission_classes` (GOTCHAS #2).
 
-Col·lecció `refuge_visits/{autoId}` = `{id, date:'YYYY-MM-DD', refuge_id, visitors:[{uid, num_visitors}], total_visitors}` (model `api/models/refuge_visit.py`, mapper `api/mappers/refuge_visit_mapper.py`). Un document per (refugi, data).
+## Model de dades (`apps/visits/models.py`, migració `0001_initial`)
+| Objecte | Contingut | Notes |
+|---|---|---|
+| `activity.refuge_visits` | `id` (uuidv7), `refuge_id`, `visit_date`, `created_at` | `UNIQUE (refuge_id, visit_date)` (`visits_refuge_date_uq`); índex `visits_date_idx` per al job |
+| `activity.refuge_visit_participants` | PK composta `(visit_id, user_uid)`, `num_visitors` (`CHECK >= 1`), `created_at` | índex `(user_uid) INCLUDE (visit_id, num_visitors)` |
+| vista `activity.refuge_visit_totals` | `visit_id`, `total_visitors = sum(num_visitors)` | model `VisitTotal` (`managed=False`) |
 
-## Privacitat i format de resposta
-Les respostes **mai** exposen la llista `visitors` amb UIDs d'altres usuaris. Cada visita es serialitza com `{date, total_visitors, is_visitor, num_visitors}` (+ `refuge_id` al llistat per usuari), on `is_visitor`/`num_visitors` es calculen respecte a l'usuari del token (`api/serializers/refuge_visit_serializer.py:56-82`) **[FET]**. El llistat per refugi només inclou dates ≥ avui (ordre ascendent); el d'usuari, ordre descendent.
+- FK reals per `RunSQL` amb `ON DELETE CASCADE` (refugi → visita, visita → participant, usuari → participant); els `ForeignKey` de Django són `DO_NOTHING` + `db_constraint=False` **[FET]**.
+- **RLS**: `refuge_visits`: SELECT/INSERT per a qualsevol usuari autenticat o sistema; DELETE només sistema (`app` no pot esborrar visites, §2.10). `refuge_visit_participants`: cada usuari només veu, crea, canvia i esborra la seva fila; l'admin només llegeix; el sistema tot **[FET]**.
+- **Total sota RLS**: el total **no es desa** ni es calcula amb un `Sum` sobre els participants (la RLS només deixa veure la fila pròpia i el total quedaria mutilat). Surt de la vista `refuge_visit_totals`, que corre amb els privilegis del propietari (sense `security_invoker`, intencionat: només exposa agregats) ([GOTCHAS #63](../GOTCHAS.md), [TECH_DEBT R13](../TECH_DEBT.md)) **[FET]**.
+
+## Privacitat i forma JSON
+Les respostes **mai** exposen participants ni UIDs d'altres usuaris. Cada visita és un `VisitSummary` serialitzat per `RefugeVisitListSerializer` com `{date: 'YYYY-MM-DD', refuge_id (UUID), total_visitors, is_visitor, num_visitors}`; `is_visitor`/`num_visitors` són els de l'usuari del token (`num_visitors = 0` si no hi és). `refuge_id` hi és a **tots** els elements (D27) **[FET]**.
+
+- `GET /refuges/{id}/visits/` → `{result: [...]}`: visites amb `visit_date >= avui` (Madrid, `get_madrid_today()`), ordre ascendent; les visites sense participants (encara no esborrades pel job) hi surten amb `total_visitors = 0`.
+- `GET /users/{uid}/visits/` → `{result: [...]}`: totes les visites on participa l'usuari (passades i futures), ordre `(visit_date DESC, refuge_id)`.
+- POST → 201 `{message: 'Visita creada correctament', visit}`; PATCH → 200 `{message: 'Visita actualitzada correctament', visit}`; DELETE → 200 `{message: 'Visitant eliminat correctament'}` (no 204).
+- Una consulta per cas d'ús (sense N+1, sense cache): `selectors.list_refuge_visits`, `list_user_visits`, `get_visit` (`apps/visits/selectors.py`) **[FET]**.
 
 ## Diagrama — registrar visita
 
@@ -29,30 +47,24 @@ sequenceDiagram
     autonumber
     participant C as Client
     participant V as RefugeVisitDetailAPIView.post
-    participant VC as RefugeVisitController
-    participant RD as RefugiLliureDAO
-    participant VD as RefugeVisitDAO
-    participant K as CacheService
-    participant F as Firestore refuge_visits
+    participant S as services.create_visit
+    participant R as refuges.selectors
+    participant DB as PostgreSQL (activity)
 
     C->>V: POST /api/refuges/{rid}/visits/{date}/ {num_visitors}
-    V->>VC: create_visit(rid, date, uid, num_visitors)
-    VC->>RD: get_by_id(rid) (404 si no existeix)
-    VC->>VC: date >= get_madrid_today() (400 si passada)
-    VC->>VD: get_visit_by_refuge_and_date(rid, date)
-    VD->>F: where refuge_id== AND date== limit(1)
-    alt document existeix
-        alt uid ja hi és
-            V-->>C: 400 "Ja estàs registrat"
-        else
-            VC->>VD: add_visitor_to_visit (sobreescriu visitors i total_visitors)
-            VD->>K: delete refuge_visit_detail
-        end
-    else no existeix
-        VC->>VD: create_visit → set nou document
-        VD->>K: delete_pattern refuge_visits_list:...refuge_id:{rid}
+    V->>V: permisos (HasProfile, IsNotBlocked, IsAgeConfirmed) + serializer (1-100)
+    V->>S: create_visit(uid, rid, date, n)
+    S->>R: parse_refuge_id + refuge_exists (404 si no)
+    S->>S: data estricta YYYY-MM-DD (400) i >= avui Madrid (400)
+    S->>DB: INSERT refuge_visits ON CONFLICT (refuge_id, visit_date) DO NOTHING
+    S->>DB: SELECT id de la visita
+    S->>DB: INSERT participants ON CONFLICT (visit_id, user_uid) DO NOTHING
+    alt rowcount == 0
+        V-->>C: 400 «Ja estàs registrat a aquesta visita»
+    else
+        S->>DB: get_visit (total via refuge_visit_totals)
+        V-->>C: 201 {message, visit:{date, refuge_id, total_visitors, is_visitor, num_visitors}}
     end
-    V-->>C: 201 {message, visit:{date, refuge_id, total_visitors, is_visitor, num_visitors}}
 ```
 
 ## Diagrama — procés diari
@@ -62,51 +74,49 @@ sequenceDiagram
     autonumber
     participant GH as GitHub Actions (cron 0 3 * * *)
     participant CMD as manage.py process_yesterday_visits
-    participant VC as RefugeVisitController
-    participant VD as RefugeVisitDAO
-    participant RD as RefugiLliureDAO
-    participant AS as accounts.services (PostgreSQL)
-    participant F as Firestore
+    participant S as apps.visits.services
+    participant DB as PostgreSQL (system_context)
 
     GH->>CMD: python manage.py process_yesterday_visits (PRODUCTION=true)
-    CMD->>VC: process_yesterday_visits()
-    VC->>VD: get_visits_by_date(ahir, Madrid)
-    loop per cada visita
-        alt buida
-            VC->>VD: delete_visit
-        else
-            VC->>RD: get_by_id (cache) → unió de visitors (set)
-            VC->>RD: update_refugi_visitors (sobreescriu array; refugi legacy de Firestore)
-            loop per cada visitant
-                VC->>AS: add_visited(uid, rid) dins system_context() → INSERT user_visited_refuges ON CONFLICT DO NOTHING
-            end
-        end
-    end
+    CMD->>S: process_yesterday_visits()
+    S->>DB: INSERT users.user_visited_refuges SELECT ... ON CONFLICT DO NOTHING (visites d'ahir)
+    S->>DB: DELETE visites d'ahir sense participants
+    CMD->>S: purge_old_visits()
+    S->>DB: DELETE visites amb data < avui - 12 mesos (cascada als participants)
+    CMD-->>GH: estadístiques (o CommandError, codi != 0)
 ```
 
 ## Passos
-- Crear: `RefugeVisitController.create_visit` (`api/controllers/refuge_visit_controller.py:76-156`); DAO `get_visit_by_refuge_and_date` (`api/daos/refuge_visit_dao.py:96-136`), `create_visit` (L26-54), `add_visitor_to_visit` (L250-287).
-- Editar: `update_visit` (controller L158-208) — **sense** comprovació de data ni d'existència del refugi **[FET]**.
-- Sortir: `delete_visit` (controller L210-240) → `remove_visitor_from_visit` (DAO L328-385). Retorna 200, no 204.
-- Llistar per refugi: ID caching `refuge_visits_list:from_date:<avui>:refuge_id:X`, query `refuge_id==, date>=avui, order_by date`.
-- Llistar per usuari: `get_visits_by_user` (DAO L207-248) fa **stream de tota la col·lecció** i filtra en Python **[FET]**.
-- Procés diari: `api/management/commands/process_yesterday_visits.py` → `RefugeVisitController.process_yesterday_visits`. **Chunk 3**: la llista de visitats de cada usuari s'escriu a PostgreSQL (`add_visited` per visitant, dins `system_context()`: el job no té context d'usuari; idempotent). El job **encara** llegeix el refugi i n'actualitza `visitors` al document legacy de Firestore (`RefugiLliureDAO`, fins al chunk 6); aquest array ja no el llegeix cap endpoint: els `visitors` que veuen els admins surten de `user_visited_refuges`. Si el refugi legacy no existeix (`continue`), tampoc s'afegeix res a PostgreSQL per a aquella visita. Mentre les visites siguin a Firestore, el `refuge_id` d'una visita antiga pot no ser un UUID de PostgreSQL: es salta amb un warning (`RefugeNotFound`) i un error inesperat per visitant també es registra i continua.
+- **Crear** (`services.create_visit`): ordre de comprovacions: refugi (404) → format de data (400) → data passada (400; avui és vàlid) → ja registrat (400). Dins `transaction.atomic`: `INSERT ... ON CONFLICT (refuge_id, visit_date) DO NOTHING` + `SELECT` de la visita, i `INSERT` del participant `ON CONFLICT DO NOTHING`; `rowcount == 0` vol dir que ja hi era (M4 resolt: cap duplicat de visita ni `IntegrityError`) **[FET]**.
+- **Editar** (`update_visit`): només canvia `num_visitors` de la fila pròpia; **no** comprova la data (comportament de sempre) **[FET]**.
+- **Sortir** (`remove_visitor`): esborra la fila pròpia. La visita es conserva encara que quedi buida (l'`app` no pot esborrar `refuge_visits`): la neteja és del job diari **[FET]**.
+- **Data estricta**: la URL ha de ser exactament `YYYY-MM-DD` (regex + `date.fromisoformat`); altres formats que Python podria acceptar (`20261026`, amb hora...) es rebutgen **[FET]**.
+- **Procés diari** (`process_yesterday_visits`, `apps/visits/management/commands/`): «ahir» sempre amb `get_madrid_today()`, mai al SQL (GOTCHAS #60). Set-based i amb un nombre constant de consultes: una `INSERT ... SELECT ... ON CONFLICT (user_uid, refuge_id) DO NOTHING` a `users.user_visited_refuges` (idempotent, conserva el `created_at`) i un `DELETE` de les visites d'ahir sense participants. Les visites amb participants **no** s'esborren: les purga `purge_old_visits` quan tenen més de 12 mesos (§8.3, decisió 13; el dia es retalla a l'últim del mes, 29/02 → 28/02). Va tot dins `system_context()` **[FET]**.
+- **Estadístiques impreses**: `Visites processades` (visites d'ahir), `Visites buides eliminades`, `Refugis actualitzats` (visites d'ahir amb participants), `Total visitants afegits` (participants d'aquestes visites) i `Visites antigues purgades` **[FET]**.
+- **Errors del job (D28)**: si el procés o la purga fallen, la comanda fa `raise CommandError(...)` amb un missatge fix (la traça va al log) i surt amb **codi ≠ 0**; abans imprimia l'error i sortia amb 0, i el job de GitHub Actions quedava en verd **[FET]**.
 - Com executar-lo (Actions, manual, crontab): [guides/daily-visits-process.md](../guides/daily-visits-process.md).
-- Planificació real: `.github/workflows/process-visits.yml:1-37` (cron `0 3 * * *` UTC, `PRODUCTION='true'`). Alternatives no actives: `CRONJOBS` a `refugis_lliures/settings.py:275-278` (django-crontab, mai instal·lat) i `run_process_visits.sh` / `run_process_visits.bat` (manual) **[FET]**.
+- Planificació real: `.github/workflows/process-visits.yml` (cron `0 3 * * *` UTC, `PRODUCTION='true'`; crida la comanda igual que abans, sense canvis al workflow, D29). Alternatives no actives: `CRONJOBS` a `refugis_lliures/settings.py` (django-crontab, mai instal·lat) i `run_process_visits.sh` / `run_process_visits.bat` (manual) **[FET]**.
+- **Esborrat d'usuari**: el pas «visites» de Firestore ha desaparegut; `DELETE FROM users.users` cascadeja les files de `refuge_visit_participants` i el total (vista) es recalcula sol (M3 resolt) **[FET]**. Vegeu [user-deletion](../deep-dives/user-deletion.md).
 
 ## Errors
-| Cas | HTTP |
-|---|---|
-| Refugi no trobat | 404 |
-| Data passada / ja registrat / `num_visitors` invàlid | 400 |
-| `uid` URL ≠ token (llistat d'usuari) | 403 |
-| Altres | 500 |
+| Cas | HTTP | Missatge |
+|---|---|---|
+| Refugi no trobat o ID no UUID (GET llistat, POST) | 404 | `Refugi amb ID {id} no trobat` |
+| Visita o refugi no trobats (PATCH; data invàlida inclosa) | 404 | `Visita o refugi no trobat` |
+| Visita no trobada (DELETE; data invàlida inclosa) | 404 | `Visita no trobada` |
+| Data amb format invàlid (POST) | 400 | `Format de data invàlid. Utilitza YYYY-MM-DD` |
+| Data passada (POST) | 400 | `La data de la visita ha de ser igual o posterior a avui` |
+| Data a més de 12 mesos vista (POST, D36) | 400 | `La data de la visita no pot ser a més de 12 mesos vista` |
+| Ja registrat (POST) | 400 | `Ja estàs registrat a aquesta visita` |
+| No registrat (PATCH, DELETE) | 400 | `No estàs registrat a aquesta visita` |
+| `num_visitors` fora de 1–100 o absent | 400 | errors del serializer |
+| Sense autenticar | 401 | — |
+| Perfil inexistent, usuari bloquejat o edat no confirmada (POST/PATCH), `uid` URL ≠ token | 403 | — |
+| Altres | 500 | `{error, error_id}` amb missatge fix (`server_error`, mai `str(e)`) |
 
 ## Gotchas i bugs
-- Dues primeres inscripcions concurrents per al mateix (refugi, data) poden crear **dos documents**; `limit(1)` n'amaga un **[INFERÈNCIA]**.
-- `visitors` es reescriu sencer a partir d'una lectura prèvia → lost updates **[FET patró / INFERÈNCIA carrera]**.
-- Esborrar un usuari resta 1 a `total_visitors` en lloc de `num_visitors` (`api/daos/refuge_visit_dao.py:529`) **[FET]**.
-- El procés diari no esborra les visites processades (només les buides) → la col·lecció creix i el scan per usuari empitjora **[FET]**.
-- El workflow no defineix `REDIS_URL` → no invalida la cache de producció **[INFERÈNCIA]**.
-- (Chunk 3: l'escriptura de `visitors` al refugi legacy de Firestore continua però és morta per a l'API; la font de veritat és `user_visited_refuges`. S'elimina quan es migrin les visites.)
-- El job necessita accés a PostgreSQL (`DATABASE_URL_APP`); el workflow `process-visits.yml` no el declara encara ([TECH_DEBT U3](../TECH_DEBT.md)).
+- Els bugs antics del flux (duplicats per carrera, lost updates de `visitors`, `total_visitors` decrementat en 1 en esborrar usuari, scan de la col·lecció per usuari, visites processades que no s'esborraven) estan resolts amb el disseny relacional ([TECH_DEBT M3, M4, B5](../TECH_DEBT.md)).
+- El total només és correcte llegit de la vista; no el calculis mai amb un `Sum` sobre `VisitParticipant` des d'un usuari ([GOTCHAS #63](../GOTCHAS.md)).
+- La data de la URL és estricta; PATCH/DELETE amb data invàlida donen 404 i POST 400 ([GOTCHAS #64](../GOTCHAS.md)).
+- El workflow `process-visits.yml` declara `DATABASE_URL_APP`, però el secret de GitHub no es crea de moment (ajornat pel PO, D29): mentre no hi sigui, el job no pot escriure a Neon ([TECH_DEBT U3](../TECH_DEBT.md)) **[FET sobre el workflow; NO VERIFICAT l'estat del secret]**.
+- El workflow no defineix `REDIS_URL`, però ja no importa: les visites no usen cache.

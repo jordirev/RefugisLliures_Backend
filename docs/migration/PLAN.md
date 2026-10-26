@@ -94,3 +94,6 @@ Paral·lel: 4, 5 i 6 (dominis i apps independents); la resta seqüencial. Si alg
 ## Què necessito de tu
 - Ja tinc `DATABASE_URL_APP`, `DATABASE_URL_MIGRATOR` i `R2_*` a l'entorn. Com que les de Neon també s'han enviat pel xat, recomano rotar-les en acabar la migració.
 - Mai s'escriuen credencials a cap fitxer del repo, a `PROGRESS.md` ni als prompts dels agents; només es llegeixen de l'entorn.
+
+## Decisions del 26/10 (2)
+- **Bloqueig i edat a l'escriptura de contingut (PO, 26/10)**: POST/PATCH de visites, reformes, dubtes i respostes exigeixen `IsNotBlocked` + `IsAgeConfirmed`; GET i DELETE propi no. El frontend ha de tractar els 403 `user_blocked`/`age_not_confirmed` en aquests fluxos.

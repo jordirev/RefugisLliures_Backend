@@ -84,7 +84,7 @@ api/tests/
   test_auth_middleware_permissions.py, test_cache_views.py
   management_commands/
 ```
-Dominis: `experiences`, `refuge_proposal`, `refuge_visit`, `refugi_lliure` (només el codi legacy que queda a `api/`), `renovation` (`api/tests/user/` només té `test_age_and_moderation.py`; la resta de tests d'usuari són a `apps/accounts/tests/`). Les comandes antigues de refugis (`assign_conditions`, `upload_refugis_to_firestore`, `extract_coords_to_firestore`, `verify_conditions`) i els seus tests s'han eliminat; `load_refuges` es prova a `apps/refuges/tests/test_load_refuges.py`.
+Dominis: `experiences`, `refuge_proposal`, `refugi_lliure` (només el codi legacy que queda a `api/`), `renovation` (`api/tests/user/` només té `test_age_and_moderation.py`; la resta de tests d'usuari són a `apps/accounts/tests/`). Les comandes antigues de refugis (`assign_conditions`, `upload_refugis_to_firestore`, `extract_coords_to_firestore`, `verify_conditions`) i els seus tests s'han eliminat; `load_refuges` es prova a `apps/refuges/tests/test_load_refuges.py`.
 
 ## Aïllament automàtic (feature images) [FET]
 El `conftest.py` de l'arrel (compartit per `api/tests` i `apps/*/tests`) té quatre fixtures `autouse`:

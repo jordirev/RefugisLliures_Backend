@@ -25,11 +25,6 @@ from .views.refuge_proposal_views import (
     RefugeProposalRejectAPIView,
     MyRefugeProposalCollectionAPIView
 )
-from .views.refuge_visit_views import (
-    RefugeVisitsAPIView,
-    UserVisitsAPIView,
-    RefugeVisitDetailAPIView
-)
 from .views.cache_views import cache_stats, cache_clear, cache_invalidate
 
 urlpatterns = [
@@ -41,9 +36,8 @@ urlpatterns = [
     path('refuges/', include('apps.refuges.urls')),
     path('refuges/<str:id>/renovations/', RefugeRenovationsAPIView.as_view(), name='refuge_renovations'),  # GET /refuges/{id}/renovations/
     
-    # Refuge visits endpoints
-    path('refuges/<str:refuge_id>/visits/', RefugeVisitsAPIView.as_view(), name='refuge_visits'),  # GET /refuges/{id}/visits/
-    path('refuges/<str:refuge_id>/visits/<str:visit_date>/', RefugeVisitDetailAPIView.as_view(), name='refuge_visit_detail'),  # POST + PATCH + DELETE /refuges/{id}/visits/{date}/
+    # /refuges/{id}/visits/, /refuges/{id}/visits/{date}/, /users/{uid}/visits/ → app `visits` (PostgreSQL)
+    path('', include('apps.visits.urls')),
     
     # Pujada directa de mitjans (presigned PUT + confirm) i moderació
     path('media/upload-intents/', UploadIntentsAPIView.as_view(), name='media_upload_intents'),  # POST
@@ -64,7 +58,6 @@ urlpatterns = [
     # /users/, /users/{uid}/, avatar, age-confirmation i les llistes de preferits/visitats → app `accounts` (PostgreSQL)
     path('users/', include('apps.accounts.urls')),
     path('users/<str:uid>/moderation-notices/', UserModerationNoticesAPIView.as_view(), name='user_moderation_notices'),  # GET
-    path('users/<str:uid>/visits/', UserVisitsAPIView.as_view(), name='user_visits'),  # GET /users/{uid}/visits/
     
     # Renovations endpoints
     path('renovations/', RenovationListAPIView.as_view(), name='renovation_list'),  # GET + POST /renovations/

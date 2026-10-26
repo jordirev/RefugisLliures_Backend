@@ -339,7 +339,6 @@ LEGACY_STEPS = [
     ('api.controllers.renovation_controller.RenovationController.anonymize_renovations_by_creator'),
     ('api.controllers.renovation_controller.RenovationController.remove_user_from_participations'),
     ('api.controllers.renovation_controller.RenovationController.remove_user_from_expelled'),
-    ('api.controllers.refuge_visit_controller.RefugeVisitController.remove_user_from_all_visits'),
 ]
 
 
