@@ -8,6 +8,8 @@ dubte: ho comprova el service (404) i ho garanteix la FK composta `answers_paren
 """
 from typing import Optional
 
+from django.db import IntegrityError, connection, transaction
+
 from apps.refuges import selectors as refuge_selectors
 
 from . import selectors
@@ -30,12 +32,43 @@ class NotOwner(Exception):
     """Qui ho demana no és el creador ni admin."""
 
 
+# Restriccions (FK diferides) l'incompliment de les quals vol dir «el pare ha desaparegut» (404).
+_FK_NOT_FOUND = {
+    'doubts_refuge_id_fk': RefugeNotFound('Refuge not found'),
+    'answers_doubt_id_fk': DoubtNotFound('Doubt not found'),
+    'answers_parent_same_doubt_fk': AnswerNotFound('Parent answer not found'),
+}
+
+
+def _insert_checked(model, **fields):
+    """
+    `INSERT` amb les FK comprovades **ara** i no al `COMMIT`. Les FK són `DEFERRABLE INITIALLY DEFERRED` (§6.3): si el
+    refugi, el dubte o la resposta pare s'esborren entre la lectura i l'`INSERT` (o el `COMMIT` d'`ATOMIC_REQUESTS`),
+    l'error sortiria en tancar la transacció, fora de la vista, i seria un 500. Amb `SET CONSTRAINTS ALL IMMEDIATE`
+    dins d'un *savepoint* l'`IntegrityError` surt aquí i es converteix en 404; a més l'`INSERT` agafa un `FOR KEY
+    SHARE` sobre el pare, que bloqueja l'esborrat concurrent fins al `COMMIT` (i la cascada veurà la fila nova).
+    Qualsevol altra violació (p. ex. l'usuari esborrat alhora) es propaga.
+    """
+    try:
+        with transaction.atomic():
+            obj = model.objects.create(**fields)
+            with connection.cursor() as cursor:
+                cursor.execute('SET CONSTRAINTS ALL IMMEDIATE')
+    except IntegrityError as exc:
+        diag = getattr(exc.__cause__, 'diag', None)
+        missing = _FK_NOT_FOUND.get(getattr(diag, 'constraint_name', None))
+        if missing is None:
+            raise
+        raise type(missing)(*missing.args) from exc
+    return obj
+
+
 def create_doubt(*, refuge_id, creator_uid: str, message: str) -> Doubt:
     """Crea un dubte (2 consultes: existència del refugi + `INSERT … RETURNING`); `created_at` el posa la BD."""
     pk = selectors.parse_id(refuge_id)
     if pk is None or not refuge_selectors.refuge_exists(pk):
         raise RefugeNotFound('Refuge not found')
-    doubt = Doubt.objects.create(refuge_id=pk, creator_id=creator_uid, message=message)
+    doubt = _insert_checked(Doubt, refuge_id=pk, creator_id=creator_uid, message=message)
     doubt.answers_count = 0                                   # acabat de crear: encara sense respostes
     return doubt
 
@@ -50,8 +83,8 @@ def create_answer(*, doubt_id, creator_uid: str, message: str, parent_answer_id=
         parent = selectors.get_answer(doubt.pk, parent_answer_id)
         if parent is None:
             raise AnswerNotFound('Parent answer not found')
-    return Answer.objects.create(doubt_id=doubt.pk, creator_id=creator_uid, message=message,
-                                 parent_answer_id=parent.pk if parent else None)
+    return _insert_checked(Answer, doubt_id=doubt.pk, creator_id=creator_uid, message=message,
+                           parent_answer_id=parent.pk if parent else None)
 
 
 def _check_owner(creator_uid: str, actor_uid: Optional[str], is_admin: bool) -> None:
