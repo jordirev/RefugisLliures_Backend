@@ -335,10 +335,6 @@ def test_patch_anonim_401(client):
 LEGACY_STEPS = [
     ('api.controllers.experience_controller.ExperienceController.delete_experiences_by_creator'),
     ('api.controllers.refuge_proposal_controller.RefugeProposalController.anonymize_proposals_by_creator'),
-    ('api.controllers.renovation_controller.RenovationController.delete_current_renovations_by_creator'),
-    ('api.controllers.renovation_controller.RenovationController.anonymize_renovations_by_creator'),
-    ('api.controllers.renovation_controller.RenovationController.remove_user_from_participations'),
-    ('api.controllers.renovation_controller.RenovationController.remove_user_from_expelled'),
 ]
 
 
@@ -381,7 +377,7 @@ def test_delete_executa_els_passos_de_firestore_encara_no_migrats(client, legacy
 def test_delete_si_falla_un_pas_de_firestore_500_amb_error_id_i_es_conserva_l_usuari(client, legacy_delete_steps):
     """M10: tota fallada es retornava com a 404. Ara 500 `{error, error_id}` (politica de les features migrades)."""
     make_user('u1')
-    legacy_delete_steps[LEGACY_STEPS[3]].return_value = (False, 'boom intern amb detalls')
+    legacy_delete_steps[LEGACY_STEPS[-1]].return_value = (False, 'boom intern amb detalls')
     r = api_delete(client, url('u1'), user_claims('u1'))
     assert r.status_code == 500
     assert set(r.json()) == {'error', 'error_id'} and 'boom' not in r.content.decode()

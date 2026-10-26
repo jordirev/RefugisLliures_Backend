@@ -12,13 +12,7 @@ from .views.media_views import (
     AdminMediaReportsAPIView,
     AdminMediaReportDetailAPIView,
 )
-from .views.renovation_views import (
-    RefugeRenovationsAPIView,
-    RenovationListAPIView,
-    RenovationAPIView,
-    RenovationParticipantsAPIView,
-    RenovationParticipantDetailAPIView
-)
+from apps.renovations.views import RefugeRenovationsAPIView
 from .views.refuge_proposal_views import (
     RefugeProposalCollectionAPIView,
     RefugeProposalApproveAPIView,
@@ -60,10 +54,8 @@ urlpatterns = [
     path('users/<str:uid>/moderation-notices/', UserModerationNoticesAPIView.as_view(), name='user_moderation_notices'),  # GET
     
     # Renovations endpoints
-    path('renovations/', RenovationListAPIView.as_view(), name='renovation_list'),  # GET + POST /renovations/
-    path('renovations/<str:id>/', RenovationAPIView.as_view(), name='renovation_detail'),  # GET + PATCH + DELETE /renovations/{id}/
-    path('renovations/<str:id>/participants/', RenovationParticipantsAPIView.as_view(), name='renovation_participants'),  # POST /renovations/{id}/participants/
-    path('renovations/<str:id>/participants/<str:uid>/', RenovationParticipantDetailAPIView.as_view(), name='renovation_participant_detail'),  # DELETE /renovations/{id}/participants/{uid}/
+    # /renovations/, /renovations/{id}/, /renovations/{id}/participants/[{uid}/] → app `renovations` (PostgreSQL)
+    path('renovations/', include('apps.renovations.urls')),
     
     # Refuge proposal endpoints
     path('refuges-proposals/', RefugeProposalCollectionAPIView.as_view(), name='refuge_proposal_collection'),  # POST /refuges-proposals/ (crear) + GET /refuges-proposals/ (llistar - només admins)

@@ -83,6 +83,7 @@ INSTALLED_APPS = [
     'apps.refuges',
     'apps.visits',
     'apps.doubts',
+    'apps.renovations',
     'api',
 ]
 

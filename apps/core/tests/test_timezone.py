@@ -88,6 +88,12 @@ def _sources():
             yield path
 
 
+def test_la_guarda_cobreix_el_codi_de_reformes():
+    """`apps/renovations` (chunk 5) entra a l'escaneig com la resta d'apps."""
+    scanned = {p.relative_to(ROOT).as_posix() for p in _sources()}
+    assert {'apps/renovations/services.py', 'apps/renovations/selectors.py'} <= scanned
+
+
 def test_cap_sql_calcula_la_data_d_avui():
     hits = []
     for path in _sources():

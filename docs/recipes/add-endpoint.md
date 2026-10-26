@@ -10,7 +10,9 @@
 > 6. **Tests** — `apps/<feature>/tests/`: contracte HTTP contra Postgres real (rol `app`), anònim/propi/aliè/admin, errors 400/401/403/404, `QueryCounter`. `pytest.ini` ja inclou `apps` a `testpaths`.
 > 7. **Docs** — `docs/ARCHITECTURE.md §4`, el flux a `docs/flows/` i `docs/recipes/`.
 
-> Segueix el patró **real** del domini renovations. Exemple fil conductor: `GET /api/renovations/{id}/summary/` (fictici, només per il·lustrar; **no existeix**).
+> **Patró legacy (Firestore).** Per a una feature nova a PostgreSQL segueix la secció d'`apps/<feature>/` d'aquest document i `apps/renovations/` (views fines, `selectors`, `services` amb excepcions de domini, `constraint_name`, `get_permissions()` per mètode) o `apps/refuges/`. El que segueix descriu el patró dels dominis que encara són a Firestore, exemplificat amb els fitxers legacy de reformes (fins al chunk 8).
+>
+> Segueix el patró **real** del domini renovations (legacy). Exemple fil conductor: `GET /api/renovations/{id}/summary/` (fictici, només per il·lustrar; **no existeix**).
 
 ## 0. Abans de començar
 - Decideix el domini (fitxers `api/*/<domini>_*.py`). Si el domini és nou, primer [add-model.md](add-model.md).

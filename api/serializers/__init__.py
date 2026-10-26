@@ -5,18 +5,10 @@ from .refugi_lliure_serializer import (
     InfoComplementariaSerializer,
     RefugeMediaMetadataSerializer,
 )
-from .renovation_serializer import (
-    RenovationSerializer,
-    RenovationCreateSerializer,
-    RenovationUpdateSerializer,
-)
 
 __all__ = [
     'HealthCheckResponseSerializer',
     'CoordinatesSerializer',
     'InfoComplementariaSerializer',
     'RefugeMediaMetadataSerializer',
-    'RenovationSerializer',
-    'RenovationCreateSerializer',
-    'RenovationUpdateSerializer',
 ]

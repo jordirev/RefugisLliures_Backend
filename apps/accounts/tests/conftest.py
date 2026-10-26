@@ -27,11 +27,21 @@ def r2():
 
 
 @pytest.fixture(autouse=True)
-def legacy_counts():
+def legacy_counts(request):
     """D19: `num_shared_experiences` i `num_renovated_refuges` surten de Firestore (agregació `count()`) fins als
     chunks 5 i 7. Els tests no toquen Firestore: el selector que els calcula es mocka (contracte:
     `apps.accounts.selectors.get_legacy_counts(uid) -> {'num_shared_experiences': int, 'num_renovated_refuges': int}`).
     """
+    if request.node.get_closest_marker('real_legacy_counts'):
+        # Chunk 5: `num_renovated_refuges` ja es calcula a SQL; nomes les experiencies (chunk 7) segueixen a Firestore.
+        # Es mocka el `count()` de Firestore: `legacy_counts(collection, field, op, value)` retorna 0 (o el que es vulgui);
+        # cap crida pot demanar la col·leccio `renovations`.
+        def fake_count(collection, field, op, value):
+            assert collection != 'renovations', 'les reformes ja no es compten a Firestore'
+            return 0
+        with patch('apps.accounts.selectors._firestore_count', create=True, side_effect=fake_count) as mock:
+            yield mock
+        return
     try:
         import apps.accounts.selectors  # noqa: F401
     except ModuleNotFoundError:           # abans que l'implementador el creï: cada test falla pel seu propi motiu

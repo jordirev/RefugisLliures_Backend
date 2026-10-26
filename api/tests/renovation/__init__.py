@@ -1,1 +1,0 @@
-"""Tests per a renovation"""

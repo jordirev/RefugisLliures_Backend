@@ -73,7 +73,7 @@ sequenceDiagram
 4. **Aprovar** — `RefugeProposalDAO.approve` (L736-776) → `ProposalStrategySelector.get_strategy` (L559-570):
    - `CreateRefugeStrategy` (L231-305): construeix `Refugi` + `RefugiLliureMapper.model_to_firestore`; `ConditionService.initialize_condition` si hi ha `condition`; `add_refuge_to_coords_refugis` (L62-110).
    - `UpdateRefugeStrategy` (L308-385): `ConditionService.calculate_condition_average` (`api/services/condition_service.py:13-51`, `new=(cur*n+v)/(n+1)`); `update_refuge_from_coords_refugis` si canvia nom/coord.
-   - `DeleteRefugeStrategy` (L388-556): rebutja altres pending → `DoubtController.delete_doubt` × N → `ExperienceController.delete_experience` × N → fotos restants → `RenovationController.delete_renovation` × N → esborra refugi → `delete_refuge_from_coords_refugis` (L178-209).
+   - `DeleteRefugeStrategy` (L388-556): rebutja altres pending → `DoubtController.delete_doubt` × N → `ExperienceController.delete_experience` × N → fotos restants → `RenovationController.delete_renovation` × N (**legacy: llegeix i esborra reformes de Firestore, que ja no existeixen; les de PostgreSQL cauen per la FK `ON DELETE CASCADE` del refugi**, [TECH_DEBT R15](../TECH_DEBT.md)) → esborra refugi → `delete_refuge_from_coords_refugis` (L178-209).
 5. **Rebutjar** — `RefugeProposalDAO.reject` (L778-812).
 
 ## Errors
