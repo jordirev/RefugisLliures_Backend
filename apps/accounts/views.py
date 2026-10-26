@@ -55,6 +55,7 @@ from .serializers import (
 logger = logging.getLogger(__name__)
 
 UNDERAGE_MESSAGE = "Cal tenir 16 anys o més per utilitzar l'aplicació"
+ACCOUNT_NOT_FOUND_MESSAGE = "El compte de Firebase d'aquest token ja no existeix"
 NOT_AUTHENTICATED = {'error': 'No autenticat', 'message': "UID no trobat al token d'autenticació"}
 
 ERR_PROFILE_DB = "Error de base de dades en obtenir l'usuari"
@@ -152,6 +153,9 @@ class UsersCollectionAPIView(APIView):
             return Response(coded_error('underage', UNDERAGE_MESSAGE), status=status.HTTP_403_FORBIDDEN)
         except services.UserAlreadyExists as exc:
             return Response({'error': str(exc)}, status=status.HTTP_409_CONFLICT)
+        except services.FirebaseAccountNotFound:
+            return Response(coded_error('account_not_found', ACCOUNT_NOT_FOUND_MESSAGE),
+                            status=status.HTTP_401_UNAUTHORIZED)
         except Exception as exc:
             return server_error(ERR_CREATE, exc, logger=logger)
         # Usuari nou: sense llistes, fotos ni activitat a Firestore (no cal consultar-lo).
@@ -231,8 +235,9 @@ class UserDetailAPIView(APIView):
         tags=['Users'],
         operation_description=(
             "Elimina l'usuari: passos de Firestore (dominis encara no migrats), fitxers d'R2 (avatar i fotos) i, al "
-            "final, la fila de PostgreSQL (cascada: perfil, avatar, preferits, visitats). Si un pas falla, 500 i "
-            "l'usuari es conserva (reintentable). \nRequereix autenticació i ser el mateix usuari."),
+            "final, la fila de PostgreSQL (cascada: perfil, avatar, preferits, visitats) i el compte de Firebase Auth. "
+            "Si un pas falla, 500 i l'usuari es conserva (reintentable). El client no ha d'esborrar el compte de "
+            "Firebase: només tanca la sessió local. \nRequereix autenticació i ser el mateix usuari."),
         responses={204: SUCCESS_204_NO_CONTENT, 401: ERROR_401_UNAUTHORIZED, 403: ERROR_403_FORBIDDEN,
                    404: ERROR_404_USER_NOT_FOUND, 500: ERROR_500_INTERNAL_ERROR})
     def delete(self, request, uid):

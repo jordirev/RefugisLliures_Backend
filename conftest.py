@@ -74,6 +74,15 @@ def _restore_view_policies():
 
 
 @pytest.fixture(autouse=True)
+def firebase_accounts():
+    """Firebase Auth de l'Admin SDK (U7) mockat per a tots els tests: `get_user` troba el compte i `delete_user`
+    l'esborra. Es fa fallar amb `firebase_accounts.get_user.side_effect = ...` o `firebase_accounts.delete_user...`."""
+    with patch('apps.accounts.services.firebase_auth.get_user') as get_user, \
+            patch('apps.accounts.services.firebase_auth.delete_user') as delete_user:
+        yield type('FirebaseAccounts', (), {'get_user': get_user, 'delete_user': delete_user})
+
+
+@pytest.fixture(autouse=True)
 def _mock_audit_log(request):
     if request.node.get_closest_marker('real_audit_log'):
         yield None

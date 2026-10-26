@@ -157,5 +157,15 @@ check "DELETE propi -> 204" 204 "${U[@]}" -X DELETE "$API/users/$USER_UID/"
 check "després d'esborrar: GET propi -> 403 profile_required" 403 "${U[@]}" "$API/users/$USER_UID/"
 check "després d'esborrar: GET com a altre -> 404" 404 "${O[@]}" "$API/users/$USER_UID/"
 
+# --- U7: el backend esborra el compte de Firebase Auth; el mateix token no pot recrear l'UID
+check "després d'esborrar: POST /users/ amb el token -> 401" 401 "${U[@]}" -X POST "$API/users/" \
+  -H 'Content-Type: application/json' -d '{"username":"Torno"}'
+code=$(curl -s -X POST "${U[@]}" "$API/users/" -H 'Content-Type: application/json' -d '{}' | json_field code)
+if [ "$code" = "account_not_found" ]; then ok "POST /users/ -> code account_not_found"
+else fail "POST /users/ -> code '$code' (esperat account_not_found)"; fi
+relogin=$(auth_call accounts:signInWithPassword "$USER_EMAIL" | json_field localId)
+if [ -z "$relogin" ]; then ok "compte de Firebase Auth esborrat (login impossible)"
+else fail "el compte de Firebase Auth encara existeix"; fi
+
 echo
 if [ "$fails" -eq 0 ]; then echo "Tot correcte"; else echo "$fails cas(os) fallats"; exit 1; fi

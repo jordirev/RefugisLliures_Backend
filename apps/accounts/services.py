@@ -14,6 +14,7 @@ from typing import Any, Dict, Optional
 from django.db import IntegrityError, transaction
 from django.db.models import F
 from django.db.models.functions import Now
+from firebase_admin import auth as firebase_auth
 
 from api.services import audit_log_service as audit
 from api.services import r2_media_service
@@ -57,7 +58,30 @@ class AvatarStorageError(Exception):
 
 
 class UserDeletionError(Exception):
-    """Un pas de l'esborrat (Firestore o R2) ha fallat: l'usuari es conserva i l'operació és reintentable."""
+    """Un pas de l'esborrat (Firestore, R2 o Firebase Auth) ha fallat: l'usuari es conserva i és reintentable."""
+
+
+class FirebaseAccountNotFound(Exception):
+    """L'UID del token ja no té compte a Firebase Auth (esborrat amb el token encara vigent, U7)."""
+
+
+def _firebase_account_exists(uid: str) -> bool:
+    """`True` si l'UID té compte a Firebase Auth; qualsevol error que no sigui «no existeix» es propaga (500)."""
+    try:
+        firebase_auth.get_user(uid)
+    except firebase_auth.UserNotFoundError:
+        return False
+    return True
+
+
+def _delete_firebase_account(uid: str) -> None:
+    """Esborra el compte de Firebase Auth (U7). Si ja no hi és, l'esborrat ja està fet (idempotent)."""
+    try:
+        firebase_auth.delete_user(uid)
+    except firebase_auth.UserNotFoundError:
+        logger.warning("Esborrat d'usuari: el compte de Firebase Auth ja no existia")
+    except Exception as exc:
+        raise UserDeletionError("Firebase Auth no ha esborrat el compte") from exc
 
 
 # ---------- Alta, edició i edat ----------
@@ -68,13 +92,17 @@ def create_user(*, uid: str, username: str = '', language: Optional[str] = None,
     Crea `users` + `user_public_profiles` en una sola transacció (`savepoint`): o es creen tots dos o cap.
 
     La data de naixement **només** serveix per comprovar l'edat; mai es desa (només `age_confirmed_at` i
-    `age_threshold`). `UserUnderage` si és menor; `UserAlreadyExists` si l'UID ja té fila.
+    `age_threshold`). `UserUnderage` si és menor; `UserAlreadyExists` si l'UID ja té fila; `FirebaseAccountNotFound`
+    si el compte de Firebase Auth ja s'ha esborrat però el token encara és vigent (fins a 1 h): sense aquesta
+    comprovació, un usuari bloquejat podria esborrar-se i tornar a crear-se amb el mateix UID sense el bloqueig (U7).
     """
     fields: Dict[str, Any] = {}
     if birth_date is not None:
         if not is_old_enough(birth_date, AGE_THRESHOLD):
             raise UserUnderage()
         fields.update(age_confirmed_at=Now(), age_threshold=AGE_THRESHOLD)    # rellotge de la BD (decisió 26/10)
+    if not _firebase_account_exists(uid):
+        raise FirebaseAccountNotFound()
     if language:
         fields['language_id'] = language
     try:
@@ -265,9 +293,15 @@ def _delete_r2_media(uid: str, media_service=None) -> None:
 
 def delete_user(uid: str, media_service=None) -> None:
     """
-    Esborra l'usuari: primer els passos de Firestore (D21), després R2 (D22) i al final el `DELETE` de
-    `users.users` (la BD cascadeja perfil, avatar, preferits, visitats i fotos). Si un pas falla, `UserDeletionError`
-    i l'usuari es conserva (reintentable). Els passos d'abans no es desfan (Firestore/R2 no són transaccionals).
+    Esborra l'usuari: primer els passos de Firestore (D21), després R2 (D22), el `DELETE` de `users.users` (la BD
+    cascadeja perfil, avatar, preferits, visitats i fotos) i al final el compte de Firebase Auth (U7, D24): primer
+    les dades i després el compte, perquè l'usuari pugui reintentar mentre el compte existeixi.
+
+    El `DELETE` i Firebase Auth van dins un *savepoint*: si Firebase falla, `UserDeletionError` desfà el `DELETE`
+    (la vista retorna 500 sense excepció, així que `ATOMIC_REQUESTS` no el desfaria) i l'usuari es conserva.
+    Els passos d'abans no es desfan (Firestore/R2 no són transaccionals; són idempotents).
+    Finestra residual: si el `COMMIT` falla després d'esborrar el compte, queden les dades sense compte (rar;
+    ho tanca el procediment únic del chunk 10).
     """
     for name, step in _firestore_steps(uid):
         success, error = step()
@@ -275,5 +309,7 @@ def delete_user(uid: str, media_service=None) -> None:
             logger.error("Esborrat d'usuari: ha fallat el pas «%s»: %s", name, error)
             raise UserDeletionError(f'Ha fallat el pas «{name}» a Firestore')
     _delete_r2_media(uid, media_service)
-    if not UserAccount.objects.filter(pk=uid).delete()[0]:
-        raise UserNotFound()
+    with transaction.atomic():
+        if not UserAccount.objects.filter(pk=uid).delete()[0]:
+            raise UserNotFound()
+        _delete_firebase_account(uid)

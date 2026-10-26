@@ -406,6 +406,80 @@ def test_delete_anonim_401(client):
     assert api_delete(client, url('u1')).status_code == 401
 
 
+def test_delete_esborra_el_compte_de_firebase_despres_de_les_dades(client, legacy_delete_steps, firebase_accounts):
+    """U7 (D24): el backend esborra el compte de Firebase Auth, i ho fa després del `DELETE` de `users.users`."""
+    make_user('u1')
+    seen = {}
+    firebase_accounts.delete_user.side_effect = lambda uid: seen.setdefault('row', user_row(uid))
+    assert api_delete(client, url('u1'), user_claims('u1')).status_code == 204
+    firebase_accounts.delete_user.assert_called_once_with('u1')
+    assert seen['row'] is None                                        # la fila ja no hi era en esborrar el compte
+    assert user_row('u1') is None
+
+
+def test_delete_si_falla_firebase_500_i_es_conserven_l_usuari_i_les_llistes(client, legacy_delete_steps,
+                                                                           firebase_accounts):
+    """El *savepoint* desfà el `DELETE`: la vista retorna 500 sense excepció i `ATOMIC_REQUESTS` no ho faria."""
+    make_user('u1', username='Anna')
+    r = make_refuge()
+    add_list_row(FAV, 'u1', r)
+    firebase_accounts.delete_user.side_effect = RuntimeError('firebase caigut amb detalls')
+    resp = api_delete(client, url('u1'), user_claims('u1'))
+    assert resp.status_code == 500
+    assert set(resp.json()) == {'error', 'error_id'} and 'firebase caigut' not in resp.content.decode()
+    assert user_row('u1') is not None and profile_row('u1')['username'] == 'Anna'
+    assert len(list_rows(FAV, 'u1')) == 1
+
+
+def test_delete_compte_de_firebase_ja_inexistent_es_idempotent_204(client, legacy_delete_steps, firebase_accounts):
+    from firebase_admin import auth
+    make_user('u1')
+    firebase_accounts.delete_user.side_effect = auth.UserNotFoundError('no hi és')
+    assert api_delete(client, url('u1'), user_claims('u1')).status_code == 204
+    assert user_row('u1') is None
+
+
+def test_delete_si_falla_un_pas_previ_no_es_toca_firebase(client, legacy_delete_steps, firebase_accounts):
+    make_user('u1')
+    legacy_delete_steps[LEGACY_STEPS[0]].return_value = (False, 'x')
+    assert api_delete(client, url('u1'), user_claims('u1')).status_code == 500
+    firebase_accounts.delete_user.assert_not_called()
+
+
+def test_post_amb_token_d_un_compte_de_firebase_esborrat_401_i_no_crea_res(client, firebase_accounts):
+    """U7: amb el token encara vigent (fins a 1 h) no es pot recrear el mateix UID sense el bloqueig."""
+    from firebase_admin import auth
+    firebase_accounts.get_user.side_effect = auth.UserNotFoundError('esborrat')
+    resp = api_post(client, USERS, user_claims('n1'), {'username': 'Anna'})
+    assert resp.status_code == 401
+    assert resp.json()['code'] == 'account_not_found'
+    assert count_all('users.users') == 0 and count_all('users.user_public_profiles') == 0
+
+
+def test_post_si_firebase_falla_en_comprovar_el_compte_500_sense_detalls(client, firebase_accounts):
+    firebase_accounts.get_user.side_effect = RuntimeError('timeout amb host intern')
+    resp = api_post(client, USERS, user_claims('n1'), {})
+    assert resp.status_code == 500 and 'timeout' not in resp.content.decode()
+    assert count_all('users.users') == 0
+
+
+def test_bloquejat_que_s_esborra_no_pot_tornar_amb_el_mateix_uid(client, legacy_delete_steps, firebase_accounts):
+    """Camí 1 d'U7: DELETE i POST amb el mateix token. Després del DELETE el compte de Firebase ja no existeix."""
+    from firebase_admin import auth
+    make_user('u1')
+    sql("UPDATE users.users SET is_blocked = true, blocked_reason = 'strikes', blocked_at = now() WHERE uid = 'u1'")
+    deleted = set()
+    firebase_accounts.delete_user.side_effect = deleted.add
+
+    def get_user(uid):
+        if uid in deleted:
+            raise auth.UserNotFoundError('esborrat')
+    firebase_accounts.get_user.side_effect = get_user
+    assert api_delete(client, url('u1'), user_claims('u1')).status_code == 204
+    assert api_post(client, USERS, user_claims('u1'), {}).status_code == 401
+    assert user_row('u1') is None
+
+
 def test_delete_dues_vegades_la_segona_es_profile_required(client, legacy_delete_steps):
     make_user('u1')
     assert api_delete(client, url('u1'), user_claims('u1')).status_code == 204
