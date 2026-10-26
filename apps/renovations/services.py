@@ -6,6 +6,7 @@ Excepcions de domini en lloc de tuples: la vista les tradueix a HTTP. Els errors
 (`EXCLUDE` de solapaments, *trigger* de guarda de participants) es tradueixen per `constraint_name`, mai pel text.
 """
 import logging
+from contextlib import contextmanager
 from typing import Optional
 
 from django.db import IntegrityError, connection, transaction
@@ -21,6 +22,10 @@ logger = logging.getLogger(__name__)
 OVERLAP_CONSTRAINT = 'renovations_no_overlap'
 EXPELLED_CONSTRAINT = 'renovation_participants_not_expelled_ck'
 CREATOR_CONSTRAINT = 'renovation_participants_not_creator_ck'
+
+# FK diferides (§6.3) que s'han de comprovar a l'acte: `(nom qualificat, excepció de «el pare ha desaparegut»)`.
+FK_REFUGE = 'activity.renovations_refuge_id_fk'
+FK_PARTICIPANT_RENOVATION = 'activity.renovation_participants_renovation_id_fk'
 
 
 class RefugeNotFound(Exception):
@@ -71,6 +76,39 @@ def _constraint_name(exc: IntegrityError) -> Optional[str]:
     return getattr(getattr(exc.__cause__, 'diag', None), 'constraint_name', None)
 
 
+@contextmanager
+def _fk_checked_now(constraint: str):
+    """
+    Dins d'un *savepoint*, comprova **ara** la FK diferida `constraint` (`SET CONSTRAINTS ... IMMEDIATE`) en lloc de
+    deixar-la per al `COMMIT` d'`ATOMIC_REQUESTS`, on un `IntegrityError` seria un 500 fora de la vista. Si el pare
+    (refugi o reforma) s'ha esborrat entre la lectura i l'escriptura, surt aquí com a `RefugeNotFound` /
+    `RenovationNotFound` (404); a més, la comprovació agafa un `FOR KEY SHARE` sobre el pare, que bloqueja
+    l'esborrat concurrent fins al `COMMIT` (i la cascada veurà la fila nova). Només es fa immediata `constraint`:
+    el *constraint trigger* `renovations_requires_link` continua diferit. Qualsevol altra violació es propaga.
+    """
+    try:
+        with transaction.atomic():
+            yield
+            with connection.cursor() as cur:
+                cur.execute(f'SET CONSTRAINTS {constraint} IMMEDIATE')       # nom fix del codi, mai de l'usuari
+    except IntegrityError as exc:
+        if _constraint_name(exc) == constraint.split('.')[1]:
+            raise (RefugeNotFound() if constraint == FK_REFUGE else RenovationNotFound()) from exc
+        raise
+
+
+def _lock_member(renovation_pk, member_uid: str) -> None:
+    """
+    Bloqueig assessor (de transacció) per `(reforma, usuari)`: serialitza «unir-se» i «expulsar» el mateix usuari.
+    Sense ell, un `INSERT ... ON CONFLICT DO NOTHING` que espera l'`DELETE` de l'expulsió es reprèn en acabar-la i
+    deixa l'usuari alhora a participants i a expulsats (el *trigger* de guarda ja s'havia avaluat). Compatible amb
+    PgBouncer en mode transacció (s'allibera al `COMMIT`/`ROLLBACK`).
+    """
+    with connection.cursor() as cur:
+        cur.execute('SELECT pg_advisory_xact_lock(hashtextextended(%s, 0))',
+                    [f'renovation-member:{renovation_pk}:{member_uid}'])
+
+
 def _renovation_pk(renovation_id):
     pk = selectors.parse_renovation_id(renovation_id)
     if pk is None:
@@ -105,7 +143,7 @@ def create_renovation(uid: str, *, refuge_id, ini_date, fin_date, description: s
         if overlap is not None:
             raise OverlappingRenovation(overlap)
         try:
-            with transaction.atomic():
+            with _fk_checked_now(FK_REFUGE):
                 renovation = Renovation.objects.create(
                     refuge_id=pk, creator_id=uid, ini_date=ini_date, fin_date=fin_date, description=description,
                     materials_needed=materials_needed)
@@ -171,8 +209,9 @@ def add_participant(renovation_id, uid: str) -> Renovation:
     with transaction.atomic():
         if _creator_of(pk) == uid:
             raise CreatorCannotJoin()
+        _lock_member(pk, uid)
         try:
-            with transaction.atomic():
+            with _fk_checked_now(FK_PARTICIPANT_RENOVATION):
                 with connection.cursor() as cur:
                     cur.execute('INSERT INTO activity.renovation_participants (renovation_id, user_uid) '
                                 'VALUES (%s, %s) ON CONFLICT DO NOTHING', [pk, uid])
@@ -201,6 +240,15 @@ def remove_participant(renovation_id, participant_uid: str, requester_uid: str) 
         is_self = requester_uid == participant_uid
         if not is_self and creator != requester_uid:
             raise NotAllowed()
+        if '\x00' in participant_uid:        # PostgreSQL no admet NUL a `text`: no pot ser cap participant (no 500)
+            raise NotAParticipant()
+        if not is_self:
+            # Expulsar: es bloqueja la reforma (només el creador hi arriba, la RLS d'UPDATE) *abans* de tocar els
+            # participants. Així un `DELETE` concurrent de la reforma espera aquí i no es creua amb el nostre bloqueig
+            # de la fila de participant (interbloqueig); si ja s'ha esborrat, 404.
+            if not Renovation.objects.select_for_update(no_key=True).filter(pk=pk).values_list('pk').exists():
+                raise RenovationNotFound()
+            _lock_member(pk, participant_uid)
         removed = RenovationParticipant.objects.filter(renovation_id=pk, user_id=participant_uid).delete()[0]
         if not removed:
             raise NotAParticipant()
