@@ -25,7 +25,7 @@ Singleton (L14-53), instància global `cache_service` (L317), exportat a `api/se
 | `get_or_fetch_detail(...)` / `cache_result` | definits, sense ús fora de tests | L283, L321 |
 
 ### TTL (`CACHE_TIMEOUTS`, L20-48)
-`refugi_detail` 600 · `refugi_search` 600 · `refugi_coords` 3600 · `renovation_detail/list` 600 · `experience_detail/list` 600 · `proposal_detail/list` 600 · `refuge_visit_detail` / `refuge_visits_list` 600 · `doubt_detail/list` 600. (`user_detail` s'ha eliminat de `CACHE_TIMEOUTS` al chunk 3.) Prefixos sense entrada (`renovation_refuge`) → 600 per defecte.
+`refugi_detail` 600 · `refugi_search` 600 · `refugi_coords` 3600 · `renovation_detail/list` 600 · `experience_detail/list` 600 · `proposal_detail/list` 600 · `doubt_detail/list` 600. (`user_detail` s'ha eliminat de `CACHE_TIMEOUTS` al chunk 3.) Prefixos sense entrada (`renovation_refuge`) → 600 per defecte.
 
 ### ID caching
 Per a llistes: es desa la **llista d'IDs** a la clau de llista i cada element a `<detail_prefix>:<id_param>:<id>`. En un hit, es llegeix cada detall i, si falta, es recupera amb `fetch_single_fn`. Llistes i GET individual **comparteixen** les claus de detall. Implementat a `get_or_fetch_list`, usat per `RenovationDAO.get_all_renovations` (`api/daos/renovation_dao.py:111-176`), experiències, dubtes, propostes i visites (la cerca de refugis ja no en fa servir).
@@ -37,6 +37,8 @@ Per a llistes: es desa la **llista d'IDs** a la clau de llista i cada element a 
 
 ## Comportament si Redis cau
 Totes les excepcions s'empassen → les lectures fan miss i van a Firestore; les invalidacions no es fan però tampoc hi ha res cachejat **[FET]**. Els endpoints admin `cache/stats` retornen `connected:false` amb 200.
+
+Les visites (chunk 4) no usen cache: les claus `refuge_visit_detail` / `refuge_visits_list` i els seus TTL han desaparegut.
 
 ## Endpoints admin
 Vegeu [flows/11-admin-cache-health.md](../flows/11-admin-cache-health.md) i, per usar-los, [guides/admin-management.md](../guides/admin-management.md).

@@ -2,7 +2,7 @@
 
 > **[FET]** comprovat al codi · **[INFERÈNCIA]** deducció · **[NO VERIFICAT]** depèn de config externa.
 
-Firestore és la **base de dades real** del domini **excepte els refugis (chunk 2) i els usuaris (chunk 3)**, que viuen a PostgreSQL (`apps/refuges`, `apps/accounts`). Les col·leccions `data_refugis_lliures` i `coords_refugis` són **legacy**: ja no s'alimenten (la càrrega inicial és `load_refuges` a PostgreSQL) i els dominis encara a Firestore (experiències, dubtes, visites, propostes, usuaris, pujada de mitjans) les segueixen llegint/escrivint amb el `RefugiLliureDAO` fins que els migri el seu chunk ([GOTCHAS #41](../GOTCHAS.md)). No hi ha ORM per a Firestore: els DAOs fan servir el client de `firebase_admin.firestore`.
+Firestore és la **base de dades real** del domini **excepte els refugis (chunk 2), els usuaris (chunk 3) i les visites (chunk 4)**, que viuen a PostgreSQL (`apps/refuges`, `apps/accounts`, `apps/visits`). Les col·leccions `data_refugis_lliures` i `coords_refugis` són **legacy**: ja no s'alimenten (la càrrega inicial és `load_refuges` a PostgreSQL) i els dominis encara a Firestore (experiències, dubtes, propostes, pujada de mitjans) les segueixen llegint/escrivint amb el `RefugiLliureDAO` fins que els migri el seu chunk ([GOTCHAS #41](../GOTCHAS.md)). No hi ha ORM per a Firestore: els DAOs fan servir el client de `firebase_admin.firestore`.
 
 ## Client
 - `FirestoreService` singleton (`api/services/firestore_service.py:13-22`), instància global `firestore_service` (L78). `get_db()` (L24-38) reaprofita l'app de Firebase ja inicialitzada o la inicialitza.
@@ -19,7 +19,7 @@ Firestore és la **base de dades real** del domini **excepte els refugis (chunk 
 | `experiences` | `api/daos/experience_dao.py:18` | auto-ID + camp `id` | |
 | `doubts` + subcol·lecció `answers` | `api/daos/doubt_dao.py:18-19` | auto-ID | `answers` també es consulta amb `collection_group` |
 | `refuges_proposals` | `api/daos/refuge_proposal_dao.py:579` | auto-ID + camp `id` | |
-| `refuge_visits` | `api/daos/refuge_visit_dao.py:19` | auto-ID | un per (refugi, data) |
+| ~~`refuge_visits`~~ | — | — | **Migrada (chunk 4)** a `activity.refuge_visits` / `refuge_visit_participants` (PostgreSQL); la col·lecció ja no s'usa |
 
 ### Col·leccions noves (feature images) [FET]
 | Col·lecció | Contingut | Notes |
@@ -46,7 +46,6 @@ Firestore és la **base de dades real** del domini **excepte els refugis (chunk 
 No hi ha `firestore.indexes.json` al repo → l'estat dels índexs és **[NO VERIFICAT]**. La documentació antiga (quan es van crear les estratègies de cerca) afirmava que hi havia índexs compostos `type+places` i `type+altitude` creats a la consola, i en llistava com a pendents `type+condition+places`, `type+condition+altitude`, `condition+places`, `condition+altitude` **[NO VERIFICAT]**. Candidates:
 - `renovations`: `where fin_date >=` + `order_by ini_date` (`api/daos/renovation_dao.py:131-133`), i variants amb `refuge_id ==` (L291-294, L372-375).
 - `refuges_proposals`: diversos `where` + `order_by created_at desc` (`api/daos/refuge_proposal_dao.py:646-734`).
-- `refuge_visits`: `refuge_id ==` + `date >=` + `order_by date`.
 - `experiences`: `refuge_id ==` + `order_by modified_at desc`; `doubts`: `refuge_id ==` + `order_by created_at desc`.
 - (La cerca de refugis ja no usa Firestore: viu a PostgreSQL des del chunk 2, `apps/refuges/selectors.py`.)
 - `answers` (collection group) per `creator_uid` (esborrat d'usuari).
@@ -58,7 +57,7 @@ No hi ha `firestore.indexes.json` al repo → l'estat dels índexs és **[NO VER
 | ~~`upload_refugis_to_firestore`~~ | **Eliminada (chunk 2)**: substituïda per `load_refuges` (PostgreSQL, d'un sol ús; vegeu [local-setup](../guides/local-setup.md)). |
 | ~~`extract_coords_to_firestore`~~ | **Eliminada (chunk 2)**: la llista de coordenades és una consulta directa a `refuges.refuges` (sense vista; disseny §5.3, recepta 5) |
 | ~~`assign_conditions`~~ / ~~`verify_conditions`~~ | `assign_conditions` eliminada (la condició inicial la fixa `puntua_refugi` a `load_refuges`); `verify_conditions` també eliminada |
-| `process_yesterday_visits` | Procés diari (vegeu [flux 6](../flows/06-refuge-visits.md) i [guia](../guides/daily-visits-process.md)) |
+| `process_yesterday_visits` | Procés diari, ja només PostgreSQL (vegeu [flux 6](../flows/06-refuge-visits.md) i [guia](../guides/daily-visits-process.md)) |
 
 Ordre d'execució en una BD nova: [guides/local-setup.md §5](../guides/local-setup.md).
 
