@@ -3,8 +3,8 @@ Management command per verificar la connexió a Neon (Postgres) i el funcionamen
 Només fa servir una taula temporal: no deixa res a la base de dades.
 
 Es connecta sempre a les URL de Neon (`DATABASE_URL_APP` / `DATABASE_URL_MIGRATOR`), encara que hi hagi
-`TEST_DATABASE_URL_*` definides: aquestes tenen prioritat a `DATABASES` (apunten al Postgres local de proves) i,
-si la comanda usés `connections[alias]`, comprovaria el Docker local en lloc de Neon.
+`TEST_DATABASE_URL_*` definides: dins pytest o amb `USE_TEST_DATABASE=1` tenen prioritat a `DATABASES` (apunten
+al Postgres local de proves, D37) i, si la comanda usés `connections[alias]`, comprovaria el Docker local.
 """
 import psycopg
 from django.core.management.base import BaseCommand, CommandError

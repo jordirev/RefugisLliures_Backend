@@ -127,9 +127,11 @@ WSGI_APPLICATION = 'refugis_lliures.wsgi.application'
 
 # `default` = PostgreSQL/PostGIS (Neon en runtime) amb el rol `app` (només DML, subjecte a RLS) i una transacció per
 # petició (`ATOMIC_REQUESTS`, §7.3 del disseny); `migrator` = rol propietari dels objectes (DDL, migracions, càrrega).
-# Les variables `TEST_DATABASE_URL_*` (Postgres local, scripts/dev/setup_local_postgres.sh) tenen prioritat sobre
-# `DATABASE_URL_APP` / `DATABASE_URL_MIGRATOR`. Sense cap URL es manté SQLite, només perquè els tests amb mocks
-# (que no toquen la BD) puguin carregar la configuració.
+# Les variables `TEST_DATABASE_URL_*` (Postgres local, scripts/dev/setup_local_postgres.sh) només es fan servir dins
+# pytest (`PYTEST_VERSION`, que pytest >= 8.2 defineix en arrencar) o amb `USE_TEST_DATABASE=1` (servidor dels e2e
+# locals); llavors tenen prioritat sobre `DATABASE_URL_APP` / `DATABASE_URL_MIGRATOR`. Fora d'aquests casos
+# (`runserver`, `migrate`, jobs) s'ignoren, encara que siguin a `env/.env.development` (D37). Sense cap URL es manté
+# SQLite, només perquè els tests amb mocks (que no toquen la BD) puguin carregar la configuració.
 _LOCAL_DB_HOSTS = {'localhost', '127.0.0.1', '::1', 'host.docker.internal'}
 
 
@@ -183,10 +185,14 @@ DATABASES = {
     }
 }
 
-_app_db = _postgres_database(('TEST_DATABASE_URL_APP', 'DATABASE_URL_APP'), pooled=True, atomic_requests=True)
+USE_TEST_DATABASES = bool(os.environ.get('PYTEST_VERSION')) or config('USE_TEST_DATABASE', default=False, cast=bool)
+_test_url = (lambda var: (var,) if USE_TEST_DATABASES else ())
+
+_app_db = _postgres_database(_test_url('TEST_DATABASE_URL_APP') + ('DATABASE_URL_APP',), pooled=True,
+                             atomic_requests=True)
 if _app_db:
     DATABASES['default'] = _app_db
-_migrator_db = _postgres_database(('TEST_DATABASE_URL_MIGRATOR', 'DATABASE_URL_MIGRATOR'), pooled=False,
+_migrator_db = _postgres_database(_test_url('TEST_DATABASE_URL_MIGRATOR') + ('DATABASE_URL_MIGRATOR',), pooled=False,
                                   atomic_requests=False)
 if _migrator_db:
     DATABASES['migrator'] = _migrator_db
