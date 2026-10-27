@@ -2,7 +2,7 @@
 
 > **[FET]** comprovat al codi · **[INFERÈNCIA]** deducció · **[NO VERIFICAT]** depèn de config externa.
 
-> **Migrat a PostgreSQL (chunk 3).** L'usuari, el perfil públic, l'avatar, els preferits i els visitats viuen a PostgreSQL (`apps/accounts/`); ja no hi ha `UserController`, `UserDAO`, `UserMapper`, `User` (dataclass) ni cache Redis d'usuari (`user_detail`). Firestore només es consulta per als dos comptadors provisionals i per als passos de l'esborrat dels dominis encara no migrats (D19, D21). Decisions: [DECISIONS_AUTONOMES D19–D23](../migration/DECISIONS_AUTONOMES.md); disseny: [postgres-schema §2.1–2.4, §5.2](../design/postgres-schema.md).
+> **Migrat a PostgreSQL (chunk 3).** L'usuari, el perfil públic, l'avatar, els preferits i els visitats viuen a PostgreSQL (`apps/accounts/`); ja no hi ha `UserController`, `UserDAO`, `UserMapper`, `User` (dataclass) ni cache Redis d'usuari (`user_detail`). Des del chunk 7 els dos comptadors són SQL; Firestore només es consulta per als passos de l'esborrat dels dominis encara no migrats (propostes; D21). Decisions: [DECISIONS_AUTONOMES D19–D23](../migration/DECISIONS_AUTONOMES.md); disseny: [postgres-schema §2.1–2.4, §5.2](../design/postgres-schema.md).
 
 L'usuari es registra a **Firebase Auth des del client** (el backend no crea comptes d'Auth, però sí que els esborra a `DELETE /users/{uid}/`). Després el client crida `POST /api/users/` per crear la fila de `users.users` + `users.user_public_profiles`. **Fins que no ho fa, tot endpoint autenticat (excepte `POST /users/`) respon 403 `profile_required`** (vegeu [flux 12](12-media-moderation.md#permisos-apipermissionspy)).
 
@@ -21,7 +21,7 @@ Taules (schema `users`, [postgres-schema §2.1–2.4](../design/postgres-schema.
 - **Perfil d'un altre usuari** (també si qui crida és admin, D23): només `{uid, username, avatar_metadata}` (`selectors.get_public_profile`, 1 consulta). Ja no exposa llistes, claus de fotos ni comptadors (abans: [TECH_DEBT B3](../TECH_DEBT.md), resolt) **[FET]**.
 - `favourite_refuges`/`visited_refuges`: IDs (UUID com a string) ordenats per `(created_at, refuge_id)`; `uploaded_photos_keys`: claus de `refuges.refuge_media` amb `creator_uid = uid` (tots els estats), ordenades per `(uploaded_at, key)` (D19).
 - `num_renovated_refuges` (chunk 5): **SQL**, `apps.renovations.selectors.count_renovated_refuges` (reformes creades + reformes on participa, passades incloses, expulsats no; 1 consulta), cridat des de `selectors.get_legacy_counts`. Pressupost del perfil propi: ≤ 3 consultes (D35).
-- `num_shared_experiences` (D19, **provisional**): `count()` d'agregació a Firestore (`experiences.creator_uid`) a `selectors.get_legacy_counts`; el perfil propi (GET, PATCH) fa **1 consulta d'agregació a Firestore**. Si Firestore falla → 500 «Error en obtenir els comptadors de l'usuari a Firestore» (no es mostren zeros falsos). El `POST` retorna 0/0 sense consultar-lo (usuari nou). Es substitueix per SQL al chunk 7 ([TECH_DEBT U1](../TECH_DEBT.md)) **[FET]**.
+- `num_shared_experiences` (chunk 7): `count(*)` d'`activity.experiences` del creador (totes, de qualsevol refugi). `selectors.get_legacy_counts` (nom històric) calcula els **dos comptadors en una sola consulta SQL** (subconsulta d'experiències + `RENOVATED_REFUGES_SQL`); el perfil propi (GET, PATCH) ja no toca Firestore. Si la BD falla → 500 «Error de base de dades en obtenir els comptadors de l'usuari» (no es mostren zeros falsos). El `POST` retorna 0/0 sense consultar-los (usuari nou). Resol [TECH_DEBT U1](../TECH_DEBT.md) **[FET]**.
 - `avatar_metadata`: `MediaItem` amb URL presignada (1 h) o `null`; sense miniatura, `thumb_url = url`.
 
 ## Alta — diagrama
@@ -63,9 +63,9 @@ sequenceDiagram
 ## Esborrat — provisional (D21, D22)
 
 `services.delete_user(uid)` fa, en aquest ordre, i **s'atura al primer pas que falla**:
-1. **Passos de Firestore** (dominis encara no migrats), via els controllers de sempre ([deep-dive](../deep-dives/user-deletion.md)): experiències i propostes (anonimitza). (Visites, reformes i dubtes ja no hi són: són SQL, vegeu el pas 3.)
-2. **R2** (D22, RGPD): avatar i miniatura + fotos pujades per l'usuari (`refuges.refuge_media` amb `creator_uid = uid`, i miniatures), en un `delete_files`. Si hi ha fitxers que fallen → `UserDeletionError`.
-3. **Reformes + `DELETE FROM users.users`** (chunk 5, §8.4), al mateix *savepoint*: `renovations.services.delete_current_by_creator(uid)` esborra les reformes **vigents** creades (cascada a participants, expulsats i enllaç); el `DELETE` cascadeja perfil, avatar, preferits, visitats, participacions en visites, participacions i expulsions de reformes, **dubtes i respostes**, i deixa **anònimes** (`creator_uid` → `NULL`, API `'unknown'`, enllaç esborrat pel trigger) les reformes passades creades (FK reals `ON DELETE`, no de Django).
+1. **Passos de Firestore** (dominis encara no migrats), via els controllers de sempre ([deep-dive](../deep-dives/user-deletion.md)): només propostes (anonimitza). (Visites, reformes, dubtes i experiències ja no hi són: són SQL, vegeu el pas 3.)
+2. **R2** (D22, RGPD): avatar i miniatura + fotos pujades per l'usuari (`refuges.refuge_media` amb `creator_uid = uid`) + mitjans de les seves experiències pujats per altri, p. ex. un admin (`experience.creator_uid = uid`, D38; lectura amb `system_context()`), i miniatures, en un `delete_files`. Si hi ha fitxers que fallen → `UserDeletionError`.
+3. **Reformes + `DELETE FROM users.users`** (chunk 5, §8.4), al mateix *savepoint*: `renovations.services.delete_current_by_creator(uid)` esborra les reformes **vigents** creades (cascada a participants, expulsats i enllaç); el `DELETE` cascadeja perfil, avatar, preferits, visitats, participacions en visites, participacions i expulsions de reformes, **dubtes i respostes**, **experiències (amb els seus mitjans) i intents de pujada**, i deixa **anònimes** (`creator_uid` → `NULL`, API `'unknown'`, enllaç esborrat pel trigger) les reformes passades creades (FK reals `ON DELETE`, no de Django).
 4. **Compte de Firebase Auth** (U7, D24): `firebase_auth.delete_user(uid)`, dins el mateix *savepoint* que el pas 3. Si Firebase falla, `UserDeletionError` desfà el `DELETE` (l'usuari es conserva i es pot reintentar); si el compte ja no existeix (`UserNotFoundError`), es dona per fet. El client **no** crida `user.delete()`: només reautentica, crida aquest endpoint i fa `signOut` local **[FET]**.
 
 ```mermaid
@@ -81,10 +81,8 @@ sequenceDiagram
 
     C->>V: DELETE /api/users/{uid}/
     V->>S: delete_user(uid)
-    loop 8 passos (experiències … reformes)
-        S->>F: pas del controller → (success, error)
-    end
-    S->>R2: delete_files(avatar + miniatura + fotos + miniatures)
+    S->>F: pas de propostes (anonimitzar) → (success, error)
+    S->>R2: delete_files(avatar + miniatura + fotos + mitjans de les seves experiències + miniatures)
     S->>DB: savepoint: DELETE users.users WHERE uid (cascada)
     S->>FA: delete_user(uid) (si falla, rollback del savepoint)
     alt un pas falla (UserDeletionError)
@@ -109,10 +107,10 @@ Ja **no** hi ha els antics passos «esborrar fotos via `RefugiLliureController`�
 | `POST /users/` amb el token d'un compte de Firebase ja esborrat | 401 `account_not_found` (`coded_error`) |
 | Usuari no trobat | 404 |
 | `uid` URL ≠ token (PATCH/DELETE) | 403 (`IsSameUser`) |
-| Fallada de BD, de Firestore (comptadors o passos d'esborrat) o d'R2 | 500 `{error, error_id}` |
+| Fallada de BD, de Firestore (passos d'esborrat) o d'R2 | 500 `{error, error_id}` |
 
 ## Gotchas
-- El perfil propi **depèn de Firestore** (comptadors provisionals): una caiguda de Firestore fa caure `GET/PATCH /users/{uid}/` propi.
+- El perfil propi **ja no depèn de Firestore** (chunk 7): els comptadors són SQL; el pressupost del perfil propi segueix sent ≤ 3 consultes i constant (D38).
 - L'esborrat no és atòmic entre Firestore, R2 i PostgreSQL: un pas que falla deixa els anteriors aplicats (reintentable) **[FET]**.
 - El compte de Firebase Auth l'esborra el **backend** (últim pas de l'esborrat, U7) **[FET]**. Finestra residual: si el `COMMIT` falla després d'esborrar el compte, queden dades sense compte (rar; el chunk 10 ho tanca).
 - **Bloqueig i esborrat (U7)**: un bloqueig és del compte (UID). Esborrar-se i tornar amb el **mateix** UID no és possible: el compte de Firebase ja no existeix i `POST /users/` amb un token encara vigent (fins a 1 h) respon 401 `account_not_found` (`services.create_user` comprova `firebase_auth.get_user`). Un compte **nou** amb un altre email és un UID nou sense *strikes*: s'accepta (decisió del PO, 26/10); no es desa cap hash d'email ni identificador de dispositiu o telèfon. L'abús persistent es tracta bloquejant el compte nou quan reincideix.
