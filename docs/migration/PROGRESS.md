@@ -20,7 +20,7 @@
 | 2 | Refugis | `migracio/refugis` | fet (PR [#43](https://github.com/jordirev/RefugisLliures_Backend/pull/43) fusionada, `49f15ed`) | 2010 tests; Django 5.2 + Python 3.14 + PG18; e2e 31/31 |
 | 3 | Usuaris | `migracio/usuaris` | fet (PR [#44](https://github.com/jordirev/RefugisLliures_Backend/pull/44) fusionada, `9f9bd5b`) | 2124 tests; e2e 50/50; D19–D23. Després: dates i zones horàries (PR [#45](https://github.com/jordirev/RefugisLliures_Backend/pull/45), `0a1e85e`, 2140 tests) |
 | 4 | Visites | `migracio/visites` | fet (PR [#50](https://github.com/jordirev/RefugisLliures_Backend/pull/50) fusionada) | 2708 tests en fusionar; e2e 31/31; D27–D29, D36 (cota de 12 mesos, també al calendari del frontend) |
-| 5 | Renovations | `migracio/renovations` | PR a `migration` (CI) | 3142 tests amb 4 i 6 fusionats; e2e 37/37; D32–D35 |
+| 5 | Renovations | `migracio/renovations` | fet (PR [#51](https://github.com/jordirev/RefugisLliures_Backend/pull/51) fusionada, `02c9b0f`) | 3142 tests amb 4 i 6 fusionats; e2e 37/37; D32–D35 |
 | 6 | Dubtes | `migracio/dubtes` | fet (PR [#49](https://github.com/jordirev/RefugisLliures_Backend/pull/49) fusionada, `dec16b1`) | e2e 30/30; D30–D31; esborrar l'usuari esborra el subarbre de respostes (PO) |
 | 7 | Experiències + pujades | `migracio/experiencies` | pendent | |
 | 8 | Propostes | `migracio/propostes` | pendent | |
