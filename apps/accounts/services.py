@@ -12,7 +12,7 @@ from datetime import date
 from typing import Any, Dict, Optional
 
 from django.db import IntegrityError, transaction
-from django.db.models import F
+from django.db.models import F, Q
 from django.db.models.functions import Now
 from firebase_admin import auth as firebase_auth
 
@@ -256,21 +256,25 @@ def delete_avatar(uid: str, media_service=None) -> None:
 
 def _firestore_steps(uid: str):
     """Passos de l'esborrat que encara viuen a Firestore (D21), en l'ordre de sempre: `(nom, callable)`."""
-    from api.controllers.experience_controller import ExperienceController
     from api.controllers.refuge_proposal_controller import RefugeProposalController
     return [
-        ('experiències', lambda: ExperienceController().delete_experiences_by_creator(uid)),
         ('propostes', lambda: RefugeProposalController().anonymize_proposals_by_creator(uid)),
     ]
 
 
 def _delete_r2_media(uid: str, media_service=None) -> None:
-    """D22 (RGPD): esborra a R2 l'avatar (clau i miniatura) i les fotos pujades per l'usuari (i les seves miniatures)."""
+    """
+    D22 (RGPD): esborra a R2 l'avatar (clau i miniatura), les fotos pujades per l'usuari i (D38) els mitjans de les
+    seves experiències encara que els hagi pujat un altre (un admin): les files cauen per cascada en esborrar l'usuari
+    (`experiences.creator_uid` i `refuge_media.experience_id`) i els fitxers no han de quedar orfes.
+    """
     keys = []
     for key, thumb in UserAvatar.objects.filter(user_id=uid).values_list('key', 'thumb_key'):
         keys += [key, thumb]
-    for key, thumb in RefugeMedia.objects.filter(creator_id=uid).values_list('key', 'thumb_key'):
-        keys += [key, thumb]
+    with system_context():        # els mitjans amagats d'un altre a les seves experiències no són visibles per a ell
+        own_or_in_own_experiences = Q(creator_id=uid) | Q(experience__creator_id=uid)
+        for key, thumb in RefugeMedia.objects.filter(own_or_in_own_experiences).values_list('key', 'thumb_key'):
+            keys += [key, thumb]
     keys = [k for k in dict.fromkeys(keys) if k]
     if not keys:
         return

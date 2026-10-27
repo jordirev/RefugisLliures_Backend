@@ -110,7 +110,7 @@ def avatar_to_dict(data, uid, presign):
 def own_profile_to_dict(user, counts, presign):
     """
     `UserAccount` (de `selectors.get_own_profile` o de `services.create_user`) -> perfil complet.
-    `counts`: `{'num_shared_experiences', 'num_renovated_refuges'}` (Firestore, D19).
+    `counts`: `{'num_shared_experiences', 'num_renovated_refuges'}` (agregacions SQL, `selectors.get_legacy_counts`).
     """
     profile = user.public_profile
     return {

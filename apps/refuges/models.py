@@ -177,7 +177,10 @@ class RefugeMedia(models.Model):
     thumb_key = models.TextField(null=True, blank=True)
     blurhash = models.CharField(max_length=100, null=True, blank=True)
     rights_confirmed_at = models.DateTimeField()
-    # `experience_id` (+ FK cap a `activity.experiences`) arriba al chunk 7 amb `refuges.0002` (§6.2).
+    # Mitjà d'una experiència (substitueix `experiences.media_keys`); la FK real `ON DELETE CASCADE` és de `refuges.0002`.
+    experience = models.ForeignKey(
+        'experiences.Experience', null=True, blank=True, on_delete=models.DO_NOTHING, db_constraint=False,
+        db_index=False, db_column='experience_id', related_name='media')
 
     class Meta:
         db_table = 'refuges"."refuge_media'
@@ -197,4 +200,6 @@ class RefugeMedia(models.Model):
         indexes = [
             models.Index(fields=['refuge', 'uploaded_at', 'key'], name='refuge_media_refuge_idx'),
             models.Index(fields=['creator', 'uploaded_at'], name='refuge_media_creator_idx'),
+            models.Index(fields=['experience'], name='refuge_media_experience_idx',
+                         condition=Q(experience__isnull=False)),
         ]

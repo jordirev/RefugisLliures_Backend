@@ -10,6 +10,7 @@ import logging
 from typing import Optional
 
 from django.contrib.postgres.expressions import ArraySubquery
+from django.db import connection
 from django.db.models import OuterRef, Subquery
 from django.db.models.functions import JSONObject
 
@@ -102,25 +103,18 @@ def get_refuge_with_first_media(refuge_id):
 
 # ---------- Comptadors del perfil propi ----------
 
-def _firestore_count(collection: str, field: str, op: str, value: str) -> int:
-    """`count()` d'agregació de Firestore. Només per a les experiències (chunk 7); les reformes ja són a SQL."""
-    from google.cloud.firestore_v1.base_query import FieldFilter
-
-    from api.services.firestore_service import FirestoreService
-    query = FirestoreService().get_db().collection(collection).where(filter=FieldFilter(field, op, value)).count()
-    return int(query.get()[0][0].value)
-
-
 def get_legacy_counts(uid: str) -> dict:
     """
-    `num_shared_experiences` i `num_renovated_refuges` del perfil propi (D19).
+    `num_shared_experiences` i `num_renovated_refuges` del perfil propi (§4): agregacions SQL en **una sola consulta**.
 
-    - Reformes (chunk 5): agregació SQL, 1 consulta (§4): creades + unides, passades incloses; els expulsats no compten.
-    - Experiències: `count()` de Firestore fins al chunk 7. Una fallada de Firestore es propaga (el perfil no ha de
-      mostrar zeros falsos).
+    - Experiències (chunk 7): `count(*)` d'`activity.experiences` del creador (inclou diversos refugis i repetits).
+    - Reformes (chunk 5): creades + unides, passades incloses; els expulsats no compten.
+    El nom és històric (abans venien de Firestore, D19); ara no es demana res a Firestore.
     """
-    from apps.renovations import selectors as renovation_selectors
-    return {
-        'num_shared_experiences': _firestore_count('experiences', 'creator_uid', '==', uid),
-        'num_renovated_refuges': renovation_selectors.count_renovated_refuges(uid),
-    }
+    from apps.renovations.selectors import RENOVATED_REFUGES_SQL
+    with connection.cursor() as cur:
+        cur.execute(
+            f'SELECT (SELECT count(*) FROM activity.experiences WHERE creator_uid = %s), {RENOVATED_REFUGES_SQL}',
+            [uid, uid, uid])
+        shared, renovated = cur.fetchone()
+    return {'num_shared_experiences': int(shared), 'num_renovated_refuges': int(renovated)}
