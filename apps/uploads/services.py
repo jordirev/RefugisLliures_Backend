@@ -28,7 +28,7 @@ from api.models.moderation_notice import NOTICE_ACCOUNT_BLOCKED
 from api.services import audit_log_service as audit
 from api.services import r2_media_service
 from api.services.image_processing_service import (
-    REASON_INVALID_TYPE, REASON_MISSING_OBJECT, REASON_MODERATION_BLOCKED, REASON_PROCESSING_ERROR, REASON_TOO_LARGE,
+    REASON_MISSING_OBJECT, REASON_MODERATION_BLOCKED, REASON_PROCESSING_ERROR, REASON_TOO_LARGE,
     VIDEO_MAX_BYTES, MediaRejected, ProcessedMedia, image_processing_service, kind_for_content_type,
     max_bytes_for_kind, normalize_content_type)
 from api.services.moderation_service import ModerationInput, ModerationService
@@ -43,7 +43,7 @@ from apps.refuges import selectors as refuge_selectors
 from apps.refuges.models import RefugeMedia
 from apps.refuges.serializers import media_to_dict
 
-from .models import UploadFailureReason, UploadIntent, UploadStatus, UploadTarget
+from .models import UploadIntent, UploadStatus, UploadTarget
 
 logger = logging.getLogger(__name__)
 

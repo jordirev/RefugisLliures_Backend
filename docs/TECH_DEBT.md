@@ -124,6 +124,14 @@
 |---|---|---|---|
 | R15 | **Codi legacy de reformes encara viu** (fins al chunk 8): `RenovationController`, `RenovationDAO`, `RenovationMapper`, el model `Renovation` (dataclass) i `IsRenovationCreator` ja no serveixen cap ruta, però `refuge_proposal_dao` importa el controller (pas 5 de l'esborrat d'un refugi per proposta: llegeix i esborra reformes **de Firestore**, que ja no existeixen) i `api/permissions.py`, `api/mappers/__init__.py`, `api/models/__init__.py` i `cache_service` (`renovation_detail`/`renovation_list`) hi fan referència. Cal treure'ls quan es migrin les propostes (chunk 8); les reformes de PostgreSQL d'un refugi esborrat cauen per la FK `ON DELETE CASCADE`. Fins llavors no s'hi ha de tocar ni usar en codi nou. | `api/controllers/renovation_controller.py`, `api/daos/renovation_dao.py`, `api/mappers/renovation_mapper.py`, `api/models/renovation.py`, `api/permissions.py: IsRenovationCreator`, `api/daos/refuge_proposal_dao.py` (pas 5) | FET |
 
+## Nou deute (migració Firestore → PostgreSQL, chunk 7: experiències i pujades)
+
+| # | Descripció | On | Estat |
+|---|---|---|---|
+| R16 | **Moderació encara a Firestore i buida de mitjans d'experiència**: la hash-blocklist, les denúncies, els avisos i `MediaReportController._hold_media` continuen a Firestore (chunk 9); `_hold_media` i `RefugiLliureController.delete_multiple_refugi_media` ja no toquen les experiències (el `ExperienceDAO` s'ha eliminat: `media_keys` ja no existeix, el vincle és `refuge_media.experience_id`). El chunk 9 ha de reescriure la retenció/denúncia sobre `refuges.refuge_media` (inclosos els mitjans d'experiència) i la cua d'R2 (`fn_media_enqueue_r2`). | `api/controllers/media_report_controller.py`, `api/controllers/refugi_lliure_controller.py`, `apps/uploads/services.py: _handle_moderation_block` | FET |
+| R17 | **Pas 3 de l'esborrat d'un refugi per proposta** (`DeleteRefugeStrategy`) ja no esborra experiències: viuen a PostgreSQL i cauen per la FK `refuge_id ON DELETE CASCADE`. Tota l'estratègia es reescriu al chunk 8. | `api/daos/refuge_proposal_dao.py` | FET |
+| R18 | **Purga d'intents sense planificar**: la comanda `python manage.py purge_upload_intents` (horària, §8.3) existeix però no hi ha cap workflow de GitHub Actions que la cridi; cal afegir-la al CI/cron del desplegament. Mentrestant els intents caducats només ocupen files (el lifecycle de `quarantine/` a R2 ja esborra els fitxers). | `apps/uploads/management/commands/purge_upload_intents.py` | FET |
+
 ## Codi mort o sense ús aparent
 
 | Element | Evidència | Tipus |

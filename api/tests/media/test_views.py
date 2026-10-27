@@ -30,10 +30,7 @@ def factory():
     return APIRequestFactory()
 
 
-INTENT_BODY = {
-    'target': 'refuge', 'refuge_id': 'ref_1', 'rights_confirmed': True,
-    'files': [{'content_type': 'image/jpeg', 'size': 1000}],
-}
+REPORT_BODY = {'refuge_id': 'ref_1', 'media_key': KEY, 'reason': 'my_image'}
 
 
 @pytest.mark.views
