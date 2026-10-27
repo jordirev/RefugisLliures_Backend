@@ -10,7 +10,6 @@ Model de `experiences` (schema `activity`), docs/design/postgres-schema.md §2.1
 """
 from django.db import models
 from django.db.models import F, Func, IntegerField, Q, TextField, UUIDField, Value
-from django.db.models.functions import Now
 from django.db.models.lookups import Exact, LessThanOrEqual
 
 from apps.accounts.models import UserAccount
@@ -47,7 +46,7 @@ class Experience(models.Model):
     created_at = models.DateTimeField(db_default=TransactionNow())
     modified_at = models.DateTimeField(db_default=TransactionNow())
     condition = models.SmallIntegerField()
-    condition_counted_at = models.DateTimeField(db_default=Now())      # el reescriu el trigger (§2.9)
+    condition_counted_at = models.DateTimeField(db_default=TransactionNow())      # el reescriu el trigger (§2.9)
 
     class Meta:
         db_table = 'activity"."experiences'

@@ -3,7 +3,6 @@
 import apps.core.db_functions
 import django.db.models.deletion
 import django.db.models.expressions
-import django.db.models.functions.datetime
 import django.db.models.lookups
 from django.db import migrations, models
 
@@ -108,7 +107,7 @@ class Migration(migrations.Migration):
                 ('created_at', models.DateTimeField(db_default=apps.core.db_functions.TransactionNow())),
                 ('modified_at', models.DateTimeField(db_default=apps.core.db_functions.TransactionNow())),
                 ('condition', models.SmallIntegerField()),
-                ('condition_counted_at', models.DateTimeField(db_default=django.db.models.functions.datetime.Now())),
+                ('condition_counted_at', models.DateTimeField(db_default=apps.core.db_functions.TransactionNow())),
                 ('creator', models.ForeignKey(db_column='creator_uid', db_constraint=False, db_index=False, on_delete=django.db.models.deletion.DO_NOTHING, related_name='+', to='accounts.useraccount')),
                 ('refuge', models.ForeignKey(db_column='refuge_id', db_constraint=False, db_index=False, on_delete=django.db.models.deletion.DO_NOTHING, related_name='+', to='refuges.refuge')),
             ],

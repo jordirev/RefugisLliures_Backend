@@ -222,7 +222,9 @@ def test_ids_hostils_donen_404_i_mai_500(client, world, bad):
               api_delete(client, exp_url(bad), user_claims('u1')),
               api_get(client, list_url(bad), user_claims('u1')),
               api_post(client, EXPERIENCES, user_claims('u1'), {**new_body(world[0]), 'refuge_id': bad})):
-        assert r.status_code == 404, (bad, r.status_code, r.content)
+        # El `refuge_id` del cos de POST amb més de 100 caràcters és un 400 de validació (`max_length=100`, com avui i com
+        # exigeix `test_serializers`); la resta d'ids hostils són un 404 (mai un 500).
+        assert r.status_code == 404 or (r.status_code == 400 and len(bad) > 100), (bad, r.status_code, r.content)
     assert exp_ids() == [e]
     sql('SELECT 1 FROM activity.experiences LIMIT 1')
 
