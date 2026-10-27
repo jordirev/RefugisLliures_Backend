@@ -456,29 +456,11 @@ class DeleteRefugeStrategy(ProposalApprovalStrategy):
                 logger.error(f"Error eliminant dubtes: {str(e)}")
                 return False, f"Error deleting doubts: {str(e)}"
             
-            # ==================== PAS 3: ELIMINAR TOTES LES EXPERIÈNCIES ====================
-            logger.info(f"[DELETE REFUGE] Pas 3: Eliminant experiències del refugi {proposal.refuge_id}")
-            try:
-                from ..controllers.experience_controller import ExperienceController
-                experience_controller = ExperienceController()
-                
-                # Obtenir totes les experiències d'aquest refugi
-                experiences, error = experience_controller.get_experiences_by_refuge(proposal.refuge_id)
-                if error:
-                    logger.error(f"Error obtenint experiències: {error}")
-                    return False, f"Error getting experiences: {error}"
-                
-                if experiences:
-                    for experience in experiences:
-                        success, error = experience_controller.delete_experience(experience_id=experience.id)
-                        if not success:
-                            logger.error(f"No s'ha pogut eliminar l'experiència {experience.id}: {error}")
-                            return False, f"Error deleting experience {experience.id}: {error}"
-                        logger.info(f"Experiència {experience.id} eliminada correctament")
-            except Exception as e:
-                logger.error(f"Error eliminant experiències: {str(e)}")
-                return False, f"Error deleting experiences: {str(e)}"
-            
+            # ==================== PAS 3: EXPERIÈNCIES (ja són a PostgreSQL) ====================
+            # Les experiències viuen a `activity.experiences` des del chunk 7 i cauen amb els seus mitjans per la FK
+            # `refuge_id ON DELETE CASCADE` quan s'esborra el refugi; aquí ja no hi ha res a esborrar a Firestore.
+            # (Aquesta estratègia sencera es reescriu al chunk 8, propostes.)
+
             # ==================== PAS 4: ELIMINAR TOTES LES FOTOS DEL REFUGI ====================
             logger.info(f"[DELETE REFUGE] Pas 4: Eliminant fotos del refugi {proposal.refuge_id}")
             try:

@@ -6,7 +6,8 @@ import django.db.models.deletion
 import django.db.models.expressions
 from django.db import migrations, models
 
-from apps.core.migration_utils import PostgresRunSQL, disable_rls_sql, drop_policy_sql, enable_rls_sql
+from apps.core.migration_utils import (
+    DropDjangoLikeIndexes, PostgresRunSQL, disable_rls_sql, drop_policy_sql, enable_rls_sql)
 from apps.core.rls import create_policy_sql
 
 # ---------- SQL de la migració: FK reals, RLS i grants (docs/design/postgres-schema.md §2.19, §6.3, §7.2) ----------
@@ -92,4 +93,9 @@ class Migration(migrations.Migration):
             },
         ),
         PostgresRunSQL(sql=FORWARD_SQL, reverse_sql=REVERSE_SQL),
+        # Índex `*_like` de Django al camp únic de text: no s'usa (vegeu DropDjangoLikeIndexes).
+        DropDjangoLikeIndexes([
+            ('moderation', 'upload_intents_quarantine_key_ce655c62_like', 'upload_intents', 'quarantine_key',
+             'text_pattern_ops'),
+        ]),
     ]

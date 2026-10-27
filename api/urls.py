@@ -1,9 +1,8 @@
 from django.urls import include, path
 from .views.health_check_views import HealthCheckAPIView
 from .views.user_views import UserModerationNoticesAPIView
+from apps.uploads.views import UploadIntentsAPIView, UploadIntentsConfirmAPIView
 from .views.media_views import (
-    UploadIntentsAPIView,
-    UploadIntentsConfirmAPIView,
     MediaReportsAPIView,
     AdminMediaReportsAPIView,
     AdminMediaReportDetailAPIView,

@@ -15,7 +15,7 @@ from api.middleware.firebase_auth_middleware import FirebaseAuthenticationMiddle
 from api.authentication import FirebaseAuthentication
 from api.permissions import (
     is_firebase_admin, IsOwnerOrReadOnly, IsSameUser, SafeMethodsOnly,
-    IsFirebaseAdmin, IsExperienceCreator, IsRenovationCreator,
+    IsFirebaseAdmin, IsRenovationCreator,
 )
 
 
@@ -631,46 +631,6 @@ class TestPermissionsExtended:
             
         request.user.is_authenticated = False
         assert perm.has_permission(request, view) is False
-
-    @patch('api.daos.experience_dao.ExperienceDAO')
-    def test_is_experience_creator(self, mock_dao_class):
-        """Test IsExperienceCreator"""
-        perm = IsExperienceCreator()
-        request = MagicMock()
-        view = MagicMock()
-        obj = MagicMock()
-        
-        # has_permission
-        request.user.is_authenticated = True
-        assert perm.has_permission(request, view) is True
-        
-        # has_object_permission - Admin
-        with patch('api.permissions.is_firebase_admin', return_value=True):
-            assert perm.has_object_permission(request, view, obj) is True
-            
-        # has_object_permission - Safe Method
-        with patch('api.permissions.is_firebase_admin', return_value=False):
-            request.method = 'GET'
-            assert perm.has_object_permission(request, view, obj) is True
-            
-            # Non-safe method, no experience_id (creation)
-            request.method = 'POST'
-            view.kwargs = {}
-            assert perm.has_object_permission(request, view, obj) is True
-            
-            # Non-safe method, with experience_id
-            view.kwargs = {'experience_id': 'exp_1'}
-            request.user_uid = 'user_1'
-            mock_dao = mock_dao_class.return_value
-            mock_dao.get_experience_by_id.return_value = {'creator_uid': 'user_1'}
-            assert perm.has_object_permission(request, view, obj) is True
-            
-            mock_dao.get_experience_by_id.return_value = {'creator_uid': 'user_2'}
-            assert perm.has_object_permission(request, view, obj) is False
-            
-            # No user_uid in request
-            request.user_uid = None
-            assert perm.has_object_permission(request, view, obj) is False
 
     @patch('api.daos.renovation_dao.RenovationDAO')
     def test_is_renovation_creator(self, mock_dao_class):

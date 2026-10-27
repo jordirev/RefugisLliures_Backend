@@ -12,7 +12,6 @@ from ..daos.media_report_dao import MediaReportDAO, DUPLICATE_REPORT_ERROR
 from ..daos.moderation_notice_dao import ModerationNoticeDAO
 from ..daos.refugi_lliure_dao import RefugiLliureDAO
 from apps.accounts import services as account_services
-from ..daos.experience_dao import ExperienceDAO
 from ..models.media_metadata import MEDIA_STATUS_HIDDEN, MEDIA_STATUS_REMOVED, MEDIA_STATUS_VISIBLE
 from ..models.media_report import (
     MediaReport, build_report_id, AUTO_HIDE_REASONS, AUTO_HIDE_DISTINCT_REPORTERS,
@@ -48,7 +47,6 @@ class MediaReportController:
         self.notice_dao = ModerationNoticeDAO()
         self.refugi_dao = RefugiLliureDAO()
         self.accounts = account_services          # moderació d'usuaris a PostgreSQL (D20)
-        self.experience_dao = ExperienceDAO()
         self.media_service = r2_media_service.get_refugi_media_service()
 
     # ------------------------------------------------------------------
@@ -297,8 +295,6 @@ class MediaReportController:
         for key in (media_key, backup.get('thumb_key')):
             if key and not self.media_service.move_object(key, r2_media_service.moderation_hold_key(key)):
                 logger.error(f"No s'ha pogut retenir {key} a moderation-hold/")
-        if backup.get('experience_id'):
-            self.experience_dao.remove_media_key(backup['experience_id'], media_key)
 
     # ------------------------------------------------------------------
     # Avisos a l'usuari

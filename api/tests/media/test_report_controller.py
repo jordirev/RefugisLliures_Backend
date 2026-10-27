@@ -23,7 +23,6 @@ def ctrl():
     controller.notice_dao = MagicMock()
     controller.refugi_dao = MagicMock()
     controller.accounts = MagicMock()
-    controller.experience_dao = MagicMock()
     controller.media_service = fake_r2_service()
     controller.refugi_dao.get_media_entry.return_value = (True, {'creator_uid': 'author', 'status': 'visible'})
     controller.report_dao.create_report.return_value = (True, None)
@@ -179,7 +178,6 @@ class TestResolveReport:
         assert KEY not in store and thumb not in store
         assert store[f'moderation-hold/{KEY}'] == b'img'
         assert store[f'moderation-hold/{thumb}'] == b'thumb'
-        ctrl.experience_dao.remove_media_key.assert_called_once_with('exp_1', KEY)
 
     def test_resolve_persistence_failure(self, ctrl):
         ctrl.report_dao.get_report.return_value = pending_report()

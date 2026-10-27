@@ -106,8 +106,7 @@ class TestRefugiLliureControllerExtended:
 
     @patch('api.controllers.refugi_lliure_controller.r2_media_service')
     @patch('api.controllers.refugi_lliure_controller.RefugiLliureDAO')
-    @patch('api.controllers.refugi_lliure_controller.ExperienceDAO', create=True)
-    def test_delete_multiple_refugi_media_errors(self, mock_exp_dao_class, mock_ref_dao_class, mock_r2):
+    def test_delete_multiple_refugi_media_errors(self, mock_ref_dao_class, mock_r2):
         """Test delete_multiple_refugi_media errors"""
         ctrl = RefugiLliureController()
         mock_ref_dao = mock_ref_dao_class.return_value
@@ -136,8 +135,7 @@ class TestRefugiLliureControllerExtended:
 
     @patch('api.controllers.refugi_lliure_controller.r2_media_service')
     @patch('api.controllers.refugi_lliure_controller.RefugiLliureDAO')
-    @patch('api.controllers.refugi_lliure_controller.ExperienceDAO', create=True)
-    def test_delete_multiple_refugi_media_success(self, mock_exp_dao_class, mock_ref_dao_class, mock_r2):
+    def test_delete_multiple_refugi_media_success(self, mock_ref_dao_class, mock_r2):
         """Test delete_multiple_refugi_media èxit"""
         ctrl = RefugiLliureController()
         mock_ref_dao = mock_ref_dao_class.return_value

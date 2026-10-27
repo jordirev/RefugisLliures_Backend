@@ -1,8 +1,7 @@
 """
-Views de pujada directa de mitjans, denúncies i moderació (feature images).
+Views de denúncies i moderació de mitjans (feature images).
 
-POST  /api/media/upload-intents/            IsAuthenticated + IsNotBlocked + IsAgeConfirmed
-POST  /api/media/upload-intents/confirm/    IsAuthenticated + IsNotBlocked + IsAgeConfirmed
+(la pujada directa, POST /api/media/upload-intents/[confirm/], és a `apps/uploads`)
 POST  /api/media/reports/                   IsAuthenticated + IsNotBlocked + IsAgeConfirmed
 GET   /api/admin/media-reports/             IsAuthenticated + IsFirebaseAdmin
 PATCH /api/admin/media-reports/{id}/        IsAuthenticated + IsFirebaseAdmin
@@ -17,9 +16,6 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from ..controllers.media_upload_controller import (
-    MediaUploadController, ERROR_NOT_OWNER, ERROR_INVALID_PREFIX,
-)
 from ..controllers.media_report_controller import (
     MediaReportController, ERROR_OWN_MEDIA, ERROR_ALREADY_REPORTED, ERROR_ALREADY_RESOLVED,
 )
@@ -27,8 +23,7 @@ from ..permissions import (
     HasProfile, IsAgeConfirmed, IsNotBlocked, IsFirebaseAdmin, is_firebase_admin, coded_error,
 )
 from ..serializers.media_serializer import (
-    UploadIntentCreateSerializer, UploadIntentResponseSerializer, UploadConfirmSerializer,
-    UploadConfirmResponseSerializer, MediaReportCreateSerializer, MediaReportResponseSerializer,
+    MediaReportCreateSerializer, MediaReportResponseSerializer,
     MediaReportListQuerySerializer, MediaReportResolveSerializer,
 )
 from ..utils.swagger_examples import (
@@ -55,107 +50,6 @@ def _uid(request):
 
 def _invalid_data(errors):
     return Response({'error': 'Dades invàlides', 'details': errors}, status=status.HTTP_400_BAD_REQUEST)
-
-
-# ========== /api/media/upload-intents/ ==========
-
-class UploadIntentsAPIView(APIView):
-    """Crea intents de pujada directa (URL PUT prefirmades a quarantine/)"""
-    permission_classes = [IsAuthenticated, HasProfile, IsNotBlocked, IsAgeConfirmed]
-
-    @swagger_auto_schema(
-        tags=['Media Upload'],
-        operation_description=(
-            "Crea fins a 10 intents de pujada. Per a cada fitxer es retorna una URL PUT prefirmada "
-            "(600 s) a `quarantine/{upload_id}` amb Content-Type i Content-Length signats. "
-            "Després de pujar els bytes cal cridar `/api/media/upload-intents/confirm/`.\n\n"
-            "Límits: imatge ≤ 15 MB (jpeg/png/webp/heic/heif), vídeo ≤ 50 MB (mp4/quicktime/webm); "
-            "l'avatar només accepta una imatge.\n\n"
-            "Requereix autenticació, edat confirmada i compte no bloquejat.\n\n"
-            f"Exemple de petició: `{json.dumps(EXAMPLE_UPLOAD_INTENT_REQUEST)}`"
-        ),
-        request_body=UploadIntentCreateSerializer,
-        responses={
-            201: openapi.Response('Intents creats', UploadIntentResponseSerializer,
-                                  examples={'application/json': EXAMPLE_UPLOAD_INTENT_RESPONSE}),
-            400: ERROR_400_INVALID_DATA,
-            401: ERROR_401_UNAUTHORIZED,
-            403: ERROR_403_UPLOAD_FORBIDDEN,
-            404: ERROR_404_REFUGI_NOT_FOUND,
-            500: ERROR_500_INTERNAL_ERROR,
-        },
-    )
-    def post(self, request):
-        try:
-            serializer = UploadIntentCreateSerializer(data=request.data)
-            if not serializer.is_valid():
-                return _invalid_data(serializer.errors)
-            data = serializer.validated_data
-
-            result, error = MediaUploadController().create_upload_intents(
-                uid=_uid(request),
-                target=data['target'],
-                files=[{'content_type': f['content_type'], 'size': f['size']} for f in data['files']],
-                refuge_id=data.get('refuge_id'),
-                experience_id=data.get('experience_id'),
-                is_admin=is_firebase_admin(request),
-            )
-            if error:
-                if error == ERROR_NOT_OWNER:
-                    return Response(coded_error('not_owner', "No ets el creador d'aquesta experiència"),
-                                    status=status.HTTP_403_FORBIDDEN)
-                if 'not found' in error.lower():
-                    return Response({'error': error}, status=status.HTTP_404_NOT_FOUND)
-                if error.startswith(ERROR_INVALID_PREFIX):
-                    return Response({'error': error[len(ERROR_INVALID_PREFIX):].strip()},
-                                    status=status.HTTP_400_BAD_REQUEST)
-                return Response({'error': error}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-            return Response(result, status=status.HTTP_201_CREATED)
-        except Exception as e:
-            logger.error(f"Error creant intents de pujada: {str(e)}")
-            return Response({'error': INTERNAL_SERVER_ERROR}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
-class UploadIntentsConfirmAPIView(APIView):
-    """Confirma i processa fitxers pujats a quarantine/"""
-    permission_classes = [IsAuthenticated, HasProfile, IsNotBlocked, IsAgeConfirmed]
-
-    @swagger_auto_schema(
-        tags=['Media Upload'],
-        operation_description=(
-            "Processa els fitxers pujats: comprova mida i tipus real (magic bytes + obertura), "
-            "recodifica (WebP 2048 px + miniatura 400 px; vídeo sense metadades + pòster), elimina "
-            "EXIF/GPS, passa la moderació per hash i publica amb clau UUID.\n\n"
-            "`failed[].reason` ∈ missing_object | too_large | invalid_type | processing_error | moderation_blocked. "
-            "Idempotent: confirmar dues vegades el mateix upload_id retorna el mateix MediaItem.\n\n"
-            f"Exemple de petició: `{json.dumps(EXAMPLE_UPLOAD_CONFIRM_REQUEST)}`"
-        ),
-        request_body=UploadConfirmSerializer,
-        responses={
-            200: openapi.Response('Resultat del processament', UploadConfirmResponseSerializer,
-                                  examples={'application/json': EXAMPLE_UPLOAD_CONFIRM_RESPONSE}),
-            400: ERROR_400_INVALID_DATA,
-            401: ERROR_401_UNAUTHORIZED,
-            403: ERROR_403_UPLOAD_FORBIDDEN,
-            500: ERROR_500_INTERNAL_ERROR,
-        },
-    )
-    def post(self, request):
-        try:
-            serializer = UploadConfirmSerializer(data=request.data)
-            if not serializer.is_valid():
-                return _invalid_data(serializer.errors)
-
-            result, error = MediaUploadController().confirm_upload_intents(
-                _uid(request), serializer.validated_data['upload_ids']
-            )
-            if error:
-                return Response({'error': error}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-            return Response(result, status=status.HTTP_200_OK)
-        except Exception as e:
-            logger.error(f"Error confirmant pujades: {str(e)}")
-            return Response({'error': INTERNAL_SERVER_ERROR}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 # ========== /api/media/reports/ ==========

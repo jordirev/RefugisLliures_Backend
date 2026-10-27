@@ -187,7 +187,7 @@ def intent_body(target='refuge', refuge=None, experience_id=None, files=None, ri
 def refuge_media_rows(refuge=None):
     """`[dict]` de `refuges.refuge_media` (ordenats per clau)."""
     cols = ('key', 'refuge_id', 'creator_uid', 'experience_id', 'media_type', 'content_type', 'status', 'width',
-            'height', 'size_bytes', 'thumb_key', 'blurhash', 'rights_confirmed_at', 'uploaded_at')
+            'height', 'size_bytes', 'thumb_key', 'blurhash', 'rights_confirmed_at', 'taken_at', 'uploaded_at')
     where, params = ('WHERE refuge_id = %s', [getattr(refuge, 'pk', refuge)]) if refuge is not None else ('', [])
     rows = sql(f'SELECT {", ".join(cols)} FROM refuges.refuge_media {where} ORDER BY key', params)
     out = []

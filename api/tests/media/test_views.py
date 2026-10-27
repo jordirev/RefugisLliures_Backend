@@ -9,7 +9,7 @@ from rest_framework.test import APIRequestFactory, force_authenticate
 
 from apps.accounts.models import UserAccount as User
 from api.views.media_views import (
-    UploadIntentsAPIView, UploadIntentsConfirmAPIView, MediaReportsAPIView,
+    MediaReportsAPIView,
     AdminMediaReportsAPIView, AdminMediaReportDetailAPIView,
 )
 
@@ -34,113 +34,6 @@ INTENT_BODY = {
     'target': 'refuge', 'refuge_id': 'ref_1', 'rights_confirmed': True,
     'files': [{'content_type': 'image/jpeg', 'size': 1000}],
 }
-
-
-@pytest.mark.views
-class TestUploadIntentsView:
-    @patch('api.views.media_views.MediaUploadController')
-    def test_created(self, mock_ctrl, factory):
-        mock_ctrl.return_value.create_upload_intents.return_value = (
-            {'uploads': [{'upload_id': 'u1', 'put_url': 'https://r2/x', 'headers': {'Content-Type': 'image/jpeg'},
-                          'expires_in': 600}]}, None)
-        response = UploadIntentsAPIView.as_view()(authed(factory.post('/api/media/upload-intents/', INTENT_BODY, format='json')))
-        assert response.status_code == status.HTTP_201_CREATED
-        assert response.data['uploads'][0]['expires_in'] == 600
-        kwargs = mock_ctrl.return_value.create_upload_intents.call_args.kwargs
-        assert kwargs['uid'] == 'user_1' and kwargs['target'] == 'refuge' and kwargs['refuge_id'] == 'ref_1'
-        assert kwargs['files'] == [{'content_type': 'image/jpeg', 'size': 1000}]
-
-    @pytest.mark.parametrize('body', [
-        dict(INTENT_BODY, rights_confirmed=False),
-        dict(INTENT_BODY, target='planet'),
-        {k: v for k, v in INTENT_BODY.items() if k != 'refuge_id'},
-        dict(INTENT_BODY, files=[]),
-        dict(INTENT_BODY, files=[{'content_type': 'image/jpeg', 'size': 1}] * 11),
-        dict(INTENT_BODY, files=[{'content_type': 'application/pdf', 'size': 10}]),
-        dict(INTENT_BODY, files=[{'content_type': 'image/gif', 'size': 10}]),
-        dict(INTENT_BODY, files=[{'content_type': 'image/jpeg', 'size': 15 * 1024 * 1024 + 1}]),
-        dict(INTENT_BODY, files=[{'content_type': 'video/mp4', 'size': 50 * 1024 * 1024 + 1}]),
-        dict(INTENT_BODY, files=[{'content_type': 'image/jpeg', 'size': 0}]),
-        {'target': 'avatar', 'rights_confirmed': True, 'files': [{'content_type': 'video/mp4', 'size': 10}]},
-        {'target': 'avatar', 'rights_confirmed': True, 'files': [{'content_type': 'image/png', 'size': 10}] * 2},
-        {'target': 'experience', 'rights_confirmed': True, 'files': [{'content_type': 'image/png', 'size': 10}]},
-    ])
-    @patch('api.views.media_views.MediaUploadController')
-    def test_validation_400(self, mock_ctrl, factory, body):
-        response = UploadIntentsAPIView.as_view()(authed(factory.post('/x', body, format='json')))
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
-        mock_ctrl.return_value.create_upload_intents.assert_not_called()
-
-    @pytest.mark.parametrize('error,code', [
-        ('not_owner', 403), ('Refugi not found', 404), ('Experience not found', 404),
-        ('invalid: refuge_id no correspon', 400), ('Error intern: x', 500),
-    ])
-    @patch('api.views.media_views.MediaUploadController')
-    def test_controller_errors(self, mock_ctrl, factory, error, code):
-        mock_ctrl.return_value.create_upload_intents.return_value = (None, error)
-        response = UploadIntentsAPIView.as_view()(authed(factory.post('/x', INTENT_BODY, format='json')))
-        assert response.status_code == code
-        if code == 403:
-            assert response.data['error'] == 'not_owner' and response.data['code'] == 'not_owner'
-
-    @pytest.mark.real_permissions
-    @patch('api.views.media_views.MediaUploadController')
-    @patch('api.permissions.get_user_for_permissions')
-    def test_blocked_user_gets_403_user_blocked(self, mock_lookup, mock_ctrl, factory):
-        mock_lookup.return_value = User(uid='user_1', age_confirmed_at='2025-01-01', is_blocked=True)
-        response = UploadIntentsAPIView.as_view()(authed(factory.post('/x', INTENT_BODY, format='json')))
-        assert response.status_code == status.HTTP_403_FORBIDDEN
-        assert response.data['error'] == 'user_blocked'
-        assert response.data['code'] == 'user_blocked'
-        mock_ctrl.return_value.create_upload_intents.assert_not_called()
-
-    @pytest.mark.real_permissions
-    @patch('api.views.media_views.MediaUploadController')
-    @patch('api.permissions.get_user_for_permissions')
-    def test_age_not_confirmed_gets_403(self, mock_lookup, mock_ctrl, factory):
-        mock_lookup.return_value = User(uid='user_1')
-        response = UploadIntentsAPIView.as_view()(authed(factory.post('/x', INTENT_BODY, format='json')))
-        assert response.status_code == status.HTTP_403_FORBIDDEN
-        assert response.data['error'] == 'age_not_confirmed'
-
-    @pytest.mark.real_permissions
-    @patch('api.views.media_views.MediaUploadController')
-    @patch('api.permissions.get_user_for_permissions')
-    def test_missing_user_doc_is_profile_required(self, mock_lookup, mock_ctrl, factory):
-        """Chunk 3: sense fila a `users.users`, `HasProfile` (que va abans d'`IsAgeConfirmed`) respon `profile_required`."""
-        mock_lookup.return_value = None
-        response = UploadIntentsAPIView.as_view()(authed(factory.post('/x', INTENT_BODY, format='json')))
-        assert response.data['error'] == 'profile_required'
-
-    def test_unauthenticated(self, factory):
-        response = UploadIntentsAPIView.as_view()(factory.post('/x', INTENT_BODY, format='json'))
-        assert response.status_code in (401, 403)
-
-
-@pytest.mark.views
-class TestConfirmView:
-    @patch('api.views.media_views.MediaUploadController')
-    def test_ok(self, mock_ctrl, factory):
-        mock_ctrl.return_value.confirm_upload_intents.return_value = (
-            {'uploaded': [], 'failed': [{'upload_id': 'u1', 'reason': 'invalid_type'}]}, None)
-        response = UploadIntentsConfirmAPIView.as_view()(authed(factory.post('/x', {'upload_ids': ['u1']}, format='json')))
-        assert response.status_code == 200
-        assert response.data['failed'] == [{'upload_id': 'u1', 'reason': 'invalid_type'}]
-        mock_ctrl.return_value.confirm_upload_intents.assert_called_once_with('user_1', ['u1'])
-
-    @pytest.mark.parametrize('body', [{}, {'upload_ids': []}, {'upload_ids': ['a'] * 11}])
-    def test_invalid(self, factory, body):
-        response = UploadIntentsConfirmAPIView.as_view()(authed(factory.post('/x', body, format='json')))
-        assert response.status_code == 400
-
-    @patch('api.views.media_views.MediaUploadController')
-    def test_internal_error(self, mock_ctrl, factory):
-        mock_ctrl.return_value.confirm_upload_intents.return_value = (None, 'Error intern')
-        response = UploadIntentsConfirmAPIView.as_view()(authed(factory.post('/x', {'upload_ids': ['u']}, format='json')))
-        assert response.status_code == 500
-
-
-REPORT_BODY = {'refuge_id': 'ref_1', 'media_key': KEY, 'reason': 'my_image'}
 
 
 @pytest.mark.views

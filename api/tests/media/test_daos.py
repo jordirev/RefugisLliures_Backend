@@ -8,11 +8,9 @@ import pytest
 from google.api_core import exceptions as gcloud_exceptions
 from google.cloud.firestore import DELETE_FIELD
 
-from api.daos.upload_intent_dao import UploadIntentDAO
 from api.daos.media_report_dao import MediaReportDAO, DUPLICATE_REPORT_ERROR
 from api.daos.moderation_notice_dao import ModerationNoticeDAO
 from api.daos.refugi_lliure_dao import RefugiLliureDAO
-from api.models.upload_intent import UploadIntent
 from api.models.media_report import MediaReport
 
 KEY = 'refugis-lliures/ref_1/abc-1.webp'
@@ -25,40 +23,6 @@ def doc(data, exists=True, doc_id='d'):
     d.id = doc_id
     d.to_dict.return_value = data
     return d
-
-
-@pytest.mark.daos
-class TestUploadIntentDAO:
-    @patch('api.daos.upload_intent_dao.FirestoreService')
-    def test_create_get_mark(self, mock_fs):
-        db = mock_fs.return_value.get_db.return_value
-        dao = UploadIntentDAO()
-        db.collection.return_value.document.return_value.id = 'new_id'
-        assert dao.new_id() == 'new_id'
-
-        intent = UploadIntent(id='i1', uid='u', target='avatar', content_type='image/png', size=1,
-                              quarantine_key='quarantine/i1')
-        assert dao.create_intents([intent]) is True
-        db.batch.return_value.set.assert_called_once()
-        db.batch.return_value.commit.assert_called_once()
-
-        db.collection.return_value.document.return_value.get.return_value = doc(intent.to_dict(), doc_id='i1')
-        assert dao.get_intent('i1') == intent
-        db.collection.return_value.document.return_value.get.return_value = doc(None, exists=False)
-        assert dao.get_intent('i1') is None
-
-        assert dao.mark_confirmed('i1', 'k') is True
-        db.collection.return_value.document.return_value.update.assert_called_with({'status': 'confirmed', 'result_key': 'k'})
-        assert dao.mark_failed('i1', 'too_large') is True
-        db.collection.return_value.document.return_value.update.assert_called_with({'status': 'failed', 'failure_reason': 'too_large'})
-
-    @patch('api.daos.upload_intent_dao.FirestoreService')
-    def test_errors(self, mock_fs):
-        mock_fs.return_value.get_db.side_effect = Exception('down')
-        dao = UploadIntentDAO()
-        assert dao.create_intents([]) is False
-        assert dao.get_intent('x') is None
-        assert dao.mark_failed('x', 'r') is False
 
 
 @pytest.mark.daos

@@ -4,7 +4,6 @@ Tests dels models de mitjans: MediaItem (MediaMetadata), UploadIntent, MediaRepo
 import pytest
 
 from api.models.media_metadata import MediaMetadata, RefugeMediaMetadata, infer_media_type
-from api.models.upload_intent import UploadIntent
 from api.models.media_report import MediaReport, build_report_id, AUTO_HIDE_REASONS, REPORT_REASONS
 from api.models.moderation_notice import ModerationNotice, REDRESS_TEXT
 
@@ -53,30 +52,6 @@ class TestMediaItem:
     def test_from_dict_public_shape(self):
         item = MediaMetadata.from_dict({'key': 'k', 'url': 'u', 'thumb_url': 't', 'width': 3})
         assert item.thumb_url == 't' and item.width == 3
-
-
-@pytest.mark.models
-class TestUploadIntent:
-    def base(self, **kw):
-        data = dict(id='i', uid='u', target='refuge', content_type='image/png', size=1,
-                    quarantine_key='quarantine/i', refuge_id='r')
-        data.update(kw)
-        return data
-
-    def test_roundtrip(self):
-        intent = UploadIntent(**self.base())
-        assert UploadIntent.from_dict(intent.to_dict()) == intent
-
-    @pytest.mark.parametrize('kw', [
-        {'id': ''}, {'uid': ''}, {'target': 'x'}, {'status': 'x'}, {'refuge_id': None},
-        {'target': 'experience'},
-    ])
-    def test_validation(self, kw):
-        with pytest.raises(ValueError):
-            UploadIntent(**self.base(**kw))
-
-    def test_avatar_without_refuge(self):
-        assert UploadIntent(**self.base(target='avatar', refuge_id=None)).refuge_id is None
 
 
 @pytest.mark.models
