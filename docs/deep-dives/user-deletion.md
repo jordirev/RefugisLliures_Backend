@@ -41,7 +41,7 @@ Per permetre l'anonimització, `renovations.creator_uid` és *nullable* i el `gr
 | `data_refugis_lliures` (legacy) | ja no es toca des de l'esborrat d'usuari |
 | ~~`experiences` d'altres usuaris: UPDATE `media_keys`~~ | Ja no cal: les fotes d'un usuari a experiències d'altres són files de `refuge_media` (`creator_uid`) i cauen per cascada |
 | PostgreSQL `users.users` | DELETE (cascada: perfil, avatar, preferits, visitats, participacions en visites, `refuge_media`) |
-| R2 | `delete_files` d'avatar + miniatura + fotos pujades + mitjans de les seves experiències (+ miniatures), en un sol lot; les claus es llegeixen amb `system_context()` (un mitjà amagat d'un altre no és visible per a l'usuari sota RLS) |
+| R2 | `delete_files` d'avatar + miniatura + fotos pujades + mitjans de les seves experiències (+ miniatures), en un sol lot; les claus es llegeixen amb `system_context()` en dues consultes amb índex (`creator_uid` i `experience_id IN (experiències de l'usuari)`) (un mitjà amagat d'un altre no és visible per a l'usuari sota RLS) |
 | Firebase Auth | `auth.delete_user(uid)` (idempotent: `UserNotFoundError` es dona per fet) |
 
 ## Estratègia d'errors
