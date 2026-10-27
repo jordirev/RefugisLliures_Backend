@@ -143,11 +143,13 @@ def test_columnes_de_links(migrator_db):
     assert c['position'][2] == 'int2' and c['url'][2] == 'text'
 
 
-def test_columnes_de_media_sense_experience_id_encara(migrator_db):
-    """`experience_id` (i la FK cap a `activity.experiences`) arriba al chunk 7 amb `refuges.0002` (§6.2)."""
+def test_columnes_de_media_amb_experience_id(migrator_db):
+    """`refuges.0002` (chunk 7) afegeix `experience_id` (nullable, FK cap a `activity.experiences`; §2.8, §6.2)."""
     c = _cols(migrator_db, 'refuges', 'refuge_media')
-    assert set(c) == {'key', 'refuge_id', 'creator_uid', 'media_type', 'content_type', 'status', 'uploaded_at',
-                      'taken_at', 'width', 'height', 'size_bytes', 'thumb_key', 'blurhash', 'rights_confirmed_at'}
+    assert set(c) == {'key', 'refuge_id', 'creator_uid', 'experience_id', 'media_type', 'content_type', 'status',
+                      'uploaded_at', 'taken_at', 'width', 'height', 'size_bytes', 'thumb_key', 'blurhash',
+                      'rights_confirmed_at'}
+    assert c['experience_id'][2] == 'uuid' and c['experience_id'][3] == 'YES'
     assert c['key'][2] == 'text' and c['creator_uid'][5] == 128 and c['media_type'][5] == 5
     assert c['status'][4].startswith("'visible'")
     assert c['rights_confirmed_at'][3] == 'NO' and c['size_bytes'][2] == 'int8'

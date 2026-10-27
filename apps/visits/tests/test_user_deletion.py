@@ -32,9 +32,15 @@ OTHER_STEPS = [
 
 @pytest.fixture(autouse=True)
 def other_firestore_steps():
-    patches = [patch(t, return_value=(True, None)) for t in OTHER_STEPS]
-    mocks = [p.start() for p in patches]
-    yield mocks
+    patches = []
+    for target in OTHER_STEPS:
+        try:
+            p = patch(target, return_value=(True, None))
+            p.start()
+        except (AttributeError, ImportError):                  # chunk 7: el controller d'experiències ja no existeix
+            continue
+        patches.append(p)
+    yield patches
     for p in patches:
         p.stop()
 
