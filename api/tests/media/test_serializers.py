@@ -9,7 +9,7 @@ from rest_framework.test import APIRequestFactory, force_authenticate
 from api.models.media_metadata import MediaMetadata
 from apps.accounts.models import UserAccount as User
 from api.serializers.media_serializer import (
-    MediaItemSerializer, UploadIntentCreateSerializer, MediaReportCreateSerializer, MediaReportResolveSerializer,
+    MediaItemSerializer, MediaReportCreateSerializer, MediaReportResolveSerializer,
 )
 from apps.refuges.serializers import RefugiSerializer
 
@@ -40,17 +40,6 @@ class TestMediaItemSerializer:
 
 @pytest.mark.serializers
 class TestRequestSerializers:
-    def test_intent_normalizes_content_type(self):
-        s = UploadIntentCreateSerializer(data={'target': 'refuge', 'refuge_id': 'r', 'rights_confirmed': True,
-                                               'files': [{'content_type': 'image/jpg', 'size': 10}]})
-        assert s.is_valid(), s.errors
-        assert s.validated_data['files'][0]['content_type'] == 'image/jpeg'
-
-    def test_intent_video_limit_ok(self):
-        s = UploadIntentCreateSerializer(data={'target': 'refuge', 'refuge_id': 'r', 'rights_confirmed': True,
-                                               'files': [{'content_type': 'video/webm', 'size': 50 * 1024 * 1024}]})
-        assert s.is_valid(), s.errors
-
     def test_report_other_with_details(self):
         s = MediaReportCreateSerializer(data={'refuge_id': 'r', 'media_key': 'k', 'reason': 'other', 'details': 'x'})
         assert s.is_valid(), s.errors

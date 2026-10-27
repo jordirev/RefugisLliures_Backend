@@ -100,14 +100,16 @@ def test_patch_del_perfil_tambe_retorna_el_comptador(client, world):
 def test_no_es_demana_res_de_reformes_a_firestore(client, world, legacy_counts):
     make_renovation(world.r1, 'u1')
     own_profile(client, 'u1')
-    assert all(call.args[0] == 'experiences' for call in legacy_counts.call_args_list), legacy_counts.call_args_list
+    assert legacy_counts.call_args_list == [], legacy_counts.call_args_list     # chunk 7: ni experiències
 
 
-def test_les_experiencies_segueixen_venint_de_firestore(client, world, legacy_counts):
+def test_les_experiencies_ja_no_venen_de_firestore(client, world, legacy_counts):
+    """Chunk 7: `num_shared_experiences` surt de SQL; el que digui Firestore s'ignora (detall a
+    `test_experience_counts_and_deletion.py`)."""
     legacy_counts.side_effect = lambda collection, *a: 7 if collection == 'experiences' else 99
     make_renovation(world.r1, 'u1')
     profile = own_profile(client, 'u1')
-    assert profile['num_shared_experiences'] == 7 and profile['num_renovated_refuges'] == 1
+    assert profile['num_shared_experiences'] == 0 and profile['num_renovated_refuges'] == 1
 
 
 def test_el_perfil_propi_no_depen_de_firestore_per_a_les_reformes(client, world, legacy_counts):

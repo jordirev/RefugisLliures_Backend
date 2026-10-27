@@ -92,15 +92,6 @@ class RefugiLliureController:
                 # Refugi no existeix o no s'han trobat mitjans
                 return False, "Refugi or Media not found"
             
-            # Agrupem les metadades per experience_id per optimitzar
-            experiences_to_update = {}
-            for metadata in metadata_backup_list:
-                experience_id = metadata.get('experience_id')
-                if experience_id:
-                    if experience_id not in experiences_to_update:
-                        experiences_to_update[experience_id] = []
-                    experiences_to_update[experience_id].append(metadata['key'])
-            
             # Eliminar fitxers de R2
             result = self.media_service.delete_files(media_keys)
 
@@ -112,15 +103,6 @@ class RefugiLliureController:
                 thumb_key = metadata.get('thumb_key')
                 if thumb_key and metadata['key'] in deleted_keys and not self.media_service.delete_file(thumb_key):
                     logger.warning(f"Miniatura òrfena a R2: {thumb_key}")
-
-            # Eliminar keys de les experiències
-            if experiences_to_update:
-                from ..daos.experience_dao import ExperienceDAO
-                experience_dao = ExperienceDAO()
-                for exp_id, keys in experiences_to_update.items():
-                    for key in keys:
-                        if key not in failed_keys:
-                            experience_dao.remove_media_key(exp_id, key)
 
             # Si hi ha errors eliminant de R2, fer rollback de les failed_deletions
             if failed_keys:

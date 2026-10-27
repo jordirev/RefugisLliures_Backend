@@ -34,7 +34,7 @@ Regles:
 - Validació a `__post_init__` amb `ValueError` i missatges en català.
 - **Les mateixes regles** han d'existir al serializer d'entrada; si el model és més estricte, el DAO pot desar un document que després no es pot llegir (cas `ini_date == fin_date`, `api/models/renovation.py:32-33`).
 - Dates: desa strings ISO (`YYYY-MM-DD` o datetime ISO) i usa `api/utils/timezone_utils.py` (Madrid). Si `from_dict` converteix a `datetime`, vigila comparacions amb `date` (bug `api/controllers/renovation_controller.py:124-128`).
-- Media: desa **claus** R2, no URLs; genera URLs presignades a `from_dict` si cal (com `Experience`, `User`, `Refugi`).
+- Media: desa **claus** R2, no URLs; genera URLs presignades a `from_dict` si cal (com `Refugi` legacy; a les apps migrades, `media_to_dict` presigna a la resposta).
 - Si l'usuari es pot esborrar, preveu l'anonimització (`creator_uid='unknown'`), com `Renovation` (`api/models/renovation.py:36-38`).
 - Importa el logger amb `logging.getLogger(__name__)`; **no** copiïs `from venv import logger` / `from asyncio.log import logger`.
 
@@ -42,7 +42,7 @@ Regles:
 Còpia de `api/mappers/renovation_mapper.py`: `firestore_to_model`, `model_to_firestore`, `firestore_list_to_models`, `models_to_firestore_list` (tots `@staticmethod`). Posa-hi lògica només si cal transformar formats (exemple amb lògica: `api/mappers/refugi_lliure_mapper.py`).
 
 ## 3. DAO — `api/daos/<entitat>_dao.py`
-- `COLLECTION_NAME = '<col·lecció>'` (snake_case, plural en anglès, com `renovations`, `experiences`).
+- `COLLECTION_NAME = '<col·lecció>'` (snake_case, plural en anglès, com `refuges_proposals`).
 - `__init__`: `self.firestore_service = FirestoreService()`, `self.mapper = FooMapper()`.
 - Crear: `doc_ref = db.collection(...).document()`, `data['id'] = doc_ref.id`, `doc_ref.set(data)` (`api/daos/renovation_dao.py:52-54`).
 - Considera validar construint el model **abans** del `set()` per no persistir dades invàlides.

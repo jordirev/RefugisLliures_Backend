@@ -333,18 +333,24 @@ def test_patch_anonim_401(client):
 # =================================== DELETE /users/{uid}/ (D21) ===================================
 
 LEGACY_STEPS = [
-    ('api.controllers.experience_controller.ExperienceController.delete_experiences_by_creator'),
+    ('api.controllers.experience_controller.ExperienceController.delete_experiences_by_creator'),   # chunk 7: desapareix
     ('api.controllers.refuge_proposal_controller.RefugeProposalController.anonymize_proposals_by_creator'),
 ]
 
 
 @pytest.fixture
 def legacy_delete_steps():
-    """Passos de l'esborrat que continuen a Firestore (D21): es mocken tots i retornen exit."""
-    patches = [patch(t, return_value=(True, None)) for t in LEGACY_STEPS]
-    mocks = [p.start() for p in patches]
-    yield dict(zip(LEGACY_STEPS, mocks))
-    for p in patches:
+    """Passos de l'esborrat que continuen a Firestore (D21): es mocken tots i retornen exit. Els que ja s'han migrat
+    (experiències, chunk 7: ho fa la cascada de la FK) s'ometen si el seu controller ja no existeix."""
+    started = {}
+    for target in LEGACY_STEPS:
+        try:
+            p = patch(target, return_value=(True, None))
+            started[target] = (p, p.start())
+        except (AttributeError, ImportError):
+            continue
+    yield {t: m for t, (_, m) in started.items()}
+    for p, _ in started.values():
         p.stop()
 
 
@@ -377,7 +383,7 @@ def test_delete_executa_els_passos_de_firestore_encara_no_migrats(client, legacy
 def test_delete_si_falla_un_pas_de_firestore_500_amb_error_id_i_es_conserva_l_usuari(client, legacy_delete_steps):
     """M10: tota fallada es retornava com a 404. Ara 500 `{error, error_id}` (politica de les features migrades)."""
     make_user('u1')
-    legacy_delete_steps[LEGACY_STEPS[-1]].return_value = (False, 'boom intern amb detalls')
+    list(legacy_delete_steps.values())[-1].return_value = (False, 'boom intern amb detalls')
     r = api_delete(client, url('u1'), user_claims('u1'))
     assert r.status_code == 500
     assert set(r.json()) == {'error', 'error_id'} and 'boom' not in r.content.decode()
@@ -434,7 +440,7 @@ def test_delete_compte_de_firebase_ja_inexistent_es_idempotent_204(client, legac
 
 def test_delete_si_falla_un_pas_previ_no_es_toca_firebase(client, legacy_delete_steps, firebase_accounts):
     make_user('u1')
-    legacy_delete_steps[LEGACY_STEPS[0]].return_value = (False, 'x')
+    list(legacy_delete_steps.values())[0].return_value = (False, 'x')
     assert api_delete(client, url('u1'), user_claims('u1')).status_code == 500
     firebase_accounts.delete_user.assert_not_called()
 

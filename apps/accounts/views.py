@@ -59,7 +59,7 @@ ACCOUNT_NOT_FOUND_MESSAGE = "El compte de Firebase d'aquest token ja no existeix
 NOT_AUTHENTICATED = {'error': 'No autenticat', 'message': "UID no trobat al token d'autenticació"}
 
 ERR_PROFILE_DB = "Error de base de dades en obtenir l'usuari"
-ERR_COUNTS = "Error en obtenir els comptadors de l'usuari a Firestore"
+ERR_COUNTS = "Error de base de dades en obtenir els comptadors de l'usuari"
 ERR_PRESIGN = "Error en generar la URL de l'avatar"
 ERR_CREATE = "Error de base de dades en crear l'usuari"
 ERR_UPDATE = "Error de base de dades en actualitzar l'usuari"
@@ -87,7 +87,7 @@ def _refuge_presigner():
 
 
 def _own_profile_response(user, uid, http_status=status.HTTP_200_OK):
-    """Perfil propi serialitzat (comptadors de Firestore, D19, i URL prefirmada de l'avatar)."""
+    """Perfil propi serialitzat (comptadors SQL i URL prefirmada de l'avatar)."""
     try:
         counts = selectors.get_legacy_counts(uid)
     except Exception as exc:
@@ -158,7 +158,7 @@ class UsersCollectionAPIView(APIView):
                             status=status.HTTP_401_UNAUTHORIZED)
         except Exception as exc:
             return server_error(ERR_CREATE, exc, logger=logger)
-        # Usuari nou: sense llistes, fotos ni activitat a Firestore (no cal consultar-lo).
+        # Usuari nou: sense llistes, fotos ni activitat (no cal consultar els comptadors).
         zero = {'num_shared_experiences': 0, 'num_renovated_refuges': 0}
         try:
             return Response(own_profile_to_dict(user, zero, _avatar_presigner()), status=status.HTTP_201_CREATED)

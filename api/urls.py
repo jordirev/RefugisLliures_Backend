@@ -1,13 +1,8 @@
 from django.urls import include, path
 from .views.health_check_views import HealthCheckAPIView
-from .views.experience_views import (
-    ExperienceListAPIView,
-    ExperienceDetailAPIView
-)
 from .views.user_views import UserModerationNoticesAPIView
+from apps.uploads.views import UploadIntentsAPIView, UploadIntentsConfirmAPIView
 from .views.media_views import (
-    UploadIntentsAPIView,
-    UploadIntentsConfirmAPIView,
     MediaReportsAPIView,
     AdminMediaReportsAPIView,
     AdminMediaReportDetailAPIView,
@@ -41,8 +36,8 @@ urlpatterns = [
     path('admin/media-reports/<str:id>/', AdminMediaReportDetailAPIView.as_view(), name='admin_media_report_detail'),  # PATCH (admins)
 
     # Refuge experience endpoints
-    path('experiences/', ExperienceListAPIView.as_view(), name='experience_list'),  # GET + POST /refuges/{refuge_id}/experiences/
-    path('experiences/<str:experience_id>/', ExperienceDetailAPIView.as_view(), name='experience_detail'),  # PATCH + DELETE /refuges/{refuge_id}/experiences/{experience_id}/
+    # /experiences/, /experiences/{id}/ → app `experiences` (PostgreSQL)
+    path('experiences/', include('apps.experiences.urls')),
     
     # Refuge doubts endpoints
     # /doubts/, /doubts/{id}/, /doubts/{id}/answers/, /doubts/{id}/answers/{answer_id}/ → app `doubts` (PostgreSQL)

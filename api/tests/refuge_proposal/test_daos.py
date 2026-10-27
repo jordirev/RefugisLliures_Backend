@@ -263,14 +263,13 @@ class TestRefugeProposalDAOExtended:
 
     @patch('api.daos.refuge_proposal_dao.RefugeProposalDAO')
     @patch('api.controllers.doubt_controller.DoubtController')
-    @patch('api.controllers.experience_controller.ExperienceController')
     @patch('api.controllers.refugi_lliure_controller.RefugiLliureController')
     @patch('api.controllers.renovation_controller.RenovationController')
     @patch('api.daos.refuge_proposal_dao.delete_refuge_from_coords_refugis')
     @patch('api.daos.refuge_proposal_dao.cache_service')
     def test_delete_refuge_strategy(self, mock_cache, mock_del_coords, 
                                    mock_ren_ctrl_class, mock_ref_ctrl_class,
-                                   mock_exp_ctrl_class, mock_doubt_ctrl_class,
+                                   mock_doubt_ctrl_class,
                                    mock_prop_dao_class):
         """Test DeleteRefugeStrategy"""
         strategy = DeleteRefugeStrategy()
@@ -289,10 +288,6 @@ class TestRefugeProposalDAOExtended:
         mock_doubt_ctrl = mock_doubt_ctrl_class.return_value
         mock_doubt_ctrl.get_doubts_by_refuge.return_value = ([MagicMock(id='d1')], None)
         mock_doubt_ctrl.delete_doubt.return_value = (True, None)
-        
-        mock_exp_ctrl = mock_exp_ctrl_class.return_value
-        mock_exp_ctrl.get_experiences_by_refuge.return_value = ([MagicMock(id='e1')], None)
-        mock_exp_ctrl.delete_experience.return_value = (True, None)
         
         mock_ref_ctrl = mock_ref_ctrl_class.return_value
         mock_ref_ctrl.delete_multiple_refugi_media.return_value = (True, None)
@@ -451,11 +446,10 @@ class TestRefugeProposalDAOExtended:
 
     @patch('api.daos.refuge_proposal_dao.RefugeProposalDAO')
     @patch('api.controllers.doubt_controller.DoubtController')
-    @patch('api.controllers.experience_controller.ExperienceController')
     @patch('api.controllers.refugi_lliure_controller.RefugiLliureController')
     @patch('api.controllers.renovation_controller.RenovationController')
     def test_delete_refuge_strategy_exceptions(self, mock_ren_ctrl_class, mock_ref_ctrl_class,
-                                             mock_exp_ctrl_class, mock_doubt_ctrl_class,
+                                             mock_doubt_ctrl_class,
                                              mock_prop_dao_class):
         """Test excepcions en els passos de DeleteRefugeStrategy"""
         strategy = DeleteRefugeStrategy()
@@ -481,15 +475,10 @@ class TestRefugeProposalDAOExtended:
         assert success is False
         assert "Error deleting doubt" in error
         
-        # 2. Error en experiències
+        # 2. (Les experiències ja no són a Firestore: cauen per la FK de PostgreSQL, chunk 7.)
         mock_doubt_ctrl.delete_doubt.return_value = (True, None)
-        mock_exp_ctrl = mock_exp_ctrl_class.return_value
-        mock_exp_ctrl.get_experiences_by_refuge.return_value = (None, "Error")
-        success, error = strategy.execute(proposal, db)
-        assert success is False
         
         # 3. Error en fotos
-        mock_exp_ctrl.get_experiences_by_refuge.return_value = ([], None)
         mock_ref_ctrl = mock_ref_ctrl_class.return_value
         mock_ref_ctrl.delete_multiple_refugi_media.return_value = (False, "Media Error")
         success, error = strategy.execute(proposal, db)

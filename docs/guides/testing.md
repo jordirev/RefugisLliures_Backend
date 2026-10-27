@@ -84,7 +84,7 @@ api/tests/
   test_auth_middleware_permissions.py, test_cache_views.py
   management_commands/
 ```
-Dominis: `experiences`, `refuge_proposal`, `refugi_lliure` (només el codi legacy que queda a `api/`) (`renovation` ja no té tests a `api/tests/`: són a `apps/renovations/tests/`; `api/tests/user/` només té `test_age_and_moderation.py`; la resta de tests d'usuari són a `apps/accounts/tests/`). Les comandes antigues de refugis (`assign_conditions`, `upload_refugis_to_firestore`, `extract_coords_to_firestore`, `verify_conditions`) i els seus tests s'han eliminat; `load_refuges` es prova a `apps/refuges/tests/test_load_refuges.py`.
+Dominis: `refuge_proposal`, `refugi_lliure` (només el codi legacy que queda a `api/`) (`renovation` ja no té tests a `api/tests/`: són a `apps/renovations/tests/`; `api/tests/user/` només té `test_age_and_moderation.py`; la resta de tests d'usuari són a `apps/accounts/tests/`). Les comandes antigues de refugis (`assign_conditions`, `upload_refugis_to_firestore`, `extract_coords_to_firestore`, `verify_conditions`) i els seus tests s'han eliminat; `load_refuges` es prova a `apps/refuges/tests/test_load_refuges.py`.
 
 ## Aïllament automàtic (feature images) [FET]
 El `conftest.py` de l'arrel (compartit per `api/tests` i `apps/*/tests`) té quatre fixtures `autouse`:
@@ -97,6 +97,14 @@ Domini `api/tests/media/`: processament real amb Pillow/ffmpeg (imatges JPEG amb
 
 ## Tests d'`apps/accounts` (chunk 3) [FET]
 `apps/accounts/tests/`: `test_schema` (DDL, FK, índexs, grants), `test_models_constraints`, `test_rls` (anònim, propi, aliè, admin, sistema), `test_serializers`, `test_selectors_services`, `test_views_users`, `test_views_lists`, `test_permissions` (`real_permissions`), `test_query_counts` (`django_assert_num_queries`), `test_refuge_visitors` i `test_security_review`. Corren contra Postgres real amb el rol `app`; Firestore i R2 es mocken (`api.services.firestore_service`, `get_legacy_counts`, el servei R2).
+
+## Tests d'`apps/experiences` i `apps/uploads` (chunk 7) [FET]
+`pytest apps/experiences apps/uploads -q` (Postgres real amb el rol `app`; R2 i `ModerationService` mockats).
+- `apps/experiences/tests/`: `test_schema` (DDL, FK, índexs, grants), `test_models_constraints` (CHECK de comentari i condició), `test_rls`, `test_condition_trigger` (vot, ajust, vot antic després d'un reset, esborrat sense efecte, `app` no pot fer `UPDATE refuges`), `test_concurrency` (vots concurrents), `test_selectors_services`, `test_serializers`, `test_permissions` (permisos per mètode), `test_views_contract` (contracte HTTP), `test_query_counts` (llista 2 consultes, constant), `test_server_errors` (500 amb `error_id`, R2 caigut), `test_user_deletion` (cascada i fitxers d'R2), `test_security_review` i `apps/accounts/tests/test_experience_counts_and_deletion.py` (comptadors del perfil ≤ 3 consultes).
+- `apps/uploads/tests/`: `test_schema`, `test_models_constraints` (shape/state/expire), `test_rls` (intents privats), `test_views_intents` / `test_views_confirm` (idempotència, `missing_object`, rollback d'R2, moderació), `test_purge_command` (lots, `CommandError`), `test_user_deletion`, `test_security_review`.
+- `apps/refuges/tests/test_experience_media.py`: `refuge_media.experience_id` i la política `media_insert`.
+- Les fixtures i helpers (`make_user`, `make_refuge`, `make_experience`…) són a `tests/helpers.py` i `conftest.py` de cada app. Els tests de BD porten `pytest.mark.real_permissions` quan han de passar pels permisos reals.
+- Els tests legacy d'experiències (`api/tests/experiences/`) i els d'intents de `api/tests/media/` han estat substituïts pels nous (D38).
 
 ## Escriure tests (resum)
 - DAO: `@patch('api.daos.<domini>_dao.FirestoreService')` + `@patch('api.daos.<domini>_dao.cache_service')`.

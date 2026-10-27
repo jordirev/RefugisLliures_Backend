@@ -91,7 +91,7 @@ sequenceDiagram
 ## Moderació automàtica (`api/services/moderation_service.py`)
 - `ModerationProvider` (interfície) → `HashBlocklistProvider` (actiu: sha256 exacte + pHash amb distància de Hamming ≤ 6), `PhotoDNAProvider` i `GoogleContentSafetyProvider` (stubs **desactivats** fins tenir accés).
 - `ModerationService.check` s'executa a cada pujada (`confirm`) **abans** de publicar. Si un proveïdor falla → **fail-closed** (`processing_error`, no es publica).
-- Coincidència (`MediaUploadController._handle_moderation_block`): el fitxer **no** es publica, l'original es mou a `moderation-hold/{uid}/{upload_id}`, `is_blocked=true`, denúncia `child_sexual_abuse` `priority=high` `source=automatic` (reporter `system`), avís `account_blocked` i dues entrades d'auditoria. L'admin **no** rep previsualització de l'evidència retinguda.
+- Coincidència (`apps.uploads.services._handle_moderation_block`; el bloqueig de l'usuari és SQL, la denúncia i l'avís, Firestore): el fitxer **no** es publica, l'original es mou a `moderation-hold/{uid}/{upload_id}`, `is_blocked=true`, denúncia `child_sexual_abuse` `priority=high` `source=automatic` (reporter `system`), avís `account_blocked` i dues entrades d'auditoria. L'admin **no** rep previsualització de l'evidència retinguda.
 - Futur (domini propi a Cloudflare + CSAM Scanning Tool + PhotoDNA/NCMEC): [guides/cloudflare-domain-csam.md](../guides/cloudflare-domain-csam.md).
 
 ## Permisos (`api/permissions.py`)

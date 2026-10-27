@@ -67,6 +67,8 @@ La llista blanca **autoritativa** és la d'`image_processing_service` (imatges j
 ## Fluxos que l'usen
 [Fotos de refugi](../flows/03-refuge-media-upload.md) · [Avatar](../flows/02-user-avatar.md) · [Experiències](../flows/08-experiences.md) · [Moderació](../flows/12-media-moderation.md) · esborrat d'usuari i de refugi.
 
+**Chunk 7** [FET]: les pujades (`apps/uploads`) i l'esborrat d'experiències (`apps/experiences/services.py: delete_experience`, claus de `refuge_media` per `experience_id`) criden `delete_files`/`delete_file` comprovant el resultat; si R2 no esborra un fitxer principal es desfà l'esborrat de la fila i la resposta és 500 `{error, error_id}` (D38); una miniatura que falla només queda al log. El job `purge_upload_intents` **no** toca R2: la neteja de `quarantine/` és només el lifecycle d'1 dia (no hi ha cap «TTL» de Firestore). L'esborrat d'usuari també elimina els fitxers dels mitjans de les seves experiències pujats per altri.
+
 ## Estructura del bucket
 ```
 <bucket>/
@@ -79,7 +81,7 @@ La llista blanca **autoritativa** és la d'`image_processing_service` (imatges j
 
 ## Gotchas
 - `delete_file` no llança: comprova el booleà (els rollbacks del codi ja ho fan des de la feature *images*) **[FET]**.
-- Cada hidratació de model (`Refugi.from_dict`, `User.from_dict`, `Experience.from_dict`) presigna URLs, **també quan les dades venen de cache** → URL sempre fresca però canviant: el client ha d'usar la **clau** com a `cacheKey` **[FET]**.
+- Cada hidratació de model (`Refugi.from_dict` del codi legacy; a les apps migrades, els serializers presignen a la resposta amb `media_to_dict`) presigna URLs, **també quan les dades venen de cache** → URL sempre fresca però canviant: el client ha d'usar la **clau** com a `cacheKey` **[FET]**.
 - Una URL servida caduca en 1 h; la PUT en 10 min **[FET]**.
 - Construir un controller que crea `R2MediaService` (p. ex. `RefugiLliureController`) **falla si falta config R2**, fins i tot per a operacions que no toquen R2 **[FET]**.
 - La URL PUT signa `content-length`: el client ha d'enviar exactament la mida declarada a l'intent **[FET]**.

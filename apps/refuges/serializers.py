@@ -43,7 +43,7 @@ def media_to_dict(media, presign):
         'creator_uid': media.creator_id,
         'uploaded_at': isoformat_madrid(media.uploaded_at),
         'taken_at': isoformat_madrid(media.taken_at),
-        'experience_id': None,        # la columna arriba amb el chunk 7
+        'experience_id': str(media.experience_id) if media.experience_id else None,
     }
 
 

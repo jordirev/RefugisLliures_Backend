@@ -73,10 +73,14 @@ def find_overlapping(refuge_id, ini_date, fin_date, exclude_id=None) -> Optional
     return qs.order_by('ini_date', 'id').first()
 
 
+# Subconsulta escalar (dos paràmetres: l'uid dues vegades): reformes creades + reformes on participa.
+RENOVATED_REFUGES_SQL = (
+    '((SELECT count(*) FROM activity.renovations WHERE creator_uid = %s) '
+    '+ (SELECT count(*) FROM activity.renovation_participants WHERE user_uid = %s))')
+
+
 def count_renovated_refuges(uid: str) -> int:
     """`num_renovated_refuges` (§4): reformes creades + reformes on participa, passades incloses (1 consulta)."""
     with connection.cursor() as cur:
-        cur.execute(
-            'SELECT (SELECT count(*) FROM activity.renovations WHERE creator_uid = %s) '
-            '+ (SELECT count(*) FROM activity.renovation_participants WHERE user_uid = %s)', [uid, uid])
+        cur.execute(f'SELECT {RENOVATED_REFUGES_SQL}', [uid, uid])
         return int(cur.fetchone()[0])
