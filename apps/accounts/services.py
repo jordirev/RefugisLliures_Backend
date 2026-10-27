@@ -12,7 +12,7 @@ from datetime import date
 from typing import Any, Dict, Optional
 
 from django.db import IntegrityError, transaction
-from django.db.models import F, Q
+from django.db.models import F
 from django.db.models.functions import Now
 from firebase_admin import auth as firebase_auth
 
@@ -21,6 +21,7 @@ from api.services import r2_media_service
 from api.utils.age_utils import is_old_enough
 from api.utils.timezone_utils import get_madrid_timezone
 from apps.core.rls import system_context
+from apps.experiences.models import Experience
 from apps.refuges import selectors as refuge_selectors
 from apps.refuges.models import RefugeMedia
 from apps.renovations import services as renovation_services
@@ -272,9 +273,14 @@ def _delete_r2_media(uid: str, media_service=None) -> None:
     for key, thumb in UserAvatar.objects.filter(user_id=uid).values_list('key', 'thumb_key'):
         keys += [key, thumb]
     with system_context():        # els mitjans amagats d'un altre a les seves experiències no són visibles per a ell
-        own_or_in_own_experiences = Q(creator_id=uid) | Q(experience__creator_id=uid)
-        for key, thumb in RefugeMedia.objects.filter(own_or_in_own_experiences).values_list('key', 'thumb_key'):
-            keys += [key, thumb]
+        # Dues consultes amb índex (`refuge_media_creator_idx` i `refuge_media_experience_idx`) en lloc d'una amb `OR`
+        # entre columna i subconsulta, que feia un *seq scan* de `refuge_media` (EXPLAIN verificat).
+        own = RefugeMedia.objects.filter(creator_id=uid)
+        in_own_experiences = RefugeMedia.objects.filter(
+            experience_id__in=Experience.objects.filter(creator_id=uid).values('id'))
+        for queryset in (own, in_own_experiences):
+            for key, thumb in queryset.values_list('key', 'thumb_key'):
+                keys += [key, thumb]
     keys = [k for k in dict.fromkeys(keys) if k]
     if not keys:
         return

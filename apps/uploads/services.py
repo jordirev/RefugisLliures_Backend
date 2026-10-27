@@ -137,6 +137,7 @@ def confirm_upload_intents(*, uid: str, upload_ids: List[str]) -> Dict[str, Any]
     `missing_object`; una confirmació repetida retorna el mateix `MediaItem` (idempotent).
     """
     uploaded, failed = [], []
+    _lock_intents(uid, upload_ids)
     seen = set()
     for upload_id in upload_ids:
         # Un UUID es pot escriure de moltes maneres (majúscules, sense guions, `{...}`, `urn:uuid:`): es deduplica pel
@@ -151,6 +152,18 @@ def confirm_upload_intents(*, uid: str, upload_ids: List[str]) -> Dict[str, Any]
         else:
             failed.append({'upload_id': upload_id, 'reason': reason or REASON_PROCESSING_ERROR})
     return {'uploaded': uploaded, 'failed': failed}
+
+
+def _lock_intents(uid: str, upload_ids: List[str]) -> None:
+    """
+    Bloqueja (`FOR UPDATE`) **tots** els intents de la petició d'una sola vegada i **en ordre de PK**. Sense això, dues
+    confirmacions simultànies de `[a, b]` i `[b, a]` agafarien els bloquejos en ordre invers (`_get_intent` va un a un,
+    en l'ordre del client) i es produiria un *deadlock*. Els bloquejos duren fins al final de la transacció.
+    """
+    pks = {pk for pk in map(experience_selectors.parse_id, upload_ids) if pk is not None}
+    if pks:
+        list(UploadIntent.objects.select_for_update().filter(pk__in=pks, user_id=uid).order_by('pk')
+             .values_list('pk', flat=True))
 
 
 def _get_intent(uid: str, upload_id: str) -> Optional[UploadIntent]:
@@ -442,8 +455,11 @@ def _handle_moderation_block(uid: str, data: bytes, declared_content_type: Optio
 # Purga (job horari)
 # ---------------------------------------------------------------------------
 
+# `FOR UPDATE SKIP LOCKED`: dues execucions del job alhora (o una confirmació en curs d'un intent caducat) no
+# s'esperen ni es trepitgen; l'índex `(expire_at)` serveix l'`ORDER BY ... LIMIT` (EXPLAIN verificat).
 PURGE_SQL = ('DELETE FROM moderation.upload_intents WHERE id IN ('
-             'SELECT id FROM moderation.upload_intents WHERE expire_at < now() ORDER BY expire_at LIMIT %s)')
+             'SELECT id FROM moderation.upload_intents WHERE expire_at < now() ORDER BY expire_at LIMIT %s '
+             'FOR UPDATE SKIP LOCKED)')
 
 
 def purge_expired_intents(batch_size: int = 1000) -> int:
