@@ -22,7 +22,7 @@
 | 4 | Visites | `migracio/visites` | fet (PR [#50](https://github.com/jordirev/RefugisLliures_Backend/pull/50) fusionada) | 2708 tests en fusionar; e2e 31/31; D27–D29, D36 (cota de 12 mesos, també al calendari del frontend) |
 | 5 | Renovations | `migracio/renovations` | fet (PR [#51](https://github.com/jordirev/RefugisLliures_Backend/pull/51) fusionada, `02c9b0f`) | 3142 tests amb 4 i 6 fusionats; e2e 37/37; D32–D35 |
 | 6 | Dubtes | `migracio/dubtes` | fet (PR [#49](https://github.com/jordirev/RefugisLliures_Backend/pull/49) fusionada, `dec16b1`) | e2e 30/30; D30–D31; esborrar l'usuari esborra el subarbre de respostes (PO) |
-| 7 | Experiències + pujades | `migracio/experiencies` | pendent | |
+| 7 | Experiències + pujades | `migracio/experiencies` | PR a `migration` (CI) | 3675 tests; e2e 7 (40 casos) i regressió 1–6 verds; D38; frontend: `condition` i comentari obligatoris en crear |
 | 8 | Propostes | `migracio/propostes` | pendent | |
 | 9 | Moderació + audit | `migracio/moderacio` | pendent | |
 | 10 | Esborrat d'usuari | `migracio/esborrat-usuari` | pendent | |
@@ -58,6 +58,8 @@
 - 2026-10-26 — PR #47 (U7) fusionada a `migration` (`e53bec8`). El PO demana fusionar el frontend U7 a `develop` (agent, amb la CI en verd). **Chunks 4–6 en marxa en paral·lel** (D26): worktrees `../wt-{visites,renovations,dubtes}`, BD `refugisdb_test_<chunk>`, PR #48 (`TEST_DATABASE_NAME` + `scripts/dev/run_tests_docker.sh`). Agents de tests dels tres chunks llançats.
 
 - 2026-10-26 — **Chunks 4–6**: pipeline complet als tres worktrees (tests → implementador → SQL + seguretat + docs → e2e). Decisions del PO: `IsNotBlocked` + `IsAgeConfirmed` a tota escriptura de contingut (POST/PATCH i unir-se a una reforma; GET i DELETE propi no); esborrar un usuari esborra el subarbre dels seus dubtes (també respostes d'altres). Fusionades #49 (dubtes) i #50 (visites); la revisió de seguretat de visites porta D36 (data com a molt a 12 mesos vista), aplicada també al calendari del frontend (`feature/contracte-visites-reformes-dubtes`, sense PR fins que el backend sigui a producció). Conflictes de numeració resolts en fusionar: GOTCHAS de reformes #63–65 → #66–68, top gotcha de reformes #17 → #18.
+
+- 2026-10-27 — **Fora de chunk**: PR #53 (D37: `runserver`/`migrate` ignoren les `TEST_DATABASE_URL_*` fora de pytest; abans anaven al Docker local i fallaven amb Docker aturat) i PR #54 (`/swagger/` donava 500 per serializers legacy amb el mateix nom; test que genera l'esquema). **Chunk 7 (experiències + pujades)**: worktree `../wt-experiencies`, BD `refugisdb_test_experiencies` (+ `_sql`, `_sec`). Tests (432 fallant) → implementador (`apps/experiences` amb el *trigger* de condició de §2.9, `refuges.0002` amb `experience_id`, `apps/uploads` amb intents a PostgreSQL, `purge_upload_intents`; codi legacy d'experiències i pujades eliminat) → SQL (bloqueig ordenat d'intents, purga `SKIP LOCKED`, esborrat d'usuari amb consultes indexades), seguretat (dedup per UUID canònic, `FOR UPDATE` a confirm i a l'esborrat d'experiència; 71 tests), docs. Pendent del PO: quota d'intents per usuari (TECH_DEBT R19). Frontend (`feature/contracte-visites-reformes-dubtes`, sense PR): `condition` i comentari obligatoris en crear, 403 `user_blocked`/`age_not_confirmed`.
 
 ## Traspàs a una sessió nova (26/10)
 Estat: chunks 0–3 fets i fusionats a `migration` (+ PR #45 de dates). **Proper pas: chunks 4 (visites), 5 (reformes) i 6
