@@ -486,7 +486,7 @@ Substitueix el *map* `media_metadata` del document del refugi. Un mitjà és una
 | `key` | `text` | NO | — | **PK** (clau R2 `refugis-lliures/{refuge_id}/{uuid}.ext`) |
 | `refuge_id` | `uuid` | NO | — | FK → `refuges.refuges` `CASCADE` |
 | `creator_uid` | `varchar(128)` | NO | — | FK → `users.users` `CASCADE` (les fotos d'un usuari s'esborren amb ell) |
-| `experience_id` | `uuid` | SÍ | — | FK → `activity.experiences` `CASCADE` (la columna i la FK s'afegeixen al chunk 7) |
+| `experience_id` | `uuid` | SÍ | — | FK → `activity.experiences` `CASCADE` (la columna i la FK s'afegeixen al chunk 7; **chunk 7 (implementat)**: `refuges.0002`, FK `refuge_media_experience_id_fk` i índex parcial `refuge_media_experience_idx`) |
 | `media_type` | `varchar(5)` | NO | — | `image`/`video` |
 | `content_type` | `varchar(100)` | NO | — | |
 | `status` | `varchar(24)` | NO | `'visible'` | `visible`/`hidden_pending_review`/`removed` |
@@ -528,7 +528,7 @@ CREATE POLICY media_delete ON refuges.refuge_media FOR DELETE TO app       -- Is
 ```
 Grants: `SELECT, INSERT, UPDATE, DELETE`.
 
-**Chunk 2 (implementat)**: `refuges.0001` crea `refuge_media` **sense** `experience_id` ni la clàusula `EXISTS (… experiences …)` de `media_insert` (la taula `activity.experiences` encara no existeix): la política queda `(creator_uid = {U} AND status = 'visible') OR {ADM} OR {SYS}`. `refuges.0002` (chunk 7) afegeix la columna, la FK i reescriu la política. Fins llavors, la pujada continua escrivint a Firestore (flux antic) i `GET/DELETE /refuges/{id}/media/` operen sobre una taula buida.
+**Chunk 2 (implementat)**: `refuges.0001` crea `refuge_media` **sense** `experience_id` ni la clàusula `EXISTS (… experiences …)` de `media_insert` (la taula `activity.experiences` encara no existeix): la política queda `(creator_uid = {U} AND status = 'visible') OR {ADM} OR {SYS}`. `refuges.0002` (chunk 7) afegeix la columna, la FK i reescriu la política. **Chunk 7 (implementat)**: `refuges.0002` afegeix la columna, la FK (`ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED`) i reescriu `media_insert` tal com preveu el disseny; la pujada (`apps/uploads`) ja escriu a aquesta taula. (Abans, la pujada escrivia a Firestore i `GET/DELETE /refuges/{id}/media/` operaven sobre una taula buida.)
 
 **Chunk 2**: el trigger i `moderation.media_deletion_queue` encara no existeixen (són de `moderation.0001`, chunk 9); fins llavors `apps/refuges/services.py: delete_media` esborra el fitxer (i la miniatura) a R2 directament dins la mateixa transacció i, si R2 falla, desfà l'esborrat de la fila (500; decisió del PO).
 
@@ -802,6 +802,9 @@ Grants: participants `SELECT, INSERT, DELETE`; expelled `SELECT, INSERT`. (`expe
 
 ### 2.15 `activity.experiences` (app `experiences`; **RLS sí**, lectura pública)
 
+> **Chunk 7 (implementat)** a `apps/experiences/migrations/0001_initial.py`. Desviació menor respecte del disseny: el `CHECK` del comentari és `btrim(comment, ' 	
+') <> ''` (tots els blancs ASCII, no només l'espai; D31/D34/D38) `AND char_length(comment) <= 2000`, el mateix que el serializer. Afegits: `CHECK experiences_condition_ck` (0–3) i índexs `experiences_refuge_idx (refuge_id, modified_at DESC, id DESC)` i `experiences_creator_idx (creator_uid, modified_at DESC)`. Les polítiques i el *trigger* de §2.9 són tal com estan escrits aquí (`exp_select/insert/update/delete`; `experiences_condition_ins` i `experiences_condition_upd`).
+
 | Columna | Tipus | Null | Default | Notes |
 |---|---|---|---|---|
 | `id` | `uuid` | NO | `uuidv7()` (BD) | PK |
@@ -979,6 +982,8 @@ Grants: `SELECT, INSERT, UPDATE`.
 ---
 
 ### 2.19 `moderation.upload_intents` (app `uploads`; **RLS sí**, privada)
+
+> **Chunk 7 (implementat)** a `apps/uploads/migrations/0001_initial.py`: FK reals `ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED`; `CHECK`s d'enumeracions, `size > 0`, `upload_intents_shape_ck`, `upload_intents_state_ck` i `expire_at > created_at`; polítiques `intents_select/insert/update/delete` (la d'`INSERT` també exigeix `status = 'pending'` i experiència pròpia, llevat d'admin/sistema); purga: `manage.py purge_upload_intents` (lots de 1.000, `system_context()`), sense planificar encara ([TECH_DEBT R18](../TECH_DEBT.md)).
 
 Intents de pujada directa (URL PUT prefirmada a `quarantine/{id}`). TTL funcional d'1 dia (job de purga).
 
@@ -1228,7 +1233,7 @@ Els **catàlegs oberts** (idiomes i tipus de refugi) són **taules amb FK** (§2
 | `ReportSource` | `media_reports.source` | `user`, `automatic` | |
 | `NoticeType` | `moderation_notices.type` | `content_hidden`, `content_restored`, `content_removed`, `strike`, `account_blocked`, `upload_blocked` | `NOTICE_TYPES` |
 | `NoticeAction` | `moderation_notices.action` | `dismiss`, `remove`, `remove_and_strike`, `auto_hide`, `upload_blocked` | valors usats al codi |
-| `BlockedReason` | `users.blocked_reason` | `csam_confirmed`, `strikes`, `moderation_hash_match` | `MediaReportController`, `MediaUploadController` |
+| `BlockedReason` | `users.blocked_reason` | `csam_confirmed`, `strikes`, `moderation_hash_match` | `MediaReportController`, `apps.uploads.services` |
 | `HashCategory` | `moderation_hash_blocklist.category` | `csam`, `other` | `ModerationService` (docstring) |
 | `AuditAction` (no es força) | `audit_logs.action` | `media.upload_intent`, `media.upload_confirm`, `media.delete`, `media.list`, `media.report`, `moderation.resolve`, `moderation.auto_hide`, `moderation.hash_block`, `moderation.user_blocked`, `moderation.reports_list`, `avatar.upload`, `user.age_confirmed` | `audit_log_service.py`; la BD només comprova el format `^[a-z_]+\.[a-z_]+$` |
 
