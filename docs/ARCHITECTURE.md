@@ -106,7 +106,7 @@ Conseqüència: **canviar el text d'un missatge pot canviar el codi HTTP retorna
 | `refuges/<refuge_id>/visits/<visit_date>/` | `apps.visits.views.RefugeVisitDetailAPIView` | POST, PATCH, DELETE | IsAuthenticated + HasProfile; POST/PATCH a més IsNotBlocked + IsAgeConfirmed |
 | `refuges/<id>/media/` | `apps.refuges.views.RefugeMediaListAPIView` | GET | IsAuthenticated + HasProfile |
 | `refuges/<id>/media/<path:key>/` | `apps.refuges.views.RefugeMediaDetailAPIView` | DELETE | IsAuthenticated + HasProfile; propietat al service (autor o admin: 403; mitjà inexistent: 403 / 404 si admin; R2 falla: 500 i la fila es conserva) |
-| `media/upload-intents/` | `apps.uploads.views.UploadIntentsAPIView` | POST | IsAuthenticated + HasProfile + IsNotBlocked + IsAgeConfirmed (+ propietat d'experiència al service: 403 `not_owner`) |
+| `media/upload-intents/` | `apps.uploads.views.UploadIntentsAPIView` | POST | IsAuthenticated + HasProfile + IsNotBlocked + IsAgeConfirmed (+ propietat d'experiència al service: 403 `not_owner`; quota de 40 intents pendents: 429 `too_many_pending_uploads`) |
 | `media/upload-intents/confirm/` | `apps.uploads.views.UploadIntentsConfirmAPIView` | POST | IsAuthenticated + HasProfile + IsNotBlocked + IsAgeConfirmed |
 | `media/reports/` | `MediaReportsAPIView` | POST | IsAuthenticated + HasProfile + IsNotBlocked + IsAgeConfirmed |
 | `admin/media-reports/` | `AdminMediaReportsAPIView` | GET | IsAuthenticated + HasProfile + IsFirebaseAdmin |

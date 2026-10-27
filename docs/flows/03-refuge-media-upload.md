@@ -154,6 +154,7 @@ sequenceDiagram
 | `refuge_id` del cos ≠ el de l'experiència | 400 `{error}` |
 | Sense perfil / usuari bloquejat / edat no confirmada / no és el creador de l'experiència | 403 `profile_required` / `user_blocked` / `age_not_confirmed` / `not_owner` |
 | Refugi o experiència no trobats (o ids que no són UUID) | 404 `{error: 'Refugi not found'}` / `{error: 'Experience not found'}` |
+| Més de 40 intents `pending` sense caducar per a l'usuari, comptant els fitxers de la petició (decisió del PO, 27/10; els `confirmed`/`failed`/caducats no compten) | **429** `{error, code: 'too_many_pending_uploads', message}`; no es crea res ni se signa cap URL **[FET]** |
 | Fitxer rebutjat o inexistent en confirmar | 200 amb `failed[].reason` |
 | Error inesperat (BD, signatura R2) | 500 `{error, error_id}` |
 | `POST`/`PATCH` a `/api/refuges/{id}/media/` o `/api/users/{uid}/avatar/` | 405 |

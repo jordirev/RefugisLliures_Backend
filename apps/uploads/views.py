@@ -49,6 +49,8 @@ ERR_CREATE = 'Error en crear els intents de pujada'
 ERR_CONFIRM = 'Error en confirmar les pujades'
 
 NOT_OWNER_MESSAGE = "No ets el creador d'aquesta experiència"
+TOO_MANY_PENDING_MESSAGE = (
+    'Tens massa pujades pendents. Espera que acabin (o que caduquin) abans de començar-ne de noves')
 
 
 def _invalid(serializer):
@@ -68,6 +70,8 @@ class UploadIntentsAPIView(APIView):
             "Límits: imatge ≤ 15 MB (jpeg/png/webp/heic/heif), vídeo ≤ 50 MB (mp4/quicktime/webm); "
             "l'avatar només accepta una imatge.\n\n"
             "Requereix autenticació, edat confirmada i compte no bloquejat.\n\n"
+            f"Quota: com a molt {services.MAX_PENDING_INTENTS} intents pendents (sense confirmar ni caducar) per "
+            "usuari; si se supera, 429 `too_many_pending_uploads`.\n\n"
             f"Exemple de petició: `{json.dumps(EXAMPLE_UPLOAD_INTENT_REQUEST)}`"
         ),
         request_body=UploadIntentCreateSerializer,
@@ -78,6 +82,7 @@ class UploadIntentsAPIView(APIView):
             401: ERROR_401_UNAUTHORIZED,
             403: ERROR_403_UPLOAD_FORBIDDEN,
             404: ERROR_404_REFUGI_NOT_FOUND,
+            429: 'Massa intents de pujada pendents (`too_many_pending_uploads`)',
             500: ERROR_500_INTERNAL_ERROR,
         },
     )
@@ -101,6 +106,9 @@ class UploadIntentsAPIView(APIView):
             return Response(coded_error('not_owner', NOT_OWNER_MESSAGE), status=status.HTTP_403_FORBIDDEN)
         except services.InvalidRefuge as exc:
             return Response({'error': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        except services.TooManyPendingUploads:
+            return Response(coded_error('too_many_pending_uploads', TOO_MANY_PENDING_MESSAGE),
+                            status=status.HTTP_429_TOO_MANY_REQUESTS)
         except Exception as exc:
             return server_error(ERR_CREATE, exc, logger=logger)
         return Response(result, status=status.HTTP_201_CREATED)

@@ -49,6 +49,9 @@ logger = logging.getLogger(__name__)
 
 INTENT_EXPIRES_IN = 600         # segons de validesa de la URL PUT
 PRESIGN_SECONDS = 3600          # URLs prefirmades dels mitjans publicats
+# Decisió del PO (27/10): un usuari pot tenir com a molt 40 intents `pending` sense caducar (un per fitxer). Els
+# `confirmed`/`failed` no compten; els abandonats deixen de comptar quan caduquen (1 dia). No és un *rate limit*.
+MAX_PENDING_INTENTS = 40
 
 
 class RefugeNotFound(Exception):
@@ -67,6 +70,10 @@ class InvalidRefuge(Exception):
     """El `refuge_id` del cos no és el de l'experiència."""
 
 
+class TooManyPendingUploads(Exception):
+    """Els intents nous superarien `MAX_PENDING_INTENTS` pendents per a l'usuari."""
+
+
 # ---------------------------------------------------------------------------
 # 1. Intents
 # ---------------------------------------------------------------------------
@@ -78,6 +85,20 @@ def _new_ids(count: int) -> List[uuid.UUID]:
         return [row[0] for row in cursor.fetchall()]
 
 
+def _check_pending_quota(uid: str, new_count: int) -> None:
+    """
+    Quota d'intents pendents (`MAX_PENDING_INTENTS`). El bloqueig assessor per usuari serialitza dues peticions
+    simultànies del mateix usuari (sense ell, totes dues comptarien abans d'inserir i la superarien); s'allibera al
+    final de la transacció de la petició (compatible amb PgBouncer en mode transacció).
+    """
+    with connection.cursor() as cur:
+        cur.execute('SELECT pg_advisory_xact_lock(hashtextextended(%s, 0))', [f'upload-intents:{uid}'])
+    pending = UploadIntent.objects.filter(
+        user_id=uid, status=UploadStatus.PENDING, expire_at__gt=TransactionNow()).count()
+    if pending + new_count > MAX_PENDING_INTENTS:
+        raise TooManyPendingUploads()
+
+
 def create_upload_intents(*, uid: str, target: str, files: List[Dict[str, Any]], refuge_id=None, experience_id=None,
                           is_admin: bool = False) -> Dict[str, Any]:
     """
@@ -86,6 +107,7 @@ def create_upload_intents(*, uid: str, target: str, files: List[Dict[str, Any]],
     - `experience`: l'experiència existeix (`ExperienceNotFound`), el `refuge_id` del cos (si hi és) és el seu
       (`InvalidRefuge`) i és del sol·licitant o aquest és admin (`NotOwner`); el refugi es deriva de l'experiència.
     - `refuge`: el refugi existeix (`RefugeNotFound`). `avatar`: sense refugi ni experiència.
+    - Quota: com a molt `MAX_PENDING_INTENTS` intents pendents sense caducar per usuari (`TooManyPendingUploads`).
     Tot o res: primer es signen totes les URL i després s'insereixen totes les files en un sol `INSERT`.
     `files`: `[{content_type, size}]` ja validats pel serializer.
     """
@@ -104,6 +126,7 @@ def create_upload_intents(*, uid: str, target: str, files: List[Dict[str, Any]],
         if refuge_pk is None or not refuge_selectors.refuge_exists(refuge_pk):
             raise RefugeNotFound('Refugi not found')
 
+    _check_pending_quota(uid, len(files))
     service = r2_media_service.get_refugi_media_service()
     ids = _new_ids(len(files))
     intents, uploads = [], []

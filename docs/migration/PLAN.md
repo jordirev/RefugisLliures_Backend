@@ -97,3 +97,6 @@ Paral·lel: 4, 5 i 6 (dominis i apps independents); la resta seqüencial. Si alg
 
 ## Decisions del 26/10 (2)
 - **Bloqueig i edat a l'escriptura de contingut (PO, 26/10)**: POST/PATCH de visites, reformes, dubtes i respostes exigeixen `IsNotBlocked` + `IsAgeConfirmed`; GET i DELETE propi no. El frontend ha de tractar els 403 `user_blocked`/`age_not_confirmed` en aquests fluxos.
+
+## Decisions del 27/10
+- **Quota d'intents de pujada (PO, 27/10)**: com a molt **40** intents `pending` sense caducar per usuari (un per fitxer; els confirmats, fallits i caducats no compten). Si se supera, 429 `too_many_pending_uploads`. El *rate limit* per temps es farà més endavant. El frontend mostra un missatge propi.
