@@ -137,7 +137,14 @@ def confirm_upload_intents(*, uid: str, upload_ids: List[str]) -> Dict[str, Any]
     `missing_object`; una confirmació repetida retorna el mateix `MediaItem` (idempotent).
     """
     uploaded, failed = [], []
-    for upload_id in dict.fromkeys(upload_ids):
+    seen = set()
+    for upload_id in upload_ids:
+        # Un UUID es pot escriure de moltes maneres (majúscules, sense guions, `{...}`, `urn:uuid:`): es deduplica pel
+        # valor canònic perquè el mateix intent no es processi (ni es retorni) més d'una vegada.
+        canonical = experience_selectors.parse_id(upload_id) or upload_id
+        if canonical in seen:
+            continue
+        seen.add(canonical)
         item, reason = _confirm_one(uid, upload_id)
         if item is not None:
             uploaded.append(item)
@@ -151,7 +158,10 @@ def _get_intent(uid: str, upload_id: str) -> Optional[UploadIntent]:
     if pk is None:
         return None
     expired = ExpressionWrapper(Q(expire_at__lt=TransactionNow()), output_field=BooleanField())
-    return UploadIntent.objects.filter(pk=pk, user_id=uid).annotate(is_expired=expired).first()
+    # `FOR UPDATE`: dues confirmacions simultànies del mateix intent es serialitzen (la segona veu `confirmed` i és
+    # idempotent) en lloc de publicar dos mitjans. Dins `ATOMIC_REQUESTS` el bloqueig dura fins al final de la petició.
+    return (UploadIntent.objects.select_for_update().filter(pk=pk, user_id=uid).annotate(is_expired=expired)
+            .order_by().first())
 
 
 def _mark_failed(intent: UploadIntent, reason: str) -> None:
