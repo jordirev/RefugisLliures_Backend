@@ -38,7 +38,7 @@ Detall de credencials de Firebase: [firebase-credentials.md](firebase-credential
 > ⚠️ No llegeixis ni comparteixis els valors de `env/`. No es versiona mai.
 
 ### PostgreSQL (migració en curs) [FET]
-`settings.py` construeix `DATABASES['default']` (rol `app`, `ATOMIC_REQUESTS=True`) amb la primera variable definida entre `TEST_DATABASE_URL_APP` i `DATABASE_URL_APP`, i `DATABASES['migrator']` amb `TEST_DATABASE_URL_MIGRATOR` / `DATABASE_URL_MIGRATOR`. Les `TEST_*` tenen prioritat: si les tens definides, **les proves i el `runserver` van al Postgres local, no a Neon**. Hosts no locals reben `sslmode=require` automàticament. Detall: [neon.md](../integrations/neon.md). Verifica amb `python manage.py check_neon --alias default` (i `--alias migrator`). Requereix Node ≥ 22.20 per al CLI de Neon.
+`settings.py` construeix `DATABASES['default']` (rol `app`, `ATOMIC_REQUESTS=True`) amb `DATABASE_URL_APP`, i `DATABASES['migrator']` amb `DATABASE_URL_MIGRATOR`. Les `TEST_DATABASE_URL_*` (Postgres local) **només** tenen prioritat dins pytest o amb `USE_TEST_DATABASE=1` (D37): `runserver`, `migrate` i els jobs van a Neon encara que les `TEST_*` siguin a `env/.env.development`. Per fer anar el `runserver` contra el Docker local: `USE_TEST_DATABASE=1 python manage.py runserver` (amb Docker Desktop i `rl-postgres` engegats; si no, timeout de connexió a `localhost:5432`). Hosts no locals reben `sslmode=require` automàticament. Detall: [neon.md](../integrations/neon.md). Verifica amb `python manage.py check_neon --alias default` (i `--alias migrator`). Requereix Node ≥ 22.20 per al CLI de Neon.
 
 **Postgres local de proves** (Linux/macOS amb clúster apt o servei Docker):
 ```bash
