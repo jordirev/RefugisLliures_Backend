@@ -133,7 +133,9 @@ def test_l_admin_pot_crear_un_intent_propi_sobre_l_experiencia_d_un_altre(world)
 def test_insert_sobre_una_experiencia_inexistent_es_denegat(world):
     import uuid
     q = INSERT.format(extra='refuge_id, experience_id, ', marks='%s, %s, ')
+    make_intent('u1', 'avatar')                                                 # la taula ha d'existir
     _denied(lambda: _run('own', q, ['u1', 'experience', 'quarantine/x', world.pk, str(uuid.uuid4())]))
+    assert len(intent_ids()) == 1
 
 
 def test_insert_sense_context_es_denegat_fail_closed(world):

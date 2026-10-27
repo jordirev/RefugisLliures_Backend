@@ -182,6 +182,8 @@ def test_cap_index_like_de_django(migrator_db):
     rows = fetch_all(migrator_db, "SELECT indexname FROM pg_indexes WHERE schemaname = 'moderation' "
                                   "AND tablename = 'upload_intents' AND indexname LIKE %s", ['%\\_like'])
     assert rows == []
+    assert fetch_one(migrator_db, "SELECT count(*) FROM pg_tables WHERE schemaname = 'moderation' "
+                                  "AND tablename = 'upload_intents'") == (1,)
 
 
 # ---------- RLS i grants ----------

@@ -201,10 +201,12 @@ def test_un_usuari_no_pot_penjar_mitjans_a_l_experiencia_d_un_altre_ni_amb_el_se
 
 def test_un_usuari_no_pot_inserir_a_una_experiencia_inexistent(world):
     import uuid
+    e = make_experience(world, 'u1')
+    _insert_media('own', world, 'k/ok.webp', 'u1', e)                           # la columna i la taula han d'existir
     def go():
         _insert_media('own', world, 'k/fantasma.webp', 'u1', str(uuid.uuid4()))
     _denied(go)
-    assert all_media_keys() == []
+    assert all_media_keys() == ['k/ok.webp']
 
 
 def test_l_admin_pot_penjar_a_l_experiencia_d_un_altre_amb_el_seu_creator(world):

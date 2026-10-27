@@ -95,6 +95,8 @@ def test_cap_index_like_de_django(migrator_db):
     rows = fetch_all(migrator_db, "SELECT indexname FROM pg_indexes WHERE schemaname = 'activity' "
                                   "AND tablename = 'experiences' AND indexname LIKE %s", ['%\\_like'])
     assert rows == []
+    assert fetch_one(migrator_db, "SELECT count(*) FROM pg_tables WHERE schemaname = 'activity' "
+                                  "AND tablename = 'experiences'") == (1,)
 
 
 # ---------- taula ----------

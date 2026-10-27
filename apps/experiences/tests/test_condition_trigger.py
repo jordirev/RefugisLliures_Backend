@@ -118,10 +118,11 @@ def test_un_insert_denegat_per_la_rls_no_deixa_cap_vot(world):
 
 def test_un_insert_amb_condicio_fora_de_rang_no_deixa_cap_vot(world):
     r, _ = world
+    make_experience(r, 'u2', condition=1)                      # la taula ha d'existir: si no, el test passaria per error
     with pytest.raises(DatabaseError):
         with transaction.atomic():
             insert_as({'uid': 'u1'}, r, 'u1', 7)
-    assert_state(r, None, 0)
+    assert_state(r, 1, 1)
 
 
 def test_condition_counted_at_es_el_now_de_l_insert(world):
