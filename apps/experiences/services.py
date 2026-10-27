@@ -115,13 +115,17 @@ def delete_experience(*, experience_id, actor_uid: Optional[str], is_admin: bool
         raise ExperienceNotFound('Experience not found')
     _check_owner(experience, actor_uid, is_admin)
 
-    with system_context():
-        rows = list(RefugeMedia.objects.filter(experience_id=experience.pk).values_list('key', 'thumb_key'))
-    keys = [key for key, _ in rows]
-    thumbs = [thumb for _, thumb in rows if thumb]
-
     service = media_service or r2_media_service.get_refugi_media_service()
     with transaction.atomic():
+        # Es bloqueja l'experiència abans de llegir les claus: una confirmació concurrent insereix un mitjà amb una FK
+        # cap a aquesta fila (necessita `KEY SHARE`), de manera que no pot colar-s'hi un mitjà que la cascada esborri
+        # sense que se n'esborri el fitxer d'R2 (orfe amb dades personals).
+        if Experience.objects.select_for_update().filter(pk=experience.pk).first() is None:
+            raise ExperienceNotFound('Experience not found')
+        with system_context():
+            rows = list(RefugeMedia.objects.filter(experience_id=experience.pk).values_list('key', 'thumb_key'))
+        keys = [key for key, _ in rows]
+        thumbs = [thumb for _, thumb in rows if thumb]
         if not Experience.objects.filter(pk=experience.pk).delete()[0]:          # esborrada alhora
             raise ExperienceNotFound('Experience not found')
         if keys:
