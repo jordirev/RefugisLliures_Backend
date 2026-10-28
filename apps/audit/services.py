@@ -51,6 +51,9 @@ _CSAM_BLOCK_REASONS = ('csam_confirmed', 'moderation_hash_match')
 
 # Les FK són `DEFERRABLE INITIALLY DEFERRED`: aquí es fan immediates (només les d'aquesta taula).
 _IMMEDIATE_SQL = 'SET CONSTRAINTS audit.audit_logs_actor_uid_fk, audit.audit_logs_subject_uid_fk IMMEDIATE'
+# `SET CONSTRAINTS` no es desfà en sortir del savepoint: es retorna l'estat diferit perquè el `log` no canviï la
+# semàntica de les FK d'aquesta taula per a la resta de la transacció del cridant.
+_DEFERRED_SQL = _IMMEDIATE_SQL.replace(' IMMEDIATE', ' DEFERRED')
 _INSERT_SQL = (
     'INSERT INTO audit.audit_logs (actor_uid, subject_uid, action, target_type, target_id, metadata, legal_hold, '
     'expire_at) VALUES (%s, %s, %s, %s, %s, %s::jsonb, %s, now() + make_interval(days => %s))')
@@ -100,6 +103,7 @@ class AuditLogService:
                     with connection.cursor() as cur:
                         cur.execute(_IMMEDIATE_SQL)
                         cur.execute(_INSERT_SQL, params)
+                        cur.execute(_DEFERRED_SQL)
             return True
         except Exception:
             logger.exception("No s'ha pogut escriure l'entrada d'auditoria %s", action)

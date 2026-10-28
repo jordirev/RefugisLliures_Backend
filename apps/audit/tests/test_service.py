@@ -260,6 +260,17 @@ def test_la_violacio_de_fk_diferida_no_surt_al_commit(world, audit):
     assert audit_rows() == []
 
 
+def test_el_log_no_deixa_les_fk_immediates_per_a_la_resta_de_la_transaccio(world, audit):
+    """`SET CONSTRAINTS ... IMMEDIATE` sobreviu al savepoint: el `log` ha de tornar les FK a `DEFERRED`."""
+    from apps.core.rls import system_context
+    with rls_context(uid='u1'):
+        assert audit.audit_log_service.log('u1', 'media.list') is True
+        with system_context(), connection.cursor() as cur:
+            # FK diferida: un actor inexistent no peta fins al `COMMIT` (aquí s'esborra abans de comprovar-ho)
+            cur.execute("INSERT INTO audit.audit_logs (actor_uid, action) VALUES ('fantasma', 'media.list')")
+            cur.execute("DELETE FROM audit.audit_logs WHERE actor_uid = 'fantasma'")
+
+
 def test_cost_de_consultes_acotat(world, audit):
     from apps.moderation.tests.helpers import QueryCounter
     with rls_context(uid='u1'):
