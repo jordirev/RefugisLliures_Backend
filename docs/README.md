@@ -71,7 +71,7 @@ Les línies poden desplaçar-se amb canvis futurs; si una cita no quadra, busca 
 |---|---|
 | [deep-dives/condition-average.md](deep-dives/condition-average.md) — mitjana de `condition` | [flux 5](flows/05-refuge-proposals.md) |
 | [deep-dives/refuge-proposals-payload.md](deep-dives/refuge-proposals-payload.md) — validació del payload, duplicats i aplicació al catàleg | [flux 5](flows/05-refuge-proposals.md) |
-| [deep-dives/user-deletion.md](deep-dives/user-deletion.md) — criteris i manteniment de l'esborrat d'usuari | [flux 1](flows/01-user-profile.md) |
+| [deep-dives/user-deletion.md](deep-dives/user-deletion.md) — procediment únic, fallades, criteris i manteniment de l'esborrat d'usuari | [flux 1](flows/01-user-profile.md) |
 
 ## Història
 Fins a l'octubre de 2026 hi havia una carpeta `DOCUMENTATION/` amb documentació escrita durant el desenvolupament. S'ha fusionat aquí: les guies s'han passat a `guides/` (corregides contra el codi), les explicacions vàlides s'han integrat als fluxos, integracions o `deep-dives/`/`design/`, i la resta (resums de canvis puntuals, resultats de tests antics, prompts d'especificació) s'ha eliminat perquè estava desactualitzada. Afirmacions antigues que ja **no** són certes: admin = `admin: true` (és `role == 'admin'`), admins a `FIREBASE_ADMIN_UIDS`, camps `media_keys`/`images_urls` al refugi, endpoints `/media/list/` i `/media/delete/` amb URLs, permisos d'admin per pujar fotos, vistes `ModelViewSet`, Python 3.8.

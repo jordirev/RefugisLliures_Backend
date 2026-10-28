@@ -70,6 +70,7 @@ curl -X PATCH -H "Authorization: Bearer <token>" -H "Content-Type: application/j
 | 401 | `Token invàlid` | Token d'un altre projecte Firebase o corrupte |
 | 403 | (DRF) | L'`uid` de la URL no és el teu (`IsSameUser`) o no ets admin |
 | 500 | — | Backend sense credencials de Firebase ([firebase-credentials.md](firebase-credentials.md)) |
+| 500 | `{error, error_id}` a `DELETE /api/users/{uid}/` | Esborrat de compte: **torna a cridar el mateix `DELETE`**. Si R2 va fallar, no s'ha canviat res; si va fallar Firebase Auth, les dades ja són fora i el reintent retorna 204 i acaba d'esborrar el compte (el token continua vàlid mentre el compte existeixi). No facis `signOut` fins al 204 |
 
 Llista completa i línies de codi: [flux 0 §Errors](../flows/00-auth-request-pipeline.md#errors).
 

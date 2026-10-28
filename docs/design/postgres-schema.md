@@ -1818,6 +1818,8 @@ COMMIT;
 --    després auth.delete_user(uid) a Firebase Auth (M10).
 ```
 
+> **Chunk 10 — implementat (D42, `apps/accounts/services.py: delete_user`)**, amb aquestes diferències respecte del disseny: (a) **no hi ha `media_deletion_queue`** (D40): l'R2 s'esborra *dins* la transacció, després del bloqueig `SELECT … FOR UPDATE` de la fila d'usuari (pas 0, que impedeix contingut nou: les FK prenen `KEY SHARE`); si R2 falla, `UserDeletionError` i `ROLLBACK`. (b) Les claus d'R2 inclouen també els objectes `quarantine/` dels intents no confirmats (`pending`/`failed`); mai `moderation-hold/`. (c) El pas 2 no afegeix denúncia automàtica si alguna denúncia pendent sobre el mitjà és d'un altre denunciant **o `legal_hold`**, i exclou els mitjans de les experiències de l'usuari (cauen per cascada). (d) El `comment` de les propostes s'anul·la dins la transacció. (e) Firebase Auth va **després del `COMMIT`** (`UserNotFoundError` = èxit); sense fila a `users.users` es salta a Firebase (204 idempotent, sense auditoria). Vegeu [deep-dive](../deep-dives/user-deletion.md).
+
 ### 8.5 Mapa d'impacte
 
 **En esborrar un usuari** (`DELETE FROM users.users`):
