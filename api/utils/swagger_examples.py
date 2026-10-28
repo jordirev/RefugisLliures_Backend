@@ -359,35 +359,17 @@ EXAMPLE_RENOVATIONS_LIST = [
     EXAMPLE_RENOVATION_2
 ]
 
-EXAMPLE_CACHE_STATS = {
-    'connected': True,
-    'keys': 145,
-    'memory_used': '2.5 MB',
-    'hits': 2340,
-    'misses': 156
-}
-
-EXAMPLE_CACHE_CLEAR_RESPONSE = {
-    'message': 'Cache netejada correctament'
-}
-
-EXAMPLE_CACHE_INVALIDATE_RESPONSE = {
-    'message': 'Claus amb patró "refugi_*" eliminades correctament'
-}
-
 EXAMPLE_HEALTH_CHECK_RESPONSE = {
     'status': 'healthy',
-    'message': 'OK',
+    'message': 'API operativa',
     'firebase': True,
-    'firestore': True,
-    'collections_count': 5,
     'database': True
 }
 
 EXAMPLE_HEALTH_CHECK_UNHEALTHY = {
     'status': 'unhealthy',
-    'message': 'Database unavailable',
-    'firebase': False,
+    'message': 'Servei no disponible',
+    'firebase': True,
     'database': False
 }
 

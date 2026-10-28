@@ -1,67 +1,20 @@
-# Recepta — Afegir un model nou (entitat persistida a Firestore)
+# Recepta — Afegir un model nou (PostgreSQL)
 
-> ## Features migrades a PostgreSQL (`apps/<feature>/models.py`) — patró nou
-> Referència: `apps/refuges/models.py`, `apps/accounts/models.py` i les seves migracions `0001_initial.py`. El patró de sota (`@dataclass` + Firestore) és el **legacy**. Un model de Postgres:
+> ## `apps/<feature>/models.py` — únic patró (Firestore eliminat al chunk 11, D43)
+> Referència: `apps/refuges/models.py`, `apps/accounts/models.py` i les seves migracions `0001_initial.py`. Un model de Postgres:
 > - És un `django.db.models.Model` a `apps/<feature>/models.py` (nova app: `apps.py` amb `name='apps.<feature>'`, `label='<feature>'`, i afegir-la a `INSTALLED_APPS`).
 > - `db_table = 'schema"."taula'` (el schema ve de `docs/design/postgres-schema.md`), PK `UUIDField(primary_key=True, db_default=Func(function='uuidv7', output_field=UUIDField()))` (UUID v7 generat per la BD amb `uuidv7()` de Postgres 18; l'helper `api/utils/ids.py` s'ha eliminat; disseny §1.4), `CompositePrimaryKey` (Django 5.2) a les taules d'unió sense FK entrant, `db_default=` per als valors per defecte (`Now()`, `False`, `''`), `TextChoices` + `CheckConstraint` per als estats interns (els catàlegs oberts, com idiomes i tipus de refugi, són taula + FK), noms explícits de constraints/índexs (`<taula>_<cols>_ck|uq|idx|gist|gin`).
 > - **FK**: `ForeignKey(..., on_delete=models.DO_NOTHING, db_constraint=False, db_index=False, db_column='x_uid')`; la restricció real (`ON DELETE CASCADE/SET NULL`, `DEFERRABLE INITIALLY DEFERRED`) es crea a la migració amb `RunSQL` (§6.3), i l'índex de la FK a `Meta.indexes`.
 > - **Migració**: `makemigrations` genera el DDL; hi afegeixes, a la **mateixa** migració i amb `reverse_sql`, un `PostgresRunSQL` (`apps.core.migration_utils`) amb les FK reals, `ENABLE ROW LEVEL SECURITY` + polítiques (`create_policy_sql` amb les macros `{U}`, `{ADM}`, `{SYS}`), els `GRANT` mínims per a `app`, triggers i vistes (models `managed = False`). S'aplica sempre amb `migrate --database=migrator`. Si hi ha una PK o un camp únic de text, afegeix `DropDjangoLikeIndexes([...])` amb els índexs `*_like` que hagi generat Django (noms a `pg_indexes`). Comprova `makemigrations --check` net i forward/reverse/forward.
 > - Escriptures de dades de prova i de comandes: amb `system_context()`/`rls_context()` (o l'àlies `migrator`).
 
-> Els "models" **no** són models de Django: són `@dataclass` persistits a Firestore via DAO. No hi ha migracions.
 
-## 1. Model — `api/models/<entitat>.py`
-Patró legacy (Firestore): `api/models/renovation.py` (fins al chunk 8). Per a PostgreSQL, el model de referència amb constraints (`CHECK`, `EXCLUDE`), triggers i RLS és `apps/renovations/models.py` + `migrations/0001_initial.py`.
-```python
-@dataclass
-class Foo:
-    id: str
-    creator_uid: str
-    refuge_id: str
-    created_at: str               # ISO string (get_madrid_now().isoformat())
-    tags: Optional[list] = None
-
-    def __post_init__(self):
-        if not self.id:
-            raise ValueError("ID és requerit")
-        ...
-
-    def to_dict(self) -> dict: ...
-    @classmethod
-    def from_dict(cls, data: dict) -> 'Foo': ...
-```
-Regles:
-- Validació a `__post_init__` amb `ValueError` i missatges en català.
-- **Les mateixes regles** han d'existir al serializer d'entrada; si el model és més estricte, el DAO pot desar un document que després no es pot llegir (cas `ini_date == fin_date`, `api/models/renovation.py:32-33`).
-- Dates: desa strings ISO (`YYYY-MM-DD` o datetime ISO) i usa `api/utils/timezone_utils.py` (Madrid). Si `from_dict` converteix a `datetime`, vigila comparacions amb `date` (bug `api/controllers/renovation_controller.py:124-128`).
-- Media: desa **claus** R2, no URLs; genera URLs presignades a `from_dict` si cal (com `Refugi` legacy; a les apps migrades, `media_to_dict` presigna a la resposta).
-- Si l'usuari es pot esborrar, preveu l'anonimització (`creator_uid='unknown'`), com `Renovation` (`api/models/renovation.py:36-38`).
-- Importa el logger amb `logging.getLogger(__name__)`; **no** copiïs `from venv import logger` / `from asyncio.log import logger`.
-
-## 2. Mapper — `api/mappers/<entitat>_mapper.py`
-Còpia de `api/mappers/renovation_mapper.py`: `firestore_to_model`, `model_to_firestore`, `firestore_list_to_models`, `models_to_firestore_list` (tots `@staticmethod`). Posa-hi lògica només si cal transformar formats (exemple amb lògica: `api/mappers/refugi_lliure_mapper.py`).
-
-## 3. DAO — `api/daos/<entitat>_dao.py`
-- `COLLECTION_NAME = '<col·lecció>'` (snake_case, plural en anglès, com `refuges_proposals`).
-- `__init__`: `self.firestore_service = FirestoreService()`, `self.mapper = FooMapper()`.
-- Crear: `doc_ref = db.collection(...).document()`, `data['id'] = doc_ref.id`, `doc_ref.set(data)` (`api/daos/renovation_dao.py:52-54`).
-- Considera validar construint el model **abans** del `set()` per no persistir dades invàlides.
-- Cache: afegeix `'foo_detail'` i `'foo_list'` a `CacheService.CACHE_TIMEOUTS` (`api/services/cache_service.py:20-48`) i fes servir `generate_key('foo_detail', foo_id=...)`.
-- Invalidació en totes les escriptures (detall + llistes).
-- Arrays i comptadors amb `ArrayUnion`/`ArrayRemove`/`Increment`; diverses escriptures relacionades → `db.transaction()` o `db.batch()` (avui no s'usa enlloc de `api/`, però és el camí correcte).
-- Si hi ha queries amb `where` + `order_by`, preveu índex compost a Firestore (no hi ha `firestore.indexes.json` al repo).
-
-## 4. Serializers — `api/serializers/<entitat>_serializer.py`
-`FooSerializer` (sortida), `FooCreateSerializer`, `FooUpdateSerializer` (entrada). Convenció de nom amb **sufix** (`RenovationCreateSerializer`), no prefix.
-
-## 5. Controller, vista i rutes
-Segueix [add-endpoint.md](add-endpoint.md).
-
-## 6. Cascades
-Si l'entitat té `creator_uid`, decideix com es tracta en esborrar l'usuari: si és a PostgreSQL, una FK `ON DELETE CASCADE`/`SET NULL` al DDL (migració `RunSQL`; vegeu `accounts.0002`); si és a Firestore, un pas a `apps/accounts/services.py: _firestore_steps` (buida des del chunk 8; esborrar o anonimitzar) — [deep-dive](../deep-dives/user-deletion.md). Si depèn d'un refugi, la FK `ON DELETE CASCADE` cap a `refuges.refuges` ja l'esborra amb el refugi quan s'aprova una proposta `delete` (`apps/proposals/services.py: _apply_delete` fa un sol `DELETE`); si guarda fitxers a R2, afegeix-ne la lectura de claus a `_apply_delete`.
-
-## 7. Tests — `api/tests/<entitat>/`
-Crea `__init__.py`, `test_models.py`, `test_mappers.py`, `test_daos.py`, `test_serializers.py`, `test_controllers.py`, `test_views.py`. Fixtures de dades a nivell de fitxer (com `api/tests/renovation/test_daos.py:10-55`) o a `api/tests/conftest.py` si són compartides. Mocks de DAO: `@patch('api.daos.foo_dao.FirestoreService')` + `@patch('api.daos.foo_dao.cache_service')`.
-
-## 8. Docs
-Afegeix la col·lecció a `docs/integrations/firestore.md`, el flux a `docs/flows/` i la ruta a `docs/ARCHITECTURE.md §4`.
+## Passos
+1. **Model i migració** segons la nota de dalt. Model de referència amb constraints (`CHECK`, `EXCLUDE`), triggers i RLS: `apps/renovations/models.py` + `migrations/0001_initial.py`.
+2. **Regles**: les mateixes han d'existir al serializer d'entrada i al `CHECK` de la BD (cas `ini_date == fin_date`: un dia és vàlid).
+3. **Dates**: instants `timestamptz` amb el rellotge de la BD; dates de negoci amb `get_madrid_today()` (`api/utils/timezone_utils.py`).
+4. **Media**: desa **claus** R2, no URLs; `media_to_dict` presigna a la resposta.
+5. **Esborrat d'usuari**: decideix la FK `ON DELETE CASCADE`/`SET NULL` al DDL (migració `RunSQL`; vegeu `accounts.0002`) — [deep-dive](../deep-dives/user-deletion.md). Si depèn d'un refugi, la FK cap a `refuges.refuges` l'esborra amb el refugi (`apps/proposals/services.py: _apply_delete`); si guarda fitxers a R2, afegeix-ne la lectura de claus a `_apply_delete`.
+6. **Serializers, selectors, services i vista**: vegeu [add-endpoint.md](add-endpoint.md).
+7. **Tests**: `apps/<feature>/tests/` (esquema, constraints, RLS, models).
+8. **Docs**: el flux a `docs/flows/` i la ruta a `docs/ARCHITECTURE.md §4`.

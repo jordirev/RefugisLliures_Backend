@@ -2,7 +2,6 @@ from django.urls import include, path
 from .views.health_check_views import HealthCheckAPIView
 from apps.uploads.views import UploadIntentsAPIView, UploadIntentsConfirmAPIView
 from apps.renovations.views import RefugeRenovationsAPIView
-from .views.cache_views import cache_stats, cache_clear, cache_invalidate
 
 urlpatterns = [
     # Health check endpoint
@@ -40,9 +39,4 @@ urlpatterns = [
     
     # /refuges-proposals/, /refuges-proposals/{id}/approve|reject/, /my-refuges-proposals/ → app `proposals` (PostgreSQL)
     path('', include('apps.proposals.urls')),
-    
-    # Cache management endpoints
-    path('cache/stats/', cache_stats, name='cache_stats'),
-    path('cache/clear/', cache_clear, name='cache_clear'),
-    path('cache/invalidate/', cache_invalidate, name='cache_invalidate'),
 ]

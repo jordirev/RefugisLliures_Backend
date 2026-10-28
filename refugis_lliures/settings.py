@@ -267,7 +267,7 @@ REST_FRAMEWORK = {
 CORS_ALLOW_ALL_ORIGINS = config('CORS_ALLOW_ALL_ORIGINS', default=True, cast=bool)
 CORS_ALLOWED_ORIGINS = config('CORS_ALLOWED_ORIGINS', default='').split(',') if config('CORS_ALLOWED_ORIGINS', default='') else []
 
-# Firebase/Firestore settings
+# Firebase Admin (només Auth)
 GOOGLE_APPLICATION_CREDENTIALS = config('GOOGLE_APPLICATION_CREDENTIALS', default='env/firebase-service-account.json')
 FIREBASE_SERVICE_ACCOUNT_KEY = config('FIREBASE_SERVICE_ACCOUNT_KEY', default=None)
 
@@ -276,44 +276,12 @@ SECURE_SSL_REDIRECT = config('SECURE_SSL_REDIRECT', default=False, cast=bool)
 SESSION_COOKIE_SECURE = config('SESSION_COOKIE_SECURE', default=False, cast=bool)
 CSRF_COOKIE_SECURE = config('CSRF_COOKIE_SECURE', default=False, cast=bool)
 
-# Redis Cache Configuration
-
-REDIS_URL = config('REDIS_URL', default='redis://localhost:6379/1')
-
+# Cache: Django en necessita una per defecte (D43). Local a cada procés; l'aplicació no desa dades a la cache.
 CACHES = {
     'default': {
-        'BACKEND': 'django_redis.cache.RedisCache',
-        'LOCATION': REDIS_URL,
-        'OPTIONS': {
-            'CLIENT_CLASS': 'django_redis.client.DefaultClient',
-            'SOCKET_CONNECT_TIMEOUT': 5,
-            'SOCKET_TIMEOUT': 5,
-            'CONNECTION_POOL_KWARGS': {
-                'max_connections': 50,
-                'retry_on_timeout': True
-            },
-            'COMPRESSOR': 'django_redis.compressors.zlib.ZlibCompressor',
-        },
-        'KEY_PREFIX': 'refugis',
-        'TIMEOUT': 300,  # 5 minuts per defecte
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
     }
 }
-
-
-
-# Logging configuration: enable INFO logs for cache and firestore access tracing
-import logging
-
-# Define custom levels so logs can show friendly level names for quick identification
-# Numeric values chosen between standard levels (DEBUG=10, INFO=20, WARNING=30)
-CACHE_LEVEL = 21
-FIRESTORE_LEVEL = 22
-DAO_LEVEL = 23
-
-# Register the custom level names so they appear as 'CACHE', 'FIRESTORE', 'DAO'
-logging.addLevelName(CACHE_LEVEL, 'CACHE')
-logging.addLevelName(FIRESTORE_LEVEL, 'FIRESTORE')
-logging.addLevelName(DAO_LEVEL, 'DAO')
 
 LOGGING = {
     'version': 1,
@@ -330,21 +298,6 @@ LOGGING = {
         },
     },
     'loggers': {
-        'api.services.cache_service': {
-            'handlers': ['console'],
-            'level': CACHE_LEVEL,
-            'propagate': False,
-        },
-        'api.services.firestore_service': {
-            'handlers': ['console'],
-            'level': FIRESTORE_LEVEL,
-            'propagate': False,
-        },
-        'api.daos': {
-            'handlers': ['console'],
-            'level': DAO_LEVEL,
-            'propagate': False,
-        },
         # Fallback for whole api package
         'api': {
             'handlers': ['console'],

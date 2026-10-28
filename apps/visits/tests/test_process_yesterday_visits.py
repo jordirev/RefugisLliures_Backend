@@ -126,14 +126,11 @@ def test_sense_visites_d_ahir_no_fa_res(scene):
 
 
 def test_no_toca_firestore(scene):
-    """El conftest arrel prohibeix Firestore (`RuntimeError`); a mes, el DAO legacy no s'hi ha de consultar."""
+    """Firestore ja no existeix al codi (D43): cap client se'n pot crear."""
     r1, _, _ = scene
     make_visit(r1, day(-1), {'u1': 3})
-    with mock.patch('api.daos.refugi_lliure_dao.RefugiLliureDAO.get_by_id') as legacy, \
-            mock.patch('api.daos.refugi_lliure_dao.RefugiLliureDAO.update_refugi_visitors') as legacy_w:
+    with mock.patch('google.cloud.firestore.Client', side_effect=AssertionError('Firestore!')):
         run()
-    legacy.assert_not_called()
-    legacy_w.assert_not_called()
     assert visited_ids('u1') == [r1.pk]
 
 

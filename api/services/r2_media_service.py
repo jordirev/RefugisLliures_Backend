@@ -11,7 +11,6 @@ from datetime import datetime
 from botocore.exceptions import ClientError
 from ..r2_config import get_r2_client, get_r2_bucket_name, get_r2_endpoint
 from ..models.media_metadata import MediaMetadata, RefugeMediaMetadata
-from ..services.cache_service import CacheService
 
 logger = logging.getLogger(__name__)
 

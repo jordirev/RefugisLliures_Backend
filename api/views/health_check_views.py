@@ -1,80 +1,69 @@
 """
-Views per a la gestió de health check de l'API
+Health check de l'API (D43): comprova PostgreSQL i que Firebase Admin estigui inicialitzat.
+
+No fa cap crida de xarxa (ni a Firebase, ni a R2) ni toca cap cache; mai exposa el text d'una excepció.
 """
 import logging
+
+import firebase_admin
+from drf_yasg import openapi
+from drf_yasg.utils import swagger_auto_schema
 from rest_framework import status
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from drf_yasg.utils import swagger_auto_schema
-from drf_yasg import openapi
-from ..controllers.refugi_lliure_controller import RefugiLliureController
-from ..serializers.refugi_lliure_serializer import HealthCheckResponseSerializer
+
+from ..services.database_health import check_database
+from ..serializers.health_serializer import HealthCheckResponseSerializer
 from ..utils.swagger_examples import (
     EXAMPLE_HEALTH_CHECK_RESPONSE,
     EXAMPLE_HEALTH_CHECK_UNHEALTHY,
 )
-from ..utils.swagger_error_responses import (
-    ERROR_503_SERVICE_UNAVAILABLE,
-)
 
-
-# Configurar logging
 logger = logging.getLogger(__name__)
 
-# ========== ITEM ENDPOINT: /health/ ==========
+
+def _firebase_ok() -> bool:
+    """Firebase Admin inicialitzat (comprovació local, sense xarxa)."""
+    try:
+        firebase_admin.get_app()
+        return True
+    except Exception as e:
+        logger.error(f'Health check: Firebase Admin no inicialitzat ({type(e).__name__})')
+        return False
+
 
 class HealthCheckAPIView(APIView):
-    """
-    Verifica l'estat de l'API i la connexió amb Firebase:
-    - GET: Comprova l'estat de salut del sistema (no requereix autenticació)
-    """
+    """GET: estat de salut de l'API (no requereix autenticació)."""
     permission_classes = [AllowAny]
-    
+
     @swagger_auto_schema(
         security=[],
         operation_description=(
-            "Comprova l'estat de salut de l'API i la connexió amb Firebase. "
-            "Retorna informació sobre l'estat del servei, Firebase i les col·leccions de Firestore. "
-            "Aquest endpoint no requereix autenticació i pot ser utilitzat per monitoratge."
+            "Comprova l'estat de salut de l'API: la connexió amb PostgreSQL i que Firebase Admin estigui "
+            "inicialitzat. No requereix autenticació i pot ser utilitzat per monitoratge."
         ),
         responses={
             200: openapi.Response(
                 description='API en estat saludable',
                 schema=HealthCheckResponseSerializer,
-                examples={
-                    'application/json': EXAMPLE_HEALTH_CHECK_RESPONSE
-                }
+                examples={'application/json': EXAMPLE_HEALTH_CHECK_RESPONSE},
             ),
-            503: ERROR_503_SERVICE_UNAVAILABLE
-        }
+            503: openapi.Response(
+                description='Algun component no està disponible',
+                schema=HealthCheckResponseSerializer,
+                examples={'application/json': EXAMPLE_HEALTH_CHECK_UNHEALTHY},
+            ),
+        },
     )
     def get(self, request):
-        """Obtenir l'estat de l'API"""
-        try:
-            controller = RefugiLliureController()
-            health_data, error = controller.health_check()
-            
-            if error and health_data.get('status') == 'unhealthy':
-                # Serialitzar resposta d'error
-                serializer = HealthCheckResponseSerializer(data=health_data)
-                if serializer.is_valid():
-                    return Response(serializer.validated_data, status=status.HTTP_503_SERVICE_UNAVAILABLE)
-                else:
-                    return Response(health_data, status=status.HTTP_503_SERVICE_UNAVAILABLE)
-            
-            # Serialitzar resposta exitosa
-            serializer = HealthCheckResponseSerializer(data=health_data)
-            if serializer.is_valid():
-                return Response(serializer.validated_data, status=status.HTTP_200_OK)
-            else:
-                return Response(health_data, status=status.HTTP_200_OK)
-            
-        except Exception as e:
-            logger.error(f'Health check failed: {type(e).__name__}')
-            error_data = {
-                'status': 'unhealthy',
-                'message': 'Health check failed',
-                'firebase': False
-            }
-            return Response(error_data, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+        database = check_database()
+        firebase = _firebase_ok()
+        healthy = database and firebase
+        data = {
+            'status': 'healthy' if healthy else 'unhealthy',
+            'message': 'API operativa' if healthy else 'Servei no disponible',
+            'firebase': firebase,
+            'database': database,
+        }
+        return Response(data, status=status.HTTP_200_OK if healthy else status.HTTP_503_SERVICE_UNAVAILABLE)

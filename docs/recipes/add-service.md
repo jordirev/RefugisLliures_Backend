@@ -1,16 +1,14 @@
 # Recepta — Afegir un servei nou (`api/services/`)
 
-> ## Features migrades a PostgreSQL: `services.py` per feature
-> A les apps `apps/<feature>/` el **service** de la feature (`services.py`) és el lloc de la lògica d'escriptura (substitueix el controller): funcions amb arguments *keyword-only* i `transaction.atomic()`, que llancen excepcions de domini; les lectures van a `selectors.py`. Exemple: `apps/refuges/services.py: delete_media` (fila + R2; si `R2MediaService.delete_file` retorna `False`, es desfà l'esborrat de la fila amb el `savepoint`). Els serveis **transversals** (R2, Firestore, audit) continuen a `api/services/` i es criden des del service de la feature; no hi posis cache de dades.
-
-> Un "servei" aquí és una peça transversal o una integració externa (Firestore, cache, R2, càlcul de condició). La lògica de negoci d'un domini va al **controller**, no a un servei.
+> ## `services.py` per feature
+> A les apps `apps/<feature>/` el **service** de la feature (`services.py`) és el lloc de la lògica d'escriptura: funcions amb arguments *keyword-only* i `transaction.atomic()`, que llancen excepcions de domini; les lectures van a `selectors.py`. Exemple: `apps/refuges/services.py: delete_media` (fila + R2; si `R2MediaService.delete_file` retorna `False`, es desfà l'esborrat amb el `savepoint`). Aquesta recepta és per als serveis **transversals** (R2, imatge, moderació, health) que viuen a `api/services/`; no hi posis cache de dades (no n'hi ha, D43).
 
 ## Patrons existents [FET]
 | Tipus | Exemple | Quan usar-lo |
 |---|---|---|
-| Singleton amb `__new__` + instància global | `FirestoreService` (`api/services/firestore_service.py:13-22,78`), `CacheService` (`api/services/cache_service.py:14-57,317`) | recurs compartit car de crear (client, connexió) |
-| Classe amb Strategy injectada | `R2MediaService(strategy)` + factories (`api/services/r2_media_service.py:146-164,462-469`) | mateix servei amb variants de comportament |
-| Classe amb mètodes estàtics/purs | `ConditionService` (`api/services/condition_service.py`) | càlculs sense estat |
+| Classe amb Strategy injectada | `R2MediaService(strategy)` + factories (`api/services/r2_media_service.py`) | mateix servei amb variants de comportament |
+| Funcions pures | `database_health.check_database`, `image_processing_service` | càlculs o comprovacions sense estat |
+| Singleton amb `__new__` | cap des del chunk 11 (`FirestoreService` i `CacheService` han desaparegut) | recurs compartit car de crear |
 
 ## Passos
 1. **Fitxer** `api/services/<nom>_service.py`, docstring de mòdul en català, `logger = logging.getLogger(__name__)`.
@@ -19,20 +17,10 @@
    - Si l'has de llegir amb `os.getenv` (com R2), recorda que `decouple.RepositoryEnv` **no** omple `os.environ` (vegeu [GOTCHAS #25](../GOTCHAS.md)).
    - Llegeix les variables **dins de la funció/constructor**, no a nivell de mòdul, perquè els tests les puguin fixar abans (`api/r2_config.py:9-11`).
    - Documenta el **nom** de la variable a `docs/integrations/` i a `render.yaml` (comentari). Mai valors.
-3. **Singleton** (si cal):
-   ```python
-   class FooService:
-       _instance = None
-       def __new__(cls):
-           if cls._instance is None:
-               cls._instance = super().__new__(cls)
-           return cls._instance
-   foo_service = FooService()
-   ```
-   ⚠️ `CacheService.__init__` es re-executa a cada `CacheService()` (L55-57); no hi posis inicialitzacions cares.
-4. **Errors**: decideix i documenta si el servei **llança** o **retorna False/None**. El codi actual barreja (`upload_file` llança, `delete_file` retorna False) i això ha trencat rollbacks ([TECH_DEBT A4](../TECH_DEBT.md)). Recomanació: llançar excepcions pròpies i que el controller les tradueixi.
+3. **Estat compartit**: evita singletons; si en cal un, que `__init__` no es re-executi (no hi posis inicialitzacions cares).
+4. **Errors**: decideix i documenta si el servei **llança** o **retorna False/None**. El codi actual barreja (`upload_file` llança, `delete_file` retorna False) i això ha trencat rollbacks ([TECH_DEBT A4](../TECH_DEBT.md)). Recomanació: llançar excepcions pròpies i que la vista les tradueixi.
 5. **Export** a `api/services/__init__.py` (afegir a l'import i a `__all__`).
-6. **Logging**: si vols un nivell propi, afegeix-lo a `LOGGING['loggers']` de `refugis_lliures/settings.py:234-256`; recorda que el logger `api` només mostra `WARNING`+.
-7. **No el construeixis en constructors de controllers** si pot fallar per configuració: `RefugiLliureController()` creava R2 i trencava el health check (resolt al chunk 1: ara `media_service` és una propietat mandrosa a `api/controllers/refugi_lliure_controller.py`). Segueix aquest patró: creació mandrosa.
+6. **Logging**: nivells estàndard; el logger `api` només mostra `WARNING`+ (`LOGGING['loggers']` a `refugis_lliures/settings.py`).
+7. **Creació mandrosa**: no construeixis clients externs (R2) en constructors si poden fallar per configuració; crea'ls sota demanda.
 8. **Tests**: `.coveragerc` i Sonar **exclouen `services/`** del coverage; igualment escriu tests i mocka les dependències externes (`patch('api.services.<nom>_service.<client>')`). Si el servei llegeix variables d'entorn a l'import, fixa-les a `conftest.py` (arrel) com es fa amb `R2_*`.
 9. **Docs**: nou fitxer a `docs/integrations/` si és extern; actualitza `docs/ARCHITECTURE.md §1/§7`.

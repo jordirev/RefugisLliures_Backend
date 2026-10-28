@@ -16,7 +16,7 @@
    curl https://refugislliures-backend.onrender.com/api/health/
    curl -X POST "https://refugislliures-backend.onrender.com/api/media/upload-intents/"      -H "Authorization: Bearer <firebase-token>" -H "Content-Type: application/json"      -d '{"target":"refuge","refuge_id":"<id>","rights_confirmed":true,"files":[{"content_type":"image/jpeg","size":12345}]}'
    ```
-   El health check ja **no** depèn d'R2: torna 503 només si Postgres o Firestore fallen ([flux 11](../flows/11-admin-cache-health.md)), així que ja no serveix per comprovar la config R2; per això cal provar `upload-intents`. La segona crida torna 201 amb `put_url` si el backend pot signar URLs R2 (l'usuari ha de tenir l'edat confirmada); la pujada completa (`PUT` + `confirm`) és al [flux 3](../flows/03-refuge-media-upload.md) **[INFERÈNCIA]**.
+   El health check ja **no** depèn d'R2: torna 503 només si Postgres o Firebase Admin fallen ([flux 11](../flows/11-admin-cache-health.md)), així que ja no serveix per comprovar la config R2; per això cal provar `upload-intents`. La segona crida torna 201 amb `put_url` si el backend pot signar URLs R2 (l'usuari ha de tenir l'edat confirmada); la pujada completa (`PUT` + `confirm`) és al [flux 3](../flows/03-refuge-media-upload.md) **[INFERÈNCIA]**.
 
 ## 2. GitHub Actions
 El procés diari (`process-visits.yml`) necessita les mateixes `R2_*` com a **secrets** del repositori.
@@ -55,4 +55,4 @@ Exporta-les a la shell abans de `runserver` (no n'hi ha prou amb `env/.env.devel
 | `R2 configuration is incomplete` | Falta alguna `R2_*` a l'entorn |
 | 403 de R2 | Credencials incorrectes, bucket inexistent o key sense permisos |
 | La URL d'una foto dona 403 | URL presignada caducada (1 h): torna a demanar el recurs |
-| Fitxer a R2 però no a Firestore | Error en actualitzar `media_metadata`; revisa logs (el controller intenta rollback, però vegeu [TECH_DEBT A4](../TECH_DEBT.md)) |
+| Fitxer a R2 però sense fila a `refuge_media` | Error en confirmar la pujada; revisa logs (`apps/uploads/services.py` intenta desfer-ho, vegeu [TECH_DEBT A4](../TECH_DEBT.md)) |

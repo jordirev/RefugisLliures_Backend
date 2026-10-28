@@ -13,7 +13,6 @@
 |---|---|
 | `api/apps.py` | `ApiConfig.ready()` instal·la el hook de RLS (`api/rls_hook.py`) i crida `initialize_firebase()` en arrencar Django |
 | `api/firebase_config.py` | Inicialització per entorn |
-| `api/services/firestore_service.py:40-75` | **Segona** ruta d'inicialització (si `get_app()` falla) |
 | `api/middleware/firebase_auth_middleware.py` | `auth.verify_id_token` per petició |
 | `api/authentication.py` | Classe d'autenticació DRF (reaprofita el middleware) |
 | `api/rls_hook.py` | Llegeix `uid` i `role == 'admin'` de la identitat verificada i fixa el context de RLS a la transacció ([flux 00](../flows/00-auth-request-pipeline.md)) |
@@ -28,7 +27,7 @@
 | Producció: `RENDER=='true'` o `PRODUCTION=='true'` o `CI=='true'` | JSON a la variable `FIREBASE_SERVICE_ACCOUNT_KEY` | L24-47 |
 | Local (resta) | `load_dotenv(env/.env.development)` + fitxer fix `env/firebase-service-account.json` | L50-77 |
 
-`FirestoreService._initialize_firebase` (fallback) usa `settings.FIREBASE_SERVICE_ACCOUNT_KEY` o `settings.GOOGLE_APPLICATION_CREDENTIALS` (default `env/firebase-service-account.json`, `refugis_lliures/settings.py:173-174`) **[FET]**.
+Des del chunk 11 (D43) només hi ha una ruta d'inicialització (`api/firebase_config.py`): `FirestoreService` i la seva ruta de fallback han desaparegut. `firebase-admin` s'usa només per a Auth (verificar tokens, usuaris, claims) **[FET]**. `settings.GOOGLE_APPLICATION_CREDENTIALS` el llegeix `scripts/manage_admins.py`.
 
 Variables (només noms): `FIREBASE_SERVICE_ACCOUNT_KEY`, `GOOGLE_APPLICATION_CREDENTIALS`, `RENDER`, `PRODUCTION`, `CI`, `TESTING`. Fitxers presents a `env/` (no versionats): `firebase-service-account.json`, `firebase-service-account-dev.json`, `firebase-service-account-prod.json`. Quin projecte Firebase apunta cadascun: **[NO VERIFICAT]** (no s'han llegit els valors).
 

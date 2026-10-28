@@ -47,9 +47,8 @@ VIEWS = _all_view_classes()
 
 
 def test_es_troben_les_vistes():
-    assert len(VIEWS) >= 40, f"només s'han trobat {len(VIEWS)} vistes"
+    assert len(VIEWS) >= 38, f"només s'han trobat {len(VIEWS)} vistes"
     assert any(k.endswith('HealthCheckAPIView') for k in VIEWS)
-    assert any('cache_views' in k for k in VIEWS), "també les vistes de funció @api_view"
 
 
 def _recorded_sql(view_cls, authenticated, django_db_blocker):

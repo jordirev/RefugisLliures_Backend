@@ -70,5 +70,5 @@ sequenceDiagram
 
 ## Gotchas
 - `GET /refuges/{id}/renovations/`: des del chunk 5 és a PostgreSQL i llegeix `?active_only=` (D32: `true`/`1` només vigents; per defecte totes); refugi inexistent → 404 ([flux 7](07-renovations.md)) **[FET]**.
-- Només la moderació (denúncies) i el health check (propostes i la resta de dominis ja són a PostgreSQL des del chunk 8) segueixen consultant els refugis al `RefugiLliureDAO` de Firestore, que ja no s'alimenta: fins al chunk 9/11, les seves comprovacions d'existència de refugi miren el catàleg antic de Firestore (en un entorn nou, buit; en producció, amb IDs diferents dels UUID de PostgreSQL) — [GOTCHAS #41](../GOTCHAS.md).
+- Cap domini consulta ja el catàleg antic de Firestore: el `RefugiLliureDAO` ha desaparegut al chunk 11 (D43) i la moderació comprova els refugis a PostgreSQL.
 - `load_refuges` és d'un sol ús: vegeu [local-setup](../guides/local-setup.md).

@@ -37,15 +37,9 @@ from unittest.mock import patch  # noqa: E402
 #    bloquejat per defecte (sense consultar PostgreSQL) (marker `real_permissions` per provar-les).
 
 @pytest.fixture(autouse=True)
-def _block_real_firestore():
-    from api.services.firestore_service import FirestoreService
-
-    def _forbidden(self):
-        raise RuntimeError("Els tests no poden connectar-se a Firestore real: mocka FirestoreService")
-
-    with patch.object(FirestoreService, '_initialize_firebase', _forbidden), \
-            patch('firebase_admin.get_app', side_effect=ValueError('no app')):
-        FirestoreService._db = None
+def _block_real_firebase():
+    """Cap test inicialitza Firebase Admin real: `get_app` falla (health check «unhealthy» per defecte)."""
+    with patch('firebase_admin.get_app', side_effect=ValueError('no app')):
         yield
 
 

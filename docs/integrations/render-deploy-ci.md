@@ -6,7 +6,7 @@
 - Servei web `refugis-lliures-backend`, `env: python` (L1-4).
 - Build: `./build.sh` → `pip install -r requirements.txt` + `python manage.py collectstatic --no-input` (`build.sh`). **No** executa migracions ni `crontab add` **[FET]**.
 - Start: `gunicorn --config=gunicorn.conf.py refugis_lliures.wsgi:application` (L6).
-- Variables definides al YAML: `RENDER="1"`, `DJANGO_SETTINGS_MODULE` (L7-11). La resta (comentades a L12-22) es configuren al dashboard → **[NO VERIFICAT]**: `SECRET_KEY`, `DEBUG`, `ALLOWED_HOSTS`, `CORS_*`, `SECURE_SSL_REDIRECT`, `SESSION_COOKIE_SECURE`, `CSRF_COOKIE_SECURE`, `GOOGLE_APPLICATION_CREDENTIALS`; a més el codi necessita `FIREBASE_SERVICE_ACCOUNT_KEY`, `REDIS_URL` i `R2_*`.
+- Variables definides al YAML: `RENDER="1"`, `DJANGO_SETTINGS_MODULE` (L7-11). La resta (comentades a L12-22) es configuren al dashboard → **[NO VERIFICAT]**: `SECRET_KEY`, `DEBUG`, `ALLOWED_HOSTS`, `CORS_*`, `SECURE_SSL_REDIRECT`, `SESSION_COOKIE_SECURE`, `CSRF_COOKIE_SECURE`, `GOOGLE_APPLICATION_CREDENTIALS`; a més el codi necessita `FIREBASE_SERVICE_ACCOUNT_KEY` (només Auth) i `R2_*`. `REDIS_URL` ja no cal (D43).
 - URL pública: `https://refugislliures-backend.onrender.com` (segons `.github/workflows/ping-website.yml:16-17`) **[FET]**.
 
 ## Gunicorn (`gunicorn.conf.py`)
@@ -15,7 +15,7 @@
 ## Selecció d'entorn (`refugis_lliures/settings.py:20-34`)
 Si existeix `RENDER` o `PRODUCTION` → `env/.env.production`; si no → `env/.env.development`; si el fitxer no existeix → `decouple.config` normal (variables d'entorn). A Render, `env/` no existeix (no versionat) → es llegeixen les variables d'entorn del servei **[INFERÈNCIA]**.
 
-Variables (noms) a `env/.env.development` i `env/.env.production`: `SECRET_KEY, DEBUG, ALLOWED_HOSTS, CORS_ALLOW_ALL_ORIGINS, CORS_ALLOWED_ORIGINS, GOOGLE_APPLICATION_CREDENTIALS, REDIS_URL`. `env/api-keys.env` conté les mateixes claus i **cap fitxer del codi el referencia** **[FET]**.
+Variables (noms) a `env/.env.development` i `env/.env.production`: `SECRET_KEY, DEBUG, ALLOWED_HOSTS, CORS_ALLOW_ALL_ORIGINS, CORS_ALLOWED_ORIGINS, GOOGLE_APPLICATION_CREDENTIALS` (`REDIS_URL` ja no cal: eliminada al chunk 11). `env/api-keys.env` conté les mateixes claus i **cap fitxer del codi el referencia** **[FET]**.
 
 ## GitHub Actions (`.github/workflows/`)
 | Workflow | Disparador | Què fa |
@@ -48,13 +48,18 @@ Variables (noms) a `env/.env.development` i `env/.env.production`: `SECRET_KEY, 
 - `RENDER="1"` vs `RENDER=='true'` a `api/firebase_config.py:21,27` **[NO VERIFICAT]** si Render el sobreescriu.
 - 1 worker sync + timeout 30 s + pujades sense límit → una pujada lenta bloqueja tot el servei **[INFERÈNCIA]**.
 - `tox.ini` declara `py314` i CI executa `tox -e py` amb Python 3.14 **[FET]**; `process-visits.yml` també fixa 3.14. `.python-version` (`3.14`) fixa la versió de Python de Render **[INFERÈNCIA: Render llegeix `.python-version`]**. Els tests locals en contenidor i l'entorn `.venv` també són 3.14 ([guides/testing.md](../guides/testing.md)).
-- `process-visits.yml` no posa `REDIS_URL` → no invalida la cache de producció **[INFERÈNCIA]**.
 - Comentari "3:00 Madrid" a `refugis_lliures/settings.py:276` vs "3:00 UTC" al workflow: el que s'executa és el del workflow (UTC) **[FET]**; com que el procés calcula "ahir" en hora de Madrid, a les 3:00 UTC (4-5 h a Madrid) "ahir" és correcte **[INFERÈNCIA]**.
 
 ## Neon (variables d'entorn) [FET]
 `DATABASE_URL_APP` (rol `app`, pooler), `DATABASE_URL_MIGRATOR` (rol `migrator`, directa) i `NEON_BRANCH`. Es llegeixen de `env/.env.*` (o de l'entorn) amb `decouple`; `TEST_DATABASE_URL_APP` / `TEST_DATABASE_URL_MIGRATOR` (Postgres de proves) tenen prioritat només dins pytest o amb `USE_TEST_DATABASE=1` (D37). `default` és Postgres si hi ha alguna URL `app`; l'àlies `migrator` només existeix si hi ha la URL del migrator. CI defineix només les `TEST_*` (cap secret). `NEON_USE_POSTGIS_ENGINE` ja no existeix. Detall: [neon.md](neon.md).
 
 **Pendent de desplegament [NO VERIFICAT]**: ni `build.sh` ni `render.yaml` instal·len GDAL/GEOS ni defineixen `DATABASE_URL_APP`; amb `django.contrib.gis` sempre actiu, un desplegament a Render sense GDAL no arrencaria. El desplegament (Cloud Run amb imatge Docker amb GDAL, segons l'arquitectura) queda fora del chunk 1 ([TECH_DEBT.md](../TECH_DEBT.md) P1). Les migracions no s'executen al build: `python manage.py migrate --database=migrator`.
+
+## Accions pendents del PO (neteja, chunk 11, D43)
+El codi ja no usa Redis ni Firestore; aquestes accions són a la consola/dashboard i no es poden fer des del codi:
+1. **Render**: eliminar la variable `REDIS_URL` i l'add-on/instància de Redis, si n'hi ha.
+2. **Firebase Console**: quan es consideri oportú (després de validar la migració), esborrar les dades de Firestore (col·leccions antigues). Només després d'una còpia si es vol conservar l'històric.
+3. **Mantenir** les credencials de Firebase Auth (`FIREBASE_SERVICE_ACCOUNT_KEY`, o el fitxer local): `firebase-admin` encara verifica tokens i gestiona usuaris i claims.
 
 ## Guies relacionades
 [firebase-credentials.md](../guides/firebase-credentials.md) · [r2-render-setup.md](../guides/r2-render-setup.md) · [daily-visits-process.md](../guides/daily-visits-process.md) · [testing.md](../guides/testing.md)

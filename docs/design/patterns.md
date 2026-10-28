@@ -6,24 +6,22 @@
 ## Arquitectònics
 
 ### 1. Arquitectura en capes
-`View → Serializer → Controller → DAO → (CacheService, Firestore, R2)`, amb `Mapper` i `Model` transversals. Contractes de cada capa: [ARCHITECTURE §3](../ARCHITECTURE.md). Els dominis que encara són a Firestore (moderació, refugi legacy) tenen un fitxer per capa; la resta són apps (`apps/<feature>/`).
+`View → Serializer → selectors (lectures) / services (escriptures) → models (ORM + RLS) [+ R2MediaService]`. Contractes de cada capa: [ARCHITECTURE §3](../ARCHITECTURE.md). Després de la neteja (chunk 11, D43) tots els dominis són apps (`apps/<feature>/`); a `api/` només queda infraestructura compartida.
 
 ```
 CLIENT (app mòbil)
    │
 MIDDLEWARE  firebase_auth_middleware.py  (verifica JWT, injecta user_uid/user_claims)
    │
-VIEWS       api/views/*_views.py  (APIView + @swagger_auto_schema, serializers d'entrada, permisos)
+VIEWS       apps/<feature>/views.py  (APIView + @swagger_auto_schema, serializers d'entrada, permisos)
    │
-CONTROLLERS api/controllers/*_controller.py  (regles de negoci, propietat, tuples (ok, data, error))
+   ├── SELECTORS apps/<feature>/selectors.py  (lectures, una consulta per cas d'ús)
+   └── SERVICES  apps/<feature>/services.py   (escriptures, transaction.atomic, propietat)
+   │           └── api/services: r2_media_service (Strategy+Factory) · image_processing · moderation
    │
-   ├── DAOs     api/daos/*_dao.py  (Firestore + cache; Strategy de cerca)
-   ├── MAPPERS  api/mappers/*_mapper.py
-   └── SERVICES cache_service (Singleton) · firestore_service (Singleton) · r2_media_service (Strategy+Factory) · condition_service
-   │
-EXTERNS     Firestore · Cloudflare R2 · Redis · Firebase Auth
+EXTERNS     PostgreSQL (Neon) · Cloudflare R2 · Firebase Auth
 ```
-Excepcions al patró (lògica dins DAOs, permisos que accedeixen a Firestore…): [ARCHITECTURE §9](../ARCHITECTURE.md).
+Excepcions al patró: [ARCHITECTURE §9](../ARCHITECTURE.md).
 
 ### 2. REST
 Recursos a `api/urls.py` (`/refuges/`, `/users/`, `/experiences/`…), verbs GET/POST/PATCH/DELETE, Swagger a `/swagger/`. Hi ha desviacions de codis HTTP respecte a Swagger ([TECH_DEBT B8](../TECH_DEBT.md)).
@@ -34,7 +32,7 @@ Recursos a `api/urls.py` (`/refuges/`, `/users/`, `/experiences/`…), verbs GET
 ## De disseny
 
 ### Selectors i services per feature (apps migrades a PostgreSQL)
-Les features migrades (`apps/<feature>/`) substitueixen DAO + controller per **`selectors.py`** (lectures; una consulta per cas d'ús, sense cache de dades) i **`services.py`** (escriptures amb `transaction.atomic`; excepcions de domini). La resta de capes (vista fina, serializers, models amb RLS i FK del DDL) i el flux estan a [ARCHITECTURE §3.1](../ARCHITECTURE.md). Referència: `apps/refuges`.
+Les features migrades (`apps/<feature>/`) són **`selectors.py`** (lectures; una consulta per cas d'ús, sense cache de dades) i **`services.py`** (escriptures amb `transaction.atomic`; excepcions de domini). La resta de capes (vista fina, serializers, models amb RLS i FK del DDL) i el flux estan a [ARCHITECTURE §3.1](../ARCHITECTURE.md). Referència: `apps/refuges`.
 
 ### Errors 500 amb traçabilitat (apps migrades)
 **Errors 500 amb traçabilitat** (política del PO per a les features migrades): la resposta és `{"error": "<missatge específic del punt que ha fallat>", "error_id": "<uuid>"}` i el mateix `error_id` es desa al log amb la traça completa (`logger.exception`). **Mai** es retorna `str(e)` ni el nom/text de l'excepció (pot dur SQL, hosts, bucket, claus o rutes). Ho fa el helper `apps.core.errors.server_error(message, exc, logger=logger)`; el missatge és un text fix per punt ("Error en esborrar el fitxer a R2", "Error de base de dades en cercar refugis", "Error en generar la URL de la imatge"…). Tests de referència: `apps/core/tests/test_errors.py` i `apps/refuges/tests/test_server_errors.py` (forma de la resposta, `error_id` coincident amb el log, cap text d'excepció a la resposta).
@@ -49,34 +47,15 @@ Les features migrades (`apps/<feature>/`) substitueixen DAO + controller per **`
 **Strategy de moderació (feature images)**: `ModerationProvider` (interfície) amb `HashBlocklistProvider` actiu i stubs desactivats `PhotoDNAProvider` / `GoogleContentSafetyProvider`; `ModerationService` els executa en ordre i el primer que bloqueja guanya (fail-closed si un falla). `api/services/moderation_service.py`, [flux 12](../flows/12-media-moderation.md).
 
 ### Singleton
-`CacheService` i `FirestoreService` amb `__new__` + instància global (`cache_service`, `firestore_service`). Compte: `CacheService.__init__` es re-executa a cada `CacheService()` ([recipes/add-service.md](../recipes/add-service.md)).
-
-### DAO + Data Mapper
-Un DAO i un mapper per entitat (els dominis migrats —refugis, usuaris, visites, reformes, dubtes, experiències— usen selectors/services en lloc seu): `RefugiLliureDAO`, (`DoubtDAO`, `RenovationDAO`, `RefugeProposalDAO` i `RefugeVisitDAO` ja no existeixen); mappers homònims a `api/mappers/`. El DAO integra la cache (get → miss → Firestore → set):
-```mermaid
-sequenceDiagram
-    participant C as Controller
-    participant D as RefugiLliureDAO
-    participant K as CacheService
-    participant F as Firestore
-    C->>D: get_by_id("123")
-    D->>K: get("refugi_detail:refugi_id:123")
-    alt miss
-        D->>F: get document
-        D->>K: set(key, data, 600)
-    end
-    D->>D: mapper.firestore_to_model(data)
-    D-->>C: Refugi
-```
+Cap des del chunk 11: `CacheService` i `FirestoreService` han desaparegut.
 
 ### Factory
 - **Funcions factory** de R2: `get_refugi_media_service()` → `R2MediaService(RefugiMediaStrategy())`; `get_user_avatar_service()` → `R2MediaService(UserAvatarStrategy())`.
-- **Factory method** als models: `@classmethod from_dict(cls, data)` crea instàncies sense que el client cridi el constructor i permet que una subclasse (p. ex. `RefugeMediaMetadata`) en creï de pròpies (`api/models/media_metadata.py`).
 
 ### Template Method (+ hook)
 - (Eliminat al chunk 3: `UserController._manage_refugi_list` i el seu hook de `visitors`. Els preferits i els visitats comparteixen ara la classe abstracta `_UserRefugeList` i les funcions `_add`/`_remove` d'`apps/accounts/services.py`; no hi ha hook: `visitors` surt de `user_visited_refuges`.)
 - `to_dict()` de `RefugeMediaMetadata` crida `super().to_dict()` i hi afegeix `creator_uid`/`experience_id`: la base dona la plantilla, la subclasse l'especialitza.
 
 ### Decorator
-- `@swagger_auto_schema` a totes les vistes; `@api_view` + `@permission_classes` només a `cache_views.py`.
-- `@cache_result` (`api/services/cache_service.py`) existeix però **no s'usa** fora de tests ([TECH_DEBT §Codi mort](../TECH_DEBT.md)).
+- `@swagger_auto_schema` a totes les vistes (totes són `APIView`; `cache_views.py` i `@api_view` han desaparegut).
+- `@cache_result` ha desaparegut amb `cache_service` (chunk 11).

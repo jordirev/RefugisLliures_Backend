@@ -28,9 +28,6 @@ gunicorn==21.2.0
 # Documentació API
 drf_yasg
 
-# Cache i Redis
-redis==5.0.1
-django-redis==5.4.0
 
 # Cron jobs
 django-crontab==0.7.1

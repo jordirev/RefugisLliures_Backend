@@ -39,13 +39,3 @@ def test_emulador_prohibit_en_produccio(monkeypatch, var):
         with pytest.raises(ValueError):
             firebase_config.initialize_firebase()
     init.assert_not_called()
-
-
-def test_el_controller_no_crea_el_servei_r2_en_construir_se():
-    from api.controllers.refugi_lliure_controller import RefugiLliureController
-    with patch('api.controllers.refugi_lliure_controller.r2_media_service.get_refugi_media_service') as get_service:
-        controller = RefugiLliureController()
-        get_service.assert_not_called()
-        assert controller.media_service is get_service.return_value
-        assert controller.media_service is get_service.return_value
-        get_service.assert_called_once()

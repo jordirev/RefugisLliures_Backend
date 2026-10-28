@@ -17,3 +17,6 @@ def check_database() -> bool:
     except DatabaseError as e:
         logger.error(f'Database health check failed: {type(e).__name__}')
         return False
+    except Exception as e:      # qualsevol altre error (driver, configuració) també és «BD no disponible»: 503, mai 500
+        logger.error(f'Database health check failed (inesperat): {type(e).__name__}')
+        return False
