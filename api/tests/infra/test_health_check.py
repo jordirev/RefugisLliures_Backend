@@ -99,6 +99,18 @@ def test_health_503_si_la_base_de_dades_falla(client, firebase_inicialitzat):
     assert j['database'] is False
 
 
+def test_health_503_i_no_500_si_la_comprovacio_de_bd_llanca_un_error_inesperat(client, firebase_inicialitzat):
+    """Un error que no és de BD (p. ex. del driver) també és «BD no disponible»: 503 documentat, mai 500."""
+    from unittest.mock import MagicMock
+    broken = MagicMock()
+    broken.cursor.side_effect = RuntimeError(SECRET)
+    with patch('api.services.database_health.connection', broken):   # només la connexió del health check
+        r = client.get(URL)
+    assert r.status_code == 503
+    j = r.json()
+    assert set(j) == KEYS and j['database'] is False and SECRET not in r.content.decode()
+
+
 def test_health_503_si_firebase_admin_no_esta_inicialitzat(client, firebase_no_inicialitzat):
     r = client.get(URL)
     assert r.status_code == 503
