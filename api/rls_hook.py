@@ -48,8 +48,10 @@ def apply_request_rls_context(request):
         # Sense transacció (`@transaction.non_atomic_requests` o `ATOMIC_REQUESTS` desactivat) un `set_config(..., true)`
         # moriria en la mateixa sentència: la vista queda sense context i la RLS ho denega tot (fail-closed).
         # S'avisa perquè no sigui un error silenciós (la sentència s'executa igualment: és inofensiva).
-        logger.warning("Hook de RLS: la petició %s no s'executa dins d'una transacció; el context no persistirà.",
-                       getattr(request, 'path', '?'))
+        # Es registra el nom de la ruta, mai el camí: el camí pot portar l'UID (`/api/users/<uid>/`).
+        match = getattr(request, 'resolver_match', None)
+        logger.warning("Hook de RLS: la petició %s %s no s'executa dins d'una transacció; el context no persistirà.",
+                       getattr(request, 'method', '?'), getattr(match, 'view_name', None) or '?')
     uid, claims = _verified_identity(request)
     apply_context(conn, uid, is_admin_claims(claims))
 
