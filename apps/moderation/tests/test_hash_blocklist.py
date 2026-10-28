@@ -280,6 +280,7 @@ def test_un_hash_carregat_es_detecta_amb_fn_hash_match_amb_el_rol_app(blocklist,
     f'{SHA},,terror,font',                      # categoria desconeguda
     f'{SHA},,csam,',                            # sense origen
     f'{SHA},,csam,{"x" * 101}',                 # origen massa llarg
+    f'{SHA},,csam,fo\x00nt',                    # caràcter de control a l'origen
 ])
 def test_una_fila_invalida_es_commandError_i_no_s_escriu_res(blocklist, tmp_path, row):
     path = csv_file(tmp_path, [f'{"11" * 32},,csam,ok', row])

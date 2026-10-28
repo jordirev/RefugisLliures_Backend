@@ -52,7 +52,7 @@ def _parse_row(row: List[str], line: int) -> Entry:
     category = category.lower() or HashCategory.CSAM.value
     if category not in HashCategory.values:
         raise CommandError(f'línia {line}: categoria desconeguda (csam|other)')
-    if not source or len(source) > SOURCE_MAX:
+    if not source or len(source) > SOURCE_MAX or not source.isprintable():
         raise CommandError(f'línia {line}: l\'origen és obligatori i ha de fer com a màxim {SOURCE_MAX} caràcters')
     return sha256, phash, category, source
 
