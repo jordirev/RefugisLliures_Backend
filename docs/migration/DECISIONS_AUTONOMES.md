@@ -3,8 +3,7 @@
 > **Reactivat el 25/10/2026 (nit)**: el PO no estarà disponible; l'orquestrador tria l'opció recomanada i l'apunta aquí amb les alternatives. També pot fusionar PR cap a `migration` amb la CI en verd (mai cap a `develop`). Entre el 24/10 (tarda) i el 25/10 (nit) va estar en pausa: aquell període les decisions es van preguntar al PO.
 >
 > Abans: des del 24/10/2026 el PO havia delegat les decisions: quan hi ha un dubte, l'orquestrador tria l'opció recomanada i l'apunta aquí amb les alternatives perquè el PO la pugui revisar i revertir.
-> Format: **Decisió** · context · alternatives descartades · com revertir-la. Cada decisió és **una fila de la taula en una sola línia**: sense salts de línia ni tabuladors literals (escriu `	`, `
-`) i sense `|` fora de codi, o la taula es trenca a partir d'aquella fila. Les decisions validades explícitament pel PO són a [`PLAN.md`](PLAN.md) i a `docs/design/postgres-schema.md` §11.
+> Format: **Decisió** · context · alternatives descartades · com revertir-la. Cada decisió és **una fila de la taula en una sola línia**: sense salts de línia ni tabuladors literals (escriu `\t`, `\n`) i sense `|` fora de codi, o la taula es trenca a partir d'aquella fila. Les decisions validades explícitament pel PO són a [`PLAN.md`](PLAN.md) i a `docs/design/postgres-schema.md` §11.
 
 | # | Data | Chunk | Decisió presa | Alternatives | Impacte / com revertir |
 |---|---|---|---|---|---|
