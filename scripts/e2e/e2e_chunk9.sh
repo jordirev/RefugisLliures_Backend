@@ -146,7 +146,9 @@ RID2=$(echo "$CSAM" | report_id)
 echo "$CSAM" | python3 -c "import sys, json; d = json.load(sys.stdin); sys.exit(0 if d['priority'] == 'high' and d['media_hidden'] else 1)" \
   && ok "CSAM -> prioritat alta i ocult" || fail "CSAM: $(echo "$CSAM" | head -c 300)"
 check_sql "la denúncia CSAM porta legal_hold" "SELECT legal_hold FROM moderation.media_reports WHERE id = '$RID2';" "t"
-check_json "llistat d'admin: la CSAM surt primer" "d['reports'][0]['id'] == '$RID2'" "${H_A[@]}" "$ADM/"
+# (les CSAM conservades d'execucions anteriors també són `high`: només es comprova que va abans de les `normal`)
+check_json "llistat d'admin: la CSAM surt abans de les de prioritat normal" \
+  "all(r['priority'] == 'high' for r in d['reports'][:[r['id'] for r in d['reports']].index('$RID2')])" "${H_A[@]}" "$ADM/"
 check_json "retenir CSAM amb R2 inabastable -> 500 {error, error_id}" "set(d) == {'error', 'error_id'}" \
   "${H_A[@]}" "${J[@]}" -X PATCH "$ADM/$RID2/" -d '{"action":"remove","statement":"CSAM confirmat"}'
 check_sql "després del 500: denúncia pendent" "SELECT status FROM moderation.media_reports WHERE id = '$RID2';" "pending"
