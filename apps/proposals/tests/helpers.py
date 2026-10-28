@@ -15,8 +15,9 @@ import uuid
 from datetime import datetime, timedelta, timezone as dt_timezone
 
 from apps.doubts.tests.helpers import (  # noqa: F401  (re-exportats)
-    QueryCounter, T0, VERIFY, admin_claims, api_delete, api_get, api_post, as_owner, at, is_uuid, make_media,
+    QueryCounter, T0, VERIFY, admin_claims, api_delete, api_get, api_post, as_owner, at, is_uuid,
     make_refuge, make_user, sql, user_claims)
+from apps.refuges.tests.helpers import make_media  # noqa: F401
 
 PROPOSALS = '/api/refuges-proposals/'
 MINE = '/api/my-refuges-proposals/'
