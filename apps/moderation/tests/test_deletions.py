@@ -8,8 +8,8 @@ Usuari (`DELETE /api/users/{uid}/`, Firebase i R2 mockats):
 - denúncies on és **autor del mitjà**: es conserven amb `media_creator_uid` NULL (i el mitjà, que és seu, s'esborra);
 - avisos: s'esborren els seus; els dels altres es conserven; el `report_id` dels avisos d'altri queda NULL si la denúncia
   s'esborra;
-- `resolved_by` d'un admin esborrat queda NULL; si Firebase falla, es desfà tot (també l'anonimització).
-El pas 2 de §8.4 (tornar a la cua de moderació els mitjans ocults només per les denúncies de l'usuari) és del chunk 10.
+- `resolved_by` d'un admin esborrat queda NULL; si Firebase falla (després del commit, D42) les dades ja són anonimitzades.
+El pas 2 de §8.4 (mitjans ocults només per denúncies seves) és al chunk 10: `apps/accounts/tests/test_user_deletion_procedure.py`.
 
 Refugi (aprovar una proposta `delete`, chunk 8): les denúncies no `legal_hold` cauen en cascada; les `legal_hold` queden
 amb `refuge_id` NULL (conserven `media_key`); els avisos queden amb `refuge_id` NULL; la retenció de `moderation-hold/`
@@ -85,16 +85,17 @@ def test_una_denuncia_anonimitzada_encara_es_pot_resoldre(client, world):
     assert resp.status_code == 200 and report_row(rid)['status'] == 'resolved'
 
 
-def test_firebase_falla_es_desfa_tambe_l_anonimitzacio_i_l_esborrat(client, world, firebase_accounts):
+def test_firebase_falla_l_anonimitzacio_i_l_esborrat_ja_son_ferms(client, world, firebase_accounts):
+    """D42: Firebase va després del commit; si falla, 500 però les dades ja són anonimitzades/esborrades."""
     r = world[0]
     hold = make_report(r, 'k1', 'u2', 'child_sexual_abuse', creator='u1')
     plain = make_report(r, 'k2', 'u2', 'hate_speech', creator='u1')
-    notice = make_notice('u2')
+    make_notice('u2')
     firebase_accounts.delete_user.side_effect = RuntimeError('firebase caigut')
     assert delete_user(client, 'u2').status_code == 500
-    assert report_row(hold)['reporter_uid'] == 'u2' and report_row(hold)['anonymized_at'] is None
-    assert report_row(plain)['reporter_uid'] == 'u2'
-    assert [n['id'] for n in notice_rows('u2')] == [notice]
+    assert report_row(hold)['reporter_uid'] is None and report_row(hold)['anonymized_at'] is not None
+    assert report_row(plain) is None
+    assert notice_rows('u2') == []
 
 
 # =================================== usuari: autor del mitjà ===================================
@@ -171,8 +172,9 @@ def test_admin_esborrat_resolved_by_queda_null_i_la_resolucio_es_conserva(client
 
 def test_delete_user_no_toca_firestore_per_moderacio(client, world):
     """Sense cap mock: el conftest arrel prohibeix Firestore. Cap pas de Firestore de moderació."""
+    from pathlib import Path
     from apps.accounts import services
-    assert services._firestore_steps('u1') == []
+    assert '_firestore_steps' not in Path(services.__file__).read_text(encoding='utf-8')
     make_report(world[0], 'k1', 'u2', 'hate_speech', creator='u1')
     make_notice('u1')
     assert delete_user(client, 'u1').status_code == 204

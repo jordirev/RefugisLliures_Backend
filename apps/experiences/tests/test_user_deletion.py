@@ -1,7 +1,7 @@
 """
 Esborrat d'usuari i experiències (chunk 7; §8.4, §8.5, D21/D22).
 
-- El pas «experiències» de `apps.accounts.services._firestore_steps` desapareix: ho fan les FK
+- L'esborrat d'usuari no toca Firestore (D42): ho fan les FK
   `experiences.creator_uid -> users.users ON DELETE CASCADE` i `refuge_media.experience_id -> experiences ON DELETE CASCADE`.
 - L'esborrat **no toca** la mitjana del refugi (el valor no és dada personal, §2.9).
 - RGPD (D22): abans del `DELETE` s'esborren a R2 els fitxers (clau i miniatura) dels mitjans de l'usuari **i** dels mitjans
@@ -10,8 +10,6 @@ Esborrat d'usuari i experiències (chunk 7; §8.4, §8.5, D21/D22).
 - Si Firebase falla, es desfà tot (experiències incloses) i l'usuari pot reintentar.
 - Cap crida a Firestore per a experiències (`ExperienceController` ja no existeix o no es toca).
 """
-from unittest.mock import patch
-
 import pytest
 
 from apps.experiences.tests.helpers import (
@@ -22,24 +20,12 @@ pytestmark = [pytest.mark.db_infra, pytest.mark.django_db, pytest.mark.views, py
               pytest.mark.real_permissions]
 
 
-@pytest.fixture
-def no_firestore_steps():
-    with patch('apps.accounts.services._firestore_steps', return_value=[]):
-        yield
-
-
-def test_el_pas_d_experiencies_ja_no_es_a_l_esborrat_provisional(world):
-    from apps.accounts import services
-    names = [name for name, _ in services._firestore_steps('u1')]
-    assert 'experiències' not in names
-
-
 def test_el_controller_de_firestore_d_experiencies_ja_no_existeix():
     with pytest.raises(ImportError):
         from api.controllers import experience_controller  # noqa: F401
 
 
-def test_delete_user_cascadeja_experiencies_i_mitjans_i_respecta_les_dels_altres(client, world, no_firestore_steps):
+def test_delete_user_cascadeja_experiencies_i_mitjans_i_respecta_les_dels_altres(client, world):
     r1, r2 = world
     e1, e2 = make_experience(r1, 'u1'), make_experience(r2, 'u1', minutes=1)
     other = make_experience(r1, 'u2', minutes=2)
@@ -53,7 +39,7 @@ def test_delete_user_cascadeja_experiencies_i_mitjans_i_respecta_les_dels_altres
     assert all_media_keys() == ['k/other.webp']
 
 
-def test_delete_user_no_toca_la_mitjana_del_refugi(client, world, no_firestore_steps):
+def test_delete_user_no_toca_la_mitjana_del_refugi(client, world):
     r = world[0]
     make_experience(r, 'u1', condition=3)
     make_experience(r, 'u2', condition=0)
@@ -62,7 +48,7 @@ def test_delete_user_no_toca_la_mitjana_del_refugi(client, world, no_firestore_s
     assert refuge_state(r) == state and state[1] == 2
 
 
-def test_delete_user_esborra_a_r2_claus_i_miniatures_dels_seus_mitjans(client, world, r2, no_firestore_steps):
+def test_delete_user_esborra_a_r2_claus_i_miniatures_dels_seus_mitjans(client, world, r2):
     r = world[0]
     e = make_experience(r, 'u1')
     make_exp_media(r, 'u1', e, key='k/e.webp', thumb_key='k/e_t.webp')
@@ -73,7 +59,7 @@ def test_delete_user_esborra_a_r2_claus_i_miniatures_dels_seus_mitjans(client, w
     assert sorted(deleted_keys(r2)) == ['k/e.webp', 'k/e_t.webp', 'k/foto.webp', 'k/foto_t.webp']
 
 
-def test_delete_user_esborra_a_r2_els_mitjans_d_admin_a_les_seves_experiencies(client, world, r2, no_firestore_steps):
+def test_delete_user_esborra_a_r2_els_mitjans_d_admin_a_les_seves_experiencies(client, world, r2):
     """Fitxers pujats per un altre (admin) a l'experiència d'`u1`: la fila cau per cascada, el fitxer no ha de quedar orfe."""
     r = world[0]
     e = make_experience(r, 'u1')
@@ -83,7 +69,7 @@ def test_delete_user_esborra_a_r2_els_mitjans_d_admin_a_les_seves_experiencies(c
     assert sorted(deleted_keys(r2)) == ['k/adm-photo.webp', 'k/adm-photo_t.webp']
 
 
-def test_delete_user_r2_caigut_es_500_i_es_conserva_tot(client, world, r2, no_firestore_steps):
+def test_delete_user_r2_caigut_es_500_i_es_conserva_tot(client, world, r2):
     r = world[0]
     e = make_experience(r, 'u1')
     make_exp_media(r, 'u1', e, key='k/e.webp')
@@ -93,21 +79,22 @@ def test_delete_user_r2_caigut_es_500_i_es_conserva_tot(client, world, r2, no_fi
     assert resp.status_code == 500 and exp_ids() == [e] and all_media_keys() == ['k/e.webp']
 
 
-def test_delete_user_es_desfa_si_firebase_falla(client, world, no_firestore_steps, firebase_accounts):
+def test_delete_user_si_firebase_falla_500_i_les_dades_ja_no_hi_son(client, world, firebase_accounts):
+    """D42: Firebase va DESPRÉS del commit; si falla, 500 però les experiències i mitjans ja estan esborrats."""
     r = world[0]
     e = make_experience(r, 'u1')
     make_exp_media(r, 'u1', e, key='k/e.webp')
     firebase_accounts.delete_user.side_effect = RuntimeError('firebase caigut')
     resp = api_delete(client, '/api/users/u1/', user_claims('u1'))
     assert resp.status_code == 500 and set(resp.json()) == {'error', 'error_id'}
-    assert exp_ids() == [e] and all_media_keys() == ['k/e.webp']
+    assert exp_ids() == [] and all_media_keys() == []
 
 
-def test_delete_user_sense_experiencies_204(client, world, no_firestore_steps):
+def test_delete_user_sense_experiencies_204(client, world):
     assert api_delete(client, '/api/users/u3/', user_claims('u3')).status_code == 204
 
 
-def test_delete_user_cap_orfe_a_la_bd(client, world, no_firestore_steps):
+def test_delete_user_cap_orfe_a_la_bd(client, world):
     r = world[0]
     for uid in ('u1', 'u2'):
         e = make_experience(r, uid)

@@ -1,7 +1,6 @@
 """
 Esborrat d'usuari i propostes (§8.2, §8.5; chunk 8): les propostes es **conserven** (historial de refugis, interès
-legítim) amb `creator_uid`/`reviewer_uid` a `NULL` per la FK `SET NULL` (l'API emet `'unknown'`); el pas «propostes» de
-Firestore (`apps.accounts.services._firestore_steps`) desapareix i, després d'aquest chunk, la llista és buida.
+legítim) amb `creator_uid`/`reviewer_uid` a `NULL` per la FK `SET NULL` (l'API emet `'unknown'`); l'esborrat no toca Firestore (D42).
 
 Decisió del PO (27/10, canvi respecte de §8): el `comment` (text lliure, pot dur dades personals) passa a `NULL` per a
 les propostes de l'usuari esborrat; la resta de la proposta (payload, foto, estat) es conserva.
@@ -14,16 +13,6 @@ from apps.proposals.tests.helpers import (
 
 pytestmark = [pytest.mark.db_infra, pytest.mark.django_db, pytest.mark.views, pytest.mark.integration,
               pytest.mark.real_permissions]
-
-
-def test_el_pas_de_propostes_ha_desaparegut_i_la_llista_es_buida():
-    from apps.accounts import services
-    assert services._firestore_steps('u1') == []
-    from pathlib import Path
-    import re
-    text = Path(services.__file__).read_text(encoding='utf-8')
-    body = re.search(r'def _firestore_steps\(.*?(?=\n\ndef )', text, re.S).group(0)
-    assert 'refuge_proposal' not in body and "'propostes'" not in body
 
 
 def test_delete_user_no_toca_firestore_ni_el_controller_de_propostes(client, world):
@@ -77,11 +66,12 @@ def test_una_proposta_pendent_d_un_usuari_esborrat_es_pot_aprovar_i_rebutjar(cli
     assert len(refuge_ids()) == n + 1 and proposal_row(a)['creator_uid'] is None
 
 
-def test_si_falla_firebase_es_desfa_l_esborrat_i_les_propostes_conserven_el_creador(client, world, firebase_accounts):
+def test_si_firebase_falla_500_i_les_propostes_ja_estan_anonimitzades(client, world, firebase_accounts):
+    """D42: Firebase després del commit; l'anonimització ja és ferma."""
     pid = make_proposal(creator='u1')
     firebase_accounts.delete_user.side_effect = RuntimeError('firebase caigut')
     assert api_delete(client, '/api/users/u1/', user_claims('u1')).status_code == 500
-    assert proposal_row(pid)['creator_uid'] == 'u1'
+    assert proposal_row(pid)['creator_uid'] is None
 
 
 def test_delete_user_esborra_el_comentari_de_totes_les_seves_propostes_i_l_api_el_dona_com_a_null(client, world):
@@ -97,8 +87,8 @@ def test_delete_user_no_toca_el_comentari_de_les_propostes_que_ha_revisat(client
     assert proposal_row(pid)['comment'] == 'del creador'
 
 
-def test_si_falla_firebase_el_comentari_es_conserva(client, world, firebase_accounts):
+def test_si_firebase_falla_el_comentari_ja_s_ha_esborrat(client, world, firebase_accounts):
     pid = make_proposal(creator='u1', comment='hola')
     firebase_accounts.delete_user.side_effect = RuntimeError('firebase caigut')
     assert api_delete(client, '/api/users/u1/', user_claims('u1')).status_code == 500
-    assert proposal_row(pid)['comment'] == 'hola'
+    assert proposal_row(pid)['comment'] is None

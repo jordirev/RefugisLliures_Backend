@@ -1,10 +1,8 @@
 """
 Esborrat d'usuari / experiència / refugi i intents de pujada (chunk 7; §8.4, §8.5): les FK `ON DELETE CASCADE` de
 `upload_intents` (`user_uid`, `refuge_id`, `experience_id`) esborren els intents; el fitxer a `quarantine/` el tanca el
-lifecycle d'R2 d'1 dia (no es toca des d'aquí). Els mitjans ja publicats segueixen el seu propi camí (D22).
+lifecycle d'R2 d'1 dia, però des de D42 `delete_user` també esborra a R2 els `quarantine/<id>` dels intents pendents. Els mitjans ja publicats segueixen el seu propi camí (D22).
 """
-from unittest.mock import patch
-
 import pytest
 
 from apps.experiences.tests.helpers import make_experience
@@ -13,12 +11,6 @@ from apps.uploads.tests.helpers import (
 
 pytestmark = [pytest.mark.db_infra, pytest.mark.django_db, pytest.mark.views, pytest.mark.integration,
               pytest.mark.real_permissions]
-
-
-@pytest.fixture(autouse=True)
-def no_firestore_steps():
-    with patch('apps.accounts.services._firestore_steps', return_value=[]):
-        yield
 
 
 def test_delete_user_cascadeja_els_seus_intents_de_qualsevol_estat(client, world, r2store):
@@ -33,14 +25,15 @@ def test_delete_user_cascadeja_els_seus_intents_de_qualsevol_estat(client, world
     resp = api_delete(client, '/api/users/u1/', user_claims('u1'))
     assert resp.status_code == 204, resp.content
     assert intent_ids() == [keep]
-    assert f'quarantine/{mine[0]}' in r2store.store                      # el lifecycle de R2 l'esborrarà (1 dia)
+    assert f'quarantine/{mine[0]}' not in r2store.store                  # D42/RGPD: l'objecte pendent s'esborra amb l'usuari
 
 
-def test_delete_user_desfet_si_firebase_falla_conserva_els_intents(client, world, firebase_accounts):
-    i = make_intent('u1', 'avatar')
+def test_delete_user_si_firebase_falla_500_i_els_intents_ja_no_hi_son(client, world, firebase_accounts):
+    """D42: Firebase va després del commit; les dades ja són fora encara que el compte quedi."""
+    make_intent('u1', 'avatar')
     firebase_accounts.delete_user.side_effect = RuntimeError('firebase caigut')
     assert api_delete(client, '/api/users/u1/', user_claims('u1')).status_code == 500
-    assert intent_ids() == [i]
+    assert intent_ids() == []
 
 
 def test_delete_experiencia_cascadeja_nomes_els_intents_d_aquella_experiencia(client, world, r2store):

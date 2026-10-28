@@ -8,8 +8,8 @@ Contracte:
   `real_legacy_counts` el substitueix per un mock que ho registra).
 - El pressupost de consultes del perfil propi no creix respecte d'abans: el comptador d'experiències no afegeix cap
   consulta nova (es calcula amb el de reformes / a la consulta del perfil).
-- `apps.accounts.services._firestore_steps(uid)` ja no té el pas «experiències» (la cascada de la FK
-  `experiences.creator_uid -> users.users` i `refuge_media.experience_id` ho fa).
+- L'esborrat d'usuari no toca Firestore (la cascada de la FK `experiences.creator_uid -> users.users` i
+  `refuge_media.experience_id` ho fa; D42).
 """
 from unittest.mock import patch
 
@@ -138,33 +138,11 @@ def test_el_comptador_no_afegeix_cap_consulta_respecte_d_un_perfil_sense_comptad
 
 # =============================================== esborrat d'usuari ===============================================
 
-def test_delete_pas_d_experiencies_ja_no_es_a_firestore(world):
-    from apps.accounts import services
-    assert 'experiències' not in [name for name, _ in services._firestore_steps('u1')]
-
-
-def test_delete_no_crida_cap_controller_d_experiencies(client, world):
-    try:
-        from api.controllers.experience_controller import ExperienceController
-    except ImportError:                                        # el controller ja no existeix (comportament final)
-        ExperienceController = None
-    steps = patch('apps.accounts.services._firestore_steps', return_value=[])
-    with steps:
-        if ExperienceController is not None:
-            with patch.object(ExperienceController, '__init__',
-                              side_effect=AssertionError('les experiències ja no van a Firestore')) as ctor:
-                assert api_delete(client, url('u1'), user_claims('u1')).status_code == 204
-            ctor.assert_not_called()
-        else:
-            assert api_delete(client, url('u1'), user_claims('u1')).status_code == 204
-
-
 def test_delete_esborra_les_experiencies_pel_cascade_i_conserva_les_dels_altres(client, world):
     make_experience(world[0], 'u1')
     make_experience(world[1], 'u1', minutes=1)
     other = make_experience(world[0], 'u2', minutes=2)
-    with patch('apps.accounts.services._firestore_steps', return_value=[]):
-        assert api_delete(client, url('u1'), user_claims('u1')).status_code == 204
+    assert api_delete(client, url('u1'), user_claims('u1')).status_code == 204
     assert exp_ids() == [other]
     assert own_profile(client, 'u2')['num_shared_experiences'] == 1
     assert sql("SELECT count(*) FROM users.users WHERE uid = 'u1'") == [(0,)]

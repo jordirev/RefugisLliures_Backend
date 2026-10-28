@@ -3,7 +3,7 @@ Contracte HTTP dels endpoints d'usuari movits a PostgreSQL (chunk 3), rol `app` 
 `POST /users/`, `GET|PATCH|DELETE /users/{uid}/`, `DELETE /users/{uid}/avatar/`, `PATCH /users/{uid}/age-confirmation/`.
 
 Forma JSON: §5.2 (perfil propi complet; perfil d'un altre = `{uid, username, avatar_metadata}`). Firestore queda bloquejat
-pel conftest arrel; els passos de l'esborrat que encara hi son (D21) i els comptadors (D19) es mocken.
+pel conftest arrel; els comptadors (D19) es mocken.
 """
 from unittest.mock import MagicMock, patch
 
@@ -330,111 +330,9 @@ def test_patch_anonim_401(client):
     assert api_patch(client, url('u1'), None, {'username': 'x'}).status_code == 401
 
 
-# =================================== DELETE /users/{uid}/ (D21) ===================================
-
-@pytest.fixture
-def legacy_delete_steps():
-    """
-    Passos de l'esborrat que continuen a Firestore (D21). Des del chunk 8 no n'hi ha cap (`_firestore_steps()` és buida:
-    les propostes les anonimitza la FK), de manera que s'hi injecta un pas simulat que retorna èxit; els tests el fan
-    fallar per comprovar que la vista dona 500 i que no es toca Firebase.
-    """
-    step = MagicMock(return_value=(True, None))
-    with patch('apps.accounts.services._firestore_steps',
-               side_effect=lambda uid: [('pas simulat', lambda: step(uid))]):
-        yield {'pas simulat': step}
-
-
-def test_delete_propi_204_i_cascadeja_les_dades_de_postgres(client, legacy_delete_steps):
-    make_user('u1', username='Anna')
-    make_user('u2', username='Bernat')
-    r = make_refuge()
-    add_list_row(FAV, 'u1', r)
-    add_list_row(VIS, 'u1', r)
-    add_list_row(FAV, 'u2', r)
-    make_avatar('u1')
-    make_media(r, 'u1', key='k/u1.webp')
-    make_media(r, 'u2', key='k/u2.webp')
-    resp = api_delete(client, url('u1'), user_claims('u1'))
-    assert resp.status_code == 204 and resp.content == b''
-    assert user_row('u1') is None and profile_row('u1') is None and avatar_rows('u1') == []
-    assert list_rows(FAV, 'u1') == [] and list_rows(VIS, 'u1') == []
-    assert sql("SELECT key FROM refuges.refuge_media ORDER BY key") == [('k/u2.webp',)]
-    assert user_row('u2') is not None and len(list_rows(FAV, 'u2')) == 1
-
-
-def test_delete_executa_els_passos_de_firestore_encara_no_migrats(client, legacy_delete_steps):
-    make_user('u1')
-    assert api_delete(client, url('u1'), user_claims('u1')).status_code == 204
-    for name, mock in legacy_delete_steps.items():
-        assert mock.call_count == 1, name
-        assert 'u1' in mock.call_args.args or 'u1' in mock.call_args.kwargs.values(), name
-
-
-def test_delete_si_falla_un_pas_de_firestore_500_amb_error_id_i_es_conserva_l_usuari(client, legacy_delete_steps):
-    """M10: tota fallada es retornava com a 404. Ara 500 `{error, error_id}` (politica de les features migrades)."""
-    make_user('u1')
-    list(legacy_delete_steps.values())[-1].return_value = (False, 'boom intern amb detalls')
-    r = api_delete(client, url('u1'), user_claims('u1'))
-    assert r.status_code == 500
-    assert set(r.json()) == {'error', 'error_id'} and 'boom' not in r.content.decode()
-    assert user_row('u1') is not None
-
-
-@pytest.mark.parametrize('claims', [user_claims('u2'), admin_claims('adm')])
-def test_delete_d_un_altre_403_tambe_per_a_admin(client, claims, legacy_delete_steps):
-    make_user('u1')
-    make_user(claims['uid'])
-    assert api_delete(client, url('u1'), claims).status_code == 403
-    assert user_row('u1') is not None
-    for mock in legacy_delete_steps.values():
-        mock.assert_not_called()
-
-
-def test_delete_anonim_401(client):
-    make_user('u1')
-    assert api_delete(client, url('u1')).status_code == 401
-
-
-def test_delete_esborra_el_compte_de_firebase_despres_de_les_dades(client, legacy_delete_steps, firebase_accounts):
-    """U7 (D24): el backend esborra el compte de Firebase Auth, i ho fa després del `DELETE` de `users.users`."""
-    make_user('u1')
-    seen = {}
-    firebase_accounts.delete_user.side_effect = lambda uid: seen.setdefault('row', user_row(uid))
-    assert api_delete(client, url('u1'), user_claims('u1')).status_code == 204
-    firebase_accounts.delete_user.assert_called_once_with('u1')
-    assert seen['row'] is None                                        # la fila ja no hi era en esborrar el compte
-    assert user_row('u1') is None
-
-
-def test_delete_si_falla_firebase_500_i_es_conserven_l_usuari_i_les_llistes(client, legacy_delete_steps,
-                                                                           firebase_accounts):
-    """El *savepoint* desfà el `DELETE`: la vista retorna 500 sense excepció i `ATOMIC_REQUESTS` no ho faria."""
-    make_user('u1', username='Anna')
-    r = make_refuge()
-    add_list_row(FAV, 'u1', r)
-    firebase_accounts.delete_user.side_effect = RuntimeError('firebase caigut amb detalls')
-    resp = api_delete(client, url('u1'), user_claims('u1'))
-    assert resp.status_code == 500
-    assert set(resp.json()) == {'error', 'error_id'} and 'firebase caigut' not in resp.content.decode()
-    assert user_row('u1') is not None and profile_row('u1')['username'] == 'Anna'
-    assert len(list_rows(FAV, 'u1')) == 1
-
-
-def test_delete_compte_de_firebase_ja_inexistent_es_idempotent_204(client, legacy_delete_steps, firebase_accounts):
-    from firebase_admin import auth
-    make_user('u1')
-    firebase_accounts.delete_user.side_effect = auth.UserNotFoundError('no hi és')
-    assert api_delete(client, url('u1'), user_claims('u1')).status_code == 204
-    assert user_row('u1') is None
-
-
-def test_delete_si_falla_un_pas_previ_no_es_toca_firebase(client, legacy_delete_steps, firebase_accounts):
-    make_user('u1')
-    list(legacy_delete_steps.values())[0].return_value = (False, 'x')
-    assert api_delete(client, url('u1'), user_claims('u1')).status_code == 500
-    firebase_accounts.delete_user.assert_not_called()
-
+# =================================== DELETE /users/{uid}/ ===================================
+# Els tests de l'esborrat d'usuari (D42) són a `test_user_deletion_procedure.py`. Aquí només queden els de `POST /users/`
+# relacionats amb el compte de Firebase esborrat (U7).
 
 def test_post_amb_token_d_un_compte_de_firebase_esborrat_401_i_no_crea_res(client, firebase_accounts):
     """U7: amb el token encara vigent (fins a 1 h) no es pot recrear el mateix UID sense el bloqueig."""
@@ -451,30 +349,6 @@ def test_post_si_firebase_falla_en_comprovar_el_compte_500_sense_detalls(client,
     resp = api_post(client, USERS, user_claims('n1'), {})
     assert resp.status_code == 500 and 'timeout' not in resp.content.decode()
     assert count_all('users.users') == 0
-
-
-def test_bloquejat_que_s_esborra_no_pot_tornar_amb_el_mateix_uid(client, legacy_delete_steps, firebase_accounts):
-    """Camí 1 d'U7: DELETE i POST amb el mateix token. Després del DELETE el compte de Firebase ja no existeix."""
-    from firebase_admin import auth
-    make_user('u1')
-    sql("UPDATE users.users SET is_blocked = true, blocked_reason = 'strikes', blocked_at = now() WHERE uid = 'u1'")
-    deleted = set()
-    firebase_accounts.delete_user.side_effect = deleted.add
-
-    def get_user(uid):
-        if uid in deleted:
-            raise auth.UserNotFoundError('esborrat')
-    firebase_accounts.get_user.side_effect = get_user
-    assert api_delete(client, url('u1'), user_claims('u1')).status_code == 204
-    assert api_post(client, USERS, user_claims('u1'), {}).status_code == 401
-    assert user_row('u1') is None
-
-
-def test_delete_dues_vegades_la_segona_es_profile_required(client, legacy_delete_steps):
-    make_user('u1')
-    assert api_delete(client, url('u1'), user_claims('u1')).status_code == 204
-    r = api_delete(client, url('u1'), user_claims('u1'))
-    assert r.status_code == 403 and r.json()['error'] == 'profile_required'
 
 
 # =================================== DELETE /users/{uid}/avatar/ ===================================

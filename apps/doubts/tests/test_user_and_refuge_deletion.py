@@ -1,13 +1,10 @@
 """
 Cascades de dubtes i respostes (chunk 6, §8.4-8.5) a través de l'API d'altres dominis:
 
-- `DELETE /api/users/{uid}/` ja no té els passos de Firestore «dubtes» ni «respostes» (`apps.accounts.services.
-  _firestore_steps`): la FK `ON DELETE CASCADE` esborra els dubtes de l'usuari (amb les respostes d'altres), les seves
+- `DELETE /api/users/{uid}/` ja no té els passos de Firestore «dubtes» ni «respostes» (l'esborrat ja no toca Firestore, D42): la FK `ON DELETE CASCADE` esborra els dubtes de l'usuari (amb les respostes d'altres), les seves
   respostes i el subarbre de respostes que penja de les seves, també en dubtes d'altres.
 - Esborrar un refugi (propietari/admin del catàleg, chunk 8) esborra els seus dubtes i respostes.
-- Els passos de Firestore que queden (experiències, propostes, reformes, visites) es mocken: aquí no es toca Firestore.
 """
-from unittest.mock import patch
 
 import pytest
 
@@ -19,19 +16,15 @@ pytestmark = [pytest.mark.db_infra, pytest.mark.django_db, pytest.mark.views, py
               pytest.mark.real_permissions]
 
 
-@pytest.fixture(autouse=True)
-def no_firestore_steps():
-    with patch('apps.accounts.services._firestore_steps', return_value=[]):
-        yield
+def _falla_el_delete_d_usuari():
+    """Fa fallar el `DELETE` de `users.users` (D42: tot el procediment és una sola transacció i es desfà)."""
+    from django.db import DatabaseError, connection
 
-
-def test_els_passos_de_dubtes_i_respostes_han_desaparegut_de_l_esborrat_provisional():
-    """Es llegeix el codi font: el fixture autouse substitueix `_firestore_steps`."""
-    import re
-    from pathlib import Path
-    text = Path(__file__).resolve().parents[2].joinpath('accounts', 'services.py').read_text(encoding='utf-8')
-    body = re.search(r'def _firestore_steps\(.*?(?=\n\ndef )', text, re.S).group(0)
-    assert 'doubt' not in body.lower() and "'dubtes'" not in body and "'respostes'" not in body
+    def boom(execute, sql_, params, many, context):
+        if sql_.lstrip().upper().startswith('DELETE') and 'users"."users' in sql_:
+            raise DatabaseError('fallada simulada')
+        return execute(sql_, params, many, context)
+    return connection.execute_wrapper(boom)
 
 
 def test_delete_user_cascadeja_dubtes_respostes_i_subarbres_alienes(client, world):
@@ -78,12 +71,12 @@ def test_un_admin_no_pot_esborrar_l_usuari_d_un_altre_pero_els_dubtes_es_conserv
     assert doubt_ids() == [d]
 
 
-def test_si_falla_l_esborrat_de_l_usuari_els_dubtes_es_conserven(client, world, firebase_accounts):
-    """El `DELETE` i Firebase van en un savepoint (D24): si Firebase falla es desfà, i també la cascada."""
+def test_si_falla_l_esborrat_de_l_usuari_els_dubtes_es_conserven(client, world):
+    """D42: si falla el `DELETE` (mateixa transacció) es desfà tot, també la cascada de dubtes i respostes."""
     d = make_doubt(world[0], 'u1')
     a = make_answer(d, 'u2')
-    firebase_accounts.delete_user.side_effect = RuntimeError('firebase caigut')
-    resp = api_delete(client, '/api/users/u1/', user_claims('u1'))
+    with _falla_el_delete_d_usuari():
+        resp = api_delete(client, '/api/users/u1/', user_claims('u1'))
     assert resp.status_code == 500
     assert doubt_ids() == [d] and answer_ids() == [a]
 
