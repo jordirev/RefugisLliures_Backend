@@ -100,3 +100,5 @@ Paral·lel: 4, 5 i 6 (dominis i apps independents); la resta seqüencial. Si alg
 
 ## Decisions del 27/10
 - **Quota d'intents de pujada (PO, 27/10)**: com a molt **40** intents `pending` sense caducar per usuari (un per fitxer; els confirmats, fallits i caducats no compten). Si se supera, 429 `too_many_pending_uploads`. El *rate limit* per temps es farà més endavant. El frontend mostra un missatge propi.
+- **Comentari de les propostes en esborrar l'usuari (PO, 28/10, RGPD)**: les propostes es conserven (historial) amb `creator_uid` NULL (API `'unknown'`) però el `comment` passa a NULL (pot contenir dades personals). Desviació de §8 del disseny.
+- **Duplicats en proposar un refugi nou (PO, 28/10)**: `POST` d'una proposta `create` → **409** `possible_duplicates` si hi ha un refugi existent **a menys de 500 m i amb un nom semblant** (calen les dues condicions). Nom semblant = la mateixa regla que la cerca de refugis (`core.norm_name` sense accents ni majúscules + `pg_trgm`: `trigram_similar` o subcadena, sobre `name` i `surname`). La resposta porta la llista `possible_duplicates` (`id`, `name`, `distance_m`). Cal adaptar el frontend.

@@ -22,6 +22,45 @@ from apps.refuges.tests.helpers import AMENITY_FIELDS, JSON_PATH, load_json
 pytestmark = [pytest.mark.db_infra, pytest.mark.integration]
 
 
+def generate_simple_geohash(lat: float, lng: float, precision: int = 5) -> str:
+    """Geohash de referència (el que escrivia el DAO de propostes de Firestore, ja eliminat): s'hi compara `ST_GeoHash`."""
+    lat_range = [-90.0, 90.0]
+    lng_range = [-180.0, 180.0]
+    
+    geohash = ""
+    bits = 0
+    ch = 0
+    even = True
+    
+    base32 = "0123456789bcdefghjkmnpqrstuvwxyz"
+    
+    while len(geohash) < precision:
+        if even:  # longitude
+            mid = (lng_range[0] + lng_range[1]) / 2
+            if lng >= mid:
+                ch |= (1 << (4 - bits))
+                lng_range[0] = mid
+            else:
+                lng_range[1] = mid
+        else:  # latitude
+            mid = (lat_range[0] + lat_range[1]) / 2
+            if lat >= mid:
+                ch |= (1 << (4 - bits))
+                lat_range[0] = mid
+            else:
+                lat_range[1] = mid
+                
+        even = not even
+        bits += 1
+        
+        if bits == 5:
+            geohash += base32[ch]
+            bits = 0
+            ch = 0
+            
+    return geohash
+
+
 def run(*args, json_path=None):
     out, err = StringIO(), StringIO()
     argv = ['--database', 'migrator', *args]
@@ -156,7 +195,6 @@ def test_amenities_no_tenen_les_dades_ignorades(full, mig):
 
 def test_geohash_dels_punts_del_mapa_coincideix_amb_generate_simple_geohash(full, mig):
     """§5.3 (recepta 5): `ST_GeoHash(coord::geometry, 5)` == `generate_simple_geohash` actual."""
-    from api.daos.refuge_proposal_dao import generate_simple_geohash
     rows = fetch_all(mig, 'SELECT ST_Y(coord::geometry), ST_X(coord::geometry), ST_GeoHash(coord::geometry, 5) '
                           'FROM refuges.refuges')
     assert len(rows) == 1542

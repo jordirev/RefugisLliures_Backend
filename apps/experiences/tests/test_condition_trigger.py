@@ -99,10 +99,12 @@ def test_un_usuari_normal_vota_amb_el_trigger_pero_no_pot_modificar_el_refugi(wo
     eid = insert_as({'uid': 'u1'}, r, 'u1', 3)
     assert_state(r, 3, 1)
     assert exp_row(eid)['condition'] == 3
-    with pytest.raises(DatabaseError):                       # sense grants/politica d'UPDATE sobre refuges
-        with transaction.atomic(), rls_context(uid='u1'), connection.cursor() as cur:
-            cur.execute('UPDATE refuges.refuges SET condition = 0, num_contributed_conditions = 9 WHERE id = %s',
-                        [r.pk])
+    # Des del chunk 8 `app` té el grant d'UPDATE sobre `refuges` (l'aprovació de propostes), però la política només
+    # el deixa a admin/sistema: per a un usuari corrent l'UPDATE afecta 0 files (abans fallava per falta de grant).
+    with transaction.atomic(), rls_context(uid='u1'), connection.cursor() as cur:
+        cur.execute('UPDATE refuges.refuges SET condition = 0, num_contributed_conditions = 9 WHERE id = %s',
+                    [r.pk])
+        assert cur.rowcount == 0
     assert_state(r, 3, 1)
 
 

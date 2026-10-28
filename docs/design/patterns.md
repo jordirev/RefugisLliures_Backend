@@ -6,7 +6,7 @@
 ## Arquitectònics
 
 ### 1. Arquitectura en capes
-`View → Serializer → Controller → DAO → (CacheService, Firestore, R2)`, amb `Mapper` i `Model` transversals. Contractes de cada capa: [ARCHITECTURE §3](../ARCHITECTURE.md). Cada domini (refugi, user, experience, doubt, renovation, proposal, visit) té un fitxer per capa.
+`View → Serializer → Controller → DAO → (CacheService, Firestore, R2)`, amb `Mapper` i `Model` transversals. Contractes de cada capa: [ARCHITECTURE §3](../ARCHITECTURE.md). Els dominis que encara són a Firestore (moderació, refugi legacy) tenen un fitxer per capa; la resta són apps (`apps/<feature>/`).
 
 ```
 CLIENT (app mòbil)
@@ -44,7 +44,7 @@ Les features migrades (`apps/<feature>/`) substitueixen DAO + controller per **`
 |---|---|---|---|
 | Cerca de refugis | _(eliminat al chunk 2: era `api/daos/search_strategies.py` amb 15 estratègies; ara és una sola consulta SQL a `apps/refuges/selectors.py`)_ | — | — |
 | Paths de media — `api/services/r2_media_service.py` | `MediaPathStrategy` (`get_base_path`, `get_allowed_content_types`, `validate_file`, `generate_media_metadata_from_dict`) | `RefugiMediaStrategy`, `UserAvatarStrategy` | factories (vegeu Factory) |
-| Aprovació de propostes — `api/daos/refuge_proposal_dao.py` | estratègia per acció | `Create/Update/DeleteRefugeStrategy` | `ProposalStrategySelector` |
+| Aprovació de propostes — `apps/proposals/services.py` | una transacció amb bloqueig pessimista; una funció per acció | `_apply_create/_apply_update/_apply_delete` | `approve_proposal` (les estratègies de Firestore van desaparèixer al chunk 8) |
 
 **Strategy de moderació (feature images)**: `ModerationProvider` (interfície) amb `HashBlocklistProvider` actiu i stubs desactivats `PhotoDNAProvider` / `GoogleContentSafetyProvider`; `ModerationService` els executa en ordre i el primer que bloqueja guanya (fail-closed si un falla). `api/services/moderation_service.py`, [flux 12](../flows/12-media-moderation.md).
 
@@ -52,7 +52,7 @@ Les features migrades (`apps/<feature>/`) substitueixen DAO + controller per **`
 `CacheService` i `FirestoreService` amb `__new__` + instància global (`cache_service`, `firestore_service`). Compte: `CacheService.__init__` es re-executa a cada `CacheService()` ([recipes/add-service.md](../recipes/add-service.md)).
 
 ### DAO + Data Mapper
-Un DAO i un mapper per entitat (els dominis migrats —refugis, usuaris, visites, reformes, dubtes, experiències— usen selectors/services en lloc seu): `RefugiLliureDAO`, `DoubtDAO` (legacy), `RenovationDAO`, `RefugeProposalDAO`, `RefugeVisitDAO`; mappers homònims a `api/mappers/`. El DAO integra la cache (get → miss → Firestore → set):
+Un DAO i un mapper per entitat (els dominis migrats —refugis, usuaris, visites, reformes, dubtes, experiències— usen selectors/services en lloc seu): `RefugiLliureDAO`, (`DoubtDAO`, `RenovationDAO`, `RefugeProposalDAO` i `RefugeVisitDAO` ja no existeixen); mappers homònims a `api/mappers/`. El DAO integra la cache (get → miss → Firestore → set):
 ```mermaid
 sequenceDiagram
     participant C as Controller

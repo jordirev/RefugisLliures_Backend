@@ -86,9 +86,9 @@ def test_cataleg_amb_els_valors_inicials(migrator_db, table, codes):
 
 @pytest.mark.parametrize('table,expected', [
     ('refuges.refuge_types', {'SELECT'}),                                # catàleg: només hi escriu el migrator
-    ('refuges.refuges', {'SELECT'}),                                     # escriptura: chunk 8 (S-5)
-    ('refuges.refuge_amenities', {'SELECT'}),
-    ('refuges.refuge_links', {'SELECT'}),
+    ('refuges.refuges', {'SELECT', 'INSERT', 'UPDATE', 'DELETE'}),       # chunk 8: escriptura limitada a admin/sistema per RLS
+    ('refuges.refuge_amenities', {'SELECT', 'INSERT', 'UPDATE', 'DELETE'}),
+    ('refuges.refuge_links', {'SELECT', 'INSERT', 'UPDATE', 'DELETE'}),
     ('refuges.refuge_media', {'SELECT', 'INSERT', 'UPDATE', 'DELETE'}),
     ('users.languages', {'SELECT'}),
     ('users.users', {'SELECT', 'INSERT', 'UPDATE', 'DELETE'}),

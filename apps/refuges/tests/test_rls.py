@@ -36,7 +36,7 @@ def world(RM):
     return r
 
 
-# ---------- refuges / amenities / links: lectura pública; sense escriptura per a app fins al chunk 8 ----------
+# ---------- refuges / amenities / links: lectura pública; escriptura només admin/sistema (chunk 8) ----------
 
 @pytest.mark.parametrize('ctx', ALL_CTX)
 def test_lectura_publica_de_refugis_amenities_i_links(RM, world, ctx):
@@ -54,35 +54,39 @@ def test_sense_context_la_lectura_publica_funciona(RM, world):
 
 
 @pytest.mark.parametrize('ctx', ALL_CTX)
-def test_ningu_pot_inserir_refugis_amenities_ni_links_fins_al_chunk_8(RM, world, ctx):
-    """§7.2 (S-5): `app` només té `SELECT` sobre el catàleg; ni admin ni sistema hi escriuen fins al chunk 8."""
+def test_nomes_admin_i_sistema_poden_inserir_refugis_amenities_i_links(RM, world, ctx):
+    """§7.2 / chunk 8: `app` hi té `INSERT`, però la RLS ho limita a `{ADM} OR {SYS}`."""
     other = make_refuge(name='N', lat=43)
-    for go in (lambda: RM.Refuge.objects.create(name='N2', coord=Point(1, 42, srid=4326)),
-               lambda: RM.RefugeAmenities.objects.create(refuge=other),
-               lambda: RM.RefugeLink.objects.create(refuge=other, position=1, url='https://x.org')):
+    for n, go in enumerate((lambda: RM.Refuge.objects.create(name='N2', coord=Point(1, 42, srid=4326)),
+                            lambda: RM.RefugeLink.objects.create(refuge=other, position=1, url='https://x.org'))):
         def run(go=go):
             with rls_context(**ALL_CTX[ctx]):
                 go()
-        _denied(run)
+        if ctx in MODERATORS:
+            run()
+        else:
+            _denied(run)
 
 
 @pytest.mark.parametrize('ctx', ALL_CTX)
-def test_ningu_pot_modificar_ni_esborrar_el_cataleg_fins_al_chunk_8(RM, world, ctx):
-    for go in (lambda: RM.Refuge.objects.filter(pk=world.pk).update(altitude=1234),
-               lambda: RM.Refuge.objects.filter(pk=world.pk).update(condition=3, num_contributed_conditions=9),
-               lambda: RM.Refuge.objects.filter(pk=world.pk).delete(),
-               lambda: RM.RefugeAmenities.objects.update(eau=True),
-               lambda: RM.RefugeAmenities.objects.all().delete(),
-               lambda: RM.RefugeLink.objects.update(position=7),
-               lambda: RM.RefugeLink.objects.all().delete()):
-        def run(go=go):
-            with rls_context(**ALL_CTX[ctx]):
-                go()
-        _denied(run)
+def test_nomes_admin_i_sistema_poden_modificar_i_esborrar_el_cataleg(RM, world, ctx):
+    """Un usuari normal (o anònim) no escriu el catàleg, tampoc `condition`/`n`: la RLS fa que afecti 0 files."""
+    with rls_context(**ALL_CTX[ctx]):
+        changed = (RM.Refuge.objects.filter(pk=world.pk).update(altitude=1234, condition=3, num_contributed_conditions=9),
+                   RM.RefugeAmenities.objects.update(eau=True),
+                   RM.RefugeLink.objects.update(position=7))
     world.refresh_from_db()
+    if ctx in MODERATORS:
+        assert changed == (1, 1, 1) and world.altitude == 1234 and world.condition == 3
+        return
+    assert changed == (0, 0, 0)
     assert world.altitude is None and world.condition is None and world.num_contributed_conditions == 0
     assert RM.RefugeLink.objects.get().position == 0
     assert RM.RefugeAmenities.objects.get().eau is False
+    with rls_context(**ALL_CTX[ctx]):
+        deleted = (RM.RefugeLink.objects.all().delete()[0], RM.RefugeAmenities.objects.all().delete()[0],
+                   RM.Refuge.objects.filter(pk=world.pk).delete()[0])
+    assert deleted == (0, 0, 0) and RM.Refuge.objects.count() == 1
 
 
 def test_els_punts_del_mapa_es_llegeixen_sense_context_i_mostren_tots_els_refugis(RM, world):

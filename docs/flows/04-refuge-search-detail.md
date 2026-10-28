@@ -66,9 +66,9 @@ sequenceDiagram
 - `visitors`: només admins. `surname`: només per cercar. La llista sense filtres ja no porta `surname` i cap resposta porta `has_filters` (el frontend no el llegeix: `{count, results}`).
 - Cerca per nom parcial i sense accents (B2 resolt: el DAO antic assumia nom únic i la cerca era exacta).
 - `remarque`: la columna s'ha eliminat; ja no s'emet al detall (el frontend no la llegeix).
-- Cap cache Redis per a refugis: les llistes ja no cal invalidar-les quan una proposta modifica un refugi.
+- Cap cache Redis per a refugis: les llistes ja no cal invalidar-les quan una proposta aprovada modifica un refugi (escriu directament a PostgreSQL, [flux 5](05-refuge-proposals.md)).
 
 ## Gotchas
 - `GET /refuges/{id}/renovations/`: des del chunk 5 és a PostgreSQL i llegeix `?active_only=` (D32: `true`/`1` només vigents; per defecte totes); refugi inexistent → 404 ([flux 7](07-renovations.md)) **[FET]**.
-- Els dominis que encara no s'han migrat (experiències, propostes; visites, reformes i dubtes ja són a PostgreSQL) segueixen consultant els refugis al `RefugiLliureDAO` de Firestore, que ja no s'alimenta: fins als seus chunks, les seves comprovacions d'existència de refugi miren el catàleg antic de Firestore (en un entorn nou, buit; en producció, amb IDs diferents dels UUID de PostgreSQL) — [GOTCHAS #41](../GOTCHAS.md).
+- Només la moderació (denúncies) i el health check (propostes i la resta de dominis ja són a PostgreSQL des del chunk 8) segueixen consultant els refugis al `RefugiLliureDAO` de Firestore, que ja no s'alimenta: fins al chunk 9/11, les seves comprovacions d'existència de refugi miren el catàleg antic de Firestore (en un entorn nou, buit; en producció, amb IDs diferents dels UUID de PostgreSQL) — [GOTCHAS #41](../GOTCHAS.md).
 - `load_refuges` és d'un sol ús: vegeu [local-setup](../guides/local-setup.md).

@@ -58,7 +58,7 @@ Còpia de `api/mappers/renovation_mapper.py`: `firestore_to_model`, `model_to_fi
 Segueix [add-endpoint.md](add-endpoint.md).
 
 ## 6. Cascades
-Si l'entitat té `creator_uid`, decideix com es tracta en esborrar l'usuari: si és a PostgreSQL, una FK `ON DELETE CASCADE`/`SET NULL` al DDL (migració `RunSQL`; vegeu `accounts.0002`); si és a Firestore, un pas a `apps/accounts/services.py: _firestore_steps` (esborrar o anonimitzar) — [deep-dive](../deep-dives/user-deletion.md). Si depèn d'un refugi, afegeix-la a `DeleteRefugeStrategy` (`api/daos/refuge_proposal_dao.py:388-556`).
+Si l'entitat té `creator_uid`, decideix com es tracta en esborrar l'usuari: si és a PostgreSQL, una FK `ON DELETE CASCADE`/`SET NULL` al DDL (migració `RunSQL`; vegeu `accounts.0002`); si és a Firestore, un pas a `apps/accounts/services.py: _firestore_steps` (buida des del chunk 8; esborrar o anonimitzar) — [deep-dive](../deep-dives/user-deletion.md). Si depèn d'un refugi, la FK `ON DELETE CASCADE` cap a `refuges.refuges` ja l'esborra amb el refugi quan s'aprova una proposta `delete` (`apps/proposals/services.py: _apply_delete` fa un sol `DELETE`); si guarda fitxers a R2, afegeix-ne la lectura de claus a `_apply_delete`.
 
 ## 7. Tests — `api/tests/<entitat>/`
 Crea `__init__.py`, `test_models.py`, `test_mappers.py`, `test_daos.py`, `test_serializers.py`, `test_controllers.py`, `test_views.py`. Fixtures de dades a nivell de fitxer (com `api/tests/renovation/test_daos.py:10-55`) o a `api/tests/conftest.py` si són compartides. Mocks de DAO: `@patch('api.daos.foo_dao.FirestoreService')` + `@patch('api.daos.foo_dao.cache_service')`.

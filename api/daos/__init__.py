@@ -1,7 +1,6 @@
 """
-Data Access Objects per a la gestió de dades amb Firebase
+Data Access Objects que encara viuen a Firestore (el catàleg legacy de refugis, usat per la moderació i el health check)
 """
 from .refugi_lliure_dao import RefugiLliureDAO
-from .doubt_dao import DoubtDAO
 
-__all__ = ['RefugiLliureDAO', 'DoubtDAO']
+__all__ = ['RefugiLliureDAO']

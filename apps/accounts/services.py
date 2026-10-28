@@ -23,6 +23,7 @@ from api.utils.timezone_utils import get_madrid_timezone
 from apps.core.rls import system_context
 from apps.experiences.models import Experience
 from apps.refuges import selectors as refuge_selectors
+from apps.proposals.models import RefugeProposal
 from apps.refuges.models import RefugeMedia
 from apps.renovations import services as renovation_services
 
@@ -256,11 +257,13 @@ def delete_avatar(uid: str, media_service=None) -> None:
 # ---------- Esborrat d'usuari provisional (D21, D22) ----------
 
 def _firestore_steps(uid: str):
-    """Passos de l'esborrat que encara viuen a Firestore (D21), en l'ordre de sempre: `(nom, callable)`."""
-    from api.controllers.refuge_proposal_controller import RefugeProposalController
-    return [
-        ('propostes', lambda: RefugeProposalController().anonymize_proposals_by_creator(uid)),
-    ]
+    """
+    Passos de l'esborrat que encara viuen a Firestore (D21), en l'ordre de sempre: `(nom, callable)`.
+
+    Buida des del chunk 8 (les propostes ja són a PostgreSQL: la FK `SET NULL` les anonimitza i el `comment` s'anul·la a
+    `delete_user`). Es conserva el punt d'extensió perquè `delete_user` i els tests el fan servir.
+    """
+    return []
 
 
 def _delete_r2_media(uid: str, media_service=None) -> None:
@@ -314,6 +317,10 @@ def delete_user(uid: str, media_service=None) -> None:
         # les passades queden anònimes per la FK `SET NULL` (el *trigger* en treu l'enllaç) i les seves
         # participacions i expulsions s'esborren per cascada en esborrar l'usuari.
         renovation_services.delete_current_by_creator(uid)
+        # Propostes (chunk 8, PO 28/10, RGPD): es conserven (historial) amb `creator_uid`/`reviewer_uid` a NULL per la FK
+        # `SET NULL`, però el `comment` (text lliure, pot dur dades personals) s'anul·la; en aquest mateix savepoint.
+        with system_context():
+            RefugeProposal.objects.filter(creator_id=uid).update(comment=None)
         if not UserAccount.objects.filter(pk=uid).delete()[0]:
             raise UserNotFound()
         _delete_firebase_account(uid)

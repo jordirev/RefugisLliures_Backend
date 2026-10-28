@@ -86,6 +86,7 @@ INSTALLED_APPS = [
     'apps.experiences',
     'apps.uploads',
     'apps.renovations',
+    'apps.proposals',
     'api',
 ]
 

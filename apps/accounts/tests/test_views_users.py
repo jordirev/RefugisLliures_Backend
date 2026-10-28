@@ -5,7 +5,7 @@ Contracte HTTP dels endpoints d'usuari movits a PostgreSQL (chunk 3), rol `app` 
 Forma JSON: §5.2 (perfil propi complet; perfil d'un altre = `{uid, username, avatar_metadata}`). Firestore queda bloquejat
 pel conftest arrel; els passos de l'esborrat que encara hi son (D21) i els comptadors (D19) es mocken.
 """
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -332,26 +332,17 @@ def test_patch_anonim_401(client):
 
 # =================================== DELETE /users/{uid}/ (D21) ===================================
 
-LEGACY_STEPS = [
-    ('api.controllers.experience_controller.ExperienceController.delete_experiences_by_creator'),   # chunk 7: desapareix
-    ('api.controllers.refuge_proposal_controller.RefugeProposalController.anonymize_proposals_by_creator'),
-]
-
-
 @pytest.fixture
 def legacy_delete_steps():
-    """Passos de l'esborrat que continuen a Firestore (D21): es mocken tots i retornen exit. Els que ja s'han migrat
-    (experiències, chunk 7: ho fa la cascada de la FK) s'ometen si el seu controller ja no existeix."""
-    started = {}
-    for target in LEGACY_STEPS:
-        try:
-            p = patch(target, return_value=(True, None))
-            started[target] = (p, p.start())
-        except (AttributeError, ImportError):
-            continue
-    yield {t: m for t, (_, m) in started.items()}
-    for p, _ in started.values():
-        p.stop()
+    """
+    Passos de l'esborrat que continuen a Firestore (D21). Des del chunk 8 no n'hi ha cap (`_firestore_steps()` és buida:
+    les propostes les anonimitza la FK), de manera que s'hi injecta un pas simulat que retorna èxit; els tests el fan
+    fallar per comprovar que la vista dona 500 i que no es toca Firebase.
+    """
+    step = MagicMock(return_value=(True, None))
+    with patch('apps.accounts.services._firestore_steps',
+               side_effect=lambda uid: [('pas simulat', lambda: step(uid))]):
+        yield {'pas simulat': step}
 
 
 def test_delete_propi_204_i_cascadeja_les_dades_de_postgres(client, legacy_delete_steps):

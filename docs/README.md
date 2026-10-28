@@ -69,7 +69,7 @@ Les línies poden desplaçar-se amb canvis futurs; si una cita no quadra, busca 
 | Document | Pare |
 |---|---|
 | [deep-dives/condition-average.md](deep-dives/condition-average.md) — mitjana de `condition` | [flux 5](flows/05-refuge-proposals.md) |
-| [deep-dives/refuge-proposals-payload.md](deep-dives/refuge-proposals-payload.md) — validació del payload i sincronització de `coords_refugis` | [flux 5](flows/05-refuge-proposals.md) |
+| [deep-dives/refuge-proposals-payload.md](deep-dives/refuge-proposals-payload.md) — validació del payload, duplicats i aplicació al catàleg | [flux 5](flows/05-refuge-proposals.md) |
 | [deep-dives/user-deletion.md](deep-dives/user-deletion.md) — criteris i manteniment de l'esborrat d'usuari | [flux 1](flows/01-user-profile.md) |
 
 ## Història
