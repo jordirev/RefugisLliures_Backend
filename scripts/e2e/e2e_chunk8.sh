@@ -4,6 +4,7 @@
 # reject → delete aprovat per un admin (el refugi apareix, canvia i desapareix; les altres pendents queden rebutjades),
 # doble revisió (409), bloqueig i edat en crear, i esborrat d'usuari (creator_uid 'unknown' i comentari NULL).
 #
+# Els cossos són ASCII: a Git Bash de Windows els arguments no ASCII de curl es malmeten (per això no s'envia `type`).
 # Requisits: els de e2e_chunk3.sh (BD migrada amb `proposals.0001` i el catàleg, Firebase Auth Emulator). R2 és
 # fictici: els refugis creats per l'e2e no tenen mitjans.
 #   PSQL_E2E='docker exec -i rl-postgres psql -U postgres -d refugisdb_e2e -q'  (bloqueig)
@@ -71,7 +72,7 @@ pid() { python3 -c "import sys, json; print(json.load(sys.stdin).get('id', ''))"
 # Proposta de creació: nom únic per execució i coordenades lluny de qualsevol refugi carregat (Atlàntic)
 NEW_NAME="Cabana E2E $suffix"
 create_body() {  # $1 nom, $2 long, $3 lat
-  printf '{"action":"create","payload":{"name":"%s","coord":{"long":%s,"lat":%s},"altitude":1800,"places":12,"type":"non gardé","info_comp":{"cheminee":1}},"comment":"Proposta e2e"}' "$1" "$2" "$3"
+  printf '{"action":"create","payload":{"name":"%s","coord":{"long":%s,"lat":%s},"altitude":1800,"places":12,"info_comp":{"cheminee":1}},"comment":"Proposta e2e"}' "$1" "$2" "$3"
 }
 proposal() {  # estat de la proposta $1 des del llistat d'admin
   curl -s -m 30 "${A[@]}" "$P/" | python3 -c "
@@ -101,17 +102,17 @@ check "POST update refugi inexistent -> 400" 400 "${U[@]}" "${J[@]}" -X POST "$P
 check "POST sense edat confirmada -> 403" 403 "${Y[@]}" "${J[@]}" -X POST "$P/" -d "$(create_body "$NEW_NAME" -30 45)"
 
 # --- Duplicats: el mateix nom al mateix punt que un refugi existent -> 409 amb el refugi a la llista
-read -r R1 R1_NAME R1_LONG R1_LAT < <(curl -s -m 30 "$API/refuges/" | python3 -c "
+read -r R1 R1_LONG R1_LAT R1_NAME < <(curl -s -m 30 "$API/refuges/" | python3 -c "
 import sys, json
 r = json.load(sys.stdin)['results'][($suffix + 3) % 20]
-print(r['id'], json.dumps(r['name']), r['coord']['long'], r['coord']['lat'])")
+print(r['id'], r['coord']['long'], r['coord']['lat'], json.dumps(r['name']))")
 [ -n "${R1:-}" ] || { echo "No hi ha refugis carregats" >&2; exit 2; }
 dup=$(printf '{"action":"create","payload":{"name":%s,"coord":{"long":%s,"lat":%s}},"comment":"Duplicat"}' "$R1_NAME" "$R1_LONG" "$R1_LAT")
 check_json "create a sobre d'un refugi amb el mateix nom -> possible_duplicates" \
   "d['code'] == 'possible_duplicates' and '$R1' in [x['id'] for x in d['possible_duplicates']] and all(x['distance_m'] <= 500 for x in d['possible_duplicates'])" \
   "${U[@]}" "${J[@]}" -X POST "$P/" -d "$dup"
 check "create al mateix punt però amb nom molt diferent -> 201" 201 "${U[@]}" "${J[@]}" -X POST "$P/" \
-  -d "$(printf '{"action":"create","payload":{"name":"Zzqx %s","coord":{"long":%s,"lat":%s}},"comment":"No és duplicat"}' "$suffix" "$R1_LONG" "$R1_LAT")"
+  -d "$(printf '{"action":"create","payload":{"name":"Zzqx %s","coord":{"long":%s,"lat":%s}},"comment":"No es duplicat"}' "$suffix" "$R1_LONG" "$R1_LAT")"
 
 # --- Cicle: create aprovat -> el refugi existeix
 P1=$(curl -s -m 30 "${U[@]}" "${J[@]}" -X POST "$P/" -d "$(create_body "$NEW_NAME" -30 45)" | pid)
@@ -131,7 +132,7 @@ check_json "proposar-lo de nou al mateix lloc -> possible_duplicates" \
   "${U[@]}" "${J[@]}" -X POST "$P/" -d "$(create_body "$NEW_NAME" -30.0001 45.0001)"
 
 # --- Update aprovat i un altre rebutjat
-upd() { printf '{"action":"update","refuge_id":"%s","payload":{"places":%s},"comment":"Més places"}' "$NEW_R" "$1"; }
+upd() { printf '{"action":"update","refuge_id":"%s","payload":{"places":%s},"comment":"Mes places"}' "$NEW_R" "$1"; }
 P2=$(curl -s -m 30 "${U[@]}" "${J[@]}" -X POST "$P/" -d "$(upd 33)" | pid)
 check_proposal "update desa la foto del refugi" "$P2" "d['refuge_snapshot']['name'] == '$NEW_NAME' and d['refuge_snapshot']['places'] == 12"
 check "admin aprova l'update -> 200" 200 "${A[@]}" -X POST "$P/$P2/approve/"
