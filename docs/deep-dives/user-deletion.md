@@ -13,9 +13,10 @@ Punt d'entrada: `apps.accounts.services.delete_user(uid)`, cridat per `DELETE /a
 3. **Reformes vigents** creades per l'usuari fora (`renovation_services.delete_current_by_creator`; cascada a participants, expulsats i enllaç).
 4. **Pas 2 de §8.4 — denúncies automàtiques** (`_AUTO_REPORTS_SQL`, `system_context()`): cada mitjà `hidden_pending_review` que és ocult **només** per denúncies pendents d'aquest usuari (i que no és seu ni de les seves experiències) torna a la cua com a denúncia `automatic`/`high` amb `details = 'reporter_account_deleted'` i `reporter_uid` NULL. Si alguna de les denúncies pendents sobre aquell mitjà és d'un altre denunciant **o és `legal_hold`** (es conserva anonimitzada), el mitjà ja continua a la cua i no s'afegeix res. `ON CONFLICT DO NOTHING` (tanca R23).
 5. **`comment` de les propostes a NULL** (`system_context()`): és text lliure i pot dur dades personals; la resta de la proposta s'anonimitza per la FK `SET NULL`.
-6. **R2**: `delete_files(keys)` **dins la transacció** i després del bloqueig. Qualsevol excepció o fitxer fallit → `UserDeletionError` i tot es desfà (no hi ha cua `media_deletion_queue`, D40/D42).
-7. **`DELETE FROM users.users`**: la BD fa la resta (cascades, `SET NULL` i triggers `legal_hold`, vegeu la taula de criteris).
-8. **Auditoria** `user.deleted` (`audit.audit_log_service.log(None, ACTION_USER_DELETED)`), **sense cap identificador** (ni UID a `target_id` ni a `metadata`).
+6. **`DELETE FROM users.users`**: la BD fa la resta (cascades, `SET NULL` i triggers `legal_hold`, vegeu la taula de criteris).
+7. **Auditoria** `user.deleted` (`audit.audit_log_service.log(None, ACTION_USER_DELETED)`), **sense cap identificador** (ni UID a `target_id` ni a `metadata`).
+8. **`SET CONSTRAINTS ALL IMMEDIATE`**: les FK i els *constraint triggers* diferits s'avaluen ara, de manera que un error de BD surt **abans** d'esborrar res a R2 (no al `COMMIT`, amb els fitxers ja perduts).
+9. **R2** (l'últim pas): `delete_files(keys)` **dins la transacció**. Qualsevol excepció o fitxer fallit → `UserDeletionError` i tot es desfà (no hi ha cua `media_deletion_queue`, D40/D42).
 
 Després del `COMMIT`: **Firebase Auth** `auth.delete_user(uid)`; `UserNotFoundError` es dona per èxit. Si falla → `UserDeletionError` → 500 `{error, error_id}`.
 
@@ -38,12 +39,13 @@ sequenceDiagram
     else amb fila
         S->>DB: 2. claus d'R2 (avatar, mitjans, experiències, quarantine/)
         S->>DB: 3. reformes vigents · 4. denúncies automàtiques · 5. comment = NULL
-        S->>R2: 6. delete_files(claus)
+        S->>DB: 6. DELETE users.users (cascades) · 7. audit user.deleted
+        S->>DB: 8. SET CONSTRAINTS ALL IMMEDIATE
+        S->>R2: 9. delete_files(claus)
         alt R2 falla
             S->>DB: ROLLBACK (res no canvia)
             V-->>C: 500 {error, error_id}
         end
-        S->>DB: 7. DELETE users.users (cascades) · 8. audit user.deleted
         S->>DB: COMMIT
     end
     S->>FA: auth.delete_user(uid) (UserNotFoundError = èxit)
@@ -60,7 +62,8 @@ sequenceDiagram
 | Insercions concurrents de contingut de l'usuari | l'esborrat espera que acabin (o elles esperen a l'esborrat i fallen per FK) | — | — |
 | **R2 falla** (excepció o `failed`) | `ROLLBACK`: tot intacte, Firebase no es crida | 500 `{error, error_id}` | El `DELETE` ho torna a fer tot; R2 és idempotent (clau inexistent = èxit) |
 | **Firebase falla** (≠ `UserNotFoundError`) | dades **ja esborrades** (COMMIT fet), compte viu | 500 `{error, error_id}` | El token encara és vàlid: el segon `DELETE` no troba fila (sense `HasProfile`), salta a Firebase i dóna **204** |
-| **`COMMIT` falla** | `ROLLBACK`: tot intacte a la BD (R2 ja pot haver esborrat fitxers: les files de `refuge_media` continuen existint) | 500 | Reintent complet; els fitxers ja absents compten com a èxit. Finestra rara **[INFERÈNCIA]** |
+| **`COMMIT` falla** | `ROLLBACK`: tot intacte a la BD, però R2 ja ha esborrat els fitxers (les files continuen apuntant a fitxers absents). Només això pot fallar al `COMMIT`: les restriccions diferides ja s'han avaluat (pas 8) | 500 | Reintent complet; esborrar claus inexistents a R2 és èxit. Finestra rara **[INFERÈNCIA]** |
+| **Deadlock** amb un flux de moderació (`create_report` bloqueja el mitjà i després pren `KEY SHARE` de l'usuari; l'esborrat fa l'invers) | Postgres tria una víctima (`40P01`); si és l'esborrat, la transacció es desfà sencera | `delete_user` reintenta fins a 2 cops (`DELETE_DEADLOCK_RETRIES`); si persisteix, 500; si la víctima és la denúncia, 500 reintentable de la denúncia | Automàtic / el client ([TECH_DEBT R26](../TECH_DEBT.md)) |
 | El procés mor entre `COMMIT` i Firebase | igual que «Firebase falla» | (connexió tallada) | El client reintenta el `DELETE` |
 | Dos `DELETE` alhora del mateix usuari | el segon espera el `FOR UPDATE`, troba que no hi ha fila i salta a Firebase | 204 els dos | — |
 | Usuari ja esborrat del tot (token encara vàlid) | res | 204 (idempotent, sense auditoria) | — |

@@ -68,9 +68,9 @@ sequenceDiagram
 - Permisos: `IsAuthenticated` + `IsSameUser` (**sense** `HasProfile`: és idempotent; un usuari bloquejat també pot esborrar-se). El `uid` de la URL ha de ser el del token → si no, 403.
 - **204** sense cos en èxit, **també si l'usuari ja no té fila** a `users.users` (reintent: es salta al pas de Firebase; sense auditoria). No hi ha 404 a aquest endpoint.
 - 401 sense token vàlid; 403 si `uid` ≠ token; **500 `{error, error_id}`** si R2 o Firebase Auth fallen (`UserDeletionError`) o la BD falla.
-- La vista és `non_atomic_requests`: `delete_user` obre la seva pròpia transacció i el context de RLS (`rls_context(uid)`).
+- La vista és `non_atomic_requests` i el `DELETE` no passa pel hook de RLS (`skip_rls_hook`): `delete_user` obre la seva pròpia transacció i el context de RLS (`rls_context(uid)`).
 
-**Procediment**: (1) *una* transacció amb `FOR UPDATE` de la fila d'usuari, claus d'R2, reformes vigents, denúncies automàtiques dels mitjans ocults només per denúncies seves (pas 2 de §8.4), `comment` de propostes a NULL, **R2**, `DELETE users.users` (cascades/`SET NULL`) i auditoria `user.deleted` sense identificadors; (2) **després del `COMMIT`**, `firebase_auth.delete_user(uid)` (`UserNotFoundError` = èxit). El client **no** crida `user.delete()`: només reautentica, crida aquest endpoint i fa `signOut` local.
+**Procediment**: (1) *una* transacció amb `FOR UPDATE` de la fila d'usuari, claus d'R2, reformes vigents, denúncies automàtiques dels mitjans ocults només per denúncies seves (pas 2 de §8.4), `comment` de propostes a NULL, `DELETE users.users` (cascades/`SET NULL`), auditoria `user.deleted` sense identificadors, `SET CONSTRAINTS ALL IMMEDIATE` i, l'últim, **R2** (si falla, tot es desfà); un deadlock amb moderació es reintenta fins a 2 cops; (2) **després del `COMMIT`**, `firebase_auth.delete_user(uid)` (`UserNotFoundError` = èxit). El client **no** crida `user.delete()`: només reautentica, crida aquest endpoint i fa `signOut` local.
 
 ```mermaid
 sequenceDiagram
@@ -86,8 +86,8 @@ sequenceDiagram
     V->>S: delete_user(uid)
     S->>DB: BEGIN; SELECT … FOR UPDATE (users.users)
     alt hi ha fila
+        S->>DB: reformes · denúncies automàtiques · comment · DELETE users · audit · SET CONSTRAINTS IMMEDIATE
         S->>R2: delete_files(avatar, mitjans, experiències, quarantine/)
-        S->>DB: reformes · denúncies automàtiques · comment · DELETE users · audit
         S->>DB: COMMIT
     else sense fila (reintent)
         S->>DB: COMMIT buit
