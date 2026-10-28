@@ -83,7 +83,7 @@ La llista blanca **autoritativa** és la d'`image_processing_service` (imatges j
 - `delete_file` no llança: comprova el booleà (els rollbacks del codi ja ho fan des de la feature *images*) **[FET]**.
 - Cada hidratació de model (`Refugi.from_dict` del codi legacy; a les apps migrades, els serializers presignen a la resposta amb `media_to_dict`) presigna URLs, **també quan les dades venen de cache** → URL sempre fresca però canviant: el client ha d'usar la **clau** com a `cacheKey` **[FET]**.
 - Una URL servida caduca en 1 h; la PUT en 10 min **[FET]**.
-- Construir un controller que crea `R2MediaService` (p. ex. `RefugiLliureController`) **falla si falta config R2**, fins i tot per a operacions que no toquen R2 **[FET]**.
+- Construir un servei que crea `R2MediaService` **falla si falta config R2**, fins i tot per a operacions que no toquen R2 **[FET]**.
 - La URL PUT signa `content-length`: el client ha d'enviar exactament la mida declarada a l'intent **[FET]**.
 
 ## Estendre el servei

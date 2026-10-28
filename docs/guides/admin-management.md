@@ -1,14 +1,14 @@
 # Guia — Gestionar administradors i usar els endpoints admin
 
 > **[FET]** comprovat al codi · **[INFERÈNCIA]** deducció · **[NO VERIFICAT]** depèn de config externa.
-> Context: [integrations/firebase-auth.md §Custom claims](../integrations/firebase-auth.md#custom-claims) · [flux 11 (cache/health)](../flows/11-admin-cache-health.md) · [flux 5 (revisió de propostes)](../flows/05-refuge-proposals.md).
+> Context: [integrations/firebase-auth.md §Custom claims](../integrations/firebase-auth.md#custom-claims) · [flux 11 (health)](../flows/11-admin-cache-health.md) · [flux 5 (revisió de propostes)](../flows/05-refuge-proposals.md).
 
 ## Com es decideix qui és admin
 Un usuari és admin si el seu ID token porta el **custom claim `role == 'admin'`** (`api/permissions.py:10-21`). El permís `IsFirebaseAdmin` llegeix `request.user_claims`, que el middleware omple amb el token decodificat.
 
 > ⚠️ Les docs antigues parlaven de `admin: true` o de la variable `FIREBASE_ADMIN_UIDS`: **tots dos són obsolets**. La llista d'UIDs a `.env` es va substituir per custom claims (nov. 2025) i `FIREBASE_ADMIN_UIDS` ja no es llegeix enlloc.
 
-Endpoints que el requereixen: `GET /api/refuges-proposals/`, `POST /api/refuges-proposals/{id}/approve|reject/`, `/api/cache/*` (vegeu [ARCHITECTURE §4](../ARCHITECTURE.md)). L'esborrat d'un mitjà de refugi també deixa passar admins (comprovació de propietat a `apps/refuges/services.py: delete_media`).
+Endpoints que el requereixen: `GET /api/refuges-proposals/`, `POST /api/refuges-proposals/{id}/approve|reject/` (vegeu [ARCHITECTURE §4](../ARCHITECTURE.md)). L'esborrat d'un mitjà de refugi també deixa passar admins (comprovació de propietat a `apps/refuges/services.py: delete_media`).
 
 ## 1. Obtenir l'UID de l'usuari
 - Firebase Console → **Authentication** → cerca l'usuari → copia l'UID.
@@ -41,17 +41,12 @@ await FirebaseAuth.instance.currentUser?.getIdToken(true);   // Flutter
 ```
 O bé logout + login.
 
-## 4. Provar els endpoints de cache
+## 4. Provar un endpoint d'admin
+Els endpoints de cache (`/api/cache/*`) han desaparegut al chunk 11 (D43). Exemple amb un endpoint d'admin vigent:
 ```bash
-curl -H "Authorization: Bearer <token_admin>" http://localhost:8000/api/cache/stats/
-curl -X DELETE -H "Authorization: Bearer <token_admin>" http://localhost:8000/api/cache/clear/
-curl -X DELETE -H "Authorization: Bearer <token_admin>" "http://localhost:8000/api/cache/invalidate/?pattern=refugi_search"
+curl -H "Authorization: Bearer <token_admin>" http://localhost:8000/api/refuges-proposals/
 ```
-Respostes: `stats` → `{connected, keys, memory_used, hits, misses}`; `clear` → `{"message": "Cache netejada correctament"}`; `invalidate` → `{"message": "Claus amb patró \"...\" eliminades correctament"}`.
-- `pattern` és una **subcadena**: el servei ja l'embolcalla amb `*…*`. No hi afegeixis `*` ni `:*` ([GOTCHAS #12](../GOTCHAS.md)).
-- `clear` esborra **tota** la BD Redis, no només les claus del projecte ([GOTCHAS #16](../GOTCHAS.md)).
-
-A Swagger (`/swagger/`, tag **Cache Admin**): botó **Authorize** → `Bearer <token>` → *Authorize* → prova l'endpoint.
+A Swagger (`/swagger/`): botó **Authorize** → `Bearer <token>` → *Authorize* → prova l'endpoint.
 
 ## 5. Tests unitaris
 Mocka els claims a la request:
@@ -59,7 +54,7 @@ Mocka els claims a la request:
 request.user_claims = {'role': 'admin', 'uid': 'test-admin-uid'}
 request.user_uid = 'test-admin-uid'
 ```
-(patró usat a `api/tests/test_cache_views.py`).
+(patró de les vistes d'admin de `apps/proposals/tests/`).
 
 ## Errors habituals
 | Símptoma | Causa / solució |

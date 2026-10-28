@@ -5,7 +5,7 @@
 
 ## Requisits
 - **Python 3.14** (mínim 3.9 per `zoneinfo`, `api/utils/timezone_utils.py:5`); el projecte objectiu és **Python 3.14 + Django 5.2 LTS** (chunk 2) i CI usa 3.14 amb el servei `postgis/postgis:18-3.6` **[FET]**.
-- **Redis** local a `redis://localhost:6379/1` (o `REDIS_URL`). Sense Redis l'API funciona però sense cache (errors empassats) — vegeu [redis-cache](../integrations/redis-cache.md).
+- **Cap Redis** (eliminat al chunk 11, D43): la cache de Django és un `LocMemCache`; no cal instal·lar ni arrencar res més.
 - **PostgreSQL + PostGIS** (rol `app` i rol `migrator`): és la BD `default` de Django des del chunk 1 de la migració ([integrations/neon.md](../integrations/neon.md)). En local: el Postgres de proves de `scripts/dev/setup_local_postgres.sh` o Neon `dev` (variables `DATABASE_URL_APP` / `DATABASE_URL_MIGRATOR`). Sense cap URL, Django cau a SQLite i les peticions reals no funcionen **[FET]**.
 - **GDAL/GEOS/PROJ** del sistema (`django.contrib.gis` sempre és actiu): `apt install gdal-bin libgdal-dev libgeos-dev libproj-dev` a Linux; **a Windows** instal·la [OSGeo4W](https://trac.osgeo.org/osgeo4w/) (Express Install, només el paquet GDAL; per defecte a `%LOCALAPPDATA%\Programs\OSGeo4W`, o fixa `OSGEO4W_ROOT`): `settings.py` detecta la DLL `gdal3xx.dll`, `geos_c.dll`, `GDAL_DATA` i `PROJ_LIB` sol **[FET: `check_neon` verificat a Windows]**. Alternativa: contenidor Linux (vegeu «Windows: executar en un contenidor Linux» més avall).
 - Accés a un projecte **Firebase** (service account) i a un bucket **Cloudflare R2**.
@@ -22,7 +22,7 @@ source .venv/bin/activate
 # Windows
 .venv\Scripts\activate
 
-pip install -r requirements.txt     # inclou pytest, coverage, boto3, django-redis
+pip install -r requirements.txt     # inclou pytest, coverage, boto3
 ```
 
 ## 2. Configurar `env/` (no versionat)
@@ -30,7 +30,7 @@ pip install -r requirements.txt     # inclou pytest, coverage, boto3, django-red
 
 | Fitxer | Contingut (només noms) |
 |---|---|
-| `env/.env.development` | `SECRET_KEY`, `DEBUG`, `ALLOWED_HOSTS`, `CORS_ALLOW_ALL_ORIGINS`, `CORS_ALLOWED_ORIGINS`, `GOOGLE_APPLICATION_CREDENTIALS`, `REDIS_URL`, `DATABASE_URL_APP`, `DATABASE_URL_MIGRATOR` (i, per a proves locals, `TEST_DATABASE_URL_APP`, `TEST_DATABASE_URL_MIGRATOR`) |
+| `env/.env.development` | `SECRET_KEY`, `DEBUG`, `ALLOWED_HOSTS`, `CORS_ALLOW_ALL_ORIGINS`, `CORS_ALLOWED_ORIGINS`, `GOOGLE_APPLICATION_CREDENTIALS`, `DATABASE_URL_APP`, `DATABASE_URL_MIGRATOR` (i, per a proves locals, `TEST_DATABASE_URL_APP`, `TEST_DATABASE_URL_MIGRATOR`) |
 | `env/firebase-service-account.json` | Service account de Firebase. **Ruta fixa** que fa servir `api/firebase_config.py` en local |
 
 Detall de credencials de Firebase: [firebase-credentials.md](firebase-credentials.md).
@@ -76,7 +76,7 @@ export R2_ACCESS_KEY_ID=...  R2_SECRET_ACCESS_KEY=...  R2_ENDPOINT=...  R2_BUCKE
 ```powershell
 $env:R2_ACCESS_KEY_ID="..."; $env:R2_SECRET_ACCESS_KEY="..."; $env:R2_ENDPOINT="..."; $env:R2_BUCKET_NAME="..."
 ```
-Sense elles, qualsevol controller que creï `R2MediaService` falla. El health check ja **no** en depèn (el client R2 de `RefugiLliureController` es crea sota demanda); l'esborrat d'un mitjà de refugi (`apps/refuges/services.py`) sí que necessita R2 **[FET]**.
+Sense elles, qualsevol servei que creï `R2MediaService` falla. El health check no en depèn; l'esborrat d'un mitjà de refugi (`apps/refuges/services.py`) sí que necessita R2 **[FET]**.
 
 ## 4. Migracions (sempre amb el rol `migrator`)
 ```bash
@@ -95,7 +95,7 @@ python manage.py load_refuges               # UNA sola vegada: 1.542 refugis, 1.
 ```bash
 python manage.py runserver
 ```
-- API: `http://127.0.0.1:8000/api/` · Health: `/api/health/` (comprova Postgres, Firebase i Firestore; retorna 503 si algun falla)
+- API: `http://127.0.0.1:8000/api/` · Health: `/api/health/` (comprova Postgres i que Firebase Admin estigui inicialitzat; resposta `{status, message, firebase, database}`; 503 si algun falla)
 - Per provar amb tokens sense un projecte Firebase real: Firebase Auth Emulator amb `FIREBASE_AUTH_EMULATOR_HOST` ([firebase-auth.md](../integrations/firebase-auth.md)); mai en producció.
 - Swagger: `/swagger/` · ReDoc: `/redoc/`
 - Per provar endpoints autenticats: [client-auth-usage.md](client-auth-usage.md).
@@ -105,8 +105,7 @@ python manage.py runserver
 |---|---|
 | `R2 configuration is incomplete` | Variables `R2_*` no exportades (pas 3) |
 | `FileNotFoundError ... firebase-service-account.json` | Falta el fitxer de la ruta fixa (pas 2) |
-| Respostes lentes i cap clau a Redis | Redis no arrencat; la cache falla en silenci |
-| Health check 503 | Postgres inaccessible (`database: false`) **o** Firestore inaccessible ([flux 11](../flows/11-admin-cache-health.md)); la config R2 ja no hi influeix |
+| Health check 503 | Postgres inaccessible (`database: false`) **o** Firebase Admin no inicialitzat (`firebase: false`: falta el service account) ([flux 11](../flows/11-admin-cache-health.md)); la config R2 ja no hi influeix |
 | `ImproperlyConfigured: Could not find the GDAL library` (o GEOS) | Falta GDAL/GEOS al sistema: a Windows instal·la OSGeo4W (§ Requisits; `OSGEO4W_ROOT` si no és a la ruta per defecte) o executa en un contenidor Linux (§ PostgreSQL) |
 | `permission denied for schema public` en migrar | Falta `GRANT CREATE ON SCHEMA public TO migrator` (PG15+) al *bootstrap* |
 | `permission denied` / `must be owner` amb `migrate` | S'ha usat el rol `app`: torna a executar amb `--database=migrator` |

@@ -110,7 +110,7 @@ sequenceDiagram
 - Futur (domini propi a Cloudflare + CSAM Scanning Tool + PhotoDNA/NCMEC): [guides/cloudflare-domain-csam.md](../guides/cloudflare-domain-csam.md).
 
 ## Permisos (`api/permissions.py`)
-- `HasProfile` (chunk 3): 403 `profile_required` si no hi ha fila a `users.users`. S'aplica a tot endpoint autenticat llevat de `POST /users/` i `/api/cache/*`; va **abans** d'`IsNotBlocked`/`IsAgeConfirmed`.
+- `HasProfile` (chunk 3): 403 `profile_required` si no hi ha fila a `users.users`. S'aplica a tot endpoint autenticat llevat de `POST /users/`; va **abans** d'`IsNotBlocked`/`IsAgeConfirmed`.
 - `IsNotBlocked`: 403 `user_blocked` si `users.users.is_blocked`. S'aplica a intents/confirm, denúncies i POST/PATCH/DELETE d'experiències.
 - `IsAgeConfirmed`: 403 `age_not_confirmed` si no hi ha `age_confirmed_at`. Com que `HasProfile` ja ha exigit la fila, el cas «usuari inexistent» només es veu aquí si algú crida el permís sense `HasProfile`.
 - Els tres llegeixen `users.users` amb `get_user_for_permissions` → `selectors.get_user` (**1 consulta per petició**: cau a `request._account_cache`; **sense Redis**). Un bloqueig té efecte immediat (abans podia trigar fins a 10 min per la cache de `user_detail`; [TECH_DEBT I4](../TECH_DEBT.md) resolt) **[FET]**.

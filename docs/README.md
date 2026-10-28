@@ -14,7 +14,7 @@ Les línies poden desplaçar-se amb canvis futurs; si una cita no quadra, busca 
 
 ## Índex
 
-- [ARCHITECTURE.md](ARCHITECTURE.md) — stack, capes, rutes, auth, cache, convencions i excepcions.
+- [ARCHITECTURE.md](ARCHITECTURE.md) — stack, capes, rutes, auth, health check, convencions i excepcions.
 - [GOTCHAS.md](GOTCHAS.md) — què NO fer.
 - [TECH_DEBT.md](TECH_DEBT.md) — bugs i deute tècnic detectat, per severitat.
 
@@ -32,15 +32,13 @@ Les línies poden desplaçar-se amb canvis futurs; si una cita no quadra, busca 
 | 8 | Experiències amb fotos | [flows/08-experiences.md](flows/08-experiences.md) |
 | 9 | Dubtes i respostes | [flows/09-doubts-answers.md](flows/09-doubts-answers.md) |
 | 10 | Refugis preferits i visitats | [flows/10-favourite-visited.md](flows/10-favourite-visited.md) |
-| 11 | Endpoints admin de cache i health check | [flows/11-admin-cache-health.md](flows/11-admin-cache-health.md) |
+| 11 | Health check (abans també cache admin) | [flows/11-admin-cache-health.md](flows/11-admin-cache-health.md) |
 | 12 | Denúncies, moderació de mitjans, edat mínima i auditoria | [flows/12-media-moderation.md](flows/12-media-moderation.md) |
 
 ### Integracions externes
 - [integrations/firebase-auth.md](integrations/firebase-auth.md)
-- [integrations/firestore.md](integrations/firestore.md)
 - [integrations/cloudflare-r2.md](integrations/cloudflare-r2.md)
-- [integrations/neon.md](integrations/neon.md) (Neon Postgres + PostGIS: BD `default`, rols, migracions, RLS; migració en curs)
-- [integrations/redis-cache.md](integrations/redis-cache.md)
+- [integrations/neon.md](integrations/neon.md) (Neon Postgres + PostGIS: BD `default`, rols, migracions, RLS; migració acabada)
 - [integrations/render-deploy-ci.md](integrations/render-deploy-ci.md) (Render, GitHub Actions, SonarCloud, Codecov)
 
 ### Receptes (canvis al codi)
@@ -55,7 +53,7 @@ Les línies poden desplaçar-se amb canvis futurs; si una cita no quadra, busca 
 | [guides/testing.md](guides/testing.md) | Executar i escriure tests, coverage, tests contra Postgres local (RLS), Windows amb Docker, per què Firebase no s'inicialitza |
 | [guides/firebase-credentials.md](guides/firebase-credentials.md) | Configurar el service account (local, Render, GitHub Actions) |
 | [guides/r2-render-setup.md](guides/r2-render-setup.md) | Configurar Cloudflare R2 a Render/local, bucket, rotació de claus |
-| [guides/admin-management.md](guides/admin-management.md) | Fer/treure admins (custom claims) i usar els endpoints de cache |
+| [guides/admin-management.md](guides/admin-management.md) | Fer/treure admins (custom claims) i provar un endpoint d'admin |
 | [guides/client-auth-usage.md](guides/client-auth-usage.md) | Cridar l'API amb token de Firebase (JS, cURL, Swagger) |
 | [guides/daily-visits-process.md](guides/daily-visits-process.md) | Executar el procés diari de visites (Actions, manual, crontab) |
 | [guides/hash-blocklist.md](guides/hash-blocklist.md) | Carregar la llista de hashes prohibits (`load_hash_blocklist`: format CSV, idempotència) i executar les purgues `purge_audit_logs`/`purge_moderation` (sense planificar, R18) |

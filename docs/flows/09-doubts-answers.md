@@ -62,7 +62,7 @@ sequenceDiagram
 - Crear dubte: `services.create_dubt` → `refuge_exists` (404 `Refuge not found`) + `INSERT`: 2 consultes.
 - Crear resposta: `get_doubt` (+ `get_answer` si és rèplica) + `INSERT`; no hi ha cap comptador a actualitzar.
 - Esborrar dubte o resposta: lectura + comprovació de propietat + 1 `DELETE`. Si un esborrat concurrent ja l'ha eliminat, 404.
-- Llistar: `selectors.list_doubts` fa **2 consultes** amb qualsevol nombre de files (`annotate(Count('answers'))` + `Prefetch`), sense N+1. Sense cache Redis (vegeu [redis-cache](../integrations/redis-cache.md)).
+- Llistar: `selectors.list_doubts` fa **2 consultes** amb qualsevol nombre de files (`annotate(Count('answers'))` + `Prefetch`), sense N+1. Sense cache.
 - Esborrat d'usuari: `DELETE users.users` cascadeja els seus dubtes i respostes (FK `creator_uid`); ja no és un pas de Firestore ([deep-dive](../deep-dives/user-deletion.md)). Esborrar un refugi a PostgreSQL cascadeja també els seus dubtes.
 
 ## Errors [FET]

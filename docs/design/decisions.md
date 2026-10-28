@@ -5,7 +5,7 @@
 
 ## ADR-1 — Vistes basades en classe (`APIView`) en lloc de funcions (`@api_view`)
 
-**Estat:** adoptada. Totes les vistes són `APIView`, excepte `api/views/cache_views.py` (`@api_view`) **[FET]**.
+**Estat:** adoptada. Totes les vistes són `APIView` (l'única excepció, `api/views/cache_views.py`, ha desaparegut al chunk 11) **[FET]**.
 
 **Context.** Les primeres vistes (`users_collection`, `user_detail`, `health_check`, `refugis_collection`, `refugi_detail`) eren funcions amb `if request.method == ...`. Per aplicar permisos diferents per mètode calia instanciar-los a mà i fins i tot crear objectes artificials per simular la vista:
 ```python
