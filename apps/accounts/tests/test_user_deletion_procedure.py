@@ -630,3 +630,40 @@ def test_la_vista_delete_no_usa_has_profile():
     assert names == ['IsAuthenticated', 'IsSameUser']
     view.request.method = 'GET'
     assert 'HasProfile' in [type(p).__name__ for p in view.get_permissions()]
+
+
+# =================================== ordre R2 / BD i reintents (revisió SQL) ===================================
+
+def test_les_restriccions_diferides_es_comproven_abans_d_esborrar_a_r2(client, world, r2):
+    """Un error de FK/constraint trigger diferit ha de sortir abans d'R2 (no al COMMIT, amb els fitxers ja perduts)."""
+    from django.db import connection
+    from django.test.utils import CaptureQueriesContext
+    make_media(world[0], 'u1', key='k/u1.webp')
+    seen = []
+
+    def spy(keys):
+        seen.append([q['sql'] for q in ctx.captured_queries])
+        return {'deleted': list(keys), 'failed': []}
+    r2.delete_files.side_effect = spy
+    with CaptureQueriesContext(connection) as ctx:
+        assert delete(client, 'u1').status_code == 204
+    before = seen[0]
+    imm = [i for i, s in enumerate(before) if 'SET CONSTRAINTS ALL IMMEDIATE' in s.upper()]
+    dele = [i for i, s in enumerate(before) if s.upper().startswith('DELETE FROM "USERS"."USERS"')]
+    assert imm and dele and dele[0] < imm[0]
+
+
+def test_si_la_bd_falla_despres_d_esborrar_a_r2_el_reintent_acaba_be(client, world, r2, firebase_accounts):
+    """Fitxers ja esborrats a R2 però fila encara present (rollback): el reintent és idempotent i acaba amb 204."""
+    from unittest.mock import patch
+    from apps.accounts import services
+    make_avatar('u1', key='a/u1.webp')
+    make_media(world[0], 'u1', key='k/u1.webp')
+    with patch.object(services.audit.audit_log_service, 'log', side_effect=RuntimeError('bd caiguda')):
+        assert delete(client, 'u1').status_code == 500
+    assert user_exists('u1')
+    firebase_accounts.delete_user.assert_not_called()
+    r2.delete_files.reset_mock()
+    assert delete(client, 'u1').status_code == 204
+    assert not user_exists('u1')
+    firebase_accounts.delete_user.assert_called_once_with('u1')

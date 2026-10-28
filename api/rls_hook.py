@@ -62,6 +62,10 @@ def install():
 
     def perform_authentication(self, request):
         original(self, request)
+        # Una vista que obre la seva pròpia transacció i context (p. ex. `DELETE /users/{uid}/`, D42) ho declara aquí
+        # perquè el hook no avisi ni executi un `set_config` inútil fora de transacció.
+        if getattr(self, 'skip_rls_hook', None) and self.skip_rls_hook(request):
+            return
         apply_request_rls_context(request)
 
     perform_authentication.__wrapped__ = original

@@ -198,6 +198,10 @@ class UserDetailAPIView(APIView):
             connection.set_rollback(False)
         return response
 
+    def skip_rls_hook(self, request):
+        """El DELETE no té transacció de petició: `delete_user` fixa el seu propi context de RLS (vegeu `api/rls_hook.py`)."""
+        return request.method == 'DELETE'
+
     def get_permissions(self):
         if self.request.method == 'GET':
             return [IsAuthenticated(), HasProfile()]

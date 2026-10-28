@@ -11,7 +11,7 @@ import uuid
 from datetime import date
 from typing import Any, Dict, Optional
 
-from django.db import IntegrityError, connection, transaction
+from django.db import IntegrityError, OperationalError, connection, transaction
 from django.db.models import F
 from django.db.models.functions import Now
 from firebase_admin import auth as firebase_auth
@@ -316,6 +316,10 @@ def _delete_r2_keys(keys: list, media_service=None) -> None:
         raise UserDeletionError("R2 no ha esborrat tots els fitxers de l'usuari")
 
 
+DEADLOCK_SQLSTATE = '40P01'
+DELETE_DEADLOCK_RETRIES = 2
+
+
 def _delete_user_data(uid: str, media_service=None) -> bool:
     """Transacció única de l'esborrat (§8.4). `False` si l'usuari no té fila (res a fer)."""
     with rls_context(uid):
@@ -329,9 +333,14 @@ def _delete_user_data(uid: str, media_service=None) -> bool:
                 cur.execute(_AUTO_REPORTS_SQL, {'uid': uid})
             # 5. El `comment` (text lliure, pot dur dades personals); la FK `SET NULL` anonimitza la resta.
             RefugeProposal.objects.filter(creator_id=uid).update(comment=None)
-        _delete_r2_keys(keys, media_service)                                            # 6
-        UserAccount.objects.filter(pk=uid).delete()                                     # 7
-        audit.audit_log_service.log(None, audit.ACTION_USER_DELETED)                    # 8: cap identificador
+        UserAccount.objects.filter(pk=uid).delete()                                     # 6
+        audit.audit_log_service.log(None, audit.ACTION_USER_DELETED)                    # 7: cap identificador
+        # 8. Les FK i els *constraint triggers* diferits s'avaluen ara: un error de BD ha de sortir abans d'esborrar a
+        # R2 (no al COMMIT, amb els fitxers ja perduts). Només una fallada del propi COMMIT deixa R2 buit amb la fila;
+        # el reintent és idempotent (esborrar claus inexistents a R2 no falla).
+        with connection.cursor() as cur:
+            cur.execute('SET CONSTRAINTS ALL IMMEDIATE')
+        _delete_r2_keys(keys, media_service)                                            # 9: l'últim pas
     return True
 
 
@@ -345,5 +354,14 @@ def delete_user(uid: str, media_service=None) -> None:
     `UserDeletionError` i tot desfet; si falla Firebase, `UserDeletionError` amb les dades ja esborrades: es pot
     tornar a cridar mentre el compte existeixi. Per tenir un COMMIT real, la vista és `non_atomic_requests`.
     """
-    _delete_user_data(uid, media_service)
+    for attempt in range(DELETE_DEADLOCK_RETRIES + 1):
+        try:
+            _delete_user_data(uid, media_service)
+            break
+        except OperationalError as exc:
+            # Un `DELETE` pot creuar-se amb un flux de moderació que bloqueja primer el mitjà i després l'usuari
+            # (`media_creator_uid`); Postgres tria una víctima. La transacció s'ha desfet sencera: es reintenta.
+            if getattr(exc.__cause__, 'sqlstate', None) != DEADLOCK_SQLSTATE or attempt == DELETE_DEADLOCK_RETRIES:
+                raise
+            logger.warning("Esborrat d'usuari: deadlock, reintent %d", attempt + 1)
     _delete_firebase_account(uid)

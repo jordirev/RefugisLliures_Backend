@@ -238,3 +238,58 @@ def test_dos_esborrats_simultanis_per_http_un_204_i_l_altre_204_idempotent(commi
     assert not any(t.is_alive() for t in threads)
     assert codes == [204, 204], codes
     assert not committed.user_exists('u1')
+
+
+def test_el_delete_no_avisa_el_hook_de_rls_fora_de_transaccio(committed, client, django_db_blocker):
+    with patch('api.rls_hook.logger') as log:
+        assert http_delete(client, 'u1', django_db_blocker).status_code == 204
+    log.warning.assert_not_called()
+    connections.close_all()
+
+
+def test_deadlock_amb_una_denuncia_concurrent_sobre_un_mitja_de_l_usuari_es_reintenta(committed, firebase_accounts,
+                                                                                        django_db_blocker):
+    """
+    Moderació bloqueja el mitjà (`FOR UPDATE`) i després pren `KEY SHARE` de l'usuari (`media_creator_uid`); l'esborrat
+    bloqueja l'usuari i després esborra el mitjà per cascada: deadlock. Passi el que passi a la denúncia, l'esborrat
+    ha d'acabar (reintent de la transacció desfeta).
+    """
+    with committed.db.cursor() as cur:
+        cur.execute("INSERT INTO users.users (uid) VALUES ('r1')")
+    locked, out = threading.Event(), {}
+
+    def moderation():
+        try:
+            with transaction.atomic(using='migrator'):
+                with connections['migrator'].cursor() as cur:
+                    cur.execute("SELECT 1 FROM refuges.refuge_media WHERE key = 'k/u1.webp' FOR UPDATE")
+                    locked.set()
+                    threading.Event().wait(2.5)                  # deixa que l'esborrat quedi esperant el mitjà
+                    cur.execute("INSERT INTO moderation.media_reports (refuge_id, media_key, reporter_uid, reason, "
+                                "media_creator_uid) VALUES (%s, 'k/u1.webp', 'r1', 'hate_speech', 'u1')",
+                                [committed.refuge])
+            out['m'] = 'ok'
+        except Exception as exc:                                  # noqa: BLE001
+            out['m'] = exc
+        finally:
+            connections.close_all()
+
+    def deleter():
+        try:
+            assert locked.wait(timeout=10)
+            services.delete_user('u1')
+            out['d'] = 'ok'
+        except Exception as exc:                                  # noqa: BLE001
+            out['d'] = exc
+        finally:
+            connections.close_all()
+
+    with django_db_blocker.unblock():
+        threads = [threading.Thread(target=moderation), threading.Thread(target=deleter)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join(timeout=60)
+    assert not any(t.is_alive() for t in threads)
+    assert out['d'] == 'ok', out
+    assert not committed.user_exists('u1')
