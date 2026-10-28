@@ -1,5 +1,13 @@
 # Flux 12 — Denúncies, moderació de mitjans, edat i auditoria
 
+> **Estat (chunk 9) [FET]**: denúncies, avisos, llista de hashes i auditoria són a PostgreSQL (`apps/moderation`, `apps/audit`; D40, D41). Les referències següents a `MediaReportController`, DAOs, col·leccions de Firestore (`media_reports`, `moderation_notices`, `moderation_hash_blocklist`, `audit_logs`) i TTL són **històriques**. Vigent:
+> - Rutes a `apps/moderation/urls.py` (mateixos paths i `name=`); `GET /users/{uid}/moderation-notices/` només per al mateix usuari (`IsSameUser`, l'admin rep 403).
+> - `media_reports.id` és un UUID opac; el 409 `already_reported` surt de la `UNIQUE` `media_reports_unique_reporter_uq`. Es poden denunciar mitjans de refugi i d'experiència; un mitjà `removed` o una clau `moderation-hold/` → 404 `Media not found`. `reporter_uid` surt `system` (automàtica) o `unknown` (anonimitzada).
+> - Llista d'admin: una sola consulta amb `LEFT JOIN refuges.refuge_media`. Resoldre: una transacció; CSAM copia a `moderation-hold/<clau>` i després esborra; si R2 falla, 500 i res no canvia.
+> - Pujada bloquejada per `moderation.fn_hash_match` (taula il·legible per a `app`, carregada amb `load_hash_blocklist`): evidència a `moderation-hold/<upload_id>` (sense l'UID), denúncia automàtica `legal_hold`, avís, auditoria `legal_hold`.
+> - Auditoria a `audit.audit_logs` (365 dies; 5 anys si `legal_hold`; `actor_uid` NULL = sistema; usuari afectat a `subject_uid`); purgues `purge_audit_logs` i `purge_moderation` sense planificar (TECH_DEBT R18).
+
+
 > **[FET]** comprovat al codi · **[INFERÈNCIA]** deducció · **[NO VERIFICAT]** depèn de config externa.
 
 Cobreix la part RGPD/DSA de la feature *images*: notificació i retirada (art. 16 DSA), declaració de motius (art. 17), recurs (art. 20), moderació automàtica per hash, strikes i bloqueig, edat mínima (16) i registre d'auditoria (art. 32 RGPD). La pujada en si és al [flux 3](03-refuge-media-upload.md).

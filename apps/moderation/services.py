@@ -317,33 +317,37 @@ def register_upload_block(*, uid: str, refuge_id, hold_key: str, upload_id: str,
 
 # Denúncies caducades: no `legal_hold` 24 mesos després de resoldre's (les pendents no caduquen); `legal_hold` 5 anys
 # després de resoldre's o, si no, de crear-se. (La data base és sempre «ara» de la BD: res al SQL depèn del dia.)
-_PURGE_REPORTS_SQL = """
-DELETE FROM moderation.media_reports WHERE id IN (
-    SELECT id FROM moderation.media_reports
-     WHERE (NOT legal_hold AND status = 'resolved' AND resolved_at < now() - make_interval(days => %s))
-        OR (legal_hold AND coalesce(resolved_at, created_at) < now() - make_interval(days => %s))
-     ORDER BY id LIMIT %s)"""
+# Cada lot són dues sentències (`SELECT` dels ids i `DELETE ... id = ANY(...)`): un `DELETE ... IN (subconsulta amb LIMIT)`
+# deixava el planificador triar un bucle niuat quadràtic amb estadístiques velles.
+_SELECT_REPORTS_SQL = """
+SELECT id FROM moderation.media_reports
+ WHERE (NOT legal_hold AND status = 'resolved' AND resolved_at < now() - make_interval(days => %s))
+    OR (legal_hold AND coalesce(resolved_at, created_at) < now() - make_interval(days => %s))
+ ORDER BY id LIMIT %s"""
+_DELETE_REPORTS_SQL = 'DELETE FROM moderation.media_reports WHERE id = ANY(%s)'
 # Avisos: 24 mesos, tret dels lligats a una denúncia `legal_hold` encara vigent (cauen amb ella als 5 anys).
-_PURGE_NOTICES_SQL = """
-DELETE FROM moderation.moderation_notices WHERE id IN (
-    SELECT n.id FROM moderation.moderation_notices n
-     WHERE (n.created_at < now() - make_interval(days => %s) AND NOT EXISTS (
-                SELECT 1 FROM moderation.media_reports r WHERE r.id = n.report_id AND r.legal_hold))
-        OR EXISTS (SELECT 1 FROM moderation.media_reports r
-                    WHERE r.id = n.report_id AND r.legal_hold
-                      AND coalesce(r.resolved_at, r.created_at) < now() - make_interval(days => %s))
-     ORDER BY n.id LIMIT %s)"""
+_SELECT_NOTICES_SQL = """
+SELECT n.id FROM moderation.moderation_notices n
+ WHERE (n.created_at < now() - make_interval(days => %s) AND NOT EXISTS (
+            SELECT 1 FROM moderation.media_reports r WHERE r.id = n.report_id AND r.legal_hold))
+    OR EXISTS (SELECT 1 FROM moderation.media_reports r
+                WHERE r.id = n.report_id AND r.legal_hold
+                  AND coalesce(r.resolved_at, r.created_at) < now() - make_interval(days => %s))
+ ORDER BY n.id LIMIT %s"""
+_DELETE_NOTICES_SQL = 'DELETE FROM moderation.moderation_notices WHERE id = ANY(%s)'
 
 
-def _purge(sql: str, params: list, batch_size: int) -> int:
+def _purge(select_sql: str, delete_sql: str, params: list, batch_size: int) -> int:
     total = 0
     while True:
         with system_context():
             with connection.cursor() as cur:
-                cur.execute(sql, [*params, batch_size])
-                deleted = cur.rowcount
-        total += deleted
-        if deleted < batch_size:
+                cur.execute(select_sql, [*params, batch_size])
+                ids = [row[0] for row in cur.fetchall()]
+                if ids:
+                    cur.execute(delete_sql, [ids])
+        total += len(ids)
+        if len(ids) < batch_size:
             return total
 
 
@@ -353,6 +357,6 @@ def purge_expired(batch_size: int = 5000) -> Dict[str, int]:
     avisos (cauen pel seu termini; els lligats a una denúncia `legal_hold` esperen que aquesta caduqui) i després les
     denúncies (els avisos que queden apuntant-hi passen a `report_id` NULL per la FK i cauen pel termini de 24 mesos).
     """
-    notices = _purge(_PURGE_NOTICES_SQL, [RETENTION_DAYS, LEGAL_HOLD_RETENTION_DAYS], batch_size)
-    reports = _purge(_PURGE_REPORTS_SQL, [RETENTION_DAYS, LEGAL_HOLD_RETENTION_DAYS], batch_size)
+    notices = _purge(_SELECT_NOTICES_SQL, _DELETE_NOTICES_SQL, [RETENTION_DAYS, LEGAL_HOLD_RETENTION_DAYS], batch_size)
+    reports = _purge(_SELECT_REPORTS_SQL, _DELETE_REPORTS_SQL, [RETENTION_DAYS, LEGAL_HOLD_RETENTION_DAYS], batch_size)
     return {'reports': reports, 'notices': notices}

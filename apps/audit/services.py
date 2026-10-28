@@ -55,9 +55,10 @@ _INSERT_SQL = (
     'INSERT INTO audit.audit_logs (actor_uid, subject_uid, action, target_type, target_id, metadata, legal_hold, '
     'expire_at) VALUES (%s, %s, %s, %s, %s, %s::jsonb, %s, now() + make_interval(days => %s))')
 # `expire_at < now()` de les files normals va per l'índex parcial `(expire_at) WHERE NOT legal_hold`; les `legal_hold`
-# (poques) caduquen als 5 anys amb una segona passada. Sense `FOR UPDATE`: `app` no té `UPDATE` sobre la taula.
-_PURGE_SQL = ('DELETE FROM audit.audit_logs WHERE id IN (SELECT id FROM audit.audit_logs '
-              'WHERE expire_at < now() AND {hold} ORDER BY expire_at LIMIT %s)')
+# (poques) caduquen als 5 anys amb una segona passada. Sense `FOR UPDATE`: `app` no té `UPDATE` sobre la taula. Dues
+# sentències per lot (ids + `DELETE ... = ANY`) perquè el planificador no triï un pla quadràtic amb estadístiques velles.
+_SELECT_SQL = 'SELECT id FROM audit.audit_logs WHERE expire_at < now() AND {hold} ORDER BY expire_at LIMIT %s'
+_DELETE_SQL = 'DELETE FROM audit.audit_logs WHERE id = ANY(%s)'
 
 
 def is_legal_hold(action: str, metadata: Optional[Dict[str, Any]] = None) -> bool:
@@ -116,13 +117,15 @@ def purge_expired(batch_size: int = 5000) -> int:
     """
     total = 0
     for hold in ('NOT legal_hold', 'legal_hold'):
-        sql = _PURGE_SQL.format(hold=hold)
+        select_sql = _SELECT_SQL.format(hold=hold)
         while True:
             with system_context():
                 with connection.cursor() as cur:
-                    cur.execute(sql, [batch_size])
-                    deleted = cur.rowcount
-            total += deleted
-            if deleted < batch_size:
+                    cur.execute(select_sql, [batch_size])
+                    ids = [row[0] for row in cur.fetchall()]
+                    if ids:
+                        cur.execute(_DELETE_SQL, [ids])
+            total += len(ids)
+            if len(ids) < batch_size:
                 break
     return total
