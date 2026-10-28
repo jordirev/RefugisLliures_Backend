@@ -59,7 +59,7 @@ def refuge(world):
 
 
 @pytest.fixture
-def full_refuge():
+def full_refuge(world):
     """Refugi amb totes les dades, mitjana de condició (1,5 de 3 vots) i enllaços."""
     return make_refuge(name='Refugi de Colomers', lat=42.6321, long=0.9984, surname='Colomers', altitude=2135,
                        places=12, type='fermée', description='Un refugi', region='Pirineus', departement='Lleida',
@@ -151,8 +151,6 @@ def test_create_guarda_payload_sense_foto_ni_refugi(services, world):
 
 
 def test_create_update_desa_la_foto_del_refugi_en_forma_d_api(services, full_refuge):
-    from apps.proposals.tests.helpers import make_user
-    make_user('u1')
     with user('u1'):
         p = services.create_proposal(creator_uid='u1', action='update', refuge_id=str(full_refuge.pk),
                                      payload={'places': 45})
@@ -430,7 +428,7 @@ def test_approve_delete_esborra_refugi_serveis_i_enllacos(services, full_refuge)
     assert sql('SELECT count(*) FROM refuges.refuge_links WHERE refuge_id = %s', [full_refuge.pk]) == [(0,)]
     row = proposal_row(pid)
     assert (row['status'], row['reviewer_uid']) == ('approved', 'adm')
-    assert row['refuge_id'] is None and row['refuge_snapshot']['name'] == 'Refugi A' and row['action'] == 'delete'
+    assert row['refuge_id'] is None and row['refuge_snapshot']['name'] == 'Refugi de Colomers' and row['action'] == 'delete'
 
 
 def test_approve_delete_rebutja_primer_les_altres_pendents_del_refugi(services, world):

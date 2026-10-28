@@ -137,7 +137,7 @@ def test_post_dades_invalides_400(client, world, body, key):
 def test_post_camps_no_permesos_400_amb_el_missatge_d_avui(client, world):
     r = api_post(client, PROPOSALS, user_claims('u1'), create_body(remarque='x'))
     assert r.status_code == 400
-    assert str(r.json()['details']['payload']).startswith('Camps no permesos al payload: remarque. Camps permesos: ')
+    assert r.json()['details']['payload'][0].startswith('Camps no permesos al payload: remarque. Camps permesos: ')
 
 
 def test_post_valors_fora_de_rang_400(client, world):

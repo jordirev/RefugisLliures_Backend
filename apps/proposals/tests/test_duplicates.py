@@ -41,6 +41,11 @@ def post(client, name, coord, uid='u1'):
 
 @pytest.fixture
 def colomers(world):
+    # Els refugis de `world` («Refugi A» i «Refugi B») comparteixen punt (42.5, 1.5) amb el refugi de proves i el seu nom té
+    # una similitud de trigrames de 0,33 > 0,3 amb «Refugi de Colomers»: serien duplicats legítims. Es reanomenen perquè
+    # cada test només vegi el candidat que prova.
+    sql("UPDATE refuges.refuges SET name = 'Xyzzy Alfa' WHERE id = %s", [world[0].pk])
+    sql("UPDATE refuges.refuges SET name = 'Qwerty Beta' WHERE id = %s", [world[1].pk])
     return make_refuge(name='Refugi de Colomers', lat=LAT, long=LONG, surname='Cabane Alba')
 
 

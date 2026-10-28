@@ -88,7 +88,7 @@ def test_el_claim_d_admin_ve_del_token_mai_del_cos(client, world):
 # ---------- bloqueig i edat (només POST de creació) ----------
 
 def test_post_usuari_bloquejat_403_user_blocked(client, world):
-    sql("UPDATE users.users SET is_blocked = true, blocked_reason = 'x', blocked_at = now() WHERE uid = 'u2'")
+    sql("UPDATE users.users SET is_blocked = true, blocked_reason = 'strikes', blocked_at = now() WHERE uid = 'u2'")
     r = api_post(client, PROPOSALS, user_claims('u2'), create_body())
     assert r.status_code == 403 and r.json()['error'] == 'user_blocked'
     assert count_proposals() == 0
@@ -103,7 +103,7 @@ def test_post_sense_edat_confirmada_403_age_not_confirmed(client, world):
 
 def test_get_my_no_exigeix_ni_bloqueig_ni_edat(client, world):
     make_user('minor', age_confirmed_at=None, age_threshold=None)
-    sql("UPDATE users.users SET is_blocked = true, blocked_reason = 'x', blocked_at = now() WHERE uid = 'u2'")
+    sql("UPDATE users.users SET is_blocked = true, blocked_reason = 'strikes', blocked_at = now() WHERE uid = 'u2'")
     make_proposal(creator='u2')
     make_proposal(creator='minor', minutes=1)
     assert len(api_get(client, MINE, user_claims('u2')).json()) == 1

@@ -41,7 +41,9 @@ def errors_of(data):
 
 
 def payload_error(data):
-    return str(errors_of(data)['payload'])
+    """Missatge d'error del payload: DRF envolta els errors del `validate()` en una llista (com sempre)."""
+    error = errors_of(data)['payload']
+    return str(error[0]) if isinstance(error, list) and len(error) == 1 else str(error)
 
 
 def create(**payload):

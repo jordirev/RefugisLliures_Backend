@@ -157,7 +157,8 @@ def test_enumeracions(world, field, value):
             f"VALUES (%s, %s, %s::jsonb, 'u1')",
             [value if field == 'action' else 'create', value if field == 'status' else 'pending',
              '{"name": "x", "coord": {"lat": 1, "long": 1}}'])
-    assert info.value.__cause__.diag.constraint_name == f'refuge_proposals_{field}_ck'
+    # PostgreSQL avalua els `CHECK` per ordre alfabètic: amb un `status` desconegut, `review_ck` salta abans que `status_ck`.
+    assert info.value.__cause__.diag.constraint_name in (f'refuge_proposals_{field}_ck', 'refuge_proposals_review_ck')
 
 
 # =================================== FK i ordre d'esborrat ===================================
@@ -223,5 +224,5 @@ def test_model_crea_amb_defaults_de_la_bd(PM, world):
     with system_context():
         p = PM.RefugeProposal.objects.create(action='create', creator_id='u1',
                                              payload={'name': 'x', 'coord': {'lat': 1, 'long': 1}})
-    p.refresh_from_db()
+        p.refresh_from_db()                                      # dins el context: fora, la RLS no deixaria veure-la
     assert uuid7_ok(str(p.pk)) and p.status == 'pending' and p.created_at is not None

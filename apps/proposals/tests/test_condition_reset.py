@@ -54,12 +54,13 @@ def test_les_experiencies_antigues_compten_com_a_vot_nou_en_canviar_de_valor_des
     r, e1, e2 = voted
     approve(services, make_proposal('update', refuge=r, payload={'condition': 2}))
     assert refuge_state(r)[:2] == (2.0, 1)
-    vote_update('u1', e1, 3)                                  # vot nou: (2·1 + 3) / 2
-    assert refuge_state(r)[:2] == (2.5, 2)
-    vote_update('u2', e2, 0)                                  # vot nou: (2,5·2 + 0) / 3
-    assert refuge_state(r)[0] == pytest.approx(5 / 3) and refuge_state(r)[1] == 3
-    vote_update('u1', e1, 1)                                  # ja recomptada: només ajusta (3 -> 1) / 3
-    assert refuge_state(r)[0] == pytest.approx(5 / 3 - 2 / 3) and refuge_state(r)[1] == 3
+    # Nota: un PATCH que no canvia el valor no fa res (§2.9); `e1` valia 3, per això passa a 2.
+    vote_update('u1', e1, 2)                                  # vot nou: (2·1 + 2) / 2
+    assert refuge_state(r)[:2] == (2.0, 2)
+    vote_update('u2', e2, 0)                                  # vot nou: (2·2 + 0) / 3
+    assert refuge_state(r)[0] == pytest.approx(4 / 3) and refuge_state(r)[1] == 3
+    vote_update('u1', e1, 1)                                  # ja recomptada: només ajusta (2 -> 1) / 3
+    assert refuge_state(r)[0] == pytest.approx(4 / 3 - 1 / 3) and refuge_state(r)[1] == 3
 
 
 def test_una_experiencia_nova_despres_del_reinici_fa_la_mitjana_amb_el_valor_de_la_proposta(services, voted):

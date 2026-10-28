@@ -124,6 +124,9 @@ def proposal_row(proposal_id):
     if not rows:
         return None
     row = dict(zip(PROPOSAL_COLS, rows[0]))
+    for column in ('payload', 'refuge_snapshot'):          # Django desactiva el decodificador `jsonb` de psycopg: arriba com a `str`
+        if isinstance(row[column], str):
+            row[column] = json.loads(row[column])
     row['id'] = str(row['id'])
     row['refuge_id'] = str(row['refuge_id']) if row['refuge_id'] else None
     return row
