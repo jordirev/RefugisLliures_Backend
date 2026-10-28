@@ -183,24 +183,29 @@ def _lock_related(report: MediaReport) -> List[MediaReport]:
                 .order_by('id'))
 
 
-def _hold_media(refuge_id, media_key: str) -> bool:
+def _hold_media(refuge_id, media_key: str) -> Optional[List[str]]:
     """
-    Retenció CSAM: copia el fitxer i la miniatura a `moderation-hold/` (tots primer), esborra la fila i després els
-    originals. `False` si el mitjà ja no existeix. Si una còpia falla, `EvidenceHoldError` (res no s'ha esborrat).
+    Retenció CSAM: copia el fitxer i la miniatura a `moderation-hold/` (tots primer) i esborra la fila. Retorna les
+    claus originals a esborrar d'R2 (`_delete_originals`, l'ÚLTIM pas de la transacció: si la BD falla després, es
+    desfà i els originals hi són encara) o `None` si el mitjà ja no existeix. Si una còpia falla, `EvidenceHoldError`.
     """
     media = RefugeMedia.objects.filter(key=media_key, refuge_id=refuge_id).values('thumb_key').first()
     if media is None:
-        return False
+        return None
     keys = [k for k in (media_key, media['thumb_key']) if k]
     service = r2_media_service.get_refugi_media_service()
     for key in keys:
         if not service.copy_object(key, r2_media_service.moderation_hold_key(key)):
             raise EvidenceHoldError()
     RefugeMedia.objects.filter(key=media_key, refuge_id=refuge_id).delete()
+    return keys
+
+
+def _delete_originals(keys: List[str]) -> None:
+    service = r2_media_service.get_refugi_media_service()
     for key in keys:
         if not service.delete_file(key):
             logger.warning("Evidència copiada a moderation-hold/ però no s'ha pogut esborrar l'original %s", key)
-    return True
 
 
 def resolve_report(*, report_id, action: str, statement: str, admin_uid: str) -> Dict[str, Any]:
@@ -230,6 +235,7 @@ def resolve_report(*, report_id, action: str, statement: str, admin_uid: str) ->
         creator_uid = report.media_creator_id
         is_csam = any(r.reason == CSAM_REASON for r in related)
         media_status = None
+        held_keys: Optional[List[str]] = None
         strikes = None
         user_blocked = False
 
@@ -240,7 +246,8 @@ def resolve_report(*, report_id, action: str, statement: str, admin_uid: str) ->
                 _notify(creator_uid, NoticeType.CONTENT_RESTORED, statement, report, action)
         else:
             if is_csam:
-                media_status = 'held' if _hold_media(report.refuge_id, report.media_key) else None
+                held_keys = _hold_media(report.refuge_id, report.media_key)
+                media_status = 'held' if held_keys is not None else None
             elif RefugeMedia.objects.filter(key=report.media_key, refuge_id=report.refuge_id).update(
                     status=MediaStatus.REMOVED):
                 media_status = MediaStatus.REMOVED.value
@@ -269,6 +276,8 @@ def resolve_report(*, report_id, action: str, statement: str, admin_uid: str) ->
         audit.audit_log_service.log(admin_uid, audit.ACTION_MODERATION_RESOLVE, 'media', report.media_key,
                                     {'refuge_id': _opt_str(report.refuge_id), 'action': action,
                                      'report_ids': [str(i) for i in resolved_ids], 'csam': is_csam})
+        if held_keys:
+            _delete_originals(held_keys)
 
     return {
         'report': report_to_dict(resolved),

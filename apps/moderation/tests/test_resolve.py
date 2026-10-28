@@ -338,6 +338,19 @@ def test_csam_si_r2_falla_en_retenir_es_500_i_tot_es_desfa(client, case, r2store
     assert report_row(case['rid'])['legal_hold'] is False          # el `legal_hold` de la resolució s'ha desfet
 
 
+def test_csam_si_falla_la_bd_despres_de_copiar_els_originals_no_s_han_esborrat(client, case, r2store):
+    """L'esborrat dels originals és l'últim pas: si la BD falla després de la còpia, la transacció es desfà i el
+    fitxer continua on la fila l'espera (si no, la denúncia quedaria irresolible: la còpia fallaria per origen absent)."""
+    csam_case(case, r2store)
+    with patch('apps.moderation.services.account_services.set_blocked', side_effect=DatabaseError('x')):
+        resp = resolve(client, case['rid'], 'remove')
+    assert resp.status_code == 500
+    assert case['key'] in r2store.store and case['thumb'] in r2store.store
+    assert r2store.deletes == []
+    assert media_row(case['key']) is not None and report_row(case['rid'])['status'] == 'pending'
+    assert resolve(client, case['rid'], 'remove').json()['media_status'] == 'held'     # i es pot tornar a provar
+
+
 def test_csam_si_nomes_falla_la_copia_de_la_miniatura_tambe_es_desfa(client, case, r2store):
     csam_case(case, r2store)
     real = r2store.client.copy_object.side_effect
