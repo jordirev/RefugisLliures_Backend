@@ -23,9 +23,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from django.db import connection, transaction
 from django.db.models import BooleanField, ExpressionWrapper, Q
 
-from api.models.media_report import REPORT_PRIORITY_HIGH, SYSTEM_REPORTER_UID, MediaReport, build_report_id
-from api.models.moderation_notice import NOTICE_ACCOUNT_BLOCKED
-from api.services import audit_log_service as audit
+from apps.audit import services as audit
 from api.services import r2_media_service
 from api.services.image_processing_service import (
     REASON_MISSING_OBJECT, REASON_MODERATION_BLOCKED, REASON_PROCESSING_ERROR, REASON_TOO_LARGE,
@@ -39,6 +37,7 @@ from apps.accounts.serializers import avatar_to_dict
 from apps.core.db_functions import TransactionNow
 from apps.core.rls import system_context
 from apps.experiences import selectors as experience_selectors
+from apps.moderation import services as moderation_services
 from apps.refuges import selectors as refuge_selectors
 from apps.refuges.models import RefugeMedia
 from apps.refuges.serializers import media_to_dict
@@ -409,22 +408,19 @@ def _rollback_files(service, keys: List[str]) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Moderació automàtica: coincidència amb la blocklist (continua a Firestore fins al chunk 9)
+# Moderació automàtica: coincidència amb la llista de hashes (PostgreSQL, `apps.moderation`)
 # ---------------------------------------------------------------------------
 
 def _handle_moderation_block(uid: str, data: bytes, declared_content_type: Optional[str], target: str, refuge_id,
                              quarantine_key: Optional[str], moderation, upload_id: Optional[str]) -> None:
     """
-    No es publica res. L'evidència es conserva a `moderation-hold/` (accés restringit), es bloqueja l'usuari, es crea una
-    denúncia `child_sexual_abuse` d'alta prioritat, s'envia l'avís de moderació i es registra a l'auditoria.
+    No es publica res. L'evidència es conserva a `moderation-hold/<upload_id>` (accés restringit; la clau no porta
+    l'UID: les files `legal_hold` es conserven anonimitzades, D41), es bloqueja l'usuari i es crea la denúncia
+    `child_sexual_abuse` d'alta prioritat amb `legal_hold`, l'avís de moderació i l'auditoria
+    (`moderation_services.register_upload_block`). Una fallada en desar-ho es registra i no trenca la confirmació.
     """
-    from api.daos.media_report_dao import MediaReportDAO
-    from api.daos.moderation_notice_dao import ModerationNoticeDAO
-    from api.utils.timezone_utils import get_madrid_now
-
-    refuge_id = str(refuge_id) if refuge_id else None
-    now = get_madrid_now().isoformat()
-    hold_key = r2_media_service.moderation_hold_key(f'{uid}/{upload_id or uuid.uuid4()}')
+    upload_id = upload_id or str(uuid.uuid4())
+    hold_key = r2_media_service.moderation_hold_key(upload_id)
     service = r2_media_service.get_refugi_media_service()
     try:
         if quarantine_key:
@@ -436,42 +432,13 @@ def _handle_moderation_block(uid: str, data: bytes, declared_content_type: Optio
         logger.exception("Error desant l'evidència de moderació")
 
     account_services.set_blocked(uid, True, reason='moderation_hash_match')
-
-    report_refuge = refuge_id or target
     try:
-        report = MediaReport(
-            id=build_report_id(report_refuge, hold_key, SYSTEM_REPORTER_UID),
-            refuge_id=report_refuge,
-            media_key=hold_key,
-            reporter_uid=SYSTEM_REPORTER_UID,
-            reason='child_sexual_abuse',
-            details=f'Coincidència automàtica ({moderation.provider}/{moderation.match_type}, categoria {moderation.category})',
-            media_creator_uid=uid,
-            priority=REPORT_PRIORITY_HIGH,
-            created_at=now,
-            source='automatic',
-        )
-        MediaReportDAO().create_report(report)
+        with transaction.atomic():
+            moderation_services.register_upload_block(
+                uid=uid, refuge_id=refuge_id, hold_key=hold_key, upload_id=upload_id, provider=moderation.provider,
+                match_type=moderation.match_type, category=moderation.category)
     except Exception:
-        logger.exception("Error creant la denúncia automàtica")
-
-    ModerationNoticeDAO().create_notice({
-        'uid': uid,
-        'type': NOTICE_ACCOUNT_BLOCKED,
-        'statement': ("Un fitxer que has intentat pujar coincideix amb una llista de contingut "
-                      "il·legal conegut. No s'ha publicat i el compte s'ha bloquejat."),
-        'created_at': now,
-        'refuge_id': refuge_id,
-        'reason': 'child_sexual_abuse',
-        'action': 'upload_blocked',
-        'automated': True,
-    })
-
-    audit.audit_log_service.log(SYSTEM_REPORTER_UID, audit.ACTION_MODERATION_HASH_BLOCK, 'upload', hold_key,
-                                {'uid': uid, 'provider': moderation.provider,
-                                 'match_type': moderation.match_type, 'upload_id': upload_id})
-    audit.audit_log_service.log(SYSTEM_REPORTER_UID, audit.ACTION_USER_BLOCKED, 'user', uid,
-                                {'reason': 'moderation_hash_match'})
+        logger.exception("Error desant la denúncia automàtica i l'avís de la pujada bloquejada")
 
 
 # ---------------------------------------------------------------------------

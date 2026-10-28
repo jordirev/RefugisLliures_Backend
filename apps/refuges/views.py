@@ -16,7 +16,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from api.permissions import HasProfile, is_firebase_admin
-from api.services import audit_log_service as audit
+from apps.audit import services as audit
 from api.services import r2_media_service
 from api.utils.swagger_error_responses import (
     ERROR_400_INVALID_PARAMS,

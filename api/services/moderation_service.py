@@ -3,18 +3,18 @@ ModerationService - Moderació automàtica pluggable de mitjans abans de publica
 
 Arquitectura:
     ModerationProvider (interfície)
-      ├─ HashBlocklistProvider   (ACTIU)  sha256 exacte + pHash (distància de Hamming)
-      │                                  contra la col·lecció `moderation_hash_blocklist`
+      ├─ HashBlocklistProvider   (ACTIU)  sha256 exacte + pHash (distància de Hamming <= 6)
+      │                                  contra la taula `moderation.moderation_hash_blocklist` de PostgreSQL
       ├─ PhotoDNAProvider        (stub, desactivat; cal accés de Microsoft/NCMEC)
       └─ GoogleContentSafetyProvider (stub, desactivat; cal accés a la Content Safety API)
 
-Format d'un document de `moderation_hash_blocklist`:
-    {sha256?: str (hex), phash?: str (hex de 64 bits, imagehash), category: 'csam'|...,
-     source: str, added_at: ISO}
+La llista de hashes és il·legible per a l'aplicació (el rol `app` no hi té cap privilegi) i no es carrega mai a memòria:
+la coincidència es resol a la BD amb la funció `moderation.fn_hash_match` (`apps.moderation.selectors.hash_match`). La taula
+s'alimenta amb `python manage.py load_hash_blocklist <fitxer.csv>` i comença buida.
 
-Si algun proveïdor actiu troba coincidència, el controller NO publica el fitxer, el mou a
-`moderation-hold/`, bloqueja l'usuari, crea una denúncia `child_sexual_abuse` d'alta
-prioritat i ho registra a l'auditoria (vegeu MediaUploadController).
+Si algun proveïdor actiu troba coincidència, la pujada NO es publica: es mou l'evidència a `moderation-hold/<upload_id>`,
+es bloqueja l'usuari, es crea una denúncia `child_sexual_abuse` d'alta prioritat amb `legal_hold`, un avís i
+l'auditoria (vegeu `apps.uploads.services`).
 
 Quan hi hagi domini propi a Cloudflare: docs/guides/cloudflare-domain-csam.md.
 """
@@ -23,12 +23,9 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import List, Optional
 
-from .firestore_service import FirestoreService
-from .cache_service import cache_service
+from apps.moderation import selectors
 
 logger = logging.getLogger(__name__)
-
-PHASH_MAX_DISTANCE = 6  # bits de diferència (de 64) per considerar coincidència
 
 
 @dataclass
@@ -63,58 +60,20 @@ class ModerationProvider(ABC):
         """Retorna ModerationResult. Pot llançar excepcions (el servei les tracta)."""
 
 
-def phash_distance(a: str, b: str) -> int:
-    """Distància de Hamming entre dos pHash hex"""
-    try:
-        return bin(int(a, 16) ^ int(b, 16)).count('1')
-    except (TypeError, ValueError):
-        return 64
-
-
 class HashBlocklistProvider(ModerationProvider):
-    """Compara sha256 (exacte) i pHash (aproximat) amb una llista de hashes prohibits."""
+    """Compara sha256 (exacte) i pHash (aproximat) amb la llista de hashes prohibits de PostgreSQL."""
 
     name = 'hash_blocklist'
-    COLLECTION_NAME = 'moderation_hash_blocklist'
-    CACHE_KEY = 'moderation_hash_blocklist:phashes'
-    CACHE_TIMEOUT = 600
-
-    def __init__(self):
-        self.firestore_service = FirestoreService()
 
     @property
     def enabled(self) -> bool:
         return True
 
-    def _load_phashes(self) -> List[dict]:
-        cached = cache_service.get(self.CACHE_KEY)
-        if cached is not None:
-            return cached
-        db = self.firestore_service.get_db()
-        logger.log(23, f"Firestore READ: collection={self.COLLECTION_NAME} (phashes)")
-        entries = []
-        for doc in db.collection(self.COLLECTION_NAME).stream():
-            data = doc.to_dict() or {}
-            if data.get('phash'):
-                entries.append({'id': doc.id, 'phash': data['phash'], 'category': data.get('category', 'csam')})
-        cache_service.set(self.CACHE_KEY, entries, self.CACHE_TIMEOUT)
-        return entries
-
     def check(self, media: ModerationInput) -> ModerationResult:
-        db = self.firestore_service.get_db()
-        if media.sha256:
-            logger.log(23, f"Firestore QUERY: collection={self.COLLECTION_NAME} where sha256")
-            matches = list(db.collection(self.COLLECTION_NAME).where('sha256', '==', media.sha256).limit(1).stream())
-            if matches:
-                data = matches[0].to_dict() or {}
-                return ModerationResult(True, self.name, data.get('category', 'csam'), 'sha256',
-                                        {'entry_id': matches[0].id})
-        if media.phash:
-            for entry in self._load_phashes():
-                if phash_distance(media.phash, entry['phash']) <= PHASH_MAX_DISTANCE:
-                    return ModerationResult(True, self.name, entry.get('category', 'csam'), 'phash',
-                                            {'entry_id': entry['id']})
-        return ModerationResult(False)
+        match = selectors.hash_match(sha256=media.sha256, phash_hex=media.phash)
+        if match is None:
+            return ModerationResult(False)
+        return ModerationResult(True, self.name, match.category, match.match_type, {'entry_id': match.entry_id})
 
 
 class PhotoDNAProvider(ModerationProvider):

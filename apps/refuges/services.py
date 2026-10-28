@@ -9,7 +9,7 @@ from typing import Optional
 
 from django.db import transaction
 
-from api.services import audit_log_service as audit
+from apps.audit import services as audit
 from api.services import r2_media_service
 
 from . import selectors

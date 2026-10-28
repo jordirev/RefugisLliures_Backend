@@ -16,7 +16,7 @@ from django.db.models import F
 from django.db.models.functions import Now
 from firebase_admin import auth as firebase_auth
 
-from api.services import audit_log_service as audit
+from apps.audit import services as audit
 from api.services import r2_media_service
 from api.utils.age_utils import is_old_enough
 from api.utils.timezone_utils import get_madrid_timezone
