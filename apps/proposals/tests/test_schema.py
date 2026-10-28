@@ -221,3 +221,35 @@ def test_les_politiques_d_escriptura_del_cataleg_exigeixen_admin_o_sistema(migra
                         [schema, name, f'{prefix}_{policy}'])
         assert 'is_admin' in row[0] and 'is_system' in row[0], (policy, row)
         assert 'uid()' not in row[0], 'cap camí per a un usuari corrent'
+
+
+# ---------- reverse_sql ----------
+
+def test_reverse_sql_desfa_el_forward_i_es_pot_tornar_a_aplicar(migrator_db):
+    """`reverse_sql` s'executa sense errors, deixa el catàleg de només lectura i `FORWARD_SQL` es pot reaplicar (rollback)."""
+    from importlib import import_module
+
+    from django.db import transaction
+    migration = import_module('apps.proposals.migrations.0001_initial')
+
+    def policies(table):
+        return {r[0] for r in fetch_all(migrator_db, 'SELECT policyname FROM pg_policies WHERE schemaname || %s || tablename = %s',
+                                        ['.', table])}
+
+    def privs(table):
+        return {r[0] for r in fetch_all(migrator_db, "SELECT privilege_type FROM information_schema.role_table_grants "
+                                                     "WHERE grantee = 'app' AND table_schema || '.' || table_name = %s", [table])}
+
+    with transaction.atomic(using='migrator'):
+        with migrator_db.cursor() as cur:
+            for statement in migration.REVERSE_SQL:
+                cur.execute(statement)
+        for table in CATALOG:
+            assert privs(table) == {'SELECT'}, table
+            assert not {p for p in policies(table) if p.endswith(('_insert', '_update', '_delete'))}, table
+        with migrator_db.cursor() as cur:
+            for statement in migration.FORWARD_SQL:
+                cur.execute(statement)
+        for table in CATALOG:
+            assert privs(table) == {'SELECT', 'INSERT', 'UPDATE', 'DELETE'}, table
+        transaction.set_rollback(True, using='migrator')
