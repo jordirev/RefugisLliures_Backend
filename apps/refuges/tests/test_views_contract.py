@@ -337,10 +337,9 @@ def test_delete_media_r2_que_falla_no_deixa_la_fila_esborrada(client, refuge, RM
 # ============ Cap accés a Firestore ni a la cache ============
 
 def test_el_domini_refugi_no_depen_de_firestore_ni_de_cache(client, refuge):
-    """El conftest llança RuntimeError si algú inicialitza Firestore: la lectura ha de funcionar igualment."""
+    """Cap client de Firestore ni lectura/escriptura a la cache de Django: la lectura funciona igualment."""
     from unittest.mock import patch
-    with patch('api.services.cache_service.cache_service.get', side_effect=AssertionError('cache de dades')), \
-            patch('api.services.cache_service.cache_service.set', side_effect=AssertionError('cache de dades')):
+    with patch('google.cloud.firestore.Client', side_effect=AssertionError('Firestore!')),             patch('django.core.cache.cache.get', side_effect=AssertionError('cache de dades')),             patch('django.core.cache.cache.set', side_effect=AssertionError('cache de dades')):
         assert api_get(client, detail(refuge)).status_code == 200
         assert api_get(client, URL).status_code == 200
         assert api_get(client, URL + '?type=fermée').status_code == 200

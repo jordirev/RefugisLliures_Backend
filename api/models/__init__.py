@@ -1,4 +1,1 @@
-# Models per a l'aplicació
-from .refugi_lliure import Refugi, RefugiCoordinates, Coordinates, InfoComplementaria, RefugiSearchFilters
-
-__all__ = ['Refugi', 'RefugiCoordinates', 'Coordinates', 'InfoComplementaria', 'RefugiSearchFilters']
+# Models per a l'aplicació (només queda `media_metadata`, la forma d'un mitjà a les respostes)

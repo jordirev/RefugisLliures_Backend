@@ -186,7 +186,6 @@ def test_moderation_service_no_bloqueja_si_no_coincideix_i_no_toca_firestore_ni_
     make_hash(sha256=SHA)
     res = ModerationService().check(ModerationInput(sha256='11' * 32, phash='ffffffffffffffff'))
     assert res.blocked is False
-    # el conftest arrel prohibeix Firestore real: si arribés a tocar-lo hauria fallat
 
 
 def test_moderation_service_ja_no_importa_firestore_ni_cache():

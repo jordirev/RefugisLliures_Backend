@@ -280,5 +280,7 @@ def test_cost_de_consultes_acotat(world, audit):
 
 
 def test_no_toca_firestore(world, audit):
-    """El conftest arrel prohibeix Firestore real: arribar-hi faria fallar l'escriptura."""
-    assert log(audit, 'u1', 'u1', 'media.list') is True
+    """Firestore ja no existeix al codi (D43): cap client se'n pot crear."""
+    from unittest.mock import patch
+    with patch('google.cloud.firestore.Client', side_effect=AssertionError('Firestore!')):
+        assert log(audit, 'u1', 'u1', 'media.list') is True

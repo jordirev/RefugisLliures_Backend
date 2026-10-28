@@ -149,9 +149,9 @@ def test_usuari_adult_i_no_bloquejat_passa_els_permisos(client):
 
 
 def test_els_permisos_llegeixen_de_postgres_no_de_firestore(client):
-    """El conftest arrel bloqueja Firestore: si el permis hi anes, fallaria amb RuntimeError."""
+    """Firestore ja no existeix al codi (D43): si el permis en creés un client, fallaria."""
     make_user('u1', age_confirmed_at=at(0), age_threshold=16)
-    with patch('api.services.firestore_service.FirestoreService.get_db', side_effect=AssertionError('Firestore!')):
+    with patch('google.cloud.firestore.Client', side_effect=AssertionError('Firestore!')):
         assert api_post(client, UPLOAD, user_claims('u1'), {}).status_code == 400
 
 

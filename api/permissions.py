@@ -4,7 +4,6 @@ Permisos personalitzats per a l'API
 import logging
 logger = logging.getLogger(__name__)
 from rest_framework import permissions
-from .services import firestore_service
 
 # Helper per a comprovar si l'usuari és admin
 def is_firebase_admin(request):
