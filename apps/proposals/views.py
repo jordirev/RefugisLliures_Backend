@@ -81,6 +81,17 @@ def _list_response(request, **filters):
     return Response(ProposalSerializer(proposals, many=True).data)
 
 
+ERROR_409_POSSIBLE_DUPLICATES = openapi.Response(
+    description='Hi ha refugis a menys de 500 m amb un nom semblant (la proposta no es desa)',
+    examples={'application/json': {
+        'error': 'possible_duplicates', 'code': 'possible_duplicates',
+        'message': 'Hi ha refugis a menys de 500 m amb un nom semblant. Comprova que no sigui el mateix.',
+        'possible_duplicates': [{'id': '0197b1c2-0000-7000-8000-000000000001', 'name': 'Refugi de Colomers',
+                                 'distance_m': 120}]}})
+ERROR_409_APPROVE = openapi.Response(
+    description='La proposta ja ha estat revisada, o un enllaç del payload ja pertany a un altre refugi (cap canvi)',
+    examples={'application/json': {'error': 'Proposal is already approved'}})
+
 _status_param = openapi.Parameter('status', openapi.IN_QUERY, description='Filtre per estat de la proposta',
                                   type=openapi.TYPE_STRING, enum=Status.values, required=False)
 
@@ -96,7 +107,9 @@ class ProposalCollectionAPIView(APIView):
 
     @swagger_auto_schema(
         operation_description=(
-            "Crea una proposta de refugi. Requereix autenticació, usuari no bloquejat i edat confirmada.\n\n"
+            "Crea una proposta de refugi. Requereix autenticació, perfil, usuari no bloquejat i edat confirmada "
+            "(403 `profile_required`, `user_blocked` o `age_not_confirmed`). 400 si falla la validació o si el refugi "
+            "d'un `update`/`delete` no existeix.\n\n"
             "**Tipus d'accions:**\n"
             "- `create`: crear un refugi nou (`payload`, sense `refuge_id`). Si hi ha un refugi a menys de 500 m amb un "
             "nom semblant, 409 `possible_duplicates` amb la llista (`id`, `name`, `distance_m`).\n"
@@ -107,7 +120,7 @@ class ProposalCollectionAPIView(APIView):
         responses={201: openapi.Response(description='Proposta creada', schema=ProposalSerializer,
                                          examples={'application/json': EXAMPLE_REFUGE_PROPOSAL_RESPONSE}),
                    400: ERROR_400_INVALID_PARAMS, 401: ERROR_401_UNAUTHORIZED, 403: ERROR_403_FORBIDDEN,
-                   409: openapi.Response(description='Possibles duplicats (refugis propers amb nom semblant)'),
+                   409: ERROR_409_POSSIBLE_DUPLICATES,
                    500: ERROR_500_INTERNAL_ERROR},
         tags=['Refuge Proposals'],
     )
@@ -172,12 +185,13 @@ class ProposalApproveAPIView(APIView):
     @swagger_auto_schema(
         operation_description=(
             "Aprova la proposta i n'aplica l'acció en una transacció (`create` crea el refugi, `update` el canvia, "
-            "`delete` l'esborra amb tot el que en penja i els seus fitxers d'R2). Un enllaç que ja és d'un altre refugi "
-            "dona 409 i la proposta continua pendent."),
+            "`delete` l'esborra amb tot el que en penja i els seus fitxers d'R2). Només admins (403 si no). 404 si la "
+            "proposta no existeix; 409 si ja està aprovada o rebutjada, o si un enllaç del payload ja és d'un altre "
+            "refugi (la proposta continua pendent). 500 si R2 falla en un `delete` (tot es desfà)."),
         responses={200: openapi.Response(description='Proposta aprovada',
                                          examples={'application/json': {'message': 'Proposal approved successfully'}}),
                    401: ERROR_401_UNAUTHORIZED, 403: ERROR_403_FORBIDDEN, 404: ERROR_404_PROPOSAL_NOT_FOUND,
-                   409: ERROR_409_PROPOSAL_ALREADY_REVIEWED, 500: ERROR_500_INTERNAL_ERROR},
+                   409: ERROR_409_APPROVE, 500: ERROR_500_INTERNAL_ERROR},
         tags=['Refuge Proposals'],
     )
     def post(self, request, proposal_id):
@@ -202,7 +216,8 @@ class ProposalRejectAPIView(APIView):
     parser_classes = [JSONParser]
 
     @swagger_auto_schema(
-        operation_description="Rebutja la proposta (no s'aplica res). El motiu és opcional (màxim 2000 caràcters).",
+        operation_description=("Rebutja la proposta (no s'aplica res). Només admins. El motiu és opcional (màxim 2000 "
+                               "caràcters). 404 si no existeix; 409 si ja està aprovada o rebutjada."),
         request_body=RejectProposalSerializer,
         responses={200: openapi.Response(description='Proposta rebutjada',
                                          examples={'application/json': {'message': 'Proposal rejected successfully'}}),
