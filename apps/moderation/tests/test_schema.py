@@ -328,3 +328,45 @@ def test_trigger_d_usuari_que_desvincula_denuncies_i_auditoria_legal_hold(migrat
          WHERE t.tgrelid = 'users.users'::regclass AND t.tgname = 'users_detach_legal_hold'""")
     assert row is not None, 'falta el trigger users_detach_legal_hold sobre users.users'
     assert row[1:] == ('O', True, True, True, 'fn_users_detach_legal_hold', 'users', True)
+
+
+def test_reverse_sql_desfa_el_forward_i_es_pot_tornar_a_aplicar(migrator_db):
+    """`REVERSE_SQL` treu triggers, funcions, RLS, grants i FK; `FORWARD_SQL` es pot reaplicar (tot en un rollback)."""
+    from importlib import import_module
+
+    from django.db import transaction
+    migration = import_module('apps.moderation.migrations.0001_initial')
+
+    def state():
+        return (
+            {r[0] for r in fetch_all(migrator_db, "SELECT policyname FROM pg_policies WHERE schemaname = 'moderation' "
+                                                  "AND tablename IN ('media_reports', 'moderation_notices')")},
+            {tuple(r) for r in fetch_all(migrator_db, "SELECT table_name, privilege_type FROM information_schema."
+                                                      "role_table_grants WHERE grantee = 'app' AND "
+                                                      "table_schema = 'moderation' AND table_name IN "
+                                                      "('media_reports', 'moderation_notices', "
+                                                      "'moderation_hash_blocklist')")},
+            {r[0] for r in fetch_all(migrator_db, "SELECT conname FROM pg_constraint WHERE contype = 'f' AND "
+                                                  "conrelid IN (%s::regclass, %s::regclass)", [REPORTS, NOTICES])},
+            {r[0] for r in fetch_all(migrator_db, "SELECT relname FROM pg_class c JOIN pg_namespace n ON "
+                                                  "n.oid = c.relnamespace WHERE n.nspname = 'moderation' AND "
+                                                  "c.relrowsecurity AND c.relname IN ('media_reports', "
+                                                  "'moderation_notices', 'moderation_hash_blocklist')")},
+            {r[0] for r in fetch_all(migrator_db, "SELECT tgname FROM pg_trigger WHERE NOT tgisinternal AND "
+                                                  "tgname LIKE '%%detach_legal_hold'")},
+            {r[0] for r in fetch_all(migrator_db, "SELECT proname FROM pg_proc WHERE proname IN "
+                                                  "('fn_hash_match', 'fn_users_detach_legal_hold', "
+                                                  "'fn_refuges_detach_legal_hold')")})
+
+    before = state()
+    assert len(before[4]) == 2 and len(before[5]) == 3 and len(before[2]) == 7 and len(before[3]) == 3
+    with transaction.atomic(using='migrator'):
+        with migrator_db.cursor() as cur:
+            for statement in migration.REVERSE_SQL:
+                cur.execute(statement)
+        assert state() == (set(), set(), set(), set(), set(), set())
+        with migrator_db.cursor() as cur:
+            for statement in migration.FORWARD_SQL:
+                cur.execute(statement)
+        assert state() == before
+        transaction.set_rollback(True, using='migrator')

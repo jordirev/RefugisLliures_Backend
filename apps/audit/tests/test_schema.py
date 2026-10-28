@@ -141,3 +141,36 @@ def test_matriu_de_grants_d_app_sense_update(app_db):
     privs = ('SELECT', 'INSERT', 'UPDATE', 'DELETE', 'TRUNCATE', 'REFERENCES', 'TRIGGER')
     got = {p for p in privs if fetch_one(app_db, f"SELECT has_table_privilege('app', %s, '{p}')", [TABLE])[0]}
     assert got == {'SELECT', 'INSERT', 'DELETE'}
+
+
+def test_reverse_sql_desfa_el_forward_i_es_pot_tornar_a_aplicar(migrator_db):
+    """`REVERSE_SQL` treu RLS, polítiques, grants i FK/CHECK del SQL; `FORWARD_SQL` es pot reaplicar (tot en un rollback)."""
+    from importlib import import_module
+
+    from django.db import transaction
+    migration = import_module('apps.audit.migrations.0001_initial')
+
+    def state():
+        return (
+            {r[0] for r in fetch_all(migrator_db, "SELECT policyname FROM pg_policies WHERE schemaname = 'audit'")},
+            {r[0] for r in fetch_all(migrator_db, "SELECT privilege_type FROM information_schema.role_table_grants "
+                                                  "WHERE grantee = 'app' AND table_schema = 'audit' "
+                                                  "AND table_name = 'audit_logs'")},
+            {r[0] for r in fetch_all(migrator_db, "SELECT conname FROM pg_constraint WHERE contype IN ('f', 'c') "
+                                                  "AND conrelid = %s::regclass", [TABLE])},
+            fetch_one(migrator_db, "SELECT relrowsecurity FROM pg_class WHERE oid = %s::regclass", [TABLE])[0])
+
+    before = state()
+    assert before[1] == {'SELECT', 'INSERT', 'DELETE'} and before[3] is True
+    with transaction.atomic(using='migrator'):
+        with migrator_db.cursor() as cur:
+            for statement in migration.REVERSE_SQL:
+                cur.execute(statement)
+        policies, privs, constraints, rls = state()
+        assert not policies and not privs and rls is False
+        assert not {'audit_logs_metadata_ck', 'audit_logs_actor_uid_fk', 'audit_logs_subject_uid_fk'} & constraints
+        with migrator_db.cursor() as cur:
+            for statement in migration.FORWARD_SQL:
+                cur.execute(statement)
+        assert state() == before
+        transaction.set_rollback(True, using='migrator')

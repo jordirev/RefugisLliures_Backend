@@ -98,6 +98,16 @@ def test_phash_amb_valors_negatius_i_pas_pel_bit_de_signe(world):
 
 
 @pytest.mark.django_db
+def test_phash_extrems_del_bigint_min_i_max(world):
+    """`-2**63` (només el bit de signe) i `2**63-1` (tots menys el de signe) difereixen en 64 bits; cap error d'overflow."""
+    make_hash(phash=-2 ** 63)
+    assert match(None, -2 ** 63) == [('csam', 'phash')]
+    assert match(None, 0) == [('csam', 'phash')]                     # 1 bit de diferència
+    assert match(None, 2 ** 63 - 1) == []                            # 64 bits de diferència
+    assert match(None, 2 ** 63 - 1, 64) == [('csam', 'phash')]
+
+
+@pytest.mark.django_db
 def test_distancia_maxima_parametritzable(world):
     base = 0x00000000000000FF
     make_hash(phash=signed(base))
