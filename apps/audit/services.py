@@ -46,6 +46,7 @@ ACTION_USER_BLOCKED = 'moderation.user_blocked'
 ACTION_REPORTS_LIST = 'moderation.reports_list'
 ACTION_AVATAR_UPLOAD = 'avatar.upload'
 ACTION_AGE_CONFIRMED = 'user.age_confirmed'
+ACTION_USER_DELETED = 'user.deleted'
 
 _CSAM_BLOCK_REASONS = ('csam_confirmed', 'moderation_hash_match')
 

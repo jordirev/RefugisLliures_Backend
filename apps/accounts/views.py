@@ -7,6 +7,8 @@ Tot endpoint autenticat llevat de `POST /users/` exigeix `HasProfile` (403 `prof
 """
 import logging
 
+from django.db import connection, transaction
+from django.utils.decorators import method_decorator
 from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework import status
@@ -168,12 +170,39 @@ class UsersCollectionAPIView(APIView):
 
 # ========== /users/{uid}/ ==========
 
+@method_decorator(transaction.non_atomic_requests, name='dispatch')
 class UserDetailAPIView(APIView):
-    """GET (perfil propi complet o públic d'un altre), PATCH i DELETE (només el mateix usuari) de `/api/users/{uid}/`."""
+    """
+    GET (perfil propi complet o públic d'un altre), PATCH i DELETE (només el mateix usuari) de `/api/users/{uid}/`.
+
+    La vista és `non_atomic_requests` (D42): el DELETE ha de comprometre les dades abans de cridar Firebase Auth i
+    `delete_user` obre la seva pròpia transacció i context de RLS. GET i PATCH segueixen en una transacció (la del
+    `dispatch`), de manera que el hook de RLS i els permisos funcionen igual que amb `ATOMIC_REQUESTS`.
+    """
+
+    def dispatch(self, request, *args, **kwargs):
+        if request.method == 'DELETE':
+            return super().dispatch(request, *args, **kwargs)
+        with transaction.atomic():
+            return super().dispatch(request, *args, **kwargs)
+
+    def handle_exception(self, exc):
+        """
+        El *handler* de DRF marca la transacció en curs per desfer-la (`set_rollback`, pensat per a `ATOMIC_REQUESTS`).
+        El DELETE no té transacció pròpia: a producció no hi ha cap bloc atòmic i no passa res; si n'hi ha un d'extern
+        (tests) no s'ha de deixar inservible per un 401/403 d'aquesta vista.
+        """
+        broken = connection.in_atomic_block and connection.needs_rollback
+        response = super().handle_exception(exc)
+        if self.request.method == 'DELETE' and connection.in_atomic_block and not broken:
+            connection.set_rollback(False)
+        return response
 
     def get_permissions(self):
         if self.request.method == 'GET':
             return [IsAuthenticated(), HasProfile()]
+        if self.request.method == 'DELETE':
+            return [IsAuthenticated(), IsSameUser()]       # idempotent: sense perfil també es pot acabar l'esborrat
         return [IsAuthenticated(), HasProfile(), IsSameUser()]
 
     @swagger_auto_schema(

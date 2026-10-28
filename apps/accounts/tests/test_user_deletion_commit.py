@@ -47,7 +47,8 @@ def committed(migrator_db):
 
         def add_media(self, uid, key):
             with transaction.atomic(using='migrator'):
-                with migrator_db.cursor() as cur:
+                # `connections['migrator']` (local al fil) i no `migrator_db`: es crida des d'un fil secundari
+                with connections['migrator'].cursor() as cur:
                     cur.execute("INSERT INTO refuges.refuge_media (key, refuge_id, creator_uid, media_type, content_type,"
                                 " status, rights_confirmed_at) VALUES (%s, %s, %s, 'image', 'image/webp', 'visible', now())",
                                 [key, self.refuge, uid])
