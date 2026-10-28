@@ -134,6 +134,20 @@ def has_active_filters(filters: dict) -> bool:
         or any(filters.get(k) is not None for k in ('places_min', 'places_max', 'altitude_min', 'altitude_max')))
 
 
+def filter_name_similar(qs: QuerySet, name: str) -> QuerySet:
+    """
+    Filtra pel nom «semblant» (la regla de la cerca; també la dels duplicats de les propostes): `core.norm_name`
+    (sense accents ni majúscules) amb `pg_trgm` (`trigram_similar`) o subcadena, sobre `name` i `surname`.
+    """
+    wanted = norm_name(Value(name))
+    qs = qs.alias(name_n=norm_name(F('name')), surname_n=norm_name(F('surname')))
+    # `surname IS NOT NULL` a cada braç (OR pla): sense ell el planificador no pot usar l'índex GIN parcial de l'àlies.
+    return qs.filter(
+        Q(name_n__trigram_similar=wanted) | Q(name_n__contains=wanted)
+        | Q(surname__isnull=False, surname_n__trigram_similar=wanted)
+        | Q(surname__isnull=False, surname_n__contains=wanted))
+
+
 def search_queryset(filters: dict) -> QuerySet:
     """
     `QuerySet` de la cerca amb filtres (una sola consulta SQL; vegeu `search_refuges`).
@@ -148,12 +162,7 @@ def search_queryset(filters: dict) -> QuerySet:
     name = (filters.get('name') or '').strip()
     if name:
         wanted = norm_name(Value(name))
-        qs = qs.alias(name_n=norm_name(F('name')), surname_n=norm_name(F('surname')))
-        # `surname IS NOT NULL` a cada braç (OR pla): sense ell el planificador no pot usar l'índex GIN parcial de l'àlies.
-        qs = qs.filter(
-            Q(name_n__trigram_similar=wanted) | Q(name_n__contains=wanted)
-            | Q(surname__isnull=False, surname_n__trigram_similar=wanted)
-            | Q(surname__isnull=False, surname_n__contains=wanted))
+        qs = filter_name_similar(qs, name)
         qs = qs.alias(similarity=Greatest(
             TrigramSimilarity(norm_name(F('name')), wanted),
             Coalesce(TrigramSimilarity(norm_name(F('surname')), wanted), 0.0))).order_by('-similarity', 'name', 'id')
