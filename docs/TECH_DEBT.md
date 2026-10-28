@@ -159,3 +159,4 @@
 
 ## Artefactes al disc (no versionats, però presents)
 `db.sqlite3`, `coverage.xml`, `.coverage`, `htmlcov/`, `.vs/`, `.pytest_cache/` — tots ignorats per `.gitignore` (`git check-ignore`: `.gitignore:10,43,50,64`) **[FET]**. `env/` conté credencials reals i **no** està versionat (`git ls-files env` buit); a l'historial només hi ha hagut `.env.example` amb noms de variables (commits `c1f5eee`, `5b73f15`).
+| R22 | **Sense límit de propostes pendents per usuari ni rate limit** a `POST /refuges-proposals/` (qualsevol usuari no bloquejat amb edat confirmada pot omplir la cua d'admin; cada `create` fa a més una consulta trigram+GiST). Cal una quota (com R19) o throttle. Sev. baixa-mitjana (seguretat, chunk 8). | `apps/proposals/services.py: create_proposal` | NO FET |

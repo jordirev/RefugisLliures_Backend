@@ -228,6 +228,18 @@ def _delete_files(service, keys: list, what: str) -> list:
         raise MediaStorageError(f'R2 ha fallat en esborrar {what}') from exc
 
 
+def _own_keys(refuge_id, keys: list) -> list:
+    """
+    Defensa en profunditat: només les claus sota `refugis-lliures/{refuge_id}/` i sense `..` (les que fabrica el servidor);
+    qualsevol altra (dada corrupta, d'un altre refugi o d'altres prefixos) no es passa mai a R2.
+    """
+    prefix = f'refugis-lliures/{refuge_id}/'
+    own = [key for key in keys if key.startswith(prefix) and '..' not in key]
+    if len(own) != len(keys):
+        logger.warning("Claus d'R2 fora del prefix del refugi %s ignorades: %d", refuge_id, len(keys) - len(own))
+    return own
+
+
 def _apply_delete(proposal: RefugeProposal, media_service=None):
     """Esborra el refugi (un sol `DELETE`) i els seus fitxers d'R2; retorna les miniatures a esborrar després del `COMMIT`."""
     refuge_id = proposal.refuge_id
@@ -238,8 +250,8 @@ def _apply_delete(proposal: RefugeProposal, media_service=None):
         rows = list(RefugeMedia.objects.filter(refuge_id=refuge_id).values_list('key', 'thumb_key'))
     if not Refuge.objects.filter(pk=refuge_id).delete()[0]:
         raise RefugeNotFound('Refuge does not exists')
-    keys = [key for key, _ in rows]
-    thumbs = [thumb for _, thumb in rows if thumb]
+    keys = _own_keys(refuge_id, [key for key, _ in rows])
+    thumbs = _own_keys(refuge_id, [thumb for _, thumb in rows if thumb])
     if keys:
         service = media_service or r2_media_service.get_refugi_media_service()
         if _delete_files(service, keys, 'els fitxers del refugi'):

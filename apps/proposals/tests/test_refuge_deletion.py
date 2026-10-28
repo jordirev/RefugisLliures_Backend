@@ -230,3 +230,16 @@ def test_el_refugi_esborrat_no_surt_a_cap_lectura_de_l_api(client, scene):
     assert api_get(client, f'/api/refuges/{keep.pk}/').status_code == 200
     assert api_get(client, f'/api/refuges/{r.pk}/media/', {'uid': 'u1', 'role': 'user'}).status_code in (200, 404)
     assert api_get(client, f'/api/doubts/?refuge_id={r.pk}', {'uid': 'u1', 'role': 'user'}).status_code == 404
+
+
+def test_defensa_en_profunditat_nomes_s_esborren_claus_sota_el_prefix_del_refugi(client, world, r2):
+    """Una clau fora de `refugis-lliures/{refuge_id}/` (dada corrupta, `..`, d'un altre refugi) no es passa mai a R2."""
+    r, other = world[0], world[1]
+    own = f'refugis-lliures/{r.pk}/propi.webp'
+    make_media(r, 'u1', key=own, minutes=1)
+    make_media(r, 'u1', key=f'refugis-lliures/{other.pk}/aliena.webp', minutes=2)
+    make_media(r, 'u1', key=f'refugis-lliures/{r.pk}/../{other.pk}/trav.webp', minutes=3)
+    make_media(r, 'u1', key='users-avatars/u2/avatar.webp', minutes=4)
+    _, resp = delete_via_api(client, r)
+    assert resp.status_code == 200, resp.content
+    assert r2.deleted_keys() == {own}
