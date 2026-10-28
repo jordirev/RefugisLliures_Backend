@@ -87,7 +87,15 @@ def _mock_audit_log(request):
     if request.node.get_closest_marker('real_audit_log'):
         yield None
         return
-    with patch('api.services.audit_log_service.AuditLogService.log', return_value=True) as mock_log:
+    # Chunk 9: el servei d'auditoria passa a `apps.audit.services` (PostgreSQL); mentre no existeixi es mocka el legacy.
+    import importlib.util
+    try:
+        has_new = importlib.util.find_spec('apps.audit.services') is not None
+    except ModuleNotFoundError:
+        has_new = False
+    target = ('apps.audit.services.AuditLogService.log' if has_new
+              else 'api.services.audit_log_service.AuditLogService.log')
+    with patch(target, return_value=True) as mock_log:
         yield mock_log
 
 
