@@ -1097,6 +1097,8 @@ CREATE TRIGGER refuges_detach_legal_hold BEFORE DELETE ON refuges.refuges
 
 ⚠ **Efectes creuats de moderació** (la petició del denunciant ha de tocar files d'altres usuaris): auto-ocultar el mitjà (`refuge_media.status`), comptar denunciants **diferents** (la RLS només deixaria veure les pròpies), inserir l'avís (`moderation_notices`) a l'autor. Han d'executar-se dins un únic bloc `system_context()` curt i acotat (§7.4); l'admin que resol (`{ADM}`) ja ho veu tot.
 
+> **Chunk 9 (implementat)** a `apps/moderation/migrations/0001_initial.py` i `apps/moderation/services.py`. Fidel al disseny, amb aquests detalls: l'`id` és un UUID opac (`uuidv7()`) i el 409 `already_reported` surt de la `UNIQUE` parcial `media_reports_unique_reporter_uq` (D40); les FK `refuge_id`/`reporter_uid` són `CASCADE` i les files `legal_hold` es desvinculen **abans** amb els triggers `SECURITY DEFINER` `refuges.fn_refuges_detach_legal_hold` i `users.fn_users_detach_legal_hold` (`details` es conserva, PO 28/10); es poden denunciar mitjans d'experiència (són a `refuge_media`); un mitjà `removed` o una clau `moderation-hold/` no es pot denunciar (D41); la clau de retenció d'una pujada bloquejada és `moderation-hold/<upload_id>`, sense l'UID.
+
 ### 2.21 `moderation.moderation_notices` (app `moderation`; **RLS sí**, privada)
 
 Declaració de motius (art. 17 DSA) adreçada a un usuari.
@@ -1158,6 +1160,8 @@ GRANT EXECUTE ON FUNCTION moderation.fn_hash_match(text, bigint, integer) TO app
 Grants a taula: **cap**. L'alta d'entrades es fa amb una comanda d'administració per l'alias `neon_migrator` (propietari).
 Índexs: `UNIQUE (sha256) WHERE sha256 IS NOT NULL` (consulta exacta).
 
+> **Chunk 9 (implementat)**: `moderation_notices` és immutable per a `app` (`SELECT, INSERT, DELETE`, cap `UPDATE`). La llista de hashes té RLS **sense polítiques ni grants** per a `app`; l'única porta és `moderation.fn_hash_match(sha256, phash, distància)` (`SECURITY DEFINER`, `EXECUTE` només per a `app`), i la taula s'omple amb `python manage.py load_hash_blocklist <csv>` amb el rol `migrator` ([guia](../guides/hash-blocklist.md)); el pHash es desa com a `bigint` amb signe i es passa com a text a la consulta (GOTCHAS #86). Cap importació de Firestore (només hi havia dades de prova).
+
 ### 2.23 `moderation.media_deletion_queue` (app `moderation`; **RLS sí**; taula afegida pel disseny, decisió 19)
 
 Cua *outbox* d'objectes d'R2 pendents d'esborrar. **Només la poblen triggers** (`SECURITY DEFINER`, propietari `migrator`) a `refuge_media` (§2.8) i `user_public_profiles` (§2.2); un worker/job la buida amb `system_context()`. Fa que l'esborrat d'usuari/experiència/refugi sigui **transaccional a la BD i reintentable a R2** (arquitectura §4.2) sense orfes.
@@ -1182,6 +1186,8 @@ CREATE POLICY mdq_update ON moderation.media_deletion_queue FOR UPDATE TO app US
 CREATE POLICY mdq_delete ON moderation.media_deletion_queue FOR DELETE TO app USING ({SYS});
 ```
 Grants: `SELECT, UPDATE, DELETE` (cap `INSERT`).
+
+> **Chunk 9 — desviació (D40): `media_deletion_queue` NO s'ha implementat.** Els chunks 7 i 8 esborren a R2 de manera síncrona amb *rollback* i la cua obligaria a reescriure'ls; la retenció CSAM copia a `moderation-hold/` dins la mateixa resolució. Queda com a deute ([TECH_DEBT R16](../TECH_DEBT.md), R9, R21).
 
 ### 2.24 `audit.audit_logs` (app `audit`; **RLS sí**)
 
@@ -1210,6 +1216,8 @@ CREATE POLICY audit_delete ON audit.audit_logs FOR DELETE TO app USING ({SYS}); 
 ```
 Grants: `SELECT, INSERT, DELETE` (**cap `UPDATE`**: registre immutable).
 `AuditLogService.log` «mai ha de trencar el flux»: sota una transacció per petició, una excepció SQL **avorta la transacció**; l'`INSERT` s'ha d'embolicar en un `transaction.atomic()` niuat (*savepoint*) que s'empassa l'error.
+
+> **Chunk 9 (implementat)** a `apps/audit/migrations/0001_initial.py` i `apps/audit/services.py`. Fidel al disseny, amb aquests detalls: `AuditLogService.log` fa l'`INSERT` en un *savepoint* i **mai llança**; actor `'system'`/`None` → `actor_uid` NULL amb `system_context()` acotat; quan `target_type = 'user'` l'UID afectat va a `subject_uid` (cap UID a `target_id`/`metadata`); `legal_hold` es deriva de l'acció (CSAM) i **no és retroactiu** (`app` no té `UPDATE`); `expire_at` = `now() + 365 d` (5 anys si `legal_hold`); CHECK de `metadata` (objecte, < 16 KiB). Les FK són `CASCADE DEFERRABLE INITIALLY DEFERRED` i `AuditLogService` fa `SET CONSTRAINTS … IMMEDIATE` per detectar un actor inexistent. Purga: `purge_audit_logs` (lots de 5.000, sense planificar, R18).
 
 ---
 

@@ -1,12 +1,6 @@
 from django.urls import include, path
 from .views.health_check_views import HealthCheckAPIView
-from .views.user_views import UserModerationNoticesAPIView
 from apps.uploads.views import UploadIntentsAPIView, UploadIntentsConfirmAPIView
-from .views.media_views import (
-    MediaReportsAPIView,
-    AdminMediaReportsAPIView,
-    AdminMediaReportDetailAPIView,
-)
 from apps.renovations.views import RefugeRenovationsAPIView
 from .views.cache_views import cache_stats, cache_clear, cache_invalidate
 
@@ -25,9 +19,8 @@ urlpatterns = [
     # Pujada directa de mitjans (presigned PUT + confirm) i moderació
     path('media/upload-intents/', UploadIntentsAPIView.as_view(), name='media_upload_intents'),  # POST
     path('media/upload-intents/confirm/', UploadIntentsConfirmAPIView.as_view(), name='media_upload_intents_confirm'),  # POST
-    path('media/reports/', MediaReportsAPIView.as_view(), name='media_reports'),  # POST
-    path('admin/media-reports/', AdminMediaReportsAPIView.as_view(), name='admin_media_reports'),  # GET (admins)
-    path('admin/media-reports/<str:id>/', AdminMediaReportDetailAPIView.as_view(), name='admin_media_report_detail'),  # PATCH (admins)
+    # /media/reports/, /admin/media-reports/[{id}/], /users/{uid}/moderation-notices/ → app `moderation` (PostgreSQL)
+    path('', include('apps.moderation.urls')),
 
     # Refuge experience endpoints
     # /experiences/, /experiences/{id}/ → app `experiences` (PostgreSQL)
@@ -40,7 +33,6 @@ urlpatterns = [
     # Users endpoints
     # /users/, /users/{uid}/, avatar, age-confirmation i les llistes de preferits/visitats → app `accounts` (PostgreSQL)
     path('users/', include('apps.accounts.urls')),
-    path('users/<str:uid>/moderation-notices/', UserModerationNoticesAPIView.as_view(), name='user_moderation_notices'),  # GET
     
     # Renovations endpoints
     # /renovations/, /renovations/{id}/, /renovations/{id}/participants/[{uid}/] → app `renovations` (PostgreSQL)

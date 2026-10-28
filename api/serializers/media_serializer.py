@@ -1,12 +1,9 @@
 """
-Serializers de mitjans: MediaItem (contracte), denúncies i resolució de denúncies.
-(Els d'intents de pujada i confirmació són a `apps/uploads/serializers.py`.)
+Serializers de mitjans: MediaItem (contracte).
+(Els d'intents de pujada i confirmació són a `apps/uploads/serializers.py`; els de denúncies i avisos, a
+`apps/moderation/serializers.py`.)
 """
 from rest_framework import serializers
-
-from ..models.media_report import (
-    REPORT_REASONS, REPORT_ACTIONS, REPORT_DETAILS_MAX_LENGTH, REPORT_STATUSES,
-)
 
 
 class MediaItemSerializer(serializers.Serializer):
@@ -37,59 +34,3 @@ class MediaItemSerializer(serializers.Serializer):
             from ..models.media_metadata import infer_media_type
             data['media_type'] = infer_media_type(data.get('key'))
         return data
-
-
-# ---------------------------------------------------------------------------
-# Denúncies
-# ---------------------------------------------------------------------------
-
-class MediaReportCreateSerializer(serializers.Serializer):
-    """POST /api/media/reports/"""
-    refuge_id = serializers.CharField(max_length=100)
-    media_key = serializers.CharField(max_length=500)
-    reason = serializers.ChoiceField(choices=list(REPORT_REASONS))
-    details = serializers.CharField(required=False, allow_blank=True, allow_null=True,
-                                    max_length=REPORT_DETAILS_MAX_LENGTH)
-
-    def validate(self, attrs):
-        if attrs['reason'] == 'other' and not (attrs.get('details') or '').strip():
-            raise serializers.ValidationError({'details': "Cal una descripció quan el motiu és 'other'"})
-        return attrs
-
-
-class MediaReportResponseSerializer(serializers.Serializer):
-    id = serializers.CharField()
-    refuge_id = serializers.CharField()
-    media_key = serializers.CharField()
-    reason = serializers.CharField()
-    details = serializers.CharField(allow_null=True)
-    status = serializers.CharField()
-    priority = serializers.CharField()
-    created_at = serializers.CharField()
-    media_hidden = serializers.BooleanField()
-
-
-class MediaReportListQuerySerializer(serializers.Serializer):
-    status = serializers.ChoiceField(choices=list(REPORT_STATUSES), required=False, default='pending')
-
-
-class MediaReportResolveSerializer(serializers.Serializer):
-    """PATCH /api/admin/media-reports/{id}/"""
-    action = serializers.ChoiceField(choices=list(REPORT_ACTIONS))
-    statement = serializers.CharField(max_length=2000, allow_blank=False, trim_whitespace=True)
-
-
-class ModerationNoticeSerializer(serializers.Serializer):
-    id = serializers.CharField()
-    uid = serializers.CharField()
-    type = serializers.CharField()
-    statement = serializers.CharField(allow_blank=True)
-    created_at = serializers.CharField(allow_blank=True)
-    refuge_id = serializers.CharField(allow_null=True, required=False)
-    media_key = serializers.CharField(allow_null=True, required=False)
-    reason = serializers.CharField(allow_null=True, required=False)
-    action = serializers.CharField(allow_null=True, required=False)
-    report_id = serializers.CharField(allow_null=True, required=False)
-    automated = serializers.BooleanField()
-    strikes = serializers.IntegerField(allow_null=True, required=False)
-    redress = serializers.CharField()

@@ -17,19 +17,14 @@ def r2store():
 
 @pytest.fixture(autouse=True)
 def moderation():
-    """Hash-blocklist / denúncies / avisos de moderació segueixen a Firestore fins al chunk 9: es mocken.
-
-    `moderation.check` (per defecte `blocked=False`; es pot fer bloquejar amb `moderation.check.return_value =
-    ModerationResult(True, ...)`), `moderation.create_report`, `moderation.create_notice`.
-    """
+    """La moderació automàtica (`ModerationService.check`) es mocka: per defecte `blocked=False`; es pot fer bloquejar amb
+    `moderation.check.return_value = ModerationResult(True, ...)`. La denúncia, l'avís i l'auditoria del bloqueig són a
+    PostgreSQL (`apps.moderation`) i es comproven contra la BD (els tests amb la llista de hashes real són a
+    `apps/moderation/tests/test_upload_block.py`)."""
     from api.services.moderation_service import ModerationResult
     check = MagicMock(return_value=ModerationResult(False))
-    create_report = MagicMock(return_value=(True, None))
-    create_notice = MagicMock(return_value=None)
-    with patch('api.services.moderation_service.ModerationService.check', check), \
-            patch('api.daos.media_report_dao.MediaReportDAO.create_report', create_report), \
-            patch('api.daos.moderation_notice_dao.ModerationNoticeDAO.create_notice', create_notice):
-        yield SimpleNamespace(check=check, create_report=create_report, create_notice=create_notice)
+    with patch('api.services.moderation_service.ModerationService.check', check):
+        yield SimpleNamespace(check=check)
 
 
 @pytest.fixture

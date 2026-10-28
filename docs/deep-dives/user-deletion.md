@@ -18,9 +18,10 @@ Punt d'entrada: `services.delete_user(uid)` (abans `UserController.delete_user`)
 | Fotos pujades (R2 + fila de `refuge_media`) i mitjans de les experiències de l'usuari pujats per altri (un admin) | **Esborrar** (fitxers: `_delete_r2_media`; files: cascada per `creator_uid` i per `experience_id`) | Dades personals; els fitxers no han de quedar orfes (D38) |
 | Avatar | **Esborrar** | Dada personal |
 | Miniatures (`{uuid}_thumb.webp`) de les fotos i de l'avatar | **Esborrar** (via `thumb_key` de les metadades) | Dades personals; si falla l'esborrat queda orfe i es registra un warning |
-| `media_reports` (com a denunciant o autor), `moderation_notices` | **Es conserven** (pendent de decidir, [TECH_DEBT I3](../TECH_DEBT.md)) | Obligacions DSA i possible evidència |
-| `moderation-hold/` (R2) | **Es conserva** | Evidència retinguda per obligació legal |
-| `audit_logs` | Caduca per TTL (12 mesos) | Registre art. 32 RGPD |
+| `moderation.media_reports` (chunk 9) | **Denunciant esborrat**: les denúncies no `legal_hold` cauen en **cascada**; les `legal_hold` (CSAM) es **desvinculen** (`reporter_uid` NULL + `anonymized_at`, per `users.fn_users_detach_legal_hold`, `SECURITY DEFINER`, abans de la cascada) i **conserven `details`** (decisió del PO, 28/10, RGPD: forma part de l'evidència). L'API emet `reporter_uid = 'unknown'`. **Autor del mitjà o moderador** esborrat: `media_creator_uid`/`resolved_by` → `SET NULL` | Obligacions DSA i evidència CSAM; la resta no cal conservar-la |
+| `moderation.moderation_notices` (chunk 9) | **Cascada** per `user_uid` (són avisos de l'usuari esborrat); si es borra el refugi o la denúncia, `SET NULL` | Dada personal de l'usuari |
+| `moderation-hold/` (R2) | **Es conserva** (clau `moderation-hold/<upload_id>` o `<clau original>`, sense l'UID) | Evidència retinguda per obligació legal |
+| `audit.audit_logs` (chunk 9) | **Cascada** per `actor_uid`/`subject_uid` (FK `DEFERRABLE`), excepte les files `legal_hold` (accions CSAM): el trigger les deixa amb `actor_uid`/`subject_uid` NULL i es conserven fins a `expire_at` (5 anys). No és retroactiu (`app` no té `UPDATE`). Les altres caduquen als 365 dies (`purge_audit_logs`, sense planificar, R18) | Registre art. 32 RGPD; l'UID afectat mai és a `target_id`/`metadata` |
 | `visitors` dels refugis visitats | **Cascada** (`user_visited_refuges`; ja no hi ha array `visitors`) | No deixar referències |
 | Participacions en visites (`activity.refuge_visit_participants`, PostgreSQL) | **Cascada** de `DELETE users.users`; el total (vista `refuge_visit_totals`) es recalcula sol | No deixar referències |
 | Preferits i visitats (`user_*_refuges`), perfil públic i avatar (PostgreSQL) | **Cascada** de `DELETE users.users` | — |
@@ -36,6 +37,7 @@ Per permetre l'anonimització, `renovations.creator_uid` és *nullable* i el `gr
 | ~~`experiences`~~ (migrades, chunk 7) | Ara són `activity.experiences`: cascada del `DELETE users.users` (FK `creator_uid ON DELETE CASCADE`); els seus mitjans (`refuge_media.experience_id`) cauen per la FK `ON DELETE CASCADE` **[FET]** |
 | PostgreSQL `moderation.upload_intents` (chunk 7) | cascada per `user_uid` |
 | ~~`doubts` i `doubts/{id}/answers`~~ (migrats, chunk 6) | Ara són `activity.doubts`/`activity.answers`: cascada del `DELETE users.users` (FK `creator_uid ON DELETE CASCADE`). Les respostes d'un usuari a dubtes aliens també s'esborren, amb el seu subarbre de rèpliques, **també les d'altres usuaris** que hi penjaven (decisió del PO, 26/10: es manté l'esborrat del subarbre, coherent amb l'esborrat manual d'una resposta; no s'anonimitza) **[FET]** |
+| PostgreSQL `moderation.media_reports`/`moderation_notices` i `audit.audit_logs` (chunk 9) | cascada, excepte les files `legal_hold` (trigger `fn_users_detach_legal_hold`: anonimitza i conserva `details`) |
 | PostgreSQL `proposals.refuge_proposals` (chunk 8) | `SET NULL` de `creator_uid`/`reviewer_uid` + `comment = NULL` explícit |
 | PostgreSQL `activity.renovations` (+ `renovation_group_links`, `renovation_participants`, `renovation_expelled`) | DELETE explícit (vigents del creador) / `SET NULL` + trigger (passades) / cascada (participacions i expulsions) |
 | `data_refugis_lliures` (legacy) | ja no es toca des de l'esborrat d'usuari |
