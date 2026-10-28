@@ -12,7 +12,7 @@ L'usuari es registra a **Firebase Auth des del client** (el backend no crea comp
 | POST | `/api/users/` | `UsersCollectionAPIView.post` | `IsAuthenticated` (**sense** `HasProfile`: és l'única via per crear-lo) |
 | GET | `/api/users/{uid}/` | `UserDetailAPIView.get` | `IsAuthenticated` + `HasProfile` |
 | PATCH | `/api/users/{uid}/` | `.patch` | `IsAuthenticated` + `HasProfile` + `IsSameUser` |
-| DELETE | `/api/users/{uid}/` | `.delete` | `IsAuthenticated` + `HasProfile` + `IsSameUser` |
+| DELETE | `/api/users/{uid}/` | `.delete` | `IsAuthenticated` + `IsSameUser` (sense `HasProfile`, D42; vista `non_atomic_requests`) |
 
 Taules (schema `users`, [postgres-schema §2.1–2.4](../design/postgres-schema.md)): `users` (`uid` = UID de Firebase, `language`, `created_at`, `age_confirmed_at`, `age_threshold`, `moderation_strikes`, `is_blocked`, `blocked_reason`, `blocked_at`), `user_public_profiles` (`username`, `updated_at`), `user_avatars`, `user_favourite_refuges`, `user_visited_refuges`, i el catàleg `languages`. **No es desa mai la data de naixement ni l'email** **[FET]**.
 
