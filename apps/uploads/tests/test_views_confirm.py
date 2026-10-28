@@ -139,7 +139,7 @@ def test_el_mitja_publicat_surt_a_les_lectures_del_refugi_i_al_perfil(client, wo
 
 
 def test_confirma_el_registre_d_auditoria(client, world, r2store, _mock_audit_log):
-    from api.services import audit_log_service as audit
+    from apps.audit import services as audit
     uid = create_intent(client, r2store, make_png(), 'refuge', world[0], content_type='image/png')
     confirm(client, [uid])
     assert any(c.args[1] == audit.ACTION_UPLOAD_CONFIRM for c in _mock_audit_log.call_args_list)
@@ -355,8 +355,11 @@ def test_coincidencia_amb_la_blocklist_bloqueja_l_usuari_i_no_publica(client, wo
     assert user == [(True, 'moderation_hash_match')]
     # l'evidència es conserva a moderation-hold/ i no queda res a quarantine/
     assert f'quarantine/{uid}' not in r2store.store and r2store.keys('moderation-hold/')
-    moderation.create_report.assert_called_once()
-    moderation.create_notice.assert_called_once()
+    # denúncia automàtica i avís a PostgreSQL (clau de retenció sense l'UID, D41)
+    assert sql("SELECT count(*), min(media_key), min(source), bool_and(legal_hold) FROM moderation.media_reports") == [
+        (1, f'moderation-hold/{uid}', 'automatic', True)]
+    assert sql("SELECT user_uid, type, action, automated FROM moderation.moderation_notices") == [
+        ('u1', 'account_blocked', 'upload_blocked', True)]
 
 
 def test_despres_del_bloqueig_l_usuari_ja_no_pot_confirmar_ni_crear_intents(client, world, r2store, moderation):

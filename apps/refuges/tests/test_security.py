@@ -298,9 +298,14 @@ def test_public_no_te_privilegis_sobre_taules_ni_funcions_de_domini():
 
 
 def test_cap_funcio_de_domini_es_security_definer():
-    """Una SECURITY DEFINER executaria amb els privilegis del propietari (salt de RLS)."""
+    """Una SECURITY DEFINER executaria amb els privilegis del propietari (salt de RLS).
+
+    Excepció del chunk 9 (disseny §2.1/§2.20/§2.24): els dos *triggers* de conservació `legal_hold` (CSAM) han de poder
+    desvincular files de `moderation.media_reports` i `audit.audit_logs` (on `app` no té `UPDATE`); són `trigger`, no
+    cridables, i fixen `search_path = pg_catalog`."""
     assert _one("""SELECT count(*) FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
-                   WHERE n.nspname IN ('core', 'users', 'refuges') AND p.prosecdef""") == 0
+                   WHERE n.nspname IN ('core', 'users', 'refuges') AND p.prosecdef
+                     AND p.proname NOT IN ('fn_refuges_detach_legal_hold', 'fn_users_detach_legal_hold')""") == 0
 
 
 def test_un_uid_amb_valors_especials_no_dona_privilegis(RM):

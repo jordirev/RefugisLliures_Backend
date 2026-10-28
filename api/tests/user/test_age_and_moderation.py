@@ -1,5 +1,5 @@
 """
-Tests d'utilitats d'edat i dels avisos de moderació d'usuari (que continuen a Firestore).
+Tests d'utilitats d'edat (els avisos de moderació són a `apps/moderation/tests/`).
 
 La resta (creació, edat, moderació, avatar, llistes) és a PostgreSQL: `apps/accounts/tests/` (chunk 3).
 """
@@ -10,7 +10,6 @@ import pytest
 from rest_framework.test import APIRequestFactory, force_authenticate
 
 from api.utils.age_utils import compute_age, is_old_enough
-from api.views.user_views import UserModerationNoticesAPIView
 
 
 @pytest.mark.unit
@@ -28,20 +27,3 @@ def authed(request, uid='u1'):
     return request
 
 
-@pytest.mark.views
-class TestModerationNoticesView:
-    @patch('api.views.user_views.MediaReportController')
-    def test_moderation_notices(self, mock_ctrl):
-        notice = {'id': 'n1', 'uid': 'u1', 'type': 'strike', 'statement': 's', 'created_at': 't',
-                  'automated': False, 'redress': 'r', 'strikes': 1}
-        mock_ctrl.return_value.get_user_notices.return_value = ([notice], None)
-        response = UserModerationNoticesAPIView.as_view()(authed(APIRequestFactory().get('/x')), uid='u1')
-        assert response.status_code == 200
-        assert response.data['notices'][0]['type'] == 'strike'
-
-        response = UserModerationNoticesAPIView.as_view()(authed(APIRequestFactory().get('/x'), uid='other'), uid='u1')
-        assert response.status_code == 403
-
-        mock_ctrl.return_value.get_user_notices.return_value = (None, 'boom')
-        response = UserModerationNoticesAPIView.as_view()(authed(APIRequestFactory().get('/x')), uid='u1')
-        assert response.status_code == 500

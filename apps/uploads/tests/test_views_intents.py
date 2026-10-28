@@ -120,7 +120,7 @@ def test_fins_a_10_fitxers(client, world):
 
 
 def test_registra_l_auditoria_de_la_creacio(client, world, _mock_audit_log):
-    from api.services import audit_log_service as audit
+    from apps.audit import services as audit
     post(client, intent_body('refuge', world[0]))
     assert any(c.args[1] == audit.ACTION_UPLOAD_INTENT for c in _mock_audit_log.call_args_list)
 

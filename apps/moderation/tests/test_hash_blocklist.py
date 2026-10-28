@@ -240,7 +240,8 @@ def test_la_categoria_buida_es_csam_i_els_hex_es_normalitzen_a_minuscules(blockl
 
 
 def test_es_idempotent(blocklist, tmp_path):
-    path = csv_file(tmp_path, [f'{SHA},,csam,NCMEC', ',0000000000000007,csam,NCMEC', f'{SHA},0000000000000009,csam,NCMEC'])
+    # (el tercer sha256 és diferent: `sha256` és UNIQUE, §2.22; amb el mateix sha256 la fila seria una entrada ja existent)
+    path = csv_file(tmp_path, [f'{SHA},,csam,NCMEC', ',0000000000000007,csam,NCMEC', f'{"ef" * 32},0000000000000009,csam,NCMEC'])
     assert 'Entrades afegides: 3' in load(path)
     out = load(path)
     assert 'Entrades afegides: 0' in out and 'Ja existents: 3' in out

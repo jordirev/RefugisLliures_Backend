@@ -8,9 +8,8 @@ from rest_framework.test import APIRequestFactory, force_authenticate
 
 from api.models.media_metadata import MediaMetadata
 from apps.accounts.models import UserAccount as User
-from api.serializers.media_serializer import (
-    MediaItemSerializer, MediaReportCreateSerializer, MediaReportResolveSerializer,
-)
+from api.serializers.media_serializer import MediaItemSerializer
+from apps.moderation.serializers import MediaReportCreateSerializer, MediaReportResolveSerializer
 from apps.refuges.serializers import RefugiSerializer
 
 PUBLIC_FIELDS = {'key', 'url', 'thumb_url', 'media_type', 'width', 'height', 'blurhash',
