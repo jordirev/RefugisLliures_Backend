@@ -3,7 +3,7 @@ Pressupost de consultes del chunk 8 (§5.3): cap N+1. El recompte exclou `set_co
 inclou la lectura de `users` de `HasProfile` (una per petició).
 
 Pressupost: llistes (admin i meves) <= 2 (perfil + llista, amb les fotos i els payloads com a columnes `jsonb`);
-POST create <= 4; POST update/delete <= 5 (perfil, refugi per a la foto, inserció...); reject <= 4. El que es verifica
+POST create <= 5 (inclou la consulta de duplicats); POST update/delete <= 5 (perfil, refugi per a la foto, inserció...); reject <= 4. El que es verifica
 estrictament és que el recompte **no depèn del nombre de files**: llistes amb 1 i 15 propostes, aprovar un `update` amb
 1 i 10 enllaços, aprovar un `delete` amb 0 i 20 propostes pendents més i moltes dades relacionades (la BD cascadeja).
 """
@@ -68,7 +68,7 @@ def test_les_meves_constants_amb_les_files(client, world):
 
 def test_post_create(client, world):
     resp, q = measure(lambda: api_post(client, PROPOSALS, user_claims('u1'), create_body()))
-    assert resp.status_code == 201 and q.count <= 4, q.queries
+    assert resp.status_code == 201 and q.count <= 5, q.queries
 
 
 def test_post_update_i_delete(client, world):

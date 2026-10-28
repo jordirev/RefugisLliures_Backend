@@ -164,10 +164,10 @@ def test_post_refugi_inexistent_400_refuge_does_not_exists(client, world, action
     assert count_proposals() == 0
 
 
-def test_post_create_d_un_refugi_proper_amb_el_mateix_nom_no_es_bloqueja(client, refuge):
-    r = api_post(client, PROPOSALS, user_claims('u1'),
-                 create_body(name='Refugi A', coord={'lat': 42.5, 'long': 1.5}))
-    assert r.status_code == 201 and set(r.json()) == PROPOSAL_KEYS
+def test_post_create_d_un_refugi_proper_amb_el_mateix_nom_es_409_vegeu_test_duplicates(client, refuge):
+    r = api_post(client, PROPOSALS, user_claims('u1'), create_body(name='Refugi A', coord={'lat': 42.5, 'long': 1.5}))
+    assert r.status_code == 409 and r.json()['error'] == 'possible_duplicates'
+    assert count_proposals() == 0
 
 
 # =================================== GET: llista d'admin ===================================

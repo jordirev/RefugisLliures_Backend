@@ -197,12 +197,14 @@ def test_create_d_un_refugi_inexistent_o_id_invalid(services, world, action, rid
     assert proposal_ids() == set()
 
 
-def test_create_no_bloqueja_per_un_refugi_proper_amb_el_mateix_nom(services, refuge):
-    """Decisió 16 del disseny: proximitat/nom semblant és un avís, mai un bloqueig."""
-    with user('u1'):
-        p = services.create_proposal(creator_uid='u1', action='create',
+def test_create_d_un_refugi_proper_i_amb_nom_semblant_llanca_possible_duplicates(services, refuge):
+    """Decisió del PO (27/10): <= 500 m i nom semblant -> `PossibleDuplicates` (409 a l'API); no es crea res."""
+    with pytest.raises(services.PossibleDuplicates) as info:
+        with user('u1'):
+            services.create_proposal(creator_uid='u1', action='create',
                                      payload=new_payload(name='Refugi A', coord={'lat': 42.5, 'long': 1.5}))
-    assert proposal_row(str(p.pk))['status'] == 'pending'
+    assert [d['id'] for d in info.value.duplicates] == [str(refuge.pk)]
+    assert proposal_ids() == set()
 
 
 def test_create_com_a_un_altre_usuari_es_rebutjat_per_la_rls(services, world):
