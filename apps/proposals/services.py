@@ -33,7 +33,6 @@ from apps.refuges import selectors as refuge_selectors
 from apps.refuges.models import Refuge, RefugeAmenities, RefugeLink, RefugeMedia
 from apps.refuges.serializers import RefugiSerializer, refuge_to_dict
 
-from . import selectors
 from .models import Action, RefugeProposal, Status
 
 logger = logging.getLogger(__name__)
