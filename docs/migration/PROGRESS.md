@@ -24,7 +24,7 @@
 | 6 | Dubtes | `migracio/dubtes` | fet (PR [#49](https://github.com/jordirev/RefugisLliures_Backend/pull/49) fusionada, `dec16b1`) | e2e 30/30; D30–D31; esborrar l'usuari esborra el subarbre de respostes (PO) |
 | 7 | Experiències + pujades | `migracio/experiencies` | fet (PR [#55](https://github.com/jordirev/RefugisLliures_Backend/pull/55) fusionada, `aead98c`) | 3675 tests; e2e 7 (40 casos) i regressió 1–6 verds; D38; frontend: `condition` i comentari obligatoris en crear |
 | 8 | Propostes | `migracio/propostes` | fet (PR [#57](https://github.com/jordirev/RefugisLliures_Backend/pull/57) fusionada, `9d2571c`) | 3999 tests; e2e 8 (39 casos) i regressió 1–7 verds; D39; PO 28/10: comentari NULL en esborrar el creador, 409 `possible_duplicates`; legacy de propostes, dubtes i reformes eliminat; frontend: avís de duplicats i codis 403/409 |
-| 9 | Moderació + audit | `migracio/moderacio` | en revisió (PR a `migration`) | e2e 9 (46 casos) i regressió 1–8 verds; D40–D41; PO 28/10: `details` CSAM conservat, llista de hashes buida + `load_hash_blocklist`; legacy de moderació i auditoria eliminat (només queda el health check) |
+| 9 | Moderació + audit | `migracio/moderacio` | fet (PR [#60](https://github.com/jordirev/RefugisLliures_Backend/pull/60) fusionada, `5cd1157`) | 4446 tests; e2e 9 (46 casos) i regressió 1–8 verds; D40–D41; PO 28/10: `details` CSAM conservat, llista de hashes buida + `load_hash_blocklist`; legacy de moderació i auditoria eliminat (només queda el health check); frontend: camps nuls a les denúncies, 404/409 en resoldre, etiquetes `auto_hide`/`upload_blocked` |
 | 10 | Esborrat d'usuari | `migracio/esborrat-usuari` | pendent | |
 | 11 | Neteja Firestore/cache | `migracio/neteja` | pendent | |
 
