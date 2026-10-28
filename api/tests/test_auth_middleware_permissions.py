@@ -15,7 +15,7 @@ from api.middleware.firebase_auth_middleware import FirebaseAuthenticationMiddle
 from api.authentication import FirebaseAuthentication
 from api.permissions import (
     is_firebase_admin, IsOwnerOrReadOnly, IsSameUser, SafeMethodsOnly,
-    IsFirebaseAdmin, IsRenovationCreator,
+    IsFirebaseAdmin,
 )
 
 
@@ -631,42 +631,6 @@ class TestPermissionsExtended:
             
         request.user.is_authenticated = False
         assert perm.has_permission(request, view) is False
-
-    @patch('api.daos.renovation_dao.RenovationDAO')
-    def test_is_renovation_creator(self, mock_dao_class):
-        """Test IsRenovationCreator"""
-        perm = IsRenovationCreator()
-        request = MagicMock()
-        view = MagicMock()
-        obj = MagicMock()
-        
-        # has_permission
-        request.user.is_authenticated = True
-        assert perm.has_permission(request, view) is True
-        
-        # has_object_permission - Admin
-        with patch('api.permissions.is_firebase_admin', return_value=True):
-            assert perm.has_object_permission(request, view, obj) is True
-            
-        # has_object_permission - Safe Method
-        with patch('api.permissions.is_firebase_admin', return_value=False):
-            request.method = 'GET'
-            assert perm.has_object_permission(request, view, obj) is True
-            
-            # Non-safe method, no id (creation)
-            request.method = 'POST'
-            view.kwargs = {}
-            assert perm.has_object_permission(request, view, obj) is True
-            
-            # Non-safe method, with id
-            view.kwargs = {'id': 'ren_1'}
-            request.user_uid = 'user_1'
-            mock_dao = mock_dao_class.return_value
-            mock_dao.get_renovation_by_id.return_value = {'creator_uid': 'user_1'}
-            assert perm.has_object_permission(request, view, obj) is True
-            
-            mock_dao.get_renovation_by_id.return_value = {'creator_uid': 'user_2'}
-            assert perm.has_object_permission(request, view, obj) is False
 
 
 # ============= TESTS D'INTEGRACIÓ =============

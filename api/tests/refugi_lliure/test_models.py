@@ -12,7 +12,6 @@ from api.models.refugi_lliure import (
     RefugiCoordinates,
     RefugiSearchFilters
 )
-from api.models.renovation import Renovation
 from datetime import date, timedelta
 import math
 
@@ -20,24 +19,6 @@ import math
 def floats_are_close(a, b):
     """Comprova si dos floats són gairebé iguals"""
     return math.isclose(a, b, rel_tol=1e-9)
-@pytest.fixture
-def sample_renovation():
-    """Fixture per crear una renovation de mostra"""
-    today = date.today()
-    return Renovation(
-        id='test_renovation',
-        creator_uid='test_user',
-        refuge_id='refugi_001',
-        ini_date=datetime(today.year, today.month, today.day, tzinfo=ZoneInfo('UTC')),
-        fin_date=datetime(today.year, today.month, today.day, tzinfo=ZoneInfo('UTC')) + timedelta(days=14),
-        description='Test renovation',
-        materials_needed='Test materials',
-        group_link='https://test.com',
-        participants_uids=[]
-    )
-# ==================== TESTS DE MODELS ====================
-
-
 @pytest.mark.models
 class TestRefugiModels:
     """Tests per als models de Refugi"""
