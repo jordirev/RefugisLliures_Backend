@@ -93,7 +93,8 @@ sequenceDiagram
 | Proposta inexistent (o ID no UUID) en aprovar/rebutjar | 404 | `{"error":"Proposal not found"}` |
 | Proposta ja aprovada/rebutjada | 409 | `{"error":"Proposal is already approved"}` (o `rejected`) |
 | `create` amb possibles duplicats | 409 | `{"error":"possible_duplicates","code":"possible_duplicates","message":"Hi ha refugis a menys de 500 m amb un nom semblant. Comprova que no sigui el mateix.","possible_duplicates":[{"id","name","distance_m"}]}` |
-| Aprovar amb un enllaç que ja és d'un altre refugi | 409 | `{"error":"A link of the proposal already belongs to another refuge"}` |
+| Aprovar amb un enllaç que ja és d'un altre refugi | 409 | `{"error":"A link of the proposal already belongs to another refuge","code":"link_already_used","message":"…"}` |
+| Aprovar quan el refugi ja no existeix (cursa improbable, TECH_DEBT P9) | 409 | `{"error":"The refuge of the proposal no longer exists","code":"refuge_not_found","message":"…"}` |
 | BD / R2 caiguts | 500 | `{"error","error_id"}` (`server_error`) |
 
 El frontend ha de gestionar el 409 `possible_duplicates` (mostrar els candidats `id`/`name`/`distance_m` perquè l'usuari comprovi que no és el mateix refugi). Cal adaptar-lo (decisió del PO, 28/10).

@@ -50,7 +50,9 @@ READ_PERMISSIONS = [IsAuthenticated, HasProfile]
 WRITE_PERMISSIONS = [IsAuthenticated, HasProfile, IsNotBlocked, IsAgeConfirmed]
 ADMIN_PERMISSIONS = [IsAuthenticated, HasProfile, IsFirebaseAdmin]
 
-INVALID_STATUS = "Invalid status filter: {}. Must be 'pending', 'approved', or 'rejected'"
+LINK_ALREADY_USED = 'A link of the proposal already belongs to another refuge'
+REFUGE_GONE = 'The refuge of the proposal no longer exists'
+INVALID_STATUS ="Invalid status filter: {}. Must be 'pending', 'approved', or 'rejected'"
 
 
 def _status_filter(request):
@@ -198,7 +200,12 @@ class ProposalApproveAPIView(APIView):
         try:
             services.approve_proposal(proposal_id=proposal_id, reviewer_uid=request.user_uid)
         except services.LinkAlreadyUsed:
-            return Response({'error': 'A link of the proposal already belongs to another refuge'},
+            # `error` es manté pel contracte d'abans; el client distingeix els 409 per `code`
+            return Response({'error': LINK_ALREADY_USED, 'code': 'link_already_used', 'message': LINK_ALREADY_USED},
+                            status=status.HTTP_409_CONFLICT)
+        except services.RefugeNotFound:
+            # Cursa improbable: esborrar un refugi rebutja les seves pendents (TECH_DEBT P9)
+            return Response({'error': REFUGE_GONE, 'code': 'refuge_not_found', 'message': REFUGE_GONE},
                             status=status.HTTP_409_CONFLICT)
         except services.MediaStorageError as exc:
             return server_error(ERR_R2_DELETE, exc, logger=logger)
