@@ -11,7 +11,7 @@ import uuid
 from datetime import date
 from typing import Any, Dict, Optional
 
-from django.db import IntegrityError, transaction
+from django.db import IntegrityError, OperationalError, connection, transaction
 from django.db.models import F
 from django.db.models.functions import Now
 from firebase_admin import auth as firebase_auth
@@ -20,12 +20,13 @@ from apps.audit import services as audit
 from api.services import r2_media_service
 from api.utils.age_utils import is_old_enough
 from api.utils.timezone_utils import get_madrid_timezone
-from apps.core.rls import system_context
+from apps.core.rls import rls_context, system_context
 from apps.experiences.models import Experience
 from apps.refuges import selectors as refuge_selectors
 from apps.proposals.models import RefugeProposal
 from apps.refuges.models import RefugeMedia
 from apps.renovations import services as renovation_services
+from apps.uploads.models import UploadStatus, UploadIntent
 
 from . import selectors
 from .models import FavouriteRefuge, UserAccount, UserAvatar, UserPublicProfile, VisitedRefuge
@@ -61,7 +62,7 @@ class AvatarStorageError(Exception):
 
 
 class UserDeletionError(Exception):
-    """Un pas de l'esborrat (Firestore, R2 o Firebase Auth) ha fallat: l'usuari es conserva i és reintentable."""
+    """Un pas de l'esborrat ha fallat: R2 (tot desfet) o Firebase Auth (dades ja esborrades); reintentable."""
 
 
 class FirebaseAccountNotFound(Exception):
@@ -254,23 +255,35 @@ def delete_avatar(uid: str, media_service=None) -> None:
         logger.warning("Miniatura d'avatar òrfena a R2: %s", avatar.thumb_key)
 
 
-# ---------- Esborrat d'usuari provisional (D21, D22) ----------
+# ---------- Esborrat d'usuari (D42, §8.4) ----------
 
-def _firestore_steps(uid: str):
+# Pas 2 de §8.4: els mitjans ocults que només ho són per denúncies pendents d'aquest usuari tornen a la cua com a
+# denúncia automàtica. D42 (5): si alguna d'aquestes denúncies és `legal_hold` (es conserva anonimitzada) el mitjà ja
+# continua a la cua i no se n'afegeix cap. Els mitjans de les experiències de l'usuari s'exclouen: cauen per cascada.
+_AUTO_REPORTS_SQL = """
+INSERT INTO moderation.media_reports
+    (refuge_id, media_key, reporter_uid, reason, details, media_creator_uid, priority, source)
+SELECT m.refuge_id, m.key, NULL, 'other', 'reporter_account_deleted', m.creator_uid, 'high', 'automatic'
+  FROM refuges.refuge_media m
+ WHERE m.status = 'hidden_pending_review'
+   AND m.creator_uid <> %(uid)s
+   AND (m.experience_id IS NULL
+        OR NOT EXISTS (SELECT 1 FROM activity.experiences e WHERE e.id = m.experience_id AND e.creator_uid = %(uid)s))
+   AND EXISTS     (SELECT 1 FROM moderation.media_reports r
+                    WHERE r.refuge_id = m.refuge_id AND r.media_key = m.key
+                      AND r.status = 'pending' AND r.reporter_uid = %(uid)s)
+   AND NOT EXISTS (SELECT 1 FROM moderation.media_reports r
+                    WHERE r.refuge_id = m.refuge_id AND r.media_key = m.key AND r.status = 'pending'
+                      AND (r.reporter_uid IS DISTINCT FROM %(uid)s OR r.legal_hold))
+ON CONFLICT DO NOTHING
+"""
+
+
+def _collect_r2_keys(uid: str) -> list:
     """
-    Passos de l'esborrat que encara viuen a Firestore (D21), en l'ordre de sempre: `(nom, callable)`.
-
-    Buida des del chunk 8 (les propostes ja són a PostgreSQL: la FK `SET NULL` les anonimitza i el `comment` s'anul·la a
-    `delete_user`). Es conserva el punt d'extensió perquè `delete_user` i els tests el fan servir.
-    """
-    return []
-
-
-def _delete_r2_media(uid: str, media_service=None) -> None:
-    """
-    D22 (RGPD): esborra a R2 l'avatar (clau i miniatura), les fotos pujades per l'usuari i (D38) els mitjans de les
-    seves experiències encara que els hagi pujat un altre (un admin): les files cauen per cascada en esborrar l'usuari
-    (`experiences.creator_uid` i `refuge_media.experience_id`) i els fitxers no han de quedar orfes.
+    Claus d'R2 que cal esborrar (D22, D38, D42): avatar i miniatura, mitjans propis, mitjans de les seves experiències
+    (encara que els hagi pujat un altre) i `quarantine/` dels intents no confirmats (`pending` i `failed`). Mai
+    `moderation-hold/`. Nombre constant de consultes.
     """
     keys = []
     for key, thumb in UserAvatar.objects.filter(user_id=uid).values_list('key', 'thumb_key'):
@@ -284,43 +297,71 @@ def _delete_r2_media(uid: str, media_service=None) -> None:
         for queryset in (own, in_own_experiences):
             for key, thumb in queryset.values_list('key', 'thumb_key'):
                 keys += [key, thumb]
-    keys = [k for k in dict.fromkeys(keys) if k]
+    keys += list(UploadIntent.objects.filter(user_id=uid).exclude(status=UploadStatus.CONFIRMED)
+                 .values_list('quarantine_key', flat=True))
+    return [k for k in dict.fromkeys(keys) if k]
+
+
+def _delete_r2_keys(keys: list, media_service=None) -> None:
+    """Esborra les claus a R2; qualsevol fallada és `UserDeletionError` (fa desfer la transacció)."""
     if not keys:
         return
     service = media_service or r2_media_service.get_refugi_media_service()
-    result = service.delete_files(keys)
+    try:
+        result = service.delete_files(keys)
+    except Exception as exc:
+        raise UserDeletionError("R2 ha fallat en esborrar els fitxers de l'usuari") from exc
     if result.get('failed'):
         logger.error("R2: %d fitxers de l'usuari no s'han pogut esborrar", len(result['failed']))
         raise UserDeletionError("R2 no ha esborrat tots els fitxers de l'usuari")
 
 
+DEADLOCK_SQLSTATE = '40P01'
+DELETE_DEADLOCK_RETRIES = 2
+
+
+def _delete_user_data(uid: str, media_service=None) -> bool:
+    """Transacció única de l'esborrat (§8.4). `False` si l'usuari no té fila (res a fer)."""
+    with rls_context(uid):
+        # 1. Bloqueig de la fila: impedeix contingut nou durant l'esborrat (les FK hi prenen `KEY SHARE`).
+        if not UserAccount.objects.select_for_update().filter(pk=uid).exists():
+            return False
+        keys = _collect_r2_keys(uid)                                                    # 2
+        renovation_services.delete_current_by_creator(uid)                              # 3
+        with system_context():
+            with connection.cursor() as cur:                                            # 4
+                cur.execute(_AUTO_REPORTS_SQL, {'uid': uid})
+            # 5. El `comment` (text lliure, pot dur dades personals); la FK `SET NULL` anonimitza la resta.
+            RefugeProposal.objects.filter(creator_id=uid).update(comment=None)
+        UserAccount.objects.filter(pk=uid).delete()                                     # 6
+        audit.audit_log_service.log(None, audit.ACTION_USER_DELETED)                    # 7: cap identificador
+        # 8. Les FK i els *constraint triggers* diferits s'avaluen ara: un error de BD ha de sortir abans d'esborrar a
+        # R2 (no al COMMIT, amb els fitxers ja perduts). Només una fallada del propi COMMIT deixa R2 buit amb la fila;
+        # el reintent és idempotent (esborrar claus inexistents a R2 no falla).
+        with connection.cursor() as cur:
+            cur.execute('SET CONSTRAINTS ALL IMMEDIATE')
+        _delete_r2_keys(keys, media_service)                                            # 9: l'últim pas
+    return True
+
+
 def delete_user(uid: str, media_service=None) -> None:
     """
-    Esborra l'usuari: primer els passos de Firestore (D21), després R2 (D22), les reformes vigents del creador i el
-    `DELETE` de `users.users` (la BD cascadeja perfil, avatar, preferits, visitats i fotos) i al final el compte de Firebase Auth (U7, D24): primer
-    les dades i després el compte, perquè l'usuari pugui reintentar mentre el compte existeixi.
+    Procediment únic d'esborrat d'usuari (D42, §8.4): una transacció pròpia (amb el seu context de RLS) amb el bloqueig
+    de la fila, la recollida de claus, reformes vigents, denúncies automàtiques, `comment` de propostes, R2, `DELETE`
+    i auditoria; i **després del COMMIT**, Firebase Auth (`UserNotFoundError` = èxit).
 
-    El `DELETE` i Firebase Auth van dins un *savepoint*: si Firebase falla, `UserDeletionError` desfà el `DELETE`
-    (la vista retorna 500 sense excepció, així que `ATOMIC_REQUESTS` no el desfaria) i l'usuari es conserva.
-    Els passos d'abans no es desfan (Firestore/R2 no són transaccionals; són idempotents).
-    Finestra residual: si el `COMMIT` falla després d'esborrar el compte, queden les dades sense compte (rar;
-    ho tanca el procediment únic del chunk 10).
+    Sense fila a `users.users` salta directament a Firebase (idempotent, sense R2 ni auditoria). Si R2 falla,
+    `UserDeletionError` i tot desfet; si falla Firebase, `UserDeletionError` amb les dades ja esborrades: es pot
+    tornar a cridar mentre el compte existeixi. Per tenir un COMMIT real, la vista és `non_atomic_requests`.
     """
-    for name, step in _firestore_steps(uid):
-        success, error = step()
-        if not success:
-            logger.error("Esborrat d'usuari: ha fallat el pas «%s»: %s", name, error)
-            raise UserDeletionError(f'Ha fallat el pas «{name}» a Firestore')
-    _delete_r2_media(uid, media_service)
-    with transaction.atomic():
-        # Reformes (chunk 5, §8.4): les vigents del creador s'esborren (cascada a participants, expulsats i enllaç);
-        # les passades queden anònimes per la FK `SET NULL` (el *trigger* en treu l'enllaç) i les seves
-        # participacions i expulsions s'esborren per cascada en esborrar l'usuari.
-        renovation_services.delete_current_by_creator(uid)
-        # Propostes (chunk 8, PO 28/10, RGPD): es conserven (historial) amb `creator_uid`/`reviewer_uid` a NULL per la FK
-        # `SET NULL`, però el `comment` (text lliure, pot dur dades personals) s'anul·la; en aquest mateix savepoint.
-        with system_context():
-            RefugeProposal.objects.filter(creator_id=uid).update(comment=None)
-        if not UserAccount.objects.filter(pk=uid).delete()[0]:
-            raise UserNotFound()
-        _delete_firebase_account(uid)
+    for attempt in range(DELETE_DEADLOCK_RETRIES + 1):
+        try:
+            _delete_user_data(uid, media_service)
+            break
+        except OperationalError as exc:
+            # Un `DELETE` pot creuar-se amb un flux de moderació que bloqueja primer el mitjà i després l'usuari
+            # (`media_creator_uid`); Postgres tria una víctima. La transacció s'ha desfet sencera: es reintenta.
+            if getattr(exc.__cause__, 'sqlstate', None) != DEADLOCK_SQLSTATE or attempt == DELETE_DEADLOCK_RETRIES:
+                raise
+            logger.warning("Esborrat d'usuari: deadlock, reintent %d", attempt + 1)
+    _delete_firebase_account(uid)

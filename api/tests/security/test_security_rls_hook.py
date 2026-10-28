@@ -33,6 +33,20 @@ def test_hook_fora_de_transaccio_deixa_el_context_buit_i_avisa(app_db):
     assert 'u-admin' not in text, "l'avís no ha de contenir l'UID"
 
 
+def test_l_avis_fora_de_transaccio_no_porta_el_cami_amb_l_uid(app_db):
+    """L'avís registra el nom de la ruta, no el camí (que pot portar l'UID, p. ex. `/api/users/<uid>/`)."""
+    from types import SimpleNamespace
+    from api.rls_hook import apply_request_rls_context
+    req = _request('u-secret')
+    req.path = '/api/users/u-secret/'
+    req.method = 'PATCH'
+    req.resolver_match = SimpleNamespace(view_name='user_detail')
+    with patch('api.rls_hook.logger') as log:
+        apply_request_rls_context(req)
+    text = ' '.join(str(c) for c in log.warning.call_args_list)
+    assert 'user_detail' in text and 'u-secret' not in text
+
+
 def test_hook_dins_de_transaccio_no_avisa(app_db):
     from api.rls_hook import apply_request_rls_context
     with patch('api.rls_hook.logger') as log, transaction.atomic():

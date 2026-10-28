@@ -4,7 +4,7 @@ Esborrat d'usuari i `audit.audit_logs` (chunk 9; §2.1, §2.24, §8.5): `DELETE 
 - Files on l'usuari és `actor_uid` o `subject_uid`: s'esborren (cascada), **excepte** les `legal_hold`, que el *trigger*
   `users_detach_legal_hold` desvincula (`actor_uid`/`subject_uid` := NULL) i es conserven amb la resta de columnes
   intactes (`metadata` sense UID, `expire_at` a 5 anys).
-- Les files d'altres usuaris no es toquen. Si Firebase falla, es desfà tot (també la desvinculació).
+- Les files d'altres usuaris no es toquen. Si Firebase falla (després del commit, D42), les dades ja són fora.
 - El trigger funciona amb el rol `app` encara que no tingui `UPDATE` sobre la taula (`SECURITY DEFINER`).
 """
 import pytest
@@ -92,12 +92,13 @@ def test_les_files_d_altres_usuaris_no_es_toquen(client, world):
     assert row(mine) == before
 
 
-def test_si_firebase_falla_es_desfa_la_desvinculacio_i_l_esborrat(client, world, firebase_accounts):
+def test_si_firebase_falla_la_desvinculacio_i_l_esborrat_ja_son_ferms(client, world, firebase_accounts):
+    """D42: Firebase va després del commit; les dades ja estan esborrades/desvinculades."""
     hold = seed('u2', None, 'media.report', legal_hold=True)
     normal = seed('u2')
     firebase_accounts.delete_user.side_effect = RuntimeError('firebase caigut')
     assert delete_user(client, 'u2').status_code == 500
-    assert row(hold)[0] == 'u2' and row(normal) is not None
+    assert row(hold)[0] is None and row(normal) is None
 
 
 def test_el_trigger_no_necessita_update_per_a_app(client, world):
