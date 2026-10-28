@@ -27,7 +27,7 @@ AUTHENTICATED = [
     ('get', '/api/users/ghost/', None),
     ('get', '/api/users/other/', None),
     ('patch', '/api/users/ghost/', {'username': 'abc'}),
-    ('delete', '/api/users/ghost/', None),
+    # `DELETE /api/users/ghost/` no hi és: D42 el fa idempotent (sense `HasProfile`; vegeu test_user_deletion_procedure)
     ('delete', '/api/users/ghost/avatar/', None),
     ('patch', '/api/users/ghost/age-confirmation/', {'birth_date': '1990-01-01'}),
     ('get', '/api/users/ghost/favorite-refuges/', None),
