@@ -803,7 +803,8 @@ Grants: participants `SELECT, INSERT, DELETE`; expelled `SELECT, INSERT`. (`expe
 ### 2.15 `activity.experiences` (app `experiences`; **RLS sí**, lectura pública)
 
 > **Chunk 7 (implementat)** a `apps/experiences/migrations/0001_initial.py`. Desviació menor respecte del disseny: el `CHECK` del comentari és `btrim(comment, ' 	
-') <> ''` (tots els blancs ASCII, no només l'espai; D31/D34/D38) `AND char_length(comment) <= 2000`, el mateix que el serializer. Afegits: `CHECK experiences_condition_ck` (0–3) i índexs `experiences_refuge_idx (refuge_id, modified_at DESC, id DESC)` i `experiences_creator_idx (creator_uid, modified_at DESC)`. Les polítiques i el *trigger* de §2.9 són tal com estan escrits aquí (`exp_select/insert/update/delete`; `experiences_condition_ins` i `experiences_condition_upd`).
+
+') <> ''` (tots els blancs ASCII, no només l'espai; D31/D34/D38) `AND char_length(comment) <= 2000`, el mateix que el serializer. Afegits: `CHECK experiences_condition_ck` (0–3) i índexs `experiences_refuge_idx (refuge_id, modified_at DESC, id DESC)` i `experiences_creator_idx (creator_uid, modified_at DESC)`. Les polítiques i el *trigger* de §2.9 són tal com estan escrits aquí (`exp_select/insert/update/delete`; `experiences_condition_ins` i `experiences_condition_upd`).
 
 | Columna | Tipus | Null | Default | Notes |
 |---|---|---|---|---|
@@ -978,6 +979,8 @@ CREATE POLICY proposals_update ON proposals.refuge_proposals FOR UPDATE TO app  
 -- sense DELETE: l'historial de propostes no s'esborra
 ```
 Grants: `SELECT, INSERT, UPDATE`.
+
+> **Chunk 8 (implementat)** a `apps/proposals/migrations/0001_initial.py` i `apps/proposals/services.py`. Fidel al disseny, amb aquests detalls: l'escriptura del catàleg (`INSERT/UPDATE/DELETE` a `refuges`, `refuge_amenities` i `refuge_links`, amb polítiques `{ADM} OR {SYS}`) és a la mateixa migració; el payload es desa amb només les claus enviades i els tipus coercits (M9); `comment` ≤ 4000 i `rejection_reason` ≤ 2000 (`CHECK`); duplicats en crear = 409 `possible_duplicates` a ≤ 500 m **i** nom semblant (`ST_DWithin` a 501 m + `ST_Distance ≤ 500`, màxim 20 candidats); l'esborrat d'usuari anul·la el `comment` (desviació de §8, RGPD, PO 28/10); aprovar un `delete` llegeix les claus d'R2 amb `system_context()`, fa un sol `DELETE` i esborra d'R2 dins la transacció (les miniatures, després del `COMMIT`). Errors de domini: `ProposalNotFound` (404), `ProposalAlreadyReviewed` i `LinkAlreadyUsed` (409), `RefugeNotFound` (400), `PossibleDuplicates` (409), `MediaStorageError` (500).
 
 ---
 

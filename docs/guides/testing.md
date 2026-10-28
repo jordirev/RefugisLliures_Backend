@@ -77,14 +77,14 @@ Script: `scripts/e2e/e2e_chunk1.sh` (health amb `database`, 401/403/404/200 amb 
 ## Estructura
 ```
 conftest.py                         (arrel) django_db_setup, app_db/migrator_db, bloqueig de Firestore, mocks d'audit i permisos
-apps/<feature>/tests/               tests de les features migrades (apps/core, apps/refuges, apps/accounts: Postgres real, rol app)
+apps/<feature>/tests/               tests de les features migrades (apps/core, apps/refuges, apps/accounts, apps/proposals…: Postgres real, rol app; els de `apps/proposals` cobreixen esquema, RLS, CHECK `jsonb`, duplicats, concurrència de l'aprovació, esborrat amb R2 i esborrat d'usuari)
 api/tests/
   conftest.py                       fixtures compartides i mocks
   <domini>/test_{models,mappers,daos,serializers,controllers,views}.py   (el domini renovation ja és a apps/renovations/tests; el domini user ja és a apps/accounts/tests)
   test_auth_middleware_permissions.py, test_cache_views.py
   management_commands/
 ```
-Dominis: `refuge_proposal`, `refugi_lliure` (només el codi legacy que queda a `api/`) (`renovation` ja no té tests a `api/tests/`: són a `apps/renovations/tests/`; `api/tests/user/` només té `test_age_and_moderation.py`; la resta de tests d'usuari són a `apps/accounts/tests/`). Les comandes antigues de refugis (`assign_conditions`, `upload_refugis_to_firestore`, `extract_coords_to_firestore`, `verify_conditions`) i els seus tests s'han eliminat; `load_refuges` es prova a `apps/refuges/tests/test_load_refuges.py`.
+Dominis: `refugi_lliure` (només el codi legacy que queda a `api/`) (`refuge_proposal` —chunk 8— ja no té tests a `api/tests/`: són a `apps/proposals/tests/`, igual que `renovation` a `apps/renovations/tests/`; `api/tests/user/` només té `test_age_and_moderation.py`; la resta de tests d'usuari són a `apps/accounts/tests/`). Les comandes antigues de refugis (`assign_conditions`, `upload_refugis_to_firestore`, `extract_coords_to_firestore`, `verify_conditions`) i els seus tests s'han eliminat; `load_refuges` es prova a `apps/refuges/tests/test_load_refuges.py`.
 
 ## Aïllament automàtic (feature images) [FET]
 El `conftest.py` de l'arrel (compartit per `api/tests` i `apps/*/tests`) té quatre fixtures `autouse`:
