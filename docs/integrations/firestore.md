@@ -2,7 +2,7 @@
 
 > **[FET]** comprovat al codi · **[INFERÈNCIA]** deducció · **[NO VERIFICAT]** depèn de config externa.
 
-Firestore és la **base de dades real** del domini **excepte els refugis (chunk 2), els usuaris (chunk 3), les visites (chunk 4) i els dubtes i respostes (chunk 6), les experiències i pujades (chunk 7) i les propostes (chunk 8)**, que viuen a PostgreSQL (`apps/refuges`, `apps/accounts`, `apps/visits`, `apps/doubts`, `apps/experiences`, `apps/uploads`, `apps/proposals`). Les col·leccions `data_refugis_lliures` i `coords_refugis` són **legacy**: ja no s'alimenten (la càrrega inicial és `load_refuges` a PostgreSQL) i només la moderació de mitjans i el health check les segueixen llegint amb el `RefugiLliureDAO` fins al chunk 9/11 ([GOTCHAS #41](../GOTCHAS.md)). No hi ha ORM per a Firestore: els DAOs fan servir el client de `firebase_admin.firestore`.
+Firestore és la **base de dades real** del domini **excepte els refugis (chunk 2), els usuaris (chunk 3), les visites (chunk 4) i els dubtes i respostes (chunk 6), les experiències i pujades (chunk 7), les propostes (chunk 8) i la moderació i l'auditoria (chunk 9)**, que viuen a PostgreSQL (`apps/refuges`, `apps/accounts`, `apps/visits`, `apps/doubts`, `apps/experiences`, `apps/uploads`, `apps/proposals`, `apps/moderation`, `apps/audit`). **Des del chunk 9 l'únic ús viu de Firestore és el health check** (`RefugiLliureDAO.health_check`, `collections_count`), que es retira al chunk 11. Les col·leccions `data_refugis_lliures` i `coords_refugis` són **legacy**: ja no s'alimenten (la càrrega inicial és `load_refuges` a PostgreSQL) i només el health check les segueix llegint amb el `RefugiLliureDAO` fins al chunk 11 ([GOTCHAS #41](../GOTCHAS.md)). No hi ha ORM per a Firestore: els DAOs fan servir el client de `firebase_admin.firestore`.
 
 ## Client
 - `FirestoreService` singleton (`api/services/firestore_service.py:13-22`), instància global `firestore_service` (L78). `get_db()` (L24-38) reaprofita l'app de Firebase ja inicialitzada o la inicialitza.
@@ -25,10 +25,10 @@ Firestore és la **base de dades real** del domini **excepte els refugis (chunk 
 | Col·lecció | Contingut | Notes |
 |---|---|---|
 | ~~`upload_intents`~~ | — | **Migrada (chunk 7)** a `moderation.upload_intents` (PostgreSQL; purga amb `purge_upload_intents`). La política TTL de Firestore sobre `expire_at` ja no cal |
-| `media_reports` | denúncies de mitjans | ID determinista per (refugi, mitjà, denunciant); queries només d'igualtat |
-| `moderation_notices` | avisos de moderació per usuari | query `uid ==`, ordenació en Python |
-| `moderation_hash_blocklist` | hashes prohibits (sha256 / pHash) | manteniment manual |
-| `audit_logs` | registre d'auditoria | **TTL** sobre `expire_at` (Timestamp, +12 mesos) |
+| ~~`media_reports`~~ | — | **Migrada (chunk 9)** a `moderation.media_reports` (PostgreSQL, RLS; l'id és un UUID, ja no el SHA-256 determinista). Les dades de Firestore no es migren |
+| ~~`moderation_notices`~~ | — | **Migrada (chunk 9)** a `moderation.moderation_notices` |
+| ~~`moderation_hash_blocklist`~~ | — | **Migrada (chunk 9)** a `moderation.moderation_hash_blocklist` (il·legible per a `app`; només `fn_hash_match`). Només hi havia dades de prova: no s'ha importat res; s'alimenta amb [`load_hash_blocklist`](../guides/hash-blocklist.md) |
+| ~~`audit_logs`~~ | — | **Migrada (chunk 9)** a `audit.audit_logs` (365 dies; 5 anys si `legal_hold`). La política TTL de Firestore ja no cal: purga `purge_audit_logs` |
 (Els camps d'edat i moderació d'usuari ja són columnes de `users.users`.) A `data_refugis_lliures/{id}.media_metadata[key]`: `status`, `thumb_key`, `width`, `height`, `size`, `blurhash`, `taken_at`, `media_type`, `content_type`, `rights_confirmed_at` ([flux 3](../flows/03-refuge-media-upload.md)).
 
 ## Operacions especials [FET] (grep a `api/`, excloent tests)
@@ -37,7 +37,7 @@ Firestore és la **base de dades real** del domini **excepte els refugis (chunk 
 | `Increment` | cap ús actiu (el de dubtes va desaparèixer amb `DoubtDAO`; els comptadors d'usuari, D19) |
 | `ArrayUnion` | cap ús actiu (el de `media_keys` d'experiències ha desaparegut al chunk 7) |
 | `ArrayRemove` | `api/daos/refugi_lliure_dao.py` |
-| `SERVER_TIMESTAMP` | moderació (`api/daos/`) |
+| `SERVER_TIMESTAMP` | cap ús actiu (la moderació ja és a PostgreSQL, chunk 9) |
 | `batch()` | cap (les comandes de gestió que l'usaven — `assign_conditions`, `upload_refugis_to_firestore`, `extract_coords_to_firestore` — s'han eliminat al chunk 2) |
 | `collection_group('answers')` | cap (eliminat amb `DoubtDAO`, chunk 8) |
 | **Transaccions** | **cap** a `api/` |

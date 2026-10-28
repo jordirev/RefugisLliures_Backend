@@ -37,14 +37,14 @@ MediaItem = {key, url, thumb_url, media_type: "image"|"video", width, height, bl
 | GET | `/api/refuges/{id}/media/` | `RefugeMediaListAPIView.get` (`apps/refuges/views.py`; PostgreSQL) | IsAuthenticated | — |
 | DELETE | `/api/refuges/{id}/media/{key}/` | `RefugeMediaDetailAPIView.delete` (`apps/refuges/views.py`; PostgreSQL) | IsAuthenticated; autor o admin (al service) | — (`key` és `path:`) |
 
-Les rutes d'`upload-intents` són declarades a `api/urls.py` (no hi ha `apps/uploads/urls.py`) perquè comparteixen el prefix `media/` amb les denúncies (Firestore, chunk 9) **[FET]**.
+Les rutes d'`upload-intents` són declarades a `api/urls.py` (no hi ha `apps/uploads/urls.py`) perquè comparteixen el prefix `media/` amb les denúncies (`apps/moderation`, chunk 9) **[FET]**.
 
 ## Model de dades [FET]
 - **`moderation.upload_intents`** (`apps/uploads/models.py: UploadIntent`): `id` (uuid v7 de la BD = `upload_id` de l'API), `user_uid` → `users.users`, `target` (`refuge|experience|avatar`), `content_type`, `size` (> 0), `quarantine_key` (única, `quarantine/{id}`), `refuge_id` → `refuges.refuges`, `experience_id` → `activity.experiences`, `status` (`pending|confirmed|failed`), `rights_confirmed_at`, `created_at`, `expire_at` (= `created_at` + 1 dia), `result_key`, `failure_reason`. `CHECK`s: enumeracions, `upload_intents_shape_ck` (avatar sense refugi ni experiència · refuge: refugi · experience: refugi i experiència), `upload_intents_state_ck` (`confirmed` ⇔ `result_key`; `failed` ⇔ `failure_reason`), `expire_at > created_at`. Les tres FK són `ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED` (migració `RunSQL`).
 - **RLS**: privada. `intents_select`/`intents_update`: el propietari o el sistema; `intents_insert`: a nom propi, `pending` i, si porta `experience_id`, a una experiència pròpia (l'admin, a qualsevol); `intents_delete`: només el sistema (job de purga).
 - **Publicació** (`apps/uploads/services.py`): refugi i experiència → `INSERT` a **`refuges.refuge_media`** (`RefugeMedia`, amb `experience_id` si cal; PK = clau R2, `thumb_key`, `creator_uid`, `status`, mides, `blurhash`, `taken_at`, `rights_confirmed_at`); avatar → `users.user_avatars` via `accounts.services.update_avatar_metadata` ([flux 2](02-user-avatar.md)). RLS de `refuge_media`: tothom veu els `visible`; l'autor els seus; l'admin tot. **Ja no hi ha `media_metadata` a Firestore** ni `experiences.media_keys`: els mitjans nous surten a `GET /refuges/{id}/media/`, a `images_metadata` i al perfil (`uploaded_photos_keys`) (es tanquen el que eren GOTCHAS #42 i TECH_DEBT R3).
 - R2: `refugis-lliures/{refuge_id}/{uuid}.webp` (imatge, 2048 px de costat llarg) + `{uuid}_thumb.webp` (400 px); vídeo `{uuid}.mp4|.mov|.webm` + `{uuid}_thumb.webp` (pòster). Les claus són **UUID** (no previsibles; el nom original no s'usa mai). Temporals: `quarantine/{upload_id}`. Evidència retinguda: `moderation-hold/...`. `status ∈ visible | hidden_pending_review | removed`; `taken_at` (DateTimeOriginal de l'EXIF) es desa només a la fila, al fitxer publicat no hi ha cap metadada.
-- **Què continua a Firestore fins al chunk 9** **[FET]**: la hash-blocklist i `ModerationService`, les denúncies (`media_reports`, també les automàtiques d'un bloqueig), els avisos de moderació (`moderation_notices`) i l'auditoria (`audit_logs`). El bloqueig de l'usuari ja és SQL (`accounts.services.set_blocked`).
+- **Bloqueig per moderació (PostgreSQL, chunk 9)** **[FET]**: la comprovació de hashes és `moderation.fn_hash_match` (taula il·legible per a `app`; es carrega amb `load_hash_blocklist`, [guia](../guides/hash-blocklist.md)). Una coincidència fa, en una sola transacció (`apps.moderation.services.register_upload_block`): evidència a `moderation-hold/<upload_id>` (sense l'UID, D41), bloqueig de l'usuari, denúncia automàtica `legal_hold`, avís `account_blocked` i auditoria `legal_hold` a `audit.audit_logs`. Si desar-ho falla, es registra i no trenca la confirmació. Ja no queda res d'aquest flux a Firestore.
 
 ## Diagrama — pujada directa
 
@@ -58,7 +58,7 @@ sequenceDiagram
     participant DB as PostgreSQL (rol app + RLS)
     participant R2 as R2 (bucket privat)
     participant IP as ImageProcessingService
-    participant MS as ModerationService (Firestore)
+    participant MS as moderation.fn_hash_match (PostgreSQL)
 
     C->>V: POST upload-intents {target, refuge_id, rights_confirmed, files}
     V->>P: users.users (PostgreSQL): fila? is_blocked? age_confirmed_at?
@@ -81,7 +81,7 @@ sequenceDiagram
         end
         SV->>MS: check(sha256, pHash)
         alt coincidència
-            SV->>R2: moure a moderation-hold/ · bloquejar usuari (SQL) · denúncia CSAM i avís (Firestore) → moderation_blocked
+            SV->>R2: moure a moderation-hold/<upload_id> · bloquejar usuari · denúncia CSAM, avís i auditoria (PostgreSQL) → moderation_blocked
         end
         SV->>R2: PUT {uuid}.webp + {uuid}_thumb.webp
         SV->>DB: savepoint · INSERT refuge_media (o avatar) · SET CONSTRAINTS ALL IMMEDIATE
@@ -139,13 +139,13 @@ sequenceDiagram
 ```
 
 ## Passos
-- Intents/confirm: `apps/uploads/services.py`: `create_upload_intents` → `confirm_upload_intents` → `_confirm_one` → `process_and_publish` → `_publish_refuge_media` / `_publish_avatar`; bloqueig per moderació `_handle_moderation_block`; purga `purge_expired_intents`. Vistes: `apps/uploads/views.py`; entrada: `apps/uploads/serializers.py`.
+- Intents/confirm: `apps/uploads/services.py`: `create_upload_intents` → `confirm_upload_intents` → `_confirm_one` → `process_and_publish` → `_publish_refuge_media` / `_publish_avatar`; bloqueig per moderació `_handle_moderation_block` → `apps.moderation.services.register_upload_block`; purga `purge_expired_intents`. Vistes: `apps/uploads/views.py`; entrada: `apps/uploads/serializers.py`.
 - Concurrència: `confirm_upload_intents` bloqueja primer (`FOR UPDATE`, `_lock_intents`) **tots** els intents propis de la petició en ordre de PK (evita *deadlocks* entre `[a, b]` i `[b, a]`) i `_get_intent` els rellegeix amb `FOR UPDATE`: dues confirmacions simultànies del mateix intent es serialitzen (la segona veu `confirmed` i és idempotent) en lloc de publicar dos mitjans; el bloqueig dura fins al final de la petició (`ATOMIC_REQUESTS`).
 - Idempotència (`_confirm_one`): un intent `confirmed` reconstrueix el `MediaItem` des de `result_key` (`_existing_item`; `None` → `missing_object` si el mitjà s'ha esborrat o l'avatar s'ha substituït); un `failed` retorna el seu `failure_reason`; un `pending` caducat (`expire_at < now()`) és `missing_object`; un `pending` sense objecte a R2 és `missing_object` i es pot reintentar.
 - Una fallada de la BD en publicar (`INSERT`) no és un 500: desfà els fitxers d'R2 i l'intent queda `failed: processing_error`. Els errors inesperats són 500 `{error, error_id}` amb «Error en crear els intents de pujada» / «Error en confirmar les pujades».
 - R2: `generate_presigned_put_url`, `head_object`, `get_object_bytes`, `put_bytes`, `copy_object`, `move_object`, `build_media_key` (`api/services/r2_media_service.py`).
-- Les rutes `GET/DELETE /refuges/{id}/media/…` són a `apps/refuges/urls.py` (UUID de refugi; un id que no és UUID → 404). No hi ha trigger de cua d'R2 (és de `moderation.0001`, chunk 9): els services esborren el fitxer directament.
-- Llistat: `RefugeMediaListAPIView` (`apps/refuges/views.py`) — registra l'accés a `audit_logs` (`media.list`); esborrat: `audit_logs` `media.delete` des de `services.delete_media`. Auditoria de les pujades (Firestore): `media.upload_intent`, `media.upload_confirm`, `avatar.upload`.
+- Les rutes `GET/DELETE /refuges/{id}/media/…` són a `apps/refuges/urls.py` (UUID de refugi; un id que no és UUID → 404). No hi ha cua d'R2 (`media_deletion_queue` no s'ha implementat, D40, TECH_DEBT R16): els services esborren el fitxer directament.
+- Llistat: `RefugeMediaListAPIView` (`apps/refuges/views.py`) — registra l'accés a `audit_logs` (`media.list`); esborrat: `audit_logs` `media.delete` des de `services.delete_media`. Auditoria de les pujades (`audit.audit_logs`, `apps/audit`): `media.upload_intent`, `media.upload_confirm`, `avatar.upload`.
 
 ## Errors
 | Cas | HTTP |

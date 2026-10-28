@@ -58,6 +58,7 @@ Les línies poden desplaçar-se amb canvis futurs; si una cita no quadra, busca 
 | [guides/admin-management.md](guides/admin-management.md) | Fer/treure admins (custom claims) i usar els endpoints de cache |
 | [guides/client-auth-usage.md](guides/client-auth-usage.md) | Cridar l'API amb token de Firebase (JS, cURL, Swagger) |
 | [guides/daily-visits-process.md](guides/daily-visits-process.md) | Executar el procés diari de visites (Actions, manual, crontab) |
+| [guides/hash-blocklist.md](guides/hash-blocklist.md) | Carregar la llista de hashes prohibits (`load_hash_blocklist`: format CSV, idempotència) i executar les purgues `purge_audit_logs`/`purge_moderation` (sense planificar, R18) |
 | [guides/cloudflare-domain-csam.md](guides/cloudflare-domain-csam.md) | (Futur) domini propi + Worker amb tokens HMAC, CSAM Scanning Tool, PhotoDNA/NCMEC/Google Content Safety |
 
 ### Disseny

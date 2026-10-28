@@ -12,6 +12,8 @@
 
 > **Refugis sense cache (chunk 2).** Les lectures de refugis (`apps/refuges`) van directes a PostgreSQL, sense Redis; la cerca, la llista de coordenades i el detall ja no es cachegen **[FET]**. Dels prefixos de refugi només `refugi_detail` continua en ús, pel `RefugiLliureDAO` legacy (que fan servir altres dominis, p. ex. per comprovar que un refugi existeix). `refugi_search` i `refugi_coords` ja no els escriu ningú: el DAO de propostes que els invalidava ha desaparegut (chunk 8). El `CACHE_TIMEOUTS` conserva les tres entrades fins al chunk 11.
 
+> **Moderació i auditoria sense cache (chunk 9).** `apps/moderation` i `apps/audit` van directes a PostgreSQL: ja no hi ha la cache de 10 min dels pHash de la blocklist (la comprovació és `moderation.fn_hash_match`, sense Redis). Des d'aquest chunk **cap feature de dades usa Redis**: `CacheService` només el fan servir `RefugiLliureDAO` (health check/legacy, fins al chunk 11) i els endpoints admin `cache/*` **[FET]**.
+
 ## `CacheService` (`api/services/cache_service.py`)
 Singleton (L14-53), instància global `cache_service` (L317), exportat a `api/services/__init__.py`.
 
