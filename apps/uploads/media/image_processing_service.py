@@ -50,6 +50,10 @@ MB = 1024 * 1024
 IMAGE_MAX_BYTES = 15 * MB
 VIDEO_MAX_BYTES = 50 * MB
 
+MEDIA_TYPE_IMAGE = 'image'
+MEDIA_TYPE_VIDEO = 'video'
+VIDEO_EXTENSIONS = ('.mp4', '.mov', '.webm', '.avi', '.m4v')
+
 ALLOWED_IMAGE_CONTENT_TYPES = ('image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif')
 ALLOWED_VIDEO_CONTENT_TYPES = ('video/mp4', 'video/quicktime', 'video/webm')
 CONTENT_TYPE_ALIASES = {'image/jpg': 'image/jpeg', 'image/pjpeg': 'image/jpeg'}
@@ -129,14 +133,26 @@ def normalize_content_type(content_type: Optional[str]) -> str:
 def kind_for_content_type(content_type: Optional[str]) -> Optional[str]:
     ct = normalize_content_type(content_type)
     if ct in ALLOWED_IMAGE_CONTENT_TYPES:
-        return 'image'
+        return MEDIA_TYPE_IMAGE
     if ct in ALLOWED_VIDEO_CONTENT_TYPES:
-        return 'video'
+        return MEDIA_TYPE_VIDEO
     return None
 
 
+def infer_media_type(key: Optional[str], content_type: Optional[str] = None) -> str:
+    """Infereix 'image' o 'video' a partir del content type o de l'extensió de la clau (per defecte 'image')."""
+    if content_type:
+        if content_type.startswith('video/'):
+            return MEDIA_TYPE_VIDEO
+        if content_type.startswith('image/'):
+            return MEDIA_TYPE_IMAGE
+    if key and key.lower().endswith(VIDEO_EXTENSIONS):
+        return MEDIA_TYPE_VIDEO
+    return MEDIA_TYPE_IMAGE
+
+
 def max_bytes_for_kind(kind: str) -> int:
-    return VIDEO_MAX_BYTES if kind == 'video' else IMAGE_MAX_BYTES
+    return VIDEO_MAX_BYTES if kind == MEDIA_TYPE_VIDEO else IMAGE_MAX_BYTES
 
 
 def detect_media_type(data: bytes) -> Optional[DetectedType]:

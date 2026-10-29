@@ -58,7 +58,7 @@ def test_llista_de_mitjans_amb_error_de_bd(client, RM, caplog):
 
 
 def test_esborrat_quan_r2_llanca_una_excepcio_amb_dades_sensibles(client, RM, caplog):
-    from apps.uploads.r2_media_service import R2MediaService
+    from apps.uploads.media.r2_media_service import R2MediaService
     make_user('u1')
     r = make_refuge()
     key = f'refugis-lliures/{r.pk}/a.webp'

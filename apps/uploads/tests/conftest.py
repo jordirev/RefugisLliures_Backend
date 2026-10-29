@@ -11,7 +11,7 @@ from apps.uploads.tests.helpers import R2Store, make_refuge, make_user, upload_m
 def r2store():
     """Cap test toca R2: el client boto3 és un fals amb un diccionari com a bucket (`r2store.store`)."""
     store = R2Store()
-    with patch('apps.uploads.r2_media_service.get_r2_client', return_value=store.client):
+    with patch('apps.uploads.media.r2_media_service.get_r2_client', return_value=store.client):
         yield store
 
 

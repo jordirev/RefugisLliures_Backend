@@ -3,7 +3,7 @@ Tests del serializer de mitjans (MediaItem)
 """
 import pytest
 
-from apps.uploads.media_serializer import MediaItemSerializer
+from apps.uploads.serializers import MediaItemSerializer
 from apps.refuges.serializers import RefugiSerializer
 
 PUBLIC_FIELDS = {'key', 'url', 'thumb_url', 'media_type', 'width', 'height', 'blurhash',

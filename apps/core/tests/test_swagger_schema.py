@@ -2,7 +2,7 @@
 `/swagger/` i `/redoc/` han de poder generar l'esquema OpenAPI sencer.
 
 drf-yasg falla (500) si dos serializers diferents comparteixen nom (`ref_name` implícit), cosa que passa fàcilment
-mentre conviuen els serializers legacy d'`api/` i els d'`apps/` (cas `RefugeMediaMetadataSerializer`). Aquest test
+mentre un serializer té àlies o subclasses buides (cas d'un àlies buit de `MediaItemSerializer`, ja eliminat). Aquest test
 genera l'esquema sense BD, de manera que la CI ho detecta.
 """
 from drf_yasg import openapi

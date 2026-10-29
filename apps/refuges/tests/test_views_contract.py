@@ -322,7 +322,7 @@ def test_delete_media_amb_clau_amb_barres_i_punts(client, refuge, RM):
 def test_delete_media_r2_que_falla_no_deixa_la_fila_esborrada(client, refuge, RM):
     """`R2MediaService.delete_file` retorna False (no llança): si l'objecte no s'esborra, la BD no es perd."""
     from unittest.mock import patch
-    from apps.uploads.r2_media_service import R2MediaService
+    from apps.uploads.media.r2_media_service import R2MediaService
     make_user('u1')
     key = mkey(refuge)
     make_media(refuge, 'u1', key=key)

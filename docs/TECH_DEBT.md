@@ -15,9 +15,9 @@
 | # | Problema | Evidència | Tipus |
 |---|---|---|---|
 | A1 | ~~Renovation amb `ini_date == fin_date` passa el serializer, es desa a Firestore i després el model peta → la llista d'actives queda buida per a tothom~~ **RESOLT (chunk 5, 26/10)**: serializer, model i `CHECK renovations_dates_ck` (`ini_date <= fin_date`) coincideixen; una reforma d'un dia és vàlida. | `apps/renovations/serializers.py`, `apps/renovations/models.py`, `apps/renovations/tests/test_models_constraints.py` | FET |
-| A2 | **RESOLT** (claus UUID; les claus les genera `build_media_key`; l'antic `upload_file` ja no existeix). Claus R2 amb el nom original del fitxer → col·lisions i sobreescriptura entre usuaris; `creator_uid` del media canvia de mans. | `apps/uploads/r2_media_service.py:196-203` + crides amb `filename=file.name` | FET |
+| A2 | **RESOLT** (claus UUID; les claus les genera `build_media_key`; l'antic `upload_file` ja no existeix). Claus R2 amb el nom original del fitxer → col·lisions i sobreescriptura entre usuaris; `creator_uid` del media canvia de mans. | `apps/uploads/media/r2_media_service.py:139-147` (`build_media_key`, claus UUID) | FET |
 | A3 | **Parcialment RESOLT** (reformes, chunk 5: `participants`/`expelled` són taules amb PK composta i `INSERT … ON CONFLICT DO NOTHING`; `media_metadata` amb FieldPath/DELETE_FIELD; `uploaded_photos_keys` i les llistes de preferits/visitats ja no són arrays: chunk 3; la resta pendent). Read-modify-write sense transacció sobre `media_metadata`, `visitors` (refugi legacy; el de visita, resolt al chunk 4), `coords_refugis/all_refugis_coords` (aquest últim, resolt al chunk 8: ja no s'escriu) → lost updates. | `api/daos/refugi_lliure_dao.py:105-192,406-487` | FET (patró) + INFERÈNCIA (carrera) |
-| A4 | **RESOLT als callers** (esborrat de mitjans, avatar i rollbacks comproven el booleà; l'avatar antic s'esborra després del nou). `delete_file` retorna `False` en lloc de llançar → els rollbacks dins `try/except` dels callers són codi mort; un esborrat fallit a R2 es reporta com a èxit (objecte orfe). | `apps/uploads/r2_media_service.py:339-341` | FET |
+| A4 | **RESOLT als callers** (esborrat de mitjans, avatar i rollbacks comproven el booleà; l'avatar antic s'esborra després del nou). `delete_file` retorna `False` en lloc de llançar → els rollbacks dins `try/except` dels callers són codi mort; un esborrat fallit a R2 es reporta com a èxit (objecte orfe). | `apps/uploads/media/r2_media_service.py:90-109` | FET |
 | A5 | **RESOLT (chunk 8)**: aprovar un `delete` fa un sol `DELETE` del refugi (la BD cascadeja experiències, mitjans, dubtes…), llegeix les claus d'R2 abans amb `system_context()` i, si R2 falla, desfà tot (500). | `apps/proposals/services.py: _apply_delete`, `apps/proposals/tests/test_refuge_deletion.py` | FET |
 | A6 | Escriptures multi-document no atòmiques a fluxos llargs: **resolt** (esborrat d'usuari: BD + R2 en una transacció i Firebase Auth després del `COMMIT`, U2/D42). (Experiència + mitjans, i l'aprovació de propostes —chunk 8—, ja són atòmiques: `DELETE` + R2 en una sola transacció.) | `apps/accounts/services.py: delete_user` | FET |
 
@@ -155,7 +155,7 @@
 | `IsOwnerOrReadOnly`, `SafeMethodsOnly` | definits a `apps/auth/permissions.py:25-84`, sense ús fora de tests | FET (grep) |
 | Rollbacks basats en excepció de `delete_file` | vegeu A4 | FET |
 | `CRONJOBS` (django-crontab) | mai s'instal·la el crontab (`build.sh`) | FET |
-| `R2_* = None` de compatibilitat | `apps/uploads/r2_config.py:44-49` | FET |
+| `R2_* = None` de compatibilitat | **RESOLT**: ja no existeix; només queda el comentari «compatibilitat» de `get_r2_bucket_name()` (`apps/uploads/media/r2_config.py:33-36`) | FET |
 | Fixture `authenticated_client` | **RESOLT**: eliminada amb `api/tests/conftest.py` (les seves 9 fixtures no les usava ningú) quan es va eliminar la carpeta `api/` | FET |
 | `htmlcov/` referencia `convert_mezzanine_field.py`, que ja no existeix | artefacte antic (ignorat per git) | FET |
 

@@ -8,7 +8,7 @@ tests: s'importen de manera mandrosa (`upload_models()`).
   depenguin dels noms dels models ni dels services.
 - R2 és un client boto3 fals amb un diccionari com a bucket (`R2Store`): les URL prefirmades són deterministes, el
   `head_object`/`get_object`/`put_object`/`delete_object`/`copy_object` operen sobre el diccionari. S'injecta parchejant
-  `apps.uploads.r2_media_service.get_r2_client` (les factories `get_refugi_media_service()` /
+  `apps.uploads.media.r2_media_service.get_r2_client` (les factories `get_refugi_media_service()` /
   `get_user_avatar_service()` creen una instància nova a cada crida: totes comparteixen el mateix client).
 """
 import importlib

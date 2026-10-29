@@ -19,7 +19,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.auth.permissions import HasProfile, IsAgeConfirmed, IsNotBlocked, coded_error, is_firebase_admin
-from apps.uploads import r2_media_service
+from apps.uploads.media import r2_media_service
 from apps.core.swagger.error_responses import (
     ERROR_400_INVALID_DATA,
     ERROR_401_UNAUTHORIZED,

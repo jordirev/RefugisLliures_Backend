@@ -41,7 +41,7 @@ def test_llista_amb_error(client, world, caplog, exc):
 def test_llista_amb_error_en_generar_la_url_prefirmada(client, world, caplog, r2):
     e = make_experience(world[0], 'u1')
     make_exp_media(world[0], 'u1', e, key='k/a.webp')
-    from apps.uploads.r2_media_service import R2MediaService
+    from apps.uploads.media.r2_media_service import R2MediaService
     with patch.object(R2MediaService, 'generate_presigned_url', side_effect=Exception(SECRET)), \
             caplog.at_level(logging.ERROR):
         assert_traced(api_get(client, list_url(world[0].pk), user_claims('u1')), caplog)

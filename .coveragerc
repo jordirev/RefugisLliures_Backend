@@ -23,8 +23,8 @@ omit =
     */__init__.py
     */services/*
     */utils/*
-    */apps/uploads/r2_media_service.py
-    */apps/uploads/image_processing_service.py
+    */apps/uploads/media/r2_media_service.py
+    */apps/uploads/media/image_processing_service.py
     */apps/moderation/moderation_service.py
     */apps/health/services.py
     */apps/core/timezone_utils.py

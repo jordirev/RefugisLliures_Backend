@@ -9,7 +9,7 @@ from apps.refuges.tests.helpers import refuge_models
 @pytest.fixture(autouse=True)
 def r2_sense_xarxa():
     """Cap test toca R2: les URLs prefirmades són deterministes i els esborrats «funcionen»."""
-    from apps.uploads.r2_media_service import R2MediaService
+    from apps.uploads.media.r2_media_service import R2MediaService
     with patch.object(R2MediaService, 'generate_presigned_url',
                       lambda self, key, expiration=3600: f'https://r2.test/{key}?sig=1'), \
             patch.object(R2MediaService, 'delete_file', lambda self, key: True), \

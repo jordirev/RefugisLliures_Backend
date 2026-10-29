@@ -3,7 +3,7 @@ Tests de la inferència del tipus de mitjà (`infer_media_type`)
 """
 import pytest
 
-from apps.uploads.media_metadata import infer_media_type
+from apps.uploads.media.image_processing_service import infer_media_type
 
 
 @pytest.mark.models
