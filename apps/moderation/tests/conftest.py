@@ -13,7 +13,7 @@ def r2store():
     Les URL prefirmades són deterministes (`https://r2.test/<clau>?...`); `copy_object`/`delete_object` operen sobre el
     diccionari (retenció a `moderation-hold/`)."""
     store = R2Store()
-    with patch('apps.uploads.r2_media_service.get_r2_client', return_value=store.client):
+    with patch('apps.uploads.media.r2_media_service.get_r2_client', return_value=store.client):
         yield store
 
 

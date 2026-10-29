@@ -21,7 +21,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.auth.permissions import HasProfile, IsAgeConfirmed, IsFirebaseAdmin, IsNotBlocked, IsSameUser, coded_error
-from apps.uploads import r2_media_service
+from apps.uploads.media import r2_media_service
 from apps.core.swagger.error_responses import (
     ERROR_400_INVALID_DATA, ERROR_401_UNAUTHORIZED, ERROR_403_ADMIN_ONLY, ERROR_403_FORBIDDEN,
     ERROR_403_REPORT_FORBIDDEN, ERROR_404_MEDIA_NOT_FOUND, ERROR_404_REPORT_NOT_FOUND, ERROR_409_ALREADY_REPORTED,

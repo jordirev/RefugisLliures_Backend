@@ -11,7 +11,7 @@ from datetime import date, datetime
 
 from rest_framework import serializers
 
-from apps.uploads.media_serializer import MediaItemSerializer
+from apps.uploads.serializers import MediaItemSerializer
 from apps.core.timezone_utils import get_madrid_timezone
 
 from .models import RefugeAmenities, RefugeType
@@ -101,10 +101,6 @@ class InfoComplementariaSerializer(serializers.Serializer):
     mezzanine_etage = serializers.IntegerField(default=0)
 
 
-class RefugeMediaMetadataSerializer(MediaItemSerializer):
-    """Forma MediaItem del contracte."""
-
-
 class RefugiSerializer(serializers.Serializer):
     id = serializers.CharField()
     name = serializers.CharField()
@@ -121,7 +117,7 @@ class RefugiSerializer(serializers.Serializer):
     # Float (no Integer): un IntegerField truncaria 1.5 -> 1 abans d'arrodonir. L'enter el calcula `to_representation`.
     condition = serializers.FloatField(default=None, allow_null=True, required=False)
     visitors = serializers.ListField(child=serializers.CharField(), default=list, required=False)
-    images_metadata = RefugeMediaMetadataSerializer(many=True, required=False, allow_null=True)
+    images_metadata = MediaItemSerializer(many=True, required=False, allow_null=True)
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
@@ -157,7 +153,7 @@ class RefugeMapResponseSerializer(serializers.Serializer):
 
 
 class RefugeMediaListResponseSerializer(serializers.Serializer):
-    media = RefugeMediaMetadataSerializer(many=True)
+    media = MediaItemSerializer(many=True)
 
 
 class RefugeMediaDeleteResponseSerializer(serializers.Serializer):

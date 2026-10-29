@@ -11,7 +11,7 @@ from datetime import datetime
 
 from rest_framework import serializers
 
-from apps.uploads.media_serializer import MediaItemSerializer
+from apps.uploads.serializers import MediaItemSerializer
 from apps.core.timezone_utils import get_madrid_today
 from apps.refuges.serializers import CoordinatesSerializer, isoformat_madrid, media_to_dict
 

@@ -17,7 +17,7 @@ from rest_framework.views import APIView
 
 from apps.auth.permissions import HasProfile, is_firebase_admin
 from apps.audit import services as audit
-from apps.uploads import r2_media_service
+from apps.uploads.media import r2_media_service
 from apps.core.swagger.error_responses import (
     ERROR_400_INVALID_PARAMS,
     ERROR_401_UNAUTHORIZED,

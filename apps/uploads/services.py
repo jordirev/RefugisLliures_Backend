@@ -24,8 +24,8 @@ from django.db import connection, transaction
 from django.db.models import BooleanField, ExpressionWrapper, Q
 
 from apps.audit import services as audit
-from apps.uploads import r2_media_service
-from apps.uploads.image_processing_service import (
+from apps.uploads.media import r2_media_service
+from apps.uploads.media.image_processing_service import (
     REASON_MISSING_OBJECT, REASON_MODERATION_BLOCKED, REASON_PROCESSING_ERROR, REASON_TOO_LARGE,
     VIDEO_MAX_BYTES, MediaRejected, ProcessedMedia, image_processing_service, kind_for_content_type,
     max_bytes_for_kind, normalize_content_type)

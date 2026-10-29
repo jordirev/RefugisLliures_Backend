@@ -324,7 +324,7 @@ def test_csam_sense_miniatura(client, world, r2store):
 def test_csam_si_r2_falla_en_retenir_es_500_i_tot_es_desfa(client, case, r2store, caplog):
     import logging
     csam = csam_case(case, r2store)
-    with patch('apps.uploads.r2_media_service.R2MediaService.copy_object', return_value=False), \
+    with patch('apps.uploads.media.r2_media_service.R2MediaService.copy_object', return_value=False), \
             caplog.at_level(logging.ERROR):
         resp = resolve(client, case['rid'], 'remove')
     assert resp.status_code == 500

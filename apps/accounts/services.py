@@ -17,7 +17,7 @@ from django.db.models.functions import Now
 from firebase_admin import auth as firebase_auth
 
 from apps.audit import services as audit
-from apps.uploads import r2_media_service
+from apps.uploads.media import r2_media_service
 from apps.core.age_utils import is_old_enough
 from apps.core.timezone_utils import get_madrid_timezone
 from apps.core.rls import rls_context, system_context

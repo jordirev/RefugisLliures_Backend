@@ -13,7 +13,7 @@ def r2():
     `r2.delete_file` / `r2.delete_files` són `MagicMock` (es poden fer fallar amb `fail_r2(r2)`); vegeu
     `deleted_keys(r2)` per saber què s'ha demanat esborrar.
     """
-    from apps.uploads.r2_media_service import R2MediaService
+    from apps.uploads.media.r2_media_service import R2MediaService
     mocks = MagicMock()
     mocks.delete_file = MagicMock(return_value=True)
     mocks.delete_files = MagicMock(side_effect=lambda keys: {'deleted': list(keys), 'failed': []})

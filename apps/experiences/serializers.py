@@ -10,7 +10,8 @@ Serializers d'`experiences` (contracte JSON d'abans amb el camp nou `condition`,
 from django.core.validators import ProhibitNullCharactersValidator
 from rest_framework import serializers
 
-from apps.refuges.serializers import RefugeMediaMetadataSerializer, isoformat_madrid, media_to_dict
+from apps.refuges.serializers import isoformat_madrid, media_to_dict
+from apps.uploads.serializers import MediaItemSerializer
 
 from .models import COMMENT_MAX_LENGTH, CONDITION_MAX, CONDITION_MIN
 
@@ -47,7 +48,7 @@ class ExperienceResponseSerializer(serializers.Serializer):
     modified_at = serializers.CharField(help_text='ISO 8601 amb el desplaçament de Madrid')
     comment = serializers.CharField()
     condition = serializers.IntegerField(min_value=CONDITION_MIN, max_value=CONDITION_MAX)
-    images_metadata = RefugeMediaMetadataSerializer(many=True)
+    images_metadata = MediaItemSerializer(many=True)
 
 
 class ExperienceWrapperSerializer(serializers.Serializer):

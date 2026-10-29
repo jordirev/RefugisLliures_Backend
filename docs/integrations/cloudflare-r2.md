@@ -7,10 +7,10 @@ Emmagatzema fotos/vídeos de refugis i avatars d'usuari. Bucket **privat**: l'ac
 ## Fitxers
 | Fitxer | Rol |
 |---|---|
-| `apps/uploads/r2_config.py` | `get_r2_client()` (boto3 `s3`, `region_name='auto'`, `signature_version='s3v4'`, `addressing_style='path'`), `get_r2_bucket_name()` |
-| `apps/uploads/r2_media_service.py` | `R2MediaService` + estratègies de path + `quarantine_key()` / `moderation_hold_key()` |
-| `apps/uploads/image_processing_service.py` | Processament autoritatiu abans de publicar (vegeu [flux 3](../flows/03-refuge-media-upload.md)) |
-| `apps/uploads/media_metadata.py` | només `infer_media_type()` (la fa servir `MediaItemSerializer`); la forma **MediaItem** del contracte la defineix `apps/uploads/media_serializer.py`. Els antics `MediaMetadata`/`RefugeMediaMetadata` (Firestore) s'han eliminat |
+| `apps/uploads/media/r2_config.py` | `get_r2_client()` (boto3 `s3`, `region_name='auto'`, `signature_version='s3v4'`, `addressing_style='path'`), `get_r2_bucket_name()` |
+| `apps/uploads/media/r2_media_service.py` | `R2MediaService` + estratègies de path + `quarantine_key()` / `moderation_hold_key()` |
+| `apps/uploads/media/image_processing_service.py` | Processament autoritatiu abans de publicar (vegeu [flux 3](../flows/03-refuge-media-upload.md)) |
+| `apps/uploads/serializers.py` | `MediaItemSerializer`: la forma **MediaItem** del contracte. Els antics `MediaMetadata`/`RefugeMediaMetadata` (Firestore) s'han eliminat |
 
 ## Configuració
 Variables (només noms), llegides amb `os.getenv` dins `get_r2_client()`: `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_ENDPOINT`, `R2_BUCKET_NAME`. Si en falta alguna → `ValueError("R2 configuration is incomplete...")`.

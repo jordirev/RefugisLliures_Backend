@@ -50,6 +50,9 @@ MB = 1024 * 1024
 IMAGE_MAX_BYTES = 15 * MB
 VIDEO_MAX_BYTES = 50 * MB
 
+MEDIA_TYPE_IMAGE = 'image'
+MEDIA_TYPE_VIDEO = 'video'
+
 ALLOWED_IMAGE_CONTENT_TYPES = ('image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif')
 ALLOWED_VIDEO_CONTENT_TYPES = ('video/mp4', 'video/quicktime', 'video/webm')
 CONTENT_TYPE_ALIASES = {'image/jpg': 'image/jpeg', 'image/pjpeg': 'image/jpeg'}
@@ -129,14 +132,14 @@ def normalize_content_type(content_type: Optional[str]) -> str:
 def kind_for_content_type(content_type: Optional[str]) -> Optional[str]:
     ct = normalize_content_type(content_type)
     if ct in ALLOWED_IMAGE_CONTENT_TYPES:
-        return 'image'
+        return MEDIA_TYPE_IMAGE
     if ct in ALLOWED_VIDEO_CONTENT_TYPES:
-        return 'video'
+        return MEDIA_TYPE_VIDEO
     return None
 
 
 def max_bytes_for_kind(kind: str) -> int:
-    return VIDEO_MAX_BYTES if kind == 'video' else IMAGE_MAX_BYTES
+    return VIDEO_MAX_BYTES if kind == MEDIA_TYPE_VIDEO else IMAGE_MAX_BYTES
 
 
 def detect_media_type(data: bytes) -> Optional[DetectedType]:

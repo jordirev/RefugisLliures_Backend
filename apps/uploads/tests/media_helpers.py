@@ -10,7 +10,7 @@ from unittest.mock import MagicMock
 
 from PIL import Image
 
-from apps.uploads.r2_media_service import R2MediaService, RefugiMediaStrategy, UserAvatarStrategy
+from apps.uploads.media.r2_media_service import R2MediaService, RefugiMediaStrategy, UserAvatarStrategy
 
 GPS_IFD = 0x8825
 EXIF_IFD = 0x8769

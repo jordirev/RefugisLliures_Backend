@@ -6,7 +6,7 @@ import io
 import pytest
 from PIL import Image
 
-from apps.uploads.image_processing_service import (
+from apps.uploads.media.image_processing_service import (
     image_processing_service, detect_media_type, process_image, MediaRejected,
     normalize_content_type, kind_for_content_type, extract_taken_at, IMAGE_MAX_BYTES,
     AVATAR_MAX_EDGE, MAIN_MAX_EDGE, THUMB_MAX_EDGE,
@@ -154,7 +154,7 @@ class TestProcessImage:
     ])
     def test_parse_exif_date_sense_desplacament_assumeix_madrid(self, value, offset, expected):
         """Decisió del PO (26/10): un EXIF sense OffsetTime es desaria com a UTC (1-2 h de desfasament)."""
-        from apps.uploads.image_processing_service import _parse_exif_date
+        from apps.uploads.media.image_processing_service import _parse_exif_date
         assert _parse_exif_date(value, offset) == expected
 
 

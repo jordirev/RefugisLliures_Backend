@@ -25,7 +25,7 @@ from django.contrib.gis.geos import Point
 from django.contrib.gis.measure import D
 from django.db import IntegrityError, transaction
 
-from apps.uploads import r2_media_service
+from apps.uploads.media import r2_media_service
 from apps.core.timezone_utils import get_madrid_timezone
 from apps.core.db_functions import TransactionNow
 from apps.core.rls import system_context

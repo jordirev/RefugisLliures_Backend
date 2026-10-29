@@ -20,7 +20,7 @@ from django.db import IntegrityError, connection, transaction
 from django.db.models import Count
 from django.db.models.functions import Now
 
-from apps.uploads import r2_media_service
+from apps.uploads.media import r2_media_service
 from apps.accounts import services as account_services
 from apps.audit import services as audit
 from apps.core.rls import system_context

@@ -6,7 +6,7 @@
 ## Patrons existents [FET]
 | Tipus | Exemple | Quan usar-lo |
 |---|---|---|
-| Classe amb Strategy injectada | `R2MediaService(strategy)` + factories (`apps/uploads/r2_media_service.py`) | mateix servei amb variants de comportament |
+| Classe amb Strategy injectada | `R2MediaService(strategy)` + factories (`apps/uploads/media/r2_media_service.py`) | mateix servei amb variants de comportament |
 | Funcions pures | `database_health.check_database`, `image_processing_service` | càlculs o comprovacions sense estat |
 | Singleton amb `__new__` | cap des del chunk 11 (`FirestoreService` i `CacheService` han desaparegut) | recurs compartit car de crear |
 
@@ -15,7 +15,7 @@
 2. **Configuració**:
    - Settings de Django: afegeix-la a `refugis_lliures/settings.py` amb `config('NOM', default=...)` (decouple) i llegeix-la amb `django.conf.settings`.
    - Si l'has de llegir amb `os.getenv` (com R2), recorda que `decouple.RepositoryEnv` **no** omple `os.environ` (vegeu [GOTCHAS #25](../GOTCHAS.md)).
-   - Llegeix les variables **dins de la funció/constructor**, no a nivell de mòdul, perquè els tests les puguin fixar abans (`apps/uploads/r2_config.py:9-11`).
+   - Llegeix les variables **dins de la funció/constructor**, no a nivell de mòdul, perquè els tests les puguin fixar abans (`apps/uploads/media/r2_config.py:12-15`).
    - Documenta el **nom** de la variable a `docs/integrations/` i a `render.yaml` (comentari). Mai valors.
 3. **Estat compartit**: evita singletons; si en cal un, que `__init__` no es re-executi (no hi posis inicialitzacions cares).
 4. **Errors**: decideix i documenta si el servei **llança** o **retorna False/None**. El codi actual barreja (p. ex. `generate_presigned_url` llança, `delete_file` retorna False) i això ha trencat rollbacks ([TECH_DEBT A4](../TECH_DEBT.md)). Recomanació: llançar excepcions pròpies i que la vista les tradueixi.

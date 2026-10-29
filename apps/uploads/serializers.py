@@ -4,17 +4,35 @@ Serializers d'`uploads`: intents de pujada directa i confirmació (contracte JSO
 - Entrada: `UploadIntentCreateSerializer` (`target`, `refuge_id`/`experience_id` segons el `target`, `rights_confirmed`,
   fins a 10 `files {content_type, size}`) i `UploadConfirmSerializer` (`upload_ids`).
 - Sortida: només documenten la resposta (Swagger); els `MediaItem` els emet `apps.refuges.serializers.media_to_dict`.
+- `MediaItemSerializer`: forma pública d'un mitjà (contracte), reutilitzada per refugis, experiències i perfil.
 """
 from rest_framework import serializers
 
-from apps.uploads.media_serializer import MediaItemSerializer
-from apps.uploads.image_processing_service import (
+from apps.uploads.media.image_processing_service import (
     ALLOWED_IMAGE_CONTENT_TYPES, ALLOWED_VIDEO_CONTENT_TYPES, FAILURE_REASONS, kind_for_content_type,
     max_bytes_for_kind, normalize_content_type)
 
 from .models import UploadTarget
 
 MAX_FILES_PER_INTENT = 10
+
+
+class MediaItemSerializer(serializers.Serializer):
+    """
+    Forma pública d'un mitjà (contracte d'API):
+    {key, url, thumb_url, media_type, width, height, blurhash, creator_uid, uploaded_at, taken_at, experience_id}
+    """
+    key = serializers.CharField()
+    url = serializers.CharField()
+    thumb_url = serializers.CharField(required=False, allow_null=True)
+    media_type = serializers.ChoiceField(choices=['image', 'video'], required=False, allow_null=True)
+    width = serializers.IntegerField(required=False, allow_null=True)
+    height = serializers.IntegerField(required=False, allow_null=True)
+    blurhash = serializers.CharField(required=False, allow_null=True)
+    creator_uid = serializers.CharField(required=False, allow_null=True, allow_blank=True)
+    uploaded_at = serializers.CharField(required=False, allow_null=True, allow_blank=True)
+    taken_at = serializers.CharField(required=False, allow_null=True)
+    experience_id = serializers.CharField(required=False, allow_null=True)
 
 
 class UploadFileSpecSerializer(serializers.Serializer):

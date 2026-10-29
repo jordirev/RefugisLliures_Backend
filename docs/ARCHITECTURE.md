@@ -9,7 +9,7 @@
 | Framework | Django 5.2.18 LTS + Django REST Framework 3.16.1, Python 3.14 | `requirements.txt`, `.python-version` |
 | Base de dades relacional (migració) | **PostgreSQL 17 + PostGIS** (Neon) com a BD `default` de Django amb el rol `app` (`ATOMIC_REQUESTS`, subjecte a RLS) i l'àlies `migrator` (DDL); `psycopg[binary]` 3.2.9, GeoDjango | `refugis_lliures/settings.py` (`DATABASES`), [integrations/neon.md](integrations/neon.md) |
 | Autenticació | Firebase Auth (ID tokens JWT) + custom claim `role`; `firebase-admin` s'usa **només** per a Auth (Firestore eliminat al chunk 11, D43) | `apps/auth/middleware.py`, `apps/auth/permissions.py` |
-| Media | Cloudflare R2 (API S3) via `boto3` | `apps/uploads/r2_config.py`, `apps/uploads/r2_media_service.py` |
+| Media | Cloudflare R2 (API S3) via `boto3` | `apps/uploads/media/r2_config.py`, `apps/uploads/media/r2_media_service.py` |
 | Cache | Cap cache de dades; `CACHES` = `LocMemCache` per defecte (Redis eliminat al chunk 11, D43) | `refugis_lliures/settings.py` (`CACHES`) |
 | Docs API | `drf_yasg` → `/swagger/`, `/redoc/`, `/swagger.json` | `refugis_lliures/urls.py:45-47` |
 | Servidor | gunicorn (1 worker sync, timeout 30 s) + whitenoise | `gunicorn.conf.py:12-19`, `refugis_lliures/settings.py:68` |
@@ -58,7 +58,7 @@ HTTP → FirebaseAuthenticationMiddleware → hook de RLS (set_config) → View 
 | **Migracions** | `RunSQL` amb `reverse_sql` per a FK reals, RLS, grants, triggers i vistes (`apps.core.migration_utils`). |
 
 ### 3.2 Infraestructura compartida (abans a `api/`)
-Després de la neteja (D43) no queda cap domini amb el patró View → Controller → DAO i la infraestructura compartida vivia a `api/`. D43(4) la va deixar allà («moure-la seria un canvi gran sense benefici»); **per ordre del PO, `api/` s'ha eliminat** i el codi ha passat a les apps: autenticació, permisos, middleware de Firebase i `firebase_config` a `apps/auth/` (label `firebase_auth`); hook de RLS, `timezone_utils`, `age_utils`, Swagger compartit i `check_neon` a `apps/core/`; health check (vista, serializer, servei i middleware 503) a `apps/health/`; R2, processament d'imatge, `MediaMetadata` i `MediaItemSerializer` a `apps/uploads/`; moderació automàtica a `apps/moderation/moderation_service.py`. Les rutes de l'API s'inclouen des de `refugis_lliures/urls.py` amb el prefix `api/` (les URL públiques no han canviat). Els tests van amb el seu codi (`apps/<app>/tests/`).
+Després de la neteja (D43) no queda cap domini amb el patró View → Controller → DAO i la infraestructura compartida vivia a `api/`. D43(4) la va deixar allà («moure-la seria un canvi gran sense benefici»); **per ordre del PO, `api/` s'ha eliminat** i el codi ha passat a les apps: autenticació, permisos, middleware de Firebase i `firebase_config` a `apps/auth/` (label `firebase_auth`); hook de RLS, `timezone_utils`, `age_utils`, Swagger compartit i `check_neon` a `apps/core/`; health check (vista, serializer, servei i middleware 503) a `apps/health/`; R2 i processament d'imatge a `apps/uploads/media/` i `MediaItemSerializer` a `apps/uploads/serializers.py`; moderació automàtica a `apps/moderation/moderation_service.py`. Les rutes de l'API s'inclouen des de `refugis_lliures/urls.py` amb el prefix `api/` (les URL públiques no han canviat). Els tests van amb el seu codi (`apps/<app>/tests/`).
 
 ### Mapatge error → HTTP [FET]
 Les apps usen excepcions de domini que la vista tradueix a HTTP (i `constraint_name` per als errors de la BD); mai es tria el codi pel text de l'error. Els errors 500 són `{error, error_id}` via `apps.core.errors.server_error`.
@@ -136,7 +136,7 @@ Detall amb diagrames i motivació: [design/patterns.md](design/patterns.md).
 |---|---|
 | Cerca de refugis | una sola consulta SQL (`apps/refuges/selectors.py: search_queryset`), sense estratègies |
 | Aprovació de propostes | `apps/proposals/services.py: approve_proposal`: una transacció amb bloqueig `FOR UPDATE` i `_apply_create/_apply_update/_apply_delete` (les estratègies de Firestore han desaparegut al chunk 8) |
-| Strategy (paths R2) | `RefugiMediaStrategy`, `UserAvatarStrategy` (`apps/uploads/r2_media_service.py`) |
+| Strategy (paths R2) | `RefugiMediaStrategy`, `UserAvatarStrategy` (`apps/uploads/media/r2_media_service.py`) |
 | Llistes d'usuari (preferits/visitats) | `_UserRefugeList` abstracta amb PK composta + funcions `_add`/`_remove` compartides (`apps/accounts/models.py`, `services.py`); el Template method d'`UserController` ha desaparegut |
 
 ## 8. Convencions

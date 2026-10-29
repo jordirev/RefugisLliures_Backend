@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from apps.uploads.r2_media_service import (
+from apps.uploads.media.r2_media_service import (
     R2MediaService, RefugiMediaStrategy, UserAvatarStrategy, quarantine_key, moderation_hold_key,
 )
 from apps.uploads.tests.media_helpers import fake_r2_service
