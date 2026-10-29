@@ -5,9 +5,9 @@ POST /api/media/upload-intents/            IsAuthenticated + HasProfile + IsNotB
 POST /api/media/upload-intents/confirm/    IsAuthenticated + HasProfile + IsNotBlocked + IsAgeConfirmed
 
 Les vistes només validen l'entrada, criden els `services` i serialitzen. El context de RLS el fixa el hook de
-`api/rls_hook.py`. Ordre de comprovacions: permisos -> validació del cos (400) -> existència (404) -> propietat (403).
+`apps/core/rls_hook.py`. Ordre de comprovacions: permisos -> validació del cos (400) -> existència (404) -> propietat (403).
 Els intents viuen a PostgreSQL (`moderation.upload_intents`); les rutes (`media_upload_intents`,
-`media_upload_intents_confirm`) s'afegeixen des d'`api/urls.py` perquè comparteixen prefix amb les denúncies.
+`media_upload_intents_confirm`) s'afegeixen des de `apps/uploads/urls.py` perquè comparteixen prefix amb les denúncies.
 """
 import json
 import logging
@@ -19,15 +19,15 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from api.permissions import HasProfile, IsAgeConfirmed, IsNotBlocked, coded_error, is_firebase_admin
-from api.utils.swagger_error_responses import (
+from apps.auth.permissions import HasProfile, IsAgeConfirmed, IsNotBlocked, coded_error, is_firebase_admin
+from apps.core.swagger.error_responses import (
     ERROR_400_INVALID_DATA,
     ERROR_401_UNAUTHORIZED,
     ERROR_403_UPLOAD_FORBIDDEN,
     ERROR_404_REFUGI_NOT_FOUND,
     ERROR_500_INTERNAL_ERROR,
 )
-from api.utils.swagger_examples import (
+from apps.core.swagger.examples import (
     EXAMPLE_UPLOAD_CONFIRM_REQUEST,
     EXAMPLE_UPLOAD_CONFIRM_RESPONSE,
     EXAMPLE_UPLOAD_INTENT_REQUEST,

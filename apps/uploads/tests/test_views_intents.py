@@ -222,7 +222,7 @@ def test_sense_edat_confirmada_403(client, world):
 
 def test_les_permission_classes_de_la_vista():
     from rest_framework.permissions import IsAuthenticated
-    from api.permissions import HasProfile, IsAgeConfirmed, IsNotBlocked
+    from apps.auth.permissions import HasProfile, IsAgeConfirmed, IsNotBlocked
     from apps.uploads import views
     for cls in (views.UploadIntentsAPIView, views.UploadIntentsConfirmAPIView):
         assert list(cls.permission_classes) == [IsAuthenticated, HasProfile, IsNotBlocked, IsAgeConfirmed]

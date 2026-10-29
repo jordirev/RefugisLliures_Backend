@@ -40,7 +40,7 @@ USERS = '/api/users/'
 # ---------- Dates ----------
 
 def madrid_today():
-    from api.utils.timezone_utils import get_madrid_today
+    from apps.core.timezone_utils import get_madrid_today
     return get_madrid_today()
 
 

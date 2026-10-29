@@ -11,7 +11,7 @@ from apps.uploads.tests.helpers import R2Store, make_refuge, make_user, upload_m
 def r2store():
     """Cap test toca R2: el client boto3 és un fals amb un diccionari com a bucket (`r2store.store`)."""
     store = R2Store()
-    with patch('api.services.r2_media_service.get_r2_client', return_value=store.client):
+    with patch('apps.uploads.r2_media_service.get_r2_client', return_value=store.client):
         yield store
 
 
@@ -21,9 +21,9 @@ def moderation():
     `moderation.check.return_value = ModerationResult(True, ...)`. La denúncia, l'avís i l'auditoria del bloqueig són a
     PostgreSQL (`apps.moderation`) i es comproven contra la BD (els tests amb la llista de hashes real són a
     `apps/moderation/tests/test_upload_block.py`)."""
-    from api.services.moderation_service import ModerationResult
+    from apps.moderation.moderation_service import ModerationResult
     check = MagicMock(return_value=ModerationResult(False))
-    with patch('api.services.moderation_service.ModerationService.check', check):
+    with patch('apps.moderation.moderation_service.ModerationService.check', check):
         yield SimpleNamespace(check=check)
 
 

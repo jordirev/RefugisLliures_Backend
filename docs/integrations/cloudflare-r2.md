@@ -7,17 +7,17 @@ Emmagatzema fotos/vídeos de refugis i avatars d'usuari. Bucket **privat**: l'ac
 ## Fitxers
 | Fitxer | Rol |
 |---|---|
-| `api/r2_config.py` | `get_r2_client()` (boto3 `s3`, `region_name='auto'`, `signature_version='s3v4'`, `addressing_style='path'`), `get_r2_bucket_name()`, `get_r2_endpoint()` |
-| `api/services/r2_media_service.py` | `R2MediaService` + estratègies de path + `quarantine_key()` / `moderation_hold_key()` |
-| `api/services/image_processing_service.py` | Processament autoritatiu abans de publicar (vegeu [flux 3](../flows/03-refuge-media-upload.md)) |
-| `api/models/media_metadata.py` | `MediaMetadata` / `RefugeMediaMetadata` = forma **MediaItem** del contracte |
+| `apps/uploads/r2_config.py` | `get_r2_client()` (boto3 `s3`, `region_name='auto'`, `signature_version='s3v4'`, `addressing_style='path'`), `get_r2_bucket_name()`, `get_r2_endpoint()` |
+| `apps/uploads/r2_media_service.py` | `R2MediaService` + estratègies de path + `quarantine_key()` / `moderation_hold_key()` |
+| `apps/uploads/image_processing_service.py` | Processament autoritatiu abans de publicar (vegeu [flux 3](../flows/03-refuge-media-upload.md)) |
+| `apps/uploads/media_metadata.py` | `MediaMetadata` / `RefugeMediaMetadata` = forma **MediaItem** del contracte |
 
 ## Configuració
 Variables (només noms), llegides amb `os.getenv` dins `get_r2_client()`: `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_ENDPOINT`, `R2_BUCKET_NAME`. Si en falta alguna → `ValueError("R2 configuration is incomplete...")`.
 
 On es defineixen **[FET]**:
 - GitHub Actions: secrets a `.github/workflows/process-visits.yml`.
-- Tests: valors falsos a `conftest.py` i `api/tests/conftest.py`.
+- Tests: valors falsos a `conftest.py` de l'arrel.
 - `run_process_visits.sh` / `run_process_visits.bat`: placeholders.
 - A Render: **[NO VERIFICAT]** (s'han de configurar al dashboard).
 

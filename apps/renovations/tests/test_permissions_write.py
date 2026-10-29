@@ -89,7 +89,7 @@ def test_get_permissions_per_metode():
     from types import SimpleNamespace
     from django.urls import resolve
     from rest_framework.permissions import IsAuthenticated
-    from api.permissions import HasProfile, IsAgeConfirmed, IsNotBlocked
+    from apps.auth.permissions import HasProfile, IsAgeConfirmed, IsNotBlocked
     write = [IsAuthenticated, HasProfile, IsNotBlocked, IsAgeConfirmed]
     read = [IsAuthenticated, HasProfile]
     cases = [('/api/renovations/', 'GET', read), ('/api/renovations/', 'POST', write),

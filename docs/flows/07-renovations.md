@@ -5,7 +5,7 @@
 **Migrat a PostgreSQL (chunk 5).** App `apps/renovations` (`views`, `serializers`, `selectors`, `services`, `models`, `urls`, `migrations/0001_initial.py`), esquema `activity`. Disseny: [postgres-schema.md](../design/postgres-schema.md) §2.12–§2.14 i §5.2; decisions D32–D35 de [DECISIONS_AUTONOMES](../migration/DECISIONS_AUTONOMES.md). Ja no hi ha controller, DAO, mapper ni cache Redis per a les reformes (el codi legacy que en queda, vegeu [TECH_DEBT R15](../TECH_DEBT.md)). Ja no és el «domini de referència» del patró de Firestore: el patró nou és `apps/refuges` ([ARCHITECTURE §3](../ARCHITECTURE.md)).
 
 ## Endpoints
-`/renovations/…` és a `apps/renovations/urls.py` (inclòs des d'`api/urls.py`); `refuges/{id}/renovations/` viu a `apps/renovations/views.py` però la ruta és a `api/urls.py` **[FET]**.
+`/renovations/…` és a `apps/renovations/urls.py` (inclòs des d'`refugis_lliures/urls.py`); `refuges/{id}/renovations/` viu a `apps/renovations/views.py` però la ruta és a `refugis_lliures/urls.py` **[FET]**.
 
 | Mètode | URL | Vista | Permisos (en ordre) |
 |---|---|---|---|
@@ -18,7 +18,7 @@
 | DELETE | `/api/renovations/{id}/participants/{uid}/` (sortir / expulsar) | `RenovationParticipantDetailAPIView.delete` | IsAuthenticated, HasProfile; propietat al service |
 | GET | `/api/refuges/{id}/renovations/?active_only=` | `RefugeRenovationsAPIView.get` | IsAuthenticated, HasProfile |
 
-- Els permisos d'escriptura es trien per mètode a `get_permissions()` de cada vista; `api/permissions.py` no canvia (D35). **Només l'escriptura de contingut** (crear, editar, unir-se) exigeix no estar bloquejat i tenir l'edat confirmada; `GET` i `DELETE` no, perquè un bloquejat pugui llegir i retirar el que és seu **[FET]**.
+- Els permisos d'escriptura es trien per mètode a `get_permissions()` de cada vista; `apps/auth/permissions.py` no canvia (D35). **Només l'escriptura de contingut** (crear, editar, unir-se) exigeix no estar bloquejat i tenir l'edat confirmada; `GET` i `DELETE` no, perquè un bloquejat pugui llegir i retirar el que és seu **[FET]**.
 - `IsRenovationCreator` ja no s'usa: la propietat es comprova als *services* (a més de la RLS) **[FET]**.
 - `GET /refuges/{id}/renovations/`: **`active_only` (D32)** — `true`, `True` i `1` filtren les vigents; absent, `false` o `0` retornen totes (comportament d'abans). Resol [TECH_DEBT B1](../TECH_DEBT.md) (abans la query s'ignorava). Refugi inexistent o ID que no és UUID → 404 «Refugi no trobat» **[FET]**.
 - Els IDs de reforma i de refugi són **UUID v7** opacs; un ID que no és UUID (p. ex. un antic de Firestore) dona 404, no 500 **[FET]**.

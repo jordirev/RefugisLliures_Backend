@@ -30,7 +30,7 @@ import pytest  # noqa: E402
 from unittest.mock import patch  # noqa: E402
 
 
-# ============= AÏLLAMENT (compartit per api/tests i apps/*/tests) =============
+# ============= AÏLLAMENT (compartit per tots els tests d'apps/*/tests) =============
 # 1) Cap test pot inicialitzar Firebase real (env/ pot contenir credencials de producció).
 # 2) El registre d'auditoria es mocka per defecte (marker `real_audit_log` per provar-lo).
 # 3) Les comprovacions HasProfile / IsNotBlocked / IsAgeConfirmed retornen un usuari confirmat i no
@@ -81,15 +81,7 @@ def _mock_audit_log(request):
     if request.node.get_closest_marker('real_audit_log'):
         yield None
         return
-    # Chunk 9: el servei d'auditoria passa a `apps.audit.services` (PostgreSQL); mentre no existeixi es mocka el legacy.
-    import importlib.util
-    try:
-        has_new = importlib.util.find_spec('apps.audit.services') is not None
-    except ModuleNotFoundError:
-        has_new = False
-    target = ('apps.audit.services.AuditLogService.log' if has_new
-              else 'api.services.audit_log_service.AuditLogService.log')
-    with patch(target, return_value=True) as mock_log:
+    with patch('apps.audit.services.AuditLogService.log', return_value=True) as mock_log:
         yield mock_log
 
 
@@ -102,7 +94,7 @@ def _mock_permission_user_lookup(request):
     from apps.accounts.models import UserAccount
     user = UserAccount(uid='perm_user', age_confirmed_at=datetime(2025, 1, 1, tzinfo=timezone.utc),
                        age_threshold=16, is_blocked=False)
-    with patch('api.permissions.get_user_for_permissions', return_value=user) as mock_lookup:
+    with patch('apps.auth.permissions.get_user_for_permissions', return_value=user) as mock_lookup:
         yield mock_lookup
 
 
@@ -206,5 +198,5 @@ def _rls_hook_sense_bd(request):
     if any(request.node.get_closest_marker(m) for m in ('rls', 'django_db', 'db_infra')):
         yield
         return
-    with patch('api.rls_hook.apply_context'):
+    with patch('apps.core.rls_hook.apply_context'):
         yield

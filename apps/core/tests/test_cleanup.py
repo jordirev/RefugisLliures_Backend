@@ -21,6 +21,7 @@ FORBIDDEN_MODULES = (
 FORBIDDEN_NAMES = {'firestore_service', 'cache_service', 'cache_result', 'FirestoreService', 'firestore'}
 
 REMOVED_PATHS = (
+    'api',
     'api/services/cache_service.py', 'api/services/firestore_service.py', 'api/daos', 'api/controllers',
     'api/mappers', 'api/models/refugi_lliure.py', 'api/serializers/refugi_lliure_serializer.py',
     'api/views/cache_views.py',
@@ -28,7 +29,7 @@ REMOVED_PATHS = (
 
 
 def _production_files():
-    for base in ('api', 'apps'):
+    for base in ('apps',):
         for f in (ROOT / base).rglob('*.py'):
             rel = f.relative_to(ROOT).parts
             if 'tests' in rel or f.name == 'conftest.py' or '__pycache__' in rel or 'migrations' in rel:
@@ -65,6 +66,14 @@ def test_cap_modul_de_produccio_importa_firestore_ni_redis():
 @pytest.mark.parametrize('rel', REMOVED_PATHS)
 def test_els_fitxers_i_directoris_morts_no_existeixen(rel):
     assert not (ROOT / rel).exists(), rel
+
+
+def test_la_carpeta_api_no_existeix_ni_es_pot_importar():
+    """La infraestructura que vivia a `api/` és ara a `apps/{core,auth,health,uploads,moderation}`."""
+    import importlib.util
+    assert not (ROOT / 'api').exists()
+    assert importlib.util.find_spec('api') is None
+    assert 'api' not in settings.INSTALLED_APPS
 
 
 def test_cap_test_legacy_de_refugis_ni_de_cache_no_queda():
@@ -110,9 +119,9 @@ def test_les_rutes_de_cache_responen_404_o_no_autoritzat_mai_200(client, path):
 
 
 def test_carregar_les_urls_no_importa_firestore_ni_redis():
-    """Procés net: ni `api.urls` ni la inicialització de Django arrosseguen Firestore o Redis."""
+    """Procés net: ni `refugis_lliures.urls` ni la inicialització de Django arrosseguen Firestore o Redis."""
     code = (
-        "import django, sys; django.setup(); import api.urls, refugis_lliures.urls; "
+        "import django, sys; django.setup(); import refugis_lliures.urls; "
         "bad = [m for m in ('google.cloud.firestore', 'firebase_admin.firestore', 'redis', 'django_redis') "
         "if m in sys.modules]; print('BAD:' + ','.join(bad))"
     )
@@ -126,7 +135,7 @@ def test_firebase_admin_segueix_disponible_per_a_auth():
     import firebase_admin
     from firebase_admin import auth
     assert hasattr(firebase_admin, 'get_app') and hasattr(auth, 'verify_id_token')
-    assert (ROOT / 'api' / 'firebase_config.py').exists()
+    assert (ROOT / 'apps' / 'auth' / 'firebase_config.py').exists()
 
 
 def test_l_esquema_swagger_segueix_generant_se_sense_cache_ni_camps_de_firestore():

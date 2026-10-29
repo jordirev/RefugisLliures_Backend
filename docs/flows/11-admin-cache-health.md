@@ -6,9 +6,9 @@
 ## Endpoint
 | Mètode | URL | Vista | Permisos | Comportament |
 |---|---|---|---|---|
-| GET | `/api/health/` | `HealthCheckAPIView.get` (`api/views/health_check_views.py`) | públic (`AllowAny`, exclòs del middleware) | Comprova PostgreSQL (`check_database()`: consulta trivial amb el rol `app`) i que Firebase Admin estigui inicialitzat (`firebase_admin.get_app()`, sense crida de xarxa) |
+| GET | `/api/health/` | `HealthCheckAPIView.get` (`apps/health/views.py`) | públic (`AllowAny`, exclòs del middleware) | Comprova PostgreSQL (`check_database()`: consulta trivial amb el rol `app`) i que Firebase Admin estigui inicialitzat (`firebase_admin.get_app()`, sense crida de xarxa) |
 
-Resposta (serializer `HealthCheckResponseSerializer`, `api/serializers/health_serializer.py`):
+Resposta (serializer `HealthCheckResponseSerializer`, `apps/health/serializers.py`):
 ```json
 {"status": "healthy", "message": "API operativa", "firebase": true, "database": true}
 ```
@@ -47,6 +47,6 @@ sequenceDiagram
 ## Gotchas
 - **Firestore i Redis ja no es comproven** (no existeixen): els camps `firestore` i `collections_count` han desaparegut de la resposta. Els clients que els llegien (cap conegut: ni el frontend ni els workflows criden el health) rebrien `undefined` **[FET]**.
 - El camp `firebase` només diu que Firebase Admin està inicialitzat; no comprova que el servei de Firebase Auth respongui **[FET]**. Als tests, `_block_real_firebase` fa fallar `get_app`, de manera que per defecte el health és «unhealthy» (els tests que volen 200 el mocken).
-- `check_database()` (`api/services/database_health.py`) retorna `False` en un `DatabaseError` (només es registra el tipus d'error, mai detalls ni credencials). La resposta mai exposa el text d'una excepció **[FET]**.
+- `check_database()` (`apps/health/services.py`) retorna `False` en un `DatabaseError` (només es registra el tipus d'error, mai detalls ni credencials). La resposta mai exposa el text d'una excepció **[FET]**.
 - `HealthDatabaseErrorMiddleware` cobreix el cas en què Postgres és inabastable **abans** de la vista: amb `ATOMIC_REQUESTS` la petició falla en obrir la transacció (i el hook de RLS també fa una consulta), de manera que la vista no arriba a informar `database:false`. El middleware retorna 503 només a `/api/health/` **[FET]**.
 - `/api/health/` (i qualsevol monitor que l'usi) desperta Neon (scale-to-zero) i ocupa una connexió del pooler **[INFERÈNCIA]**. El ping de Render/Actions apunta a `/swagger/` ([render-deploy-ci.md](../integrations/render-deploy-ci.md)).

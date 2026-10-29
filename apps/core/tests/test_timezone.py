@@ -19,7 +19,7 @@ from django.db.models import DateTimeField, Value
 from django.db.models.functions import TruncDate
 from django.utils import timezone
 
-from api.utils import timezone_utils
+from apps.core import timezone_utils
 
 ROOT = Path(settings.BASE_DIR)
 MADRID = ZoneInfo('Europe/Madrid')
@@ -77,7 +77,7 @@ FORBIDDEN = [
     (re.compile(r'\bdatetime\.(now|today)\(\s*\)'), 'datetime.now()/today() naïf (zona del servidor)'),
     (re.compile(r'\bdatetime\.utcnow\(\)'), 'datetime.utcnow() naïf'),
 ]
-SCANNED = ['apps', 'api', 'refugis_lliures', 'scripts']
+SCANNED = ['apps', 'refugis_lliures', 'scripts']
 
 
 def _sources():

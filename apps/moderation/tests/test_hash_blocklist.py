@@ -9,7 +9,7 @@ Contracte:
   `n >= 2**63`); `ValueError` si no és hexadecimal o supera els 64 bits.
 - `apps.moderation.selectors.hash_match(sha256=None, phash_hex=None) -> HashMatch | None` (`entry_id: str`, `category`,
   `match_type`), només via `fn_hash_match` (cap SELECT a la taula). Un `phash_hex` invàlid no coincideix (no llança).
-- `api.services.moderation_service.ModerationService.check(ModerationInput)` continua sent el punt d'entrada de la
+- `apps.moderation.moderation_service.ModerationService.check(ModerationInput)` continua sent el punt d'entrada de la
   pujada; el seu `HashBlocklistProvider` ja no usa Firestore ni cache: `ModerationResult(True, 'hash_blocklist',
   category, match_type, {'entry_id': str})`.
 - Comanda `python manage.py load_hash_blocklist <fitxer.csv> [--database migrator]`: CSV amb capçalera
@@ -170,7 +170,7 @@ def test_el_selector_no_llegeix_mai_la_taula(world, selectors):
 
 @pytest.mark.django_db
 def test_moderation_service_bloqueja_per_sha256_i_phash(world):
-    from api.services.moderation_service import ModerationInput, ModerationService
+    from apps.moderation.moderation_service import ModerationInput, ModerationService
     entry = make_hash(sha256=SHA)
     res = ModerationService().check(ModerationInput(sha256=SHA))
     assert res.blocked and (res.provider, res.category, res.match_type) == ('hash_blocklist', 'csam', 'sha256')
@@ -182,7 +182,7 @@ def test_moderation_service_bloqueja_per_sha256_i_phash(world):
 
 @pytest.mark.django_db
 def test_moderation_service_no_bloqueja_si_no_coincideix_i_no_toca_firestore_ni_cache(world):
-    from api.services.moderation_service import ModerationInput, ModerationService
+    from apps.moderation.moderation_service import ModerationInput, ModerationService
     make_hash(sha256=SHA)
     res = ModerationService().check(ModerationInput(sha256='11' * 32, phash='ffffffffffffffff'))
     assert res.blocked is False
@@ -190,7 +190,7 @@ def test_moderation_service_no_bloqueja_si_no_coincideix_i_no_toca_firestore_ni_
 
 def test_moderation_service_ja_no_importa_firestore_ni_cache():
     from pathlib import Path
-    import api.services.moderation_service as mod
+    import apps.moderation.moderation_service as mod
     text = Path(mod.__file__).read_text(encoding='utf-8')
     assert 'firestore' not in text.lower() and 'cache_service' not in text
 

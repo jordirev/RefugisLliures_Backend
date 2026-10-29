@@ -91,7 +91,7 @@ def test_sense_perfil_403_profile_required(client, one, idx):
 def test_les_vistes_porten_is_authenticated_i_has_profile_en_aquest_ordre():
     from django.urls import resolve
     from types import SimpleNamespace
-    from api.permissions import HasProfile
+    from apps.auth.permissions import HasProfile
     from rest_framework.permissions import IsAuthenticated
     paths = {
         'list': ('/api/renovations/', ['GET', 'POST']),

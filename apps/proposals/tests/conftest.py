@@ -10,7 +10,7 @@ from apps.proposals.tests.helpers import make_refuge, make_user, proposal_models
 def r2():
     """Cap test toca R2. `r2.delete_file` / `r2.delete_files` són `MagicMock` (es poden fer fallar amb `r2.fail()`) i
     `r2.deleted_keys()` en recull les claus esborrades per qualsevol de les dues vies."""
-    from api.services.r2_media_service import R2MediaService
+    from apps.uploads.r2_media_service import R2MediaService
     mocks = MagicMock()
     mocks.delete_file = MagicMock(return_value=True)
     mocks.delete_files = MagicMock(side_effect=lambda keys: {'deleted': list(keys), 'failed': []})

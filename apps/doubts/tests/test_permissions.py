@@ -17,7 +17,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.test import APIRequestFactory
 
-from api.permissions import HasProfile
+from apps.auth.permissions import HasProfile
 from apps.doubts.tests.helpers import (
     DOUBTS, NOT_OWNER, admin_claims, answer_ids, answer_url, answers_url, api_delete, api_get, api_post, doubt_ids,
     doubt_url, make_answer, make_doubt, make_refuge, make_user, sql, user_claims, at)
@@ -114,7 +114,7 @@ def test_cada_metode_exigeix_is_authenticated_i_despres_has_profile():
 # ---------- bloqueig i edat: només a l'escriptura de contingut (POST; decisió del PO, 26/10) ----------
 
 def test_els_tres_post_exigeixen_bloqueig_i_edat_i_la_resta_no():
-    from api.permissions import IsAgeConfirmed, IsNotBlocked
+    from apps.auth.permissions import IsAgeConfirmed, IsNotBlocked
     factory = APIRequestFactory()
     for route, cls in _doubt_views().items():
         for method in ('get', 'post', 'delete'):

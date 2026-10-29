@@ -22,7 +22,7 @@ MediaItem = {key, url, thumb_url, media_type: "image"|"video", width, height, bl
              creator_uid, uploaded_at, taken_at|null, experience_id|null}
 ```
 
-- Els errors amb codi tenen la forma `{"error": "<codi>", "code": "<codi>", "message": "<text>"}` (`coded_error`, `api/permissions.py`). Els 400 de validació: `{"error": "Dades invàlides", "details": {...}}`.
+- Els errors amb codi tenen la forma `{"error": "<codi>", "code": "<codi>", "message": "<text>"}` (`coded_error`, `apps/auth/permissions.py`). Els 400 de validació: `{"error": "Dades invàlides", "details": {...}}`.
 - `image/jpg` s'accepta i es normalitza a `image/jpeg` (el header retornat a `headers` és el que s'ha signat i el client l'ha d'enviar tal qual).
 - `target=experience` exigeix que l'usuari sigui el creador de l'experiència (o admin); el `refuge_id` es pren de l'experiència (si el cos en porta un i no és el de l'experiència → 400 «refuge_id no correspon a l'experiència»). Ordre: permisos → validació (400) → existència (404) → propietat (403).
 - `confirm` és **idempotent**: tornar a confirmar un `upload_id` ja confirmat retorna el mateix MediaItem; un intent pendent sense objecte a R2 retorna `missing_object` i **es pot reintentar** (fins que caduqui).
@@ -37,7 +37,7 @@ MediaItem = {key, url, thumb_url, media_type: "image"|"video", width, height, bl
 | GET | `/api/refuges/{id}/media/` | `RefugeMediaListAPIView.get` (`apps/refuges/views.py`; PostgreSQL) | IsAuthenticated | — |
 | DELETE | `/api/refuges/{id}/media/{key}/` | `RefugeMediaDetailAPIView.delete` (`apps/refuges/views.py`; PostgreSQL) | IsAuthenticated; autor o admin (al service) | — (`key` és `path:`) |
 
-Les rutes d'`upload-intents` són declarades a `api/urls.py` (no hi ha `apps/uploads/urls.py`) perquè comparteixen el prefix `media/` amb les denúncies (`apps/moderation`, chunk 9) **[FET]**.
+Les rutes d'`upload-intents` són declarades a `refugis_lliures/urls.py` (no hi ha `apps/uploads/urls.py`) perquè comparteixen el prefix `media/` amb les denúncies (`apps/moderation`, chunk 9) **[FET]**.
 
 ## Model de dades [FET]
 - **`moderation.upload_intents`** (`apps/uploads/models.py: UploadIntent`): `id` (uuid v7 de la BD = `upload_id` de l'API), `user_uid` → `users.users`, `target` (`refuge|experience|avatar`), `content_type`, `size` (> 0), `quarantine_key` (única, `quarantine/{id}`), `refuge_id` → `refuges.refuges`, `experience_id` → `activity.experiences`, `status` (`pending|confirmed|failed`), `rights_confirmed_at`, `created_at`, `expire_at` (= `created_at` + 1 dia), `result_key`, `failure_reason`. `CHECK`s: enumeracions, `upload_intents_shape_ck` (avatar sense refugi ni experiència · refuge: refugi · experience: refugi i experiència), `upload_intents_state_ck` (`confirmed` ⇔ `result_key`; `failed` ⇔ `failure_reason`), `expire_at > created_at`. Les tres FK són `ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED` (migració `RunSQL`).
@@ -94,7 +94,7 @@ sequenceDiagram
     V-->>C: 200 {uploaded:[MediaItem], failed:[{upload_id, reason}]}
 ```
 
-## Processament (`api/services/image_processing_service.py`) [FET]
+## Processament (`apps/uploads/image_processing_service.py`) [FET]
 1. **Tipus real** per magic bytes (`detect_media_type`): JPEG `FFD8FF`, PNG, `RIFF…WEBP`, caixa `ftyp` (brands heic/heif/mif1 → imatge; isom/mp4x/avc1 → mp4; `qt  ` → quicktime), EBML amb `webm`. Qualsevol altra cosa (PDF, ZIP, EXE, GIF, AVIF, MKV…) → `invalid_type`. El tipus declarat ha de coincidir amb el detectat (imatge vs vídeo).
 2. **Obertura real**: Pillow (`verify()` + `load()`, `pillow-heif` per a HEIC) o `ffmpeg -i` (imageio-ffmpeg; no porta `ffprobe`, així que `probe_video` parseja la sortida d'`ffmpeg -i`). Bomba de descompressió (> 80 MP) → `too_large`.
 3. **Imatge**: `ImageOps.exif_transpose`, `DateTimeOriginal`(+`OffsetTimeOriginal`) → `taken_at`, còpia només amb píxels (`_strip_metadata`), WebP q80 màx. 2048 px + miniatura 400 px, blurhash (4×3), pHash i sha256 per a moderació.
@@ -143,7 +143,7 @@ sequenceDiagram
 - Concurrència: `confirm_upload_intents` bloqueja primer (`FOR UPDATE`, `_lock_intents`) **tots** els intents propis de la petició en ordre de PK (evita *deadlocks* entre `[a, b]` i `[b, a]`) i `_get_intent` els rellegeix amb `FOR UPDATE`: dues confirmacions simultànies del mateix intent es serialitzen (la segona veu `confirmed` i és idempotent) en lloc de publicar dos mitjans; el bloqueig dura fins al final de la petició (`ATOMIC_REQUESTS`).
 - Idempotència (`_confirm_one`): un intent `confirmed` reconstrueix el `MediaItem` des de `result_key` (`_existing_item`; `None` → `missing_object` si el mitjà s'ha esborrat o l'avatar s'ha substituït); un `failed` retorna el seu `failure_reason`; un `pending` caducat (`expire_at < now()`) és `missing_object`; un `pending` sense objecte a R2 és `missing_object` i es pot reintentar.
 - Una fallada de la BD en publicar (`INSERT`) no és un 500: desfà els fitxers d'R2 i l'intent queda `failed: processing_error`. Els errors inesperats són 500 `{error, error_id}` amb «Error en crear els intents de pujada» / «Error en confirmar les pujades».
-- R2: `generate_presigned_put_url`, `head_object`, `get_object_bytes`, `put_bytes`, `copy_object`, `move_object`, `build_media_key` (`api/services/r2_media_service.py`).
+- R2: `generate_presigned_put_url`, `head_object`, `get_object_bytes`, `put_bytes`, `copy_object`, `move_object`, `build_media_key` (`apps/uploads/r2_media_service.py`).
 - Les rutes `GET/DELETE /refuges/{id}/media/…` són a `apps/refuges/urls.py` (UUID de refugi; un id que no és UUID → 404). No hi ha cua d'R2 (`media_deletion_queue` no s'ha implementat, D40, TECH_DEBT R16): els services esborren el fitxer directament.
 - Llistat: `RefugeMediaListAPIView` (`apps/refuges/views.py`) — registra l'accés a `audit_logs` (`media.list`); esborrat: `audit_logs` `media.delete` des de `services.delete_media`. Auditoria de les pujades (`audit.audit_logs`, `apps/audit`): `media.upload_intent`, `media.upload_confirm`, `avatar.upload`.
 

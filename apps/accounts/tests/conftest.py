@@ -15,7 +15,7 @@ def r2():
     `r2.delete_file` és un `MagicMock` (es pot fer fallar amb `r2.delete_file.return_value = False`); les crides es
     llegeixen amb `r2.delete_file.call_args_list` (`call(key)`).
     """
-    from api.services.r2_media_service import R2MediaService
+    from apps.uploads.r2_media_service import R2MediaService
     mocks = MagicMock()
     mocks.delete_file = MagicMock(return_value=True)
     mocks.delete_files = MagicMock(side_effect=lambda keys: {'deleted': list(keys), 'failed': []})

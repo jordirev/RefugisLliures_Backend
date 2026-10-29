@@ -4,7 +4,7 @@
 > Context: [integrations/firebase-auth.md §Custom claims](../integrations/firebase-auth.md#custom-claims) · [flux 11 (health)](../flows/11-admin-cache-health.md) · [flux 5 (revisió de propostes)](../flows/05-refuge-proposals.md).
 
 ## Com es decideix qui és admin
-Un usuari és admin si el seu ID token porta el **custom claim `role == 'admin'`** (`api/permissions.py:10-21`). El permís `IsFirebaseAdmin` llegeix `request.user_claims`, que el middleware omple amb el token decodificat.
+Un usuari és admin si el seu ID token porta el **custom claim `role == 'admin'`** (`apps/auth/permissions.py:10-21`). El permís `IsFirebaseAdmin` llegeix `request.user_claims`, que el middleware omple amb el token decodificat.
 
 > ⚠️ Les docs antigues parlaven de `admin: true` o de la variable `FIREBASE_ADMIN_UIDS`: **tots dos són obsolets**. La llista d'UIDs a `.env` es va substituir per custom claims (nov. 2025) i `FIREBASE_ADMIN_UIDS` ja no es llegeix enlloc.
 

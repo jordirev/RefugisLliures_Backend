@@ -2,7 +2,7 @@
 Vistes de `renovations`: llista, detall, creació/edició/esborrat i participants (+ la llista d'un refugi).
 
 Fines: validen l'entrada, criden els `selectors` (lectures) o els `services` (escriptures), serialitzen i tradueixen
-les excepcions de domini a HTTP. El context de RLS el fixa el hook d'`api/rls_hook.py`.
+les excepcions de domini a HTTP. El context de RLS el fixa el hook d'`apps/core/rls_hook.py`.
 
 Permisos (gotcha 15): `IsAuthenticated, HasProfile` a tot; l'**escriptura de contingut** (`POST /renovations/`,
 `PATCH /renovations/{id}/`, unir-se) exigeix a més `IsNotBlocked` i `IsAgeConfirmed` (decisió del PO, 26/10). Els
@@ -18,8 +18,8 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from api.permissions import HasProfile, IsAgeConfirmed, IsNotBlocked
-from api.utils.swagger_error_responses import (
+from apps.auth.permissions import HasProfile, IsAgeConfirmed, IsNotBlocked
+from apps.core.swagger.error_responses import (
     ERROR_400_ALREADY_PARTICIPANT,
     ERROR_400_CREATOR_CANNOT_JOIN,
     ERROR_400_INVALID_DATA,
@@ -31,7 +31,7 @@ from api.utils.swagger_error_responses import (
     ERROR_500_INTERNAL_ERROR,
     SUCCESS_204_NO_CONTENT,
 )
-from api.utils.swagger_examples import (
+from apps.core.swagger.examples import (
     EXAMPLE_RENOVATION_1,
     EXAMPLE_RENOVATION_CREATE,
     EXAMPLE_RENOVATION_PARTICIPANT_REMOVED,

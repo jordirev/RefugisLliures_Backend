@@ -49,7 +49,7 @@ class UserDetailAPIView(APIView):
 | Throttling per usuari, Browsable API, Swagger | parcial | integrat |
 | Abast | tot Django | només DRF |
 
-**Decisió.** Afegir `FirebaseAuthentication` (DRF) **mantenint** el middleware. La classe DRF reaprofita el que ha posat el middleware i només verifica el token si no hi és (`api/authentication.py:18-70`).
+**Decisió.** Afegir `FirebaseAuthentication` (DRF) **mantenint** el middleware. La classe DRF reaprofita el que ha posat el middleware i només verifica el token si no hi és (`apps/auth/authentication.py:18-70`).
 
 **Allò que es va proposar i NO s'ha aplicat** **[FET]**:
 - `DEFAULT_PERMISSION_CLASSES = [IsAuthenticated]` → el default és `AllowAny`; cada vista declara permisos ([GOTCHAS #3](../GOTCHAS.md)).

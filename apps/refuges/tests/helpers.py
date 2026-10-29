@@ -21,8 +21,8 @@ from django.db import connection
 from django.test.utils import CaptureQueriesContext
 
 ROOT = Path(__file__).resolve().parents[3]
-JSON_PATH = ROOT / 'api' / 'utils' / 'final_data_refuges.json'
-VERIFY = 'api.middleware.firebase_auth_middleware.auth.verify_id_token'
+JSON_PATH = ROOT / 'apps' / 'refuges' / 'data' / 'final_data_refuges.json'
+VERIFY = 'apps.auth.middleware.auth.verify_id_token'
 
 AMENITY_FIELDS = ('manque_un_mur', 'cheminee', 'poele', 'couvertures', 'latrines', 'bois', 'eau', 'matelas',
                   'couchage', 'bas_flancs', 'lits', 'mezzanine_etage')

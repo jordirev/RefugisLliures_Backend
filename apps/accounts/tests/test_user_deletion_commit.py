@@ -241,7 +241,7 @@ def test_dos_esborrats_simultanis_per_http_un_204_i_l_altre_204_idempotent(commi
 
 
 def test_el_delete_no_avisa_el_hook_de_rls_fora_de_transaccio(committed, client, django_db_blocker):
-    with patch('api.rls_hook.logger') as log:
+    with patch('apps.core.rls_hook.logger') as log:
         assert http_delete(client, 'u1', django_db_blocker).status_code == 204
     log.warning.assert_not_called()
     connections.close_all()

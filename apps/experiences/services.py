@@ -13,7 +13,7 @@ from typing import Optional
 
 from django.db import IntegrityError, connection, transaction
 
-from api.services import r2_media_service
+from apps.uploads import r2_media_service
 from apps.core.db_functions import TransactionNow
 from apps.core.rls import system_context
 from apps.refuges import selectors as refuge_selectors

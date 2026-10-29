@@ -1,5 +1,5 @@
 """
-Comanda `load_refuges` (§9): càrrega **d'un sol ús** de `api/utils/final_data_refuges.json` amb el rol propietari.
+Comanda `load_refuges` (§9): càrrega **d'un sol ús** de `apps/refuges/data/final_data_refuges.json` amb el rol propietari.
 
     python manage.py load_refuges [--json PATH] [--dry-run] [--database ALIAS]
 

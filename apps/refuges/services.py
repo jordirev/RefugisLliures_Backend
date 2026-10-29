@@ -10,7 +10,7 @@ from typing import Optional
 from django.db import transaction
 
 from apps.audit import services as audit
-from api.services import r2_media_service
+from apps.uploads import r2_media_service
 
 from . import selectors
 from .models import RefugeMedia

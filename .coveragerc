@@ -1,7 +1,6 @@
 [run]
 # Directoris a incloure en el coverage
 source =
-    api
     apps
 
 # Fitxers a excloure
@@ -24,6 +23,13 @@ omit =
     */__init__.py
     */services/*
     */utils/*
+    */apps/uploads/r2_media_service.py
+    */apps/uploads/image_processing_service.py
+    */apps/moderation/moderation_service.py
+    */apps/health/services.py
+    */apps/core/timezone_utils.py
+    */apps/core/age_utils.py
+    */apps/core/swagger/*
 
 [report]
 # Excloure línies específiques del report

@@ -1,4 +1,4 @@
-"""Rutes de `moderation`: s'inclouen des d'`api/urls.py` a l'arrel (mateixos paths i `name=` d'abans)."""
+"""Rutes de `moderation`: s'inclouen des de `refugis_lliures/urls.py` a l'arrel (mateixos paths i `name=` d'abans)."""
 from django.urls import path
 
 from . import views

@@ -89,7 +89,8 @@ INSTALLED_APPS = [
     'apps.proposals',
     'apps.audit',
     'apps.moderation',
-    'api',
+    'apps.auth',
+    'apps.health',
 ]
 
 MIDDLEWARE = [
@@ -100,8 +101,8 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     #'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'api.middleware.FirebaseAuthenticationMiddleware',  # Firebase Auth Middleware
-    'api.middleware.HealthDatabaseErrorMiddleware',  # 503 del health check si Postgres és inabastable
+    'apps.auth.middleware.FirebaseAuthenticationMiddleware',  # Firebase Auth Middleware
+    'apps.health.middleware.HealthDatabaseErrorMiddleware',  # 503 del health check si Postgres és inabastable
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
@@ -254,7 +255,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # Django REST Framework settings
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
-        'api.authentication.FirebaseAuthentication',
+        'apps.auth.authentication.FirebaseAuthentication',
     ],
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.AllowAny',
@@ -298,12 +299,6 @@ LOGGING = {
         },
     },
     'loggers': {
-        # Fallback for whole api package
-        'api': {
-            'handlers': ['console'],
-            'level': 'WARNING',
-            'propagate': False,
-        },
         # Apps migrades a Postgres (apps/*): traces i error_id dels 500 (apps.core.errors.server_error).
         # propagate=True: l'arrel no té handlers (no es duplica) i caplog dels tests ho captura.
         'apps': {

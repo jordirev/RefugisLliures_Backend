@@ -1,5 +1,5 @@
 """
-`load_refuges`: càrrega **d'un sol ús** de `api/utils/final_data_refuges.json` a PostgreSQL
+`load_refuges`: càrrega **d'un sol ús** de `apps/refuges/data/final_data_refuges.json` a PostgreSQL
 (docs/design/postgres-schema.md §9; substitueix `upload_refugis_to_firestore` i `assign_conditions`).
 
     python manage.py load_refuges [--json PATH] [--dry-run] [--database ALIAS]
@@ -24,7 +24,7 @@ from django.db import connections, transaction
 
 from apps.refuges.models import Refuge, RefugeAmenities, RefugeLink, RefugeMedia, RefugeType
 
-DEFAULT_JSON = Path(settings.BASE_DIR) / 'api' / 'utils' / 'final_data_refuges.json'
+DEFAULT_JSON = Path(settings.BASE_DIR) / 'apps' / 'refuges' / 'data' / 'final_data_refuges.json'
 DEFAULT_ALIAS = 'migrator'
 BATCH_SIZE = 500
 _URL_RE = re.compile(r'^https?://', re.IGNORECASE)

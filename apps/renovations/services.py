@@ -11,7 +11,7 @@ from typing import Optional
 
 from django.db import IntegrityError, connection, transaction
 
-from api.utils.timezone_utils import get_madrid_today
+from apps.core.timezone_utils import get_madrid_today
 from apps.refuges import selectors as refuge_selectors
 
 from . import selectors

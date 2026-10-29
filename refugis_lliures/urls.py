@@ -20,6 +20,8 @@ from rest_framework import permissions
 from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
 
+from apps.renovations.urls import refuge_urlpatterns as refuge_renovations_urlpatterns
+
 # Configuració de Swagger
 schema_view = get_schema_view(
    openapi.Info(
@@ -37,9 +39,24 @@ schema_view = get_schema_view(
    # Els endpoints health/, refuges/ i refuges/{id}/ són públics
 )
 
+# Rutes de l'API sota `/api/`: cada feature exposa les seves a `apps/<feature>/urls.py`
+api_urlpatterns = [
+    path('', include('apps.health.urls')),                                      # /health/
+    path('refuges/', include('apps.refuges.urls')),                             # /refuges/, /refuges/{id}/, media
+    path('refuges/', include(refuge_renovations_urlpatterns)),                  # /refuges/{id}/renovations/
+    path('', include('apps.visits.urls')),                                      # /refuges/{id}/visits/..., /users/{uid}/visits/
+    path('', include('apps.uploads.urls')),                                     # /media/upload-intents/[confirm/]
+    path('', include('apps.moderation.urls')),                                  # /media/reports/, /admin/media-reports/, /users/{uid}/moderation-notices/
+    path('experiences/', include('apps.experiences.urls')),
+    path('doubts/', include('apps.doubts.urls')),
+    path('users/', include('apps.accounts.urls')),
+    path('renovations/', include('apps.renovations.urls')),
+    path('', include('apps.proposals.urls')),                                   # /refuges-proposals/..., /my-refuges-proposals/
+]
+
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('api/', include('api.urls')),
+    path('api/', include(api_urlpatterns)),
     
     # Swagger/OpenAPI documentation
     re_path(r'^swagger(?P<format>\.json|\.yaml)$', schema_view.without_ui(cache_timeout=0), name='schema-json'),

@@ -23,8 +23,8 @@ import pytest
 from django.db import DatabaseError, connection
 from PIL import Image
 
-from api.services.image_processing_service import IMAGE_MAX_BYTES
-from api.services.moderation_service import ModerationResult
+from apps.uploads.image_processing_service import IMAGE_MAX_BYTES
+from apps.moderation.moderation_service import ModerationResult
 from apps.experiences.tests.helpers import make_experience
 from apps.uploads.tests.helpers import (
     CONFIRM, GPS_IFD, INTENTS, MEDIA_ITEM_KEYS, VERIFY, admin_claims, api_get, api_post, at, avatar_row, file_spec,

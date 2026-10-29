@@ -13,7 +13,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from api.permissions import HasProfile, IsAgeConfirmed, IsNotBlocked, IsSameUser
+from apps.auth.permissions import HasProfile, IsAgeConfirmed, IsNotBlocked, IsSameUser
 from apps.core.errors import server_error
 
 from . import services

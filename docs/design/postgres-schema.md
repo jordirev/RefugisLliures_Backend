@@ -1,6 +1,6 @@
 # Disseny físic de la BD PostgreSQL (Neon)
 
-> **[FET]** comprovat al codi, a les dades (`api/utils/final_data_refuges.json`) o a la documentació del projecte · **[INFERÈNCIA]** deducció raonada, no executada · **[NO VERIFICAT]** depèn de Neon, del pooler o d'una decisió pendent. Vegeu la [llegenda del README](../README.md).
+> **[FET]** comprovat al codi, a les dades (`apps/refuges/data/final_data_refuges.json`) o a la documentació del projecte · **[INFERÈNCIA]** deducció raonada, no executada · **[NO VERIFICAT]** depèn de Neon, del pooler o d'una decisió pendent. Vegeu la [llegenda del README](../README.md).
 >
 > Revisat amb les decisions del product owner (`PLAN.md`, secció «Decisions sobre els dubtes del disseny», 24/10). Document **normatiu** per als agents que implementen la migració Firestore → PostgreSQL (chunks 1–11 de [`../migration/PLAN.md`](../migration/PLAN.md)). Les decisions de l'usuari del PLAN són vinculants; aquí s'hi afegeixen les decisions de disseny que el PLAN deixava obertes i la llista de [decisions preses i dubtes oberts](#11-decisions-preses-tot-decidit) per al product owner.
 > Entrades: [`PLAN.md`](../migration/PLAN.md), [`arquitectura-neon-cloudrun-upstash.md`](../migration/arquitectura-neon-cloudrun-upstash.md) (§4.1, 4.4, 4.6, 5.1, 5.2), [`uml-conceptual.md`](../migration/uml-conceptual.md) (completat des del codi), [`integrations/neon.md`](../integrations/neon.md).
@@ -113,7 +113,7 @@ Totes les **PK substitutes** són `uuid` **versió 7** (RFC 9562: 48 bits de tim
 **Generació (Postgres 18, decisió del PO).** Postgres 18 té `uuidv7()` al nucli. Neon suporta Postgres 14–18, però **un projecte no pot canviar de versió major**: cal crear un projecte Neon nou amb PG18 i refer-hi el *bootstrap* (§1.3, §7.1) **[FET: documentació de Neon]**. Com que Neon `dev` encara no té dades reals, el cost és baix. Estratègia:
 1. **Default de BD a totes les PK substitutes**: `id uuid NOT NULL DEFAULT uuidv7()`; a Django 5.2, `UUIDField(primary_key=True, db_default=Func(function='uuidv7'), editable=False)`. Django recupera el valor generat amb `RETURNING` a `objects.create()`, però **no a `bulk_create`** **[FET: provat amb Django 5.2.18]**: qui necessiti els PK d'una càrrega massiva els demana abans a la BD (`SELECT uuidv7() FROM generate_series(1, n)`, com `load_refuges`; DECISIONS_AUTONOMES D11). **Un sol generador**: cap `default=` de Python ni helper propi (`api/utils/ids.py` s'ha eliminat; l'`error_id` dels 500 usa `uuid.uuid7()` de Python, que no és cap PK). Les insercions de SQL pla (`psql`, scripts) també reben un v7 sense fer res. `uuidv7()` és monòton dins d'una mateixa sessió (fracció de mil·lisegon als 12 bits `rand_a`) **[INFERÈNCIA: notes de PostgreSQL 18]**.
 2. **Python 3.14** a CI i a producció (Django ≥ 5.2.8, primera 5.2 compatible amb 3.14 **[FET: notes de Django 5.2.8]**): `uuid.uuid7()` de la biblioteca estàndard queda disponible si mai cal un ID abans d'inserir, però el valor de les PK el posa sempre la BD. Cal comprovar, en implementar-ho, que totes les dependències de `requirements.txt` tenen versió per a Django 5.2 i Python 3.14.
-3. **Ids mal formats a la URL** han de donar **404**, no 500: convertidor `<uuid:...>` a `api/urls.py` o captura de `ValidationError`/`DataError`.
+3. **Ids mal formats a la URL** han de donar **404**, no 500: convertidor `<uuid:...>` a `refugis_lliures/urls.py` o captura de `ValidationError`/`DataError`.
 
 **Conseqüències**
 - **Localitat de l'índex B-tree de la PK**: els v7 s'inserixen sempre «a la dreta» de l'índex (com un `bigserial`), sense la fragmentació i el mal ús de la *buffer cache* dels v4 aleatoris. A ~1,5 mil refugis és irrellevant, però escala bé per a `audit_logs` i participants.
@@ -1519,7 +1519,7 @@ Paquet **`apps/`** a l'arrel del repo (germà d'`api/` i `refugis_lliures/`): **
 apps/refuges/{apps.py, models.py, selectors.py, services.py, serializers.py, views.py, urls.py,
               management/commands/load_refuges.py, migrations/, tests/}
 ```
-Les rutes d'una feature migrada s'inclouen des d'`api/urls.py` (`path('refuges/', include('apps.refuges.urls'))`) amb els mateixos paths i `name=`; les rutes niades d'altres features (visits, renovations…) es queden a `api/urls.py` fins que aquestes es migrin. Els tests de cada app viuen a `apps/<feature>/tests/` (`pytest.ini: testpaths = api/tests apps`); les fixtures compartides (`django_db_setup`, bloqueig de Firestore, mocks d'audit i permisos) són al `conftest.py` de l'arrel. Les classes `@dataclass` d'`api/models/` es mantenen fins al chunk 11 (no hi ha col·lisió: mòduls diferents).
+Les rutes d'una feature migrada s'inclouen des d'`refugis_lliures/urls.py` (`path('refuges/', include('apps.refuges.urls'))`) amb els mateixos paths i `name=`; les rutes niades d'altres features (visits, renovations…) es queden a `refugis_lliures/urls.py` fins que aquestes es migrin. Els tests de cada app viuen a `apps/<feature>/tests/` (`pytest.ini: testpaths = apps`); les fixtures compartides (`django_db_setup`, bloqueig de Firestore, mocks d'audit i permisos) són al `conftest.py` de l'arrel. Les classes `@dataclass` d'`api/models/` es van mantenir fins al chunk 11 (la carpeta `api/` ja no existeix) (no hi ha col·lisió: mòduls diferents).
 
 | App (`INSTALLED_APPS`) | Models → taula | Schema | Chunk |
 |---|---|---|---|
@@ -1847,7 +1847,7 @@ Això resol A5 (esborrar un refugi amb fotos d'experiències) i A6 (no atòmic).
 
 ## 9. Pla de càrrega de `final_data_refuges.json`
 
-Comanda de gestió **`load_refuges`** (`apps/refuges/management/commands/load_refuges.py`; substitueix `upload_refugis_to_firestore` i `assign_conditions`), **d'un sol ús**: s'executa un cop per omplir la BD buida, pel rol propietari: `python manage.py load_refuges [--json api/utils/final_data_refuges.json] [--dry-run] [--database migrator]` (l'àlies per defecte és `migrator`; sense credencials als arguments: l'àlias les llegeix de l'entorn). **No hi ha `--overwrite`**: si la BD ja té refugis, acaba amb `CommandError` sense escriure res (no es poden trepitjar les edicions fetes via propostes). Primer a la branca `dev` de Neon.
+Comanda de gestió **`load_refuges`** (`apps/refuges/management/commands/load_refuges.py`; substitueix `upload_refugis_to_firestore` i `assign_conditions`), **d'un sol ús**: s'executa un cop per omplir la BD buida, pel rol propietari: `python manage.py load_refuges [--json apps/refuges/data/final_data_refuges.json] [--dry-run] [--database migrator]` (l'àlies per defecte és `migrator`; sense credencials als arguments: l'àlias les llegeix de l'entorn). **No hi ha `--overwrite`**: si la BD ja té refugis, acaba amb `CommandError` sense escriure res (no es poden trepitjar les edicions fetes via propostes). Primer a la branca `dev` de Neon.
 
 ### 9.1 Algorisme
 1. **Precondicions**: `migrate` aplicat; `btree_gist`/`postgis`/`pg_trgm`/`unaccent` instal·lades; el JSON és una llista.

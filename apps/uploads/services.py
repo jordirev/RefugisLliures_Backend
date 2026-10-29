@@ -24,13 +24,13 @@ from django.db import connection, transaction
 from django.db.models import BooleanField, ExpressionWrapper, Q
 
 from apps.audit import services as audit
-from api.services import r2_media_service
-from api.services.image_processing_service import (
+from apps.uploads import r2_media_service
+from apps.uploads.image_processing_service import (
     REASON_MISSING_OBJECT, REASON_MODERATION_BLOCKED, REASON_PROCESSING_ERROR, REASON_TOO_LARGE,
     VIDEO_MAX_BYTES, MediaRejected, ProcessedMedia, image_processing_service, kind_for_content_type,
     max_bytes_for_kind, normalize_content_type)
-from api.services.moderation_service import ModerationInput, ModerationService
-from api.utils.timezone_utils import get_madrid_timezone
+from apps.moderation.moderation_service import ModerationInput, ModerationService
+from apps.core.timezone_utils import get_madrid_timezone
 from apps.accounts import selectors as account_selectors
 from apps.accounts import services as account_services
 from apps.accounts.serializers import avatar_to_dict

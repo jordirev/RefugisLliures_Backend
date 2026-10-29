@@ -1,4 +1,4 @@
-"""Rutes de `doubts`: s'inclouen des d'`api/urls.py` sota `doubts/` (mateixos paths i `name=` d'abans)."""
+"""Rutes de `doubts`: s'inclouen des de `refugis_lliures/urls.py` sota `doubts/` (mateixos paths i `name=` d'abans)."""
 from django.urls import path
 
 from . import views

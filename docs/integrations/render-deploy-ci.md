@@ -45,7 +45,7 @@ Variables (noms) a `env/.env.development` i `env/.env.production`: `SECRET_KEY, 
 `requirements.txt` afegeix `Pillow`, `pillow-heif`, `imageio-ffmpeg` (porta el binari estàtic d'ffmpeg, ~70 MB; no cal apt), `ImageHash` (numpy/scipy/PyWavelets) i `blurhash` (pur Python). El build de Render les instal·la amb `build.sh`. El processament d'imatges/vídeos és síncron i usa ~50–100 MB de RAM per imatge **[INFERÈNCIA]**: vigila la memòria del pla de Render. CI (Python 3.10) executa també els tests reals amb ffmpeg.
 
 ## Gotchas
-- `RENDER="1"` vs `RENDER=='true'` a `api/firebase_config.py:21,27` **[NO VERIFICAT]** si Render el sobreescriu.
+- `RENDER="1"` vs `RENDER=='true'` a `apps/auth/firebase_config.py:21,27` **[NO VERIFICAT]** si Render el sobreescriu.
 - 1 worker sync + timeout 30 s + pujades sense límit → una pujada lenta bloqueja tot el servei **[INFERÈNCIA]**.
 - `tox.ini` declara `py314` i CI executa `tox -e py` amb Python 3.14 **[FET]**; `process-visits.yml` també fixa 3.14. `.python-version` (`3.14`) fixa la versió de Python de Render **[INFERÈNCIA: Render llegeix `.python-version`]**. Els tests locals en contenidor i l'entorn `.venv` també són 3.14 ([guides/testing.md](../guides/testing.md)).
 - Comentari "3:00 Madrid" a `refugis_lliures/settings.py:276` vs "3:00 UTC" al workflow: el que s'executa és el del workflow (UTC) **[FET]**; com que el procés calcula "ahir" en hora de Madrid, a les 3:00 UTC (4-5 h a Madrid) "ahir" és correcte **[INFERÈNCIA]**.

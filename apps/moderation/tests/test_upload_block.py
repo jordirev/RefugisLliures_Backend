@@ -34,7 +34,7 @@ SHA = '5a' * 32
 
 def force_hash(sha256=None, phash=None):
     """`ModerationService.check` real, però amb el hash del contingut substituït (el de la llista)."""
-    from api.services.moderation_service import ModerationService
+    from apps.moderation.moderation_service import ModerationService
     original = ModerationService.check
 
     def check(self, media):

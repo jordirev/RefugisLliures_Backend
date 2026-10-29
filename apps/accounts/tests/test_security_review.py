@@ -11,7 +11,7 @@ import pytest
 from django.urls import get_resolver
 from django.urls.resolvers import URLPattern, URLResolver
 
-from api.permissions import HasProfile, IsFirebaseAdmin
+from apps.auth.permissions import HasProfile, IsFirebaseAdmin
 from apps.accounts.tests.helpers import (
     FAV, VIS, USERS, admin_claims, api_delete, api_get, api_patch, api_post, make_refuge, make_user, sql, url,
     user_claims)

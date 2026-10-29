@@ -4,7 +4,7 @@
 
 > **Migrat a PostgreSQL (chunk 7).** Les experiències són a `activity.experiences` i les gestiona `apps/experiences` (`views`, `serializers`, `selectors`, `services`, `models`, `urls`). Ja no hi ha `ExperienceController`, `ExperienceDAO`, model/mapper de dataclass, cache Redis (`experience_detail`/`experience_list`), `IsExperienceCreator` a les vistes ni `media_keys`. Les dades de Firestore no es migren (decisió del PO). Decisions: [DECISIONS_AUTONOMES D38](../migration/DECISIONS_AUTONOMES.md); disseny: [postgres-schema §2.15, §2.9, §5.3](../design/postgres-schema.md).
 
-## Endpoints (`apps/experiences/views.py`, rutes a `apps/experiences/urls.py`, incloses des d'`api/urls.py` sota `experiences/`)
+## Endpoints (`apps/experiences/views.py`, rutes a `apps/experiences/urls.py`, incloses des d'`refugis_lliures/urls.py` sota `experiences/`)
 | Mètode | URL | Vista | Permisos efectius | Body |
 |---|---|---|---|---|
 | GET | `/api/experiences/?refuge_id=X` | `ExperienceListAPIView.get` | IsAuthenticated + HasProfile | — |

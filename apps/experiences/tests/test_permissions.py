@@ -20,7 +20,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.test import APIRequestFactory
 
-from api.permissions import HasProfile, IsAgeConfirmed, IsNotBlocked
+from apps.auth.permissions import HasProfile, IsAgeConfirmed, IsNotBlocked
 from apps.experiences.tests.helpers import (
     EXPERIENCES, NOT_OWNER, VERIFY, admin_claims, api_delete, api_get, api_patch, api_post, at, exp_ids, exp_row,
     exp_url, list_url, make_experience, make_user, new_body, refuge_state, sql, user_claims)
@@ -124,7 +124,7 @@ def test_post_i_patch_exigeixen_bloqueig_i_edat_i_get_i_delete_no():
 def test_no_s_usa_is_experience_creator_que_no_protegeix_res():
     """Gotcha 1: `has_object_permission` no s'executa mai; la propietat és al service."""
     try:
-        from api.permissions import IsExperienceCreator
+        from apps.auth.permissions import IsExperienceCreator
     except ImportError:                                   # ja eliminada: encara millor
         return
     for route, cls in _views().items():

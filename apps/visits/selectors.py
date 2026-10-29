@@ -13,7 +13,7 @@ from typing import Optional
 from django.db.models import Exists, F, OuterRef, Subquery
 from django.db.models.functions import Coalesce
 
-from api.utils.timezone_utils import get_madrid_today
+from apps.core.timezone_utils import get_madrid_today
 
 from .models import RefugeVisit, VisitParticipant, VisitTotal
 

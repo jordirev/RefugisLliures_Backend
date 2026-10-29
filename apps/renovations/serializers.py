@@ -13,7 +13,7 @@ selectors. `group_link` només s'emet si no és `None` (la RLS el deixa a `None`
 from django.core.validators import URLValidator
 from rest_framework import serializers
 
-from api.utils.timezone_utils import get_madrid_today
+from apps.core.timezone_utils import get_madrid_today
 
 GROUP_LINK_MAX_LENGTH = 2048
 _http_url = URLValidator(schemes=['http', 'https'])

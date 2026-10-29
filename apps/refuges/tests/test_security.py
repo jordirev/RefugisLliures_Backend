@@ -226,7 +226,7 @@ def test_un_rol_amb_majuscules_o_espais_no_es_admin(client, RM):
 
 @pytest.mark.views
 def test_errors_de_r2_i_presign_no_filtren_secrets_ni_a_la_resposta_ni_al_missatge_del_log(client, RM, caplog):
-    from api.services.r2_media_service import R2MediaService
+    from apps.uploads.r2_media_service import R2MediaService
     r = make_refuge('R')
     make_user('u1')
     key = f'refugis-lliures/{r.pk}/s.webp'

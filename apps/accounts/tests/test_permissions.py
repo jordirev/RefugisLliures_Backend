@@ -174,7 +174,7 @@ def test_una_sola_lectura_de_users_per_peticio_amb_els_tres_permisos(client):
 
 @pytest.fixture
 def perm():
-    from api import permissions
+    from apps.auth import permissions
     return permissions
 
 

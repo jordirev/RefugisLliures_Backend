@@ -2,7 +2,7 @@
 
 > ## Features migrades a PostgreSQL (`apps/<feature>/`) — patró nou
 > Referència: `apps/refuges` (chunk 2). Per a una feature nova o existent, el flux és:
-> 1. **Ruta** — `apps/<feature>/urls.py` amb `path(...)`/`name=` (mateixos paths i noms que tenia); `api/urls.py` només l'inclou: `path('<prefix>/', include('apps.<feature>.urls'))`. Les rutes niades d'altres features (p. ex. `refuges/<id>/renovations/`) es queden a `api/urls.py` fins que aquestes es migrin. Id de refugi: `<str:id>` i `selectors.parse_refuge_id` (un id que no sigui UUID → 404, no 500).
+> 1. **Ruta** — `apps/<feature>/urls.py` amb `path(...)`/`name=` (mateixos paths i noms que tenia); `refugis_lliures/urls.py` només l'inclou: `path('<prefix>/', include('apps.<feature>.urls'))`. Les rutes niades d'altres features (p. ex. `refuges/<id>/renovations/`) es queden a `refugis_lliures/urls.py` fins que aquestes es migrin. Id de refugi: `<str:id>` i `selectors.parse_refuge_id` (un id que no sigui UUID → 404, no 500).
 > 2. **Serializers** — `apps/<feature>/serializers.py`: entrada (`XSearchFiltersSerializer`, `XCreateSerializer`) i sortida (forma exacta del contracte JSON); sense `ModelSerializer`.
 > 3. **Selectors** — `apps/<feature>/selectors.py` (lectures: ORM amb `select_related`/`Prefetch`/`ArraySubquery`/`annotate`, **una consulta per cas d'ús**; filtres al `WHERE`; sense cache de dades). Afegeix un test de recompte de consultes (`QueryCounter`).
 > 4. **Services** — `apps/<feature>/services.py` (escriptures: `transaction.atomic`, `select_for_update` si hi ha carreres, R2 comprovant el booleà de `delete_file`); llança excepcions de domini (`MediaForbidden`, `MediaNotFound`…).
@@ -19,12 +19,12 @@
 
 ## Detalls de la vista
 - Permisos per mètode: `get_permissions()` (vegeu `apps/renovations/views.py`). Admin: `IsFirebaseAdmin`. Recurs propi per `uid` a la URL: `IsSameUser`.
-- Exemples Swagger a `api/utils/swagger_examples.py`; respostes d'error a `api/utils/swagger_error_responses.py`.
+- Exemples Swagger a `apps/core/swagger/examples.py`; respostes d'error a `apps/core/swagger/error_responses.py`.
 - **Propietat**: comprova-la al service (`has_object_permission` no s'executa).
 - El mapatge error→HTTP el fan les excepcions de domini (i `constraint_name`), mai el text del missatge.
 
 ### Errors amb codi i permisos de moderació
-Si el client ha de distingir l'error, retorna `coded_error('<codi>', '<missatge>')` (`api/permissions.py`) → `{"error", "code", "message"}`. **Tot endpoint autenticat** ha de dur `HasProfile` just després d'`IsAuthenticated` (`[IsAuthenticated, HasProfile, …]`; 403 `profile_required` si no hi ha fila a `users.users`); l'única excepció és `POST /users/` (el crea). Per a endpoints que publiquen o denuncien contingut afegeix `IsNotBlocked` (i `IsAgeConfirmed` si és contingut nou) **després** de `HasProfile`: l'ordre fa que un usuari sense perfil rebi `profile_required` i no `age_not_confirmed`.
+Si el client ha de distingir l'error, retorna `coded_error('<codi>', '<missatge>')` (`apps/auth/permissions.py`) → `{"error", "code", "message"}`. **Tot endpoint autenticat** ha de dur `HasProfile` just després d'`IsAuthenticated` (`[IsAuthenticated, HasProfile, …]`; 403 `profile_required` si no hi ha fila a `users.users`); l'única excepció és `POST /users/` (el crea). Per a endpoints que publiquen o denuncien contingut afegeix `IsNotBlocked` (i `IsAgeConfirmed` si és contingut nou) **després** de `HasProfile`: l'ordre fa que un usuari sense perfil rebi `profile_required` i no `age_not_confirmed`.
 
 ## Tests — `apps/<feature>/tests/`
 - Vistes: contracte HTTP contra Postgres real (rol `app`); per canviar permisos usa `patch.object(View, 'permission_classes', [...])` (el `conftest.py` arrel restaura les polítiques després de cada test).
@@ -33,4 +33,4 @@ Si el client ha de distingir l'error, retorna `coded_error('<codi>', '<missatge>
 - Executa: `pytest apps/<feature> -q`.
 
 ## Checklist
-- [ ] Ruta a `apps/<feature>/urls.py` (i inclosa des d'`api/urls.py`) · [ ] `permission_classes` explícits (`IsAuthenticated, HasProfile, …`) · [ ] Swagger · [ ] Serializer alineat amb el `CHECK` de la BD · [ ] Service comprova propietat i llança excepcions de domini · [ ] `server_error` als 500 · [ ] Tests (contracte, permisos, recomptes de consultes) · [ ] Actualitzar `docs/ARCHITECTURE.md §4` i el flux corresponent.
+- [ ] Ruta a `apps/<feature>/urls.py` (i inclosa des d'`refugis_lliures/urls.py`) · [ ] `permission_classes` explícits (`IsAuthenticated, HasProfile, …`) · [ ] Swagger · [ ] Serializer alineat amb el `CHECK` de la BD · [ ] Service comprova propietat i llança excepcions de domini · [ ] `server_error` als 500 · [ ] Tests (contracte, permisos, recomptes de consultes) · [ ] Actualitzar `docs/ARCHITECTURE.md §4` i el flux corresponent.

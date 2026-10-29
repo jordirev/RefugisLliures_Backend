@@ -41,13 +41,13 @@ El rol `app` no té permisos de DDL: un `migrate` sense `--database=migrator` fa
 
 ## RLS i context de la petició [FET]
 - `apps/core/rls.py`: `rls_context(uid, is_admin, system, using)` i `system_context()` (reexportats a `apps.core`) i helpers de polítiques (`expand_macros`, `create_policy_sql`, `drop_policy_sql`) per a les migracions dels chunks següents.
-- El context (`app.uid`, `app.is_admin`, `app.is_system`) es fixa **sempre amb `set_config(..., true)`**, és a dir, **local a la transacció**: mor al `COMMIT`/`ROLLBACK` i no es filtra a altres clients quan el pooler reutilitza la connexió. Per a peticions HTTP el fixa el hook de `api/rls_hook.py` ([flux 00](../flows/00-auth-request-pipeline.md)); fora d'HTTP (comandes, jobs, tests) s'usa `rls_context`.
+- El context (`app.uid`, `app.is_admin`, `app.is_system`) es fixa **sempre amb `set_config(..., true)`**, és a dir, **local a la transacció**: mor al `COMMIT`/`ROLLBACK` i no es filtra a altres clients quan el pooler reutilitza la connexió. Per a peticions HTTP el fixa el hook de `apps/core/rls_hook.py` ([flux 00](../flows/00-auth-request-pipeline.md)); fora d'HTTP (comandes, jobs, tests) s'usa `rls_context`.
 
 ## Apps i migracions actuals [FET]
 `core.0001` (schemas, funcions, grants) i `core.0002` (SELECT de `app` a `django_migrations`) → `accounts.0001` (`users.languages`, `users.users`, `users.user_public_profiles`, `users.user_avatars`) → `refuges.0001` (`refuges.refuge_types`, `refuges.refuges`, `refuge_amenities`, `refuge_links`, `refuge_media`; sense vista `refuge_map`; índexs GIN trigram, RLS, grants) → `accounts.0002` (chunk 3: `users.user_favourite_refuges` i `users.user_visited_refuges`, PK composta, FK reals `ON DELETE CASCADE` per `RunSQL`, RLS i grants `SELECT, INSERT, DELETE` a `app`). Les taules les crea `migrator`; `app` només fa DML subjecte a RLS.
 
 ## Càrrega inicial del catàleg [FET]
-`python manage.py load_refuges [--dry-run]` (rol `migrator` per defecte) carrega `api/utils/final_data_refuges.json` (1.542 refugis) **una sola vegada**: si ja hi ha refugis acaba amb `CommandError` sense escriure res. A Neon `dev`/`production` el PO l'ha d'executar un cop després del primer `migrate` **[NO VERIFICAT]**.
+`python manage.py load_refuges [--dry-run]` (rol `migrator` per defecte) carrega `apps/refuges/data/final_data_refuges.json` (1.542 refugis) **una sola vegada**: si ja hi ha refugis acaba amb `CommandError` sense escriure res. A Neon `dev`/`production` el PO l'ha d'executar un cop després del primer `migrate` **[NO VERIFICAT]**.
 
 ## Identificadors
 Les PK substitutes són UUID v7 (RFC 9562) generats per la BD amb `DEFAULT uuidv7()` de Postgres 18 (`db_default` a Django 5.2; disseny §1.4; l'helper `api/utils/ids.py` s'ha eliminat, chunk 2) **[FET]**. `Refuge` n'és un exemple; `RefugeLink` té PK `url`, `RefugeAmenities` reutilitza la PK del refugi, `RefugeMedia` i `UserAvatar` tenen la clau R2 i `UserAccount` l'UID de Firebase; les taules d'unió sense FK entrant tenen PK composta (disseny §1.4) **[FET]**. L'API exposa els UUID com a *string* opac; **no coincideixen** amb els IDs de Firestore.

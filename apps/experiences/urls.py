@@ -1,4 +1,4 @@
-"""Rutes d'`experiences`: s'inclouen des d'`api/urls.py` sota `experiences/` (mateixos paths i `name=` d'abans)."""
+"""Rutes d'`experiences`: s'inclouen des de `refugis_lliures/urls.py` sota `experiences/` (mateixos paths i `name=` d'abans)."""
 from django.urls import path
 
 from . import views
