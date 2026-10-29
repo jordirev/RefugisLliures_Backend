@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # E2E del chunk 4 (visites a PostgreSQL): inscripció (ON CONFLICT), totals per la vista sense exposar participants,
 # PATCH/DELETE propis, /users/{uid}/visits/, límits de data (passada, > 12 mesos D36, format estricte), num_visitors
-# (1..100, D27), bloqueig i edat a POST/PATCH, i el job diari (process_yesterday_visits, D28) si hi ha `EMANAGE`.
+# (1..100, D27), bloqueig i edat a POST/PATCH, l'esborrat de la visita en sortir l'últim participant (trigger, visits.0002) i el job diari (process_yesterday_visits, D28) si hi ha `EMANAGE`.
 #
-# Requisits: els de e2e_chunk3.sh (BD migrada amb `visits.0001` i el catàleg, Firebase Auth Emulator).
+# Requisits: els de e2e_chunk3.sh (BD migrada amb `visits.0002` i el catàleg, Firebase Auth Emulator).
 #   PSQL_E2E='docker exec -i rl-postgres psql -U postgres -d refugisdb_e2e -q'  (bloqueig i visita d'ahir; si no, se salta)
 #   EMANAGE='<ordre que executa manage.py contra la BD e2e>'                   (job diari; si no, se salta)
 # Cap credencial real. Surt amb codi 1 si algun cas falla.
@@ -109,6 +109,20 @@ check_json "després del DELETE de O: total 4" "[x for x in d['result'] if x['da
 check "DELETE O de nou -> 400 no registrat" 400 "${O[@]}" -X DELETE "$V/$D1/"
 check "PATCH sense estar-hi (O) -> 400" 400 "${O[@]}" "${J[@]}" -X PATCH "$V/$D1/" -d '{"num_visitors":1}'
 
+# --- Visita buida: en sortir l'últim participant la visita s'esborra (trigger de la BD, visits.0002)
+D7=$(day 7)
+check "POST O a una visita nova -> 201" 201 "${O[@]}" "${J[@]}" -X POST "$V/$D7/" -d '{"num_visitors":2}'
+check "DELETE O (l'últim) -> 200" 200 "${O[@]}" -X DELETE "$V/$D7/"
+check_json "GET: la visita sense participants ja no surt" "all(x['date'] != '$D7' for x in d['result'])" "${U[@]}" "$V/"
+check_json "GET /users/O/visits/: no en queda cap" "d['result'] == []" "${O[@]}" "$API/users/$O_UID/visits/"
+check "DELETE de la visita ja esborrada -> 404" 404 "${O[@]}" -X DELETE "$V/$D7/"
+check_json "tornar-hi: es recrea amb total 1" "d['visit']['total_visitors'] == 1" "${O[@]}" "${J[@]}" -X POST "$V/$D7/" -d '{"num_visitors":1}'
+check "DELETE O -> 200 (deixa la visita buida)" 200 "${O[@]}" -X DELETE "$V/$D7/"
+if [ -n "${PSQL_E2E:-}" ]; then
+  n=$(echo "SELECT count(*) FROM activity.refuge_visits WHERE refuge_id = '$R1' AND visit_date = '$D7';" | $PSQL_E2E -At)
+  [ "$n" = "0" ] && ok "BD: la visita sense participants no existeix a activity.refuge_visits" || fail "BD: la visita buida existeix encara ($n files)"
+fi
+
 # --- Bloqueig: no escriu, sí llegeix i surt
 if [ -n "${PSQL_E2E:-}" ]; then
   echo "SELECT set_config('app.is_system','true',false); UPDATE users.users SET is_blocked = true, blocked_reason = 'strikes', blocked_at = now() WHERE uid = '$U_UID';" | $PSQL_E2E >/dev/null
@@ -117,6 +131,8 @@ if [ -n "${PSQL_E2E:-}" ]; then
   check "bloquejat: POST -> 403" 403 "${U[@]}" "${J[@]}" -X POST "$V/$(day 5)/" -d '{"num_visitors":1}'
   check "bloquejat: GET -> 200" 200 "${U[@]}" "$V/"
   check "bloquejat: DELETE propi -> 200" 200 "${U[@]}" -X DELETE "$V/$D1/"
+  n=$(echo "SELECT count(*) FROM activity.refuge_visits WHERE refuge_id = '$R1' AND visit_date = '$D1';" | $PSQL_E2E -At)
+  [ "$n" = "0" ] && ok "BD: D1 s'ha quedat sense participants i s'ha esborrat" || fail "BD: D1 buida existeix encara ($n files)"
 else
   echo "SALTAT bloqueig (sense PSQL_E2E)"
 fi

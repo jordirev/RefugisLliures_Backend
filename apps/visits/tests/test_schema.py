@@ -239,3 +239,41 @@ def test_matriu_de_grants_d_app(app_db, table, expected):
     privs = ('SELECT', 'INSERT', 'UPDATE', 'DELETE', 'TRUNCATE', 'REFERENCES', 'TRIGGER')
     got = {p for p in privs if fetch_one(app_db, f"SELECT has_table_privilege('app', %s, '{p}')", [table])[0]}
     assert got == expected
+
+
+# ---------- migració 0002: trigger de visita buida ----------
+
+def test_la_funcio_de_trigger_es_security_definer_amb_search_path_fixat(migrator_db):
+    with migrator_db.cursor() as cur:
+        cur.execute("""
+            SELECT p.prosecdef, pg_get_userbyid(p.proowner), p.proconfig, has_function_privilege('app', p.oid, 'EXECUTE')
+              FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+             WHERE n.nspname = 'activity' AND p.proname = 'fn_visit_drop_if_empty'""")
+        secdef, owner, config, app_can_execute = cur.fetchone()
+    assert secdef and owner == 'migrator' and app_can_execute is False
+    assert config and any(c.startswith('search_path=') for c in config)
+
+
+def test_el_bloqueig_assessor_el_pot_cridar_app(migrator_db):
+    with migrator_db.cursor() as cur:
+        cur.execute("SELECT has_function_privilege('app', 'activity.fn_visit_lock(uuid, date)', 'EXECUTE')")
+        assert cur.fetchone() == (True,)
+
+
+def test_el_trigger_es_after_delete_per_sentencia_amb_taula_de_transicio(migrator_db):
+    with migrator_db.cursor() as cur:
+        cur.execute("""
+            SELECT tgname, (tgtype & 1) = 1 AS per_row, (tgtype & 2) = 2 AS before, (tgtype & 8) = 8 AS on_delete,
+                   tgoldtable
+              FROM pg_trigger WHERE tgrelid = 'activity.refuge_visit_participants'::regclass AND NOT tgisinternal""")
+        rows = cur.fetchall()
+    assert rows == [('participants_drop_empty_visit', False, False, True, 'old_rows')]
+
+
+def test_la_migracio_0002_es_reversible_i_depen_de_la_0001():
+    from django.db.migrations.loader import MigrationLoader
+    from django.db.migrations.operations.special import RunSQL
+    loader = MigrationLoader(None, ignore_no_migrations=True)
+    migration = loader.get_migration('visits', '0002_drop_empty_visits_trigger')
+    assert ('visits', '0001_initial') in migration.dependencies
+    assert [op.reversible for op in migration.operations if isinstance(op, RunSQL)] == [True]

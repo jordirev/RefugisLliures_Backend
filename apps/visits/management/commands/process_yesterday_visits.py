@@ -1,6 +1,6 @@
 """
-Job diari: passa els visitants d'ahir a `user_visited_refuges`, esborra les visites d'ahir buides i purga les de més
-de 12 mesos (§8.3). Surt amb codi != 0 (`CommandError`) si falla, perquè el job de GitHub Actions ho detecti (D28).
+Job diari: passa els visitants d'ahir a `user_visited_refuges` i purga les visites de més de 12 mesos (les buides ja les
+esborra un trigger de la BD en treure l'últim participant) (§8.3). Surt amb codi != 0 (`CommandError`) si falla, perquè el job de GitHub Actions ho detecti (D28).
 """
 import logging
 
@@ -28,7 +28,6 @@ class Command(BaseCommand):
             raise CommandError('Error en purgar les visites antigues') from exc
         self.stdout.write(self.style.SUCCESS("Visites d'ahir processades correctament"))
         self.stdout.write(f'Visites processades: {stats["processed_visits"]}')
-        self.stdout.write(f'Visites buides eliminades: {stats["deleted_visits"]}')
         self.stdout.write(f'Refugis actualitzats: {stats["updated_refuges"]}')
         self.stdout.write(f'Total visitants afegits: {stats["total_visitors_added"]}')
         self.stdout.write(f'Visites antigues purgades: {purged}')

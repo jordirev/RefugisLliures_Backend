@@ -610,9 +610,32 @@ RLS (qualsevol usuari autenticat veu les visites d'un refugi; els participants s
 ALTER TABLE activity.refuge_visits ENABLE ROW LEVEL SECURITY;
 CREATE POLICY visits_select ON activity.refuge_visits FOR SELECT TO app USING ({U} IS NOT NULL OR {SYS});
 CREATE POLICY visits_insert ON activity.refuge_visits FOR INSERT TO app WITH CHECK ({U} IS NOT NULL OR {SYS});
-CREATE POLICY visits_delete ON activity.refuge_visits FOR DELETE TO app USING ({SYS});   -- només el job (visites buides d'ahir)
+CREATE POLICY visits_delete ON activity.refuge_visits FOR DELETE TO app USING ({SYS});   -- només sistema: purga de 12 mesos i el trigger de visita buida (SECURITY DEFINER)
 ```
 Grants: `SELECT, INSERT, DELETE`.
+
+**Trigger de visita buida (migració `visits.0002`)**: una visita sense participants s'esborra de la BD (decisió del PO), ja no ho fa el job.
+```sql
+CREATE FUNCTION activity.fn_visit_lock(p_refuge uuid, p_date date) RETURNS void
+  LANGUAGE sql SET search_path = pg_catalog AS $$
+  SELECT pg_advisory_xact_lock(hashtextextended('visit:' || p_refuge::text || ':' || to_char(p_date, 'YYYY-MM-DD'), 0)) $$;
+GRANT EXECUTE ON FUNCTION activity.fn_visit_lock(uuid, date) TO app;      -- l'usa l'aplicació
+CREATE FUNCTION activity.fn_visit_drop_if_empty() RETURNS trigger
+  LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, activity AS $$
+DECLARE v record;
+BEGIN
+  FOR v IN SELECT id, refuge_id, visit_date FROM activity.refuge_visits
+            WHERE id IN (SELECT visit_id FROM old_rows) ORDER BY refuge_id, visit_date LOOP
+    PERFORM activity.fn_visit_lock(v.refuge_id, v.visit_date);
+    DELETE FROM activity.refuge_visits r WHERE r.id = v.id
+       AND NOT EXISTS (SELECT 1 FROM activity.refuge_visit_participants p WHERE p.visit_id = v.id);
+  END LOOP;
+  RETURN NULL;
+END $$;
+CREATE TRIGGER participants_drop_empty_visit AFTER DELETE ON activity.refuge_visit_participants
+  REFERENCING OLD TABLE AS old_rows FOR EACH STATEMENT EXECUTE FUNCTION activity.fn_visit_drop_if_empty();
+```
+*Per sentència* (no per fila): una execució per `DELETE` (inclosa la cascada d'`users.users`, una sentència per usuari), bloqueig en ordre `(refugi, data)` contra deadlocks, i a la cascada visita → participants (purga, esborrat de refugi) les visites ja no existeixen i no fa res. El bloqueig és assessor (`pg_advisory_xact_lock`) i no `FOR UPDATE` de la visita perquè `app` no té `UPDATE` (un `SELECT … FOR SHARE` li fallaria) i la visita pot no existir encara; `create_visit` i `remove_visitor` l'agafen abans de tocar res, de manera que «algú s'apunta» i «se'n va l'últim» s'ordenen (la FK de participants és diferida: sense bloqueig, el `COMMIT` de qui s'apunta fallaria). La migració esborra també les visites buides existents. Reversible: `DROP TRIGGER` + `DROP FUNCTION`.
 
 ### 2.11 `activity.refuge_visit_participants` (app `visits`; **RLS sí**)
 
@@ -1489,9 +1512,8 @@ SELECT p.user_uid, v.refuge_id FROM activity.refuge_visits v
  WHERE v.visit_date = :ahir
 ON CONFLICT (user_uid, refuge_id) DO NOTHING;
 DELETE FROM activity.refuge_visits v WHERE v.visit_date = :ahir
-   AND NOT EXISTS (SELECT 1 FROM activity.refuge_visit_participants p WHERE p.visit_id = v.id);   -- visites buides
-```
-Dues sentències en lloc d'un bucle de crides per visita/usuari. (Les visites processades **no** s'esborren; vegeu decisió 13 sobre retenció.)
+   AND NOT EXISTS (SELECT 1 FROM activity.refuge_visit_participants p WHERE p.visit_id = v.id);   ```
+Una sentència en lloc d'un bucle de crides per visita/usuari. (Les visites processades **no** s'esborren; vegeu decisió 13 sobre retenció. Les visites buides ja no les esborra el job: ho fa el trigger de §2.10.)
 
 **Pressupost de consultes per endpoint** (per a `django_assert_num_queries`; **no compten** la sentència `set_config` de context, §7.3):
 | Endpoint | Consultes |
@@ -2331,7 +2353,7 @@ Resposta del product owner a la primera versió d'aquesta secció (`PLAN.md`, «
 | 9 | CSAM / retenció | cascada general, **excepte** denúncies i auditoria `legal_hold` (CSAM), que es **desvinculen** (`SET NULL` via *trigger* `BEFORE DELETE`) i es conserven; `moderation-hold/` es manté; la resta de denúncies resoltes i avisos es purguen 24 mesos després de resoldre. |
 | 10 | Mitjà ocult sense denunciant | denúncia automàtica pendent (§8.4). |
 | 11 | Lectura anònima a la BD | RLS pública; l'API continua autenticada. |
-| 12 | Visites buides | es mantenen fins que les esborra el job. |
+| 12 | Visites buides | s'esborren en el moment que se'n va l'últim participant (trigger `participants_drop_empty_visit`, `visits.0002`; abans les esborrava el job diari). |
 | 13 | Retenció de visites | es purguen **només** les visites de data concreta (`visits` + participants) de més de 12 mesos; `user_visited_refuges` no es purga mai. |
 | 14 | `num_renovated_refuges` | compta reformes (creades + unides). |
 | 15 | Cadenes buides | `''` → `NULL` a `region`, `departement`, `surname`. |

@@ -5,6 +5,11 @@ Excepcions de domini, cap tupla. Les funcions d'usuari s'executen dins el contex
 poden tocar les files del propi `uid`; la comprovació és doble: filtre explícit + RLS). El job
 (`process_yesterday_visits`, `purge_old_visits`) obre el seu propi `system_context()`.
 
+Visita buida: quan se'n va l'últim participant, un *trigger* de la BD (`participants_drop_empty_visit`, migració 0002)
+esborra la visita (`app` no pot esborrar `refuge_visits`). Per no trepitjar-se amb qui s'hi apunta, `create_visit` i
+`remove_visitor` agafen primer el bloqueig assessor `activity.fn_visit_lock(refugi, data)` (el mateix que el trigger);
+així «s'apunta algú» i «se'n va l'últim» s'ordenen i la visita esborrada entre mig es torna a crear.
+
 Concurrència (M4): la primera inscripció és `INSERT ... ON CONFLICT (refuge_id, visit_date) DO NOTHING` + `SELECT`, de
 manera que dos usuaris simultanis comparteixen una sola visita; la fila del participant és
 `INSERT ... ON CONFLICT DO NOTHING` i el nombre de files afectades diu si ja hi era (sense `IntegrityError` dins la
@@ -16,7 +21,6 @@ import uuid
 from datetime import date, timedelta
 
 from django.db import connection, transaction
-from django.db.models import Exists, OuterRef
 
 from apps.core.timezone_utils import get_madrid_today
 from apps.core.rls import system_context
@@ -82,13 +86,28 @@ def _existing_refuge(refuge_id) -> uuid.UUID:
     return pk
 
 
-def _existing_visit(refuge_id, visit_date) -> tuple:
-    """`(refuge_pk, date, visit_id)` d'una visita existent; `VisitNotFound` (sense mirar la data) si no."""
+def _lock_visit(refuge_pk, visit_date) -> None:
+    """
+    Bloqueig assessor de transacció per `(refugi, data)` (`activity.fn_visit_lock`, el del trigger de visita buida).
+    Cal una transacció oberta (s'allibera al `COMMIT`/`ROLLBACK`); es pren **abans** de tocar cap fila de la visita o dels
+    participants, per mantenir sempre el mateix ordre i evitar deadlocks.
+    """
+    with connection.cursor() as cur:
+        cur.execute('SELECT activity.fn_visit_lock(%s, %s)', [refuge_pk, visit_date])
+
+
+def _existing_visit(refuge_id, visit_date, lock: bool = False) -> tuple:
+    """
+    `(refuge_pk, date, visit_id)` d'una visita existent; `VisitNotFound` (sense mirar la data) si no.
+    Amb `lock=True` agafa abans el bloqueig de la visita (dins d'una transacció) i després en busca l'`id`.
+    """
     pk = refuge_selectors.parse_refuge_id(refuge_id)
     try:
         d = parse_visit_date(visit_date)
     except InvalidDateFormat:
         raise VisitNotFound() from None
+    if lock and pk is not None:
+        _lock_visit(pk, d)
     visit_id = selectors.visit_id_of(pk, d) if pk is not None else None
     if visit_id is None:
         raise VisitNotFound()
@@ -130,6 +149,7 @@ def create_visit(uid: str, refuge_id, visit_date, num_visitors: int) -> VisitSum
     if d > _months_before(today, -MAX_AHEAD_MONTHS):
         raise VisitDateTooFar()
     with transaction.atomic():
+        _lock_visit(pk, d)       # si l'últim participant se'n va alhora, el trigger espera (o la visita es torna a crear)
         RefugeVisit.objects.bulk_create([RefugeVisit(refuge_id=pk, visit_date=d)], ignore_conflicts=True)
         visit_id = selectors.visit_id_of(pk, d)
         with connection.cursor() as cur:
@@ -152,24 +172,28 @@ def update_visit(uid: str, refuge_id, visit_date, num_visitors: int) -> VisitSum
 
 def remove_visitor(uid: str, refuge_id, visit_date) -> None:
     """
-    Treu `uid` de la visita. La visita es conserva encara que quedi sense participants: `app` no pot esborrar
-    `refuge_visits` (§2.10); les buides les esborra el job diari.
+    Treu `uid` de la visita. Si era l'últim participant, la visita s'esborra sola: ho fa el *trigger*
+    `participants_drop_empty_visit` (`app` no pot esborrar `refuge_visits`, §2.10). El bloqueig de la visita es pren
+    abans del `DELETE` (mateix ordre que `create_visit`), de manera que un `create_visit` simultani no es queda amb una
+    visita esborrada ni amb un participant orfe.
     """
-    _, _, visit_id = _existing_visit(refuge_id, visit_date)
-    if not VisitParticipant.objects.filter(visit_id=visit_id, user_id=uid).delete()[0]:
-        raise NotRegistered()
+    with transaction.atomic():
+        _, _, visit_id = _existing_visit(refuge_id, visit_date, lock=True)
+        if not VisitParticipant.objects.filter(visit_id=visit_id, user_id=uid).delete()[0]:
+            raise NotRegistered()
 
 
 # ---------- Job diari (sistema) ----------
 
 def process_yesterday_visits() -> dict:
     """
-    Passa els participants de les visites d'ahir (Madrid) a `user_visited_refuges` i esborra les visites d'ahir buides.
+    Passa els participants de les visites d'ahir (Madrid) a `user_visited_refuges`.
 
-    Set-based: una `INSERT ... SELECT ... ON CONFLICT DO NOTHING` (idempotent, conserva el `created_at` original) i un
-    `DELETE`; el nombre de consultes no depèn del volum. Les visites amb participants **no** s'esborren (retenció: les
-    purga `purge_old_visits` als 12 mesos). Estadístiques amb la semàntica de sempre: `updated_refuges` = visites amb
-    participants i `total_visitors_added` = participants d'aquestes visites.
+    Set-based: una `INSERT ... SELECT ... ON CONFLICT DO NOTHING` (idempotent, conserva el `created_at` original); el
+    nombre de consultes no depèn del volum. Ja no esborra les visites buides: se n'encarrega un *trigger* de la BD en
+    treure l'últim participant. Les visites amb participants **no** s'esborren (les purga `purge_old_visits` als 12
+    mesos). `processed_visits` = visites d'ahir (existents), `updated_refuges` = visites amb participants i
+    `total_visitors_added` = participants d'aquestes visites.
     """
     yesterday = get_madrid_today() - timedelta(days=1)       # sempre de Madrid, mai calculat al SQL (GOTCHAS #60)
     with system_context():
@@ -185,8 +209,7 @@ def process_yesterday_visits() -> dict:
                 'SELECT p.user_uid, v.refuge_id FROM activity.refuge_visits v '
                 'JOIN activity.refuge_visit_participants p ON p.visit_id = v.id WHERE v.visit_date = %s '
                 'ON CONFLICT (user_uid, refuge_id) DO NOTHING', [yesterday])
-        deleted = visits.exclude(Exists(VisitParticipant.objects.filter(visit_id=OuterRef('pk')))).delete()[0]
-    return {'processed_visits': processed, 'deleted_visits': deleted, 'updated_refuges': updated_refuges,
+    return {'processed_visits': processed, 'updated_refuges': updated_refuges,
             'total_visitors_added': participants}
 
 

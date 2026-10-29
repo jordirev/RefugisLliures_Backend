@@ -3,7 +3,7 @@
 > **[FET]** comprovat al codi · **[INFERÈNCIA]** deducció · **[NO VERIFICAT]** depèn de config externa.
 > Què fa el procés i els seus bugs: [flux 6](../flows/06-refuge-visits.md). On s'executa: [render-deploy-ci §Tasques programades](../integrations/render-deploy-ci.md#tasques-programades-què-està-actiu).
 
-`process_yesterday_visits` (`apps/visits/management/commands/`, chunk 4) agafa les visites d'**ahir** (hora de Madrid, `get_madrid_today()`): copia els participants a **`users.user_visited_refuges`** (una `INSERT ... SELECT ... ON CONFLICT DO NOTHING`, idempotent), esborra les visites d'ahir sense participants i **purga les visites de més de 12 mesos** (§8.3; els participants cauen en cascada). Tot dins `system_context()` i només contra PostgreSQL: ja no toca Firestore. Les visites amb participants no s'esborren fins a la purga **[FET]**.
+`process_yesterday_visits` (`apps/visits/management/commands/`, chunk 4) agafa les visites d'**ahir** (hora de Madrid, `get_madrid_today()`): copia els participants a **`users.user_visited_refuges`** (una `INSERT ... SELECT ... ON CONFLICT DO NOTHING`, idempotent) i **purga les visites de més de 12 mesos** (§8.3; els participants cauen en cascada). Tot dins `system_context()` i només contra PostgreSQL: ja no toca Firestore. Les visites amb participants no s'esborren fins a la purga. **Ja no esborra les visites buides**: des de `visits.0002` les esborra un trigger de la BD quan se'n va l'últim participant ([flux 6](../flows/06-refuge-visits.md), GOTCHAS #93) **[FET]**.
 
 ## Opció A — GitHub Actions (mecanisme real)
 - Workflow `.github/workflows/process-visits.yml`, cron `0 3 * * *` (UTC).
@@ -21,7 +21,6 @@ Sortida esperada:
 ```
 Visites d'ahir processades correctament
 Visites processades: N
-Visites buides eliminades: N
 Refugis actualitzats: N
 Total visitants afegits: N
 Visites antigues purgades: N
