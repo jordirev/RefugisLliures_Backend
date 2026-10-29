@@ -4,7 +4,7 @@
 > Com l'usa el codi (estratègies de path, API del servei, gotchas): [integrations/cloudflare-r2.md](../integrations/cloudflare-r2.md).
 
 ## Variables necessàries (només noms)
-`R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_ENDPOINT` (format `https://<ACCOUNT_ID>.r2.cloudflarestorage.com`), `R2_BUCKET_NAME`. Es llegeixen amb `os.getenv` a `api/r2_config.py`.
+`R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_ENDPOINT` (format `https://<ACCOUNT_ID>.r2.cloudflarestorage.com`), `R2_BUCKET_NAME`. Es llegeixen amb `os.getenv` a `apps/uploads/r2_config.py`.
 
 > ⚠️ Mai posis valors reals en fitxers versionats (docs, `render.yaml`, `run_process_visits.*`).
 

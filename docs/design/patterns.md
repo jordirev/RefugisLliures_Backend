@@ -17,14 +17,14 @@ VIEWS       apps/<feature>/views.py  (APIView + @swagger_auto_schema, serializer
    │
    ├── SELECTORS apps/<feature>/selectors.py  (lectures, una consulta per cas d'ús)
    └── SERVICES  apps/<feature>/services.py   (escriptures, transaction.atomic, propietat)
-   │           └── api/services: r2_media_service (Strategy+Factory) · image_processing · moderation
+   │           └── apps/uploads: r2_media_service (Strategy+Factory) · image_processing · moderation
    │
 EXTERNS     PostgreSQL (Neon) · Cloudflare R2 · Firebase Auth
 ```
 Excepcions al patró: [ARCHITECTURE §9](../ARCHITECTURE.md).
 
 ### 2. REST
-Recursos a `api/urls.py` (`/refuges/`, `/users/`, `/experiences/`…), verbs GET/POST/PATCH/DELETE, Swagger a `/swagger/`. Hi ha desviacions de codis HTTP respecte a Swagger ([TECH_DEBT B8](../TECH_DEBT.md)).
+Recursos a `refugis_lliures/urls.py` (`/refuges/`, `/users/`, `/experiences/`…), verbs GET/POST/PATCH/DELETE, Swagger a `/swagger/`. Hi ha desviacions de codis HTTP respecte a Swagger ([TECH_DEBT B8](../TECH_DEBT.md)).
 
 ### 3. Middleware pipeline
 `FirebaseAuthenticationMiddleware` intercepta totes les peticions abans de DRF ([flux 0](../flows/00-auth-request-pipeline.md)). Per què conviu amb una classe d'autenticació DRF: [decisions.md](decisions.md#adr-2--middleware--classe-dautenticació-drf).
@@ -41,10 +41,10 @@ Les features migrades (`apps/<feature>/`) són **`selectors.py`** (lectures; una
 | On | Interfície | Concrets | Selector |
 |---|---|---|---|
 | Cerca de refugis | _(eliminat al chunk 2: era `api/daos/search_strategies.py` amb 15 estratègies; ara és una sola consulta SQL a `apps/refuges/selectors.py`)_ | — | — |
-| Paths de media — `api/services/r2_media_service.py` | `MediaPathStrategy` (`get_base_path`, `get_allowed_content_types`, `validate_file`, `generate_media_metadata_from_dict`) | `RefugiMediaStrategy`, `UserAvatarStrategy` | factories (vegeu Factory) |
+| Paths de media — `apps/uploads/r2_media_service.py` | `MediaPathStrategy` (`get_base_path`, `get_allowed_content_types`, `validate_file`, `generate_media_metadata_from_dict`) | `RefugiMediaStrategy`, `UserAvatarStrategy` | factories (vegeu Factory) |
 | Aprovació de propostes — `apps/proposals/services.py` | una transacció amb bloqueig pessimista; una funció per acció | `_apply_create/_apply_update/_apply_delete` | `approve_proposal` (les estratègies de Firestore van desaparèixer al chunk 8) |
 
-**Strategy de moderació (feature images)**: `ModerationProvider` (interfície) amb `HashBlocklistProvider` actiu i stubs desactivats `PhotoDNAProvider` / `GoogleContentSafetyProvider`; `ModerationService` els executa en ordre i el primer que bloqueja guanya (fail-closed si un falla). `api/services/moderation_service.py`, [flux 12](../flows/12-media-moderation.md).
+**Strategy de moderació (feature images)**: `ModerationProvider` (interfície) amb `HashBlocklistProvider` actiu i stubs desactivats `PhotoDNAProvider` / `GoogleContentSafetyProvider`; `ModerationService` els executa en ordre i el primer que bloqueja guanya (fail-closed si un falla). `apps/moderation/moderation_service.py`, [flux 12](../flows/12-media-moderation.md).
 
 ### Singleton
 Cap des del chunk 11: `CacheService` i `FirestoreService` han desaparegut.

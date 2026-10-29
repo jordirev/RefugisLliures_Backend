@@ -3,7 +3,7 @@
 > **[FET]** comprovat al codi · **[INFERÈNCIA]** deducció · **[NO VERIFICAT]** depèn de config externa.
 > Com funciona per dins (detecció d'entorn, doble ruta d'inicialització): [integrations/firebase-auth.md](../integrations/firebase-auth.md).
 
-El backend necessita un **service account** de Firebase per verificar tokens i gestionar usuaris i claims de Firebase Auth (Firestore ja no s'usa des del chunk 11, D43). `api/firebase_config.py` tria d'on llegir-lo segons l'entorn:
+El backend necessita un **service account** de Firebase per verificar tokens i gestionar usuaris i claims de Firebase Auth (Firestore ja no s'usa des del chunk 11, D43). `apps/auth/firebase_config.py` tria d'on llegir-lo segons l'entorn:
 
 | Entorn | Es detecta si… | D'on llegeix les credencials |
 |---|---|---|
@@ -13,7 +13,7 @@ El backend necessita un **service account** de Firebase per verificar tokens i g
 
 ## Local (desenvolupament)
 1. Firebase Console → *Project settings* → *Service accounts* → **Generate new private key**.
-2. Desa el JSON com a `env/firebase-service-account.json` (la ruta és fixa a `api/firebase_config.py`; el nom no es pot canviar per variable).
+2. Desa el JSON com a `env/firebase-service-account.json` (la ruta és fixa a `apps/auth/firebase_config.py`; el nom no es pot canviar per variable).
 3. Opcional: a `env/` també hi poden conviure `firebase-service-account-dev.json` / `-prod.json`; només el fitxer anterior el llegeix `firebase_config` **[FET]**. `GOOGLE_APPLICATION_CREDENTIALS` només el fa servir `scripts/manage_admins.py`.
 4. Arrenca el servidor: el log mostra `🏠 Entorn: LOCAL` i el `project_id`.
 

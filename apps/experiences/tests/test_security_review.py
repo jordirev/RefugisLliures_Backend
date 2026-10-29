@@ -51,7 +51,7 @@ def test_cap_raw_extra_rawsql_ni_execute_amb_sql_no_literal():
 
 def test_permisos_declarats_a_cada_metode():
     from rest_framework.permissions import IsAuthenticated
-    from api.permissions import HasProfile, IsAgeConfirmed, IsNotBlocked
+    from apps.auth.permissions import HasProfile, IsAgeConfirmed, IsNotBlocked
     from apps.experiences import views
     from rest_framework.test import APIRequestFactory
     from rest_framework.request import Request

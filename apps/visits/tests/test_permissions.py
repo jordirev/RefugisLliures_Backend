@@ -15,7 +15,7 @@ import pytest
 from django.urls import resolve, reverse
 from rest_framework.permissions import IsAuthenticated
 
-from api.permissions import HasProfile, IsSameUser
+from apps.auth.permissions import HasProfile, IsSameUser
 from apps.visits.tests.helpers import (
     PROFILE_REQUIRED, admin_claims, api_delete, api_get, api_patch, api_post, day, make_refuge, make_user, make_visit,
     participant_rows, refuge_visits_url, sql, user_claims, user_visits_url, visit_rows, visit_url)

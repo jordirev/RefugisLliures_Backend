@@ -4,7 +4,7 @@
 > Context: [ARCHITECTURE §1](../ARCHITECTURE.md) (stack) · [integrations/render-deploy-ci.md](../integrations/render-deploy-ci.md) (selecció d'entorn).
 
 ## Requisits
-- **Python 3.14** (mínim 3.9 per `zoneinfo`, `api/utils/timezone_utils.py:5`); el projecte objectiu és **Python 3.14 + Django 5.2 LTS** (chunk 2) i CI usa 3.14 amb el servei `postgis/postgis:18-3.6` **[FET]**.
+- **Python 3.14** (mínim 3.9 per `zoneinfo`, `apps/core/timezone_utils.py:5`); el projecte objectiu és **Python 3.14 + Django 5.2 LTS** (chunk 2) i CI usa 3.14 amb el servei `postgis/postgis:18-3.6` **[FET]**.
 - **Cap Redis** (eliminat al chunk 11, D43): la cache de Django és un `LocMemCache`; no cal instal·lar ni arrencar res més.
 - **PostgreSQL + PostGIS** (rol `app` i rol `migrator`): és la BD `default` de Django des del chunk 1 de la migració ([integrations/neon.md](../integrations/neon.md)). En local: el Postgres de proves de `scripts/dev/setup_local_postgres.sh` o Neon `dev` (variables `DATABASE_URL_APP` / `DATABASE_URL_MIGRATOR`). Sense cap URL, Django cau a SQLite i les peticions reals no funcionen **[FET]**.
 - **GDAL/GEOS/PROJ** del sistema (`django.contrib.gis` sempre és actiu): `apt install gdal-bin libgdal-dev libgeos-dev libproj-dev` a Linux; **a Windows** instal·la [OSGeo4W](https://trac.osgeo.org/osgeo4w/) (Express Install, només el paquet GDAL; per defecte a `%LOCALAPPDATA%\Programs\OSGeo4W`, o fixa `OSGEO4W_ROOT`): `settings.py` detecta la DLL `gdal3xx.dll`, `geos_c.dll`, `GDAL_DATA` i `PROJ_LIB` sol **[FET: `check_neon` verificat a Windows]**. Alternativa: contenidor Linux (vegeu «Windows: executar en un contenidor Linux» més avall).
@@ -31,7 +31,7 @@ pip install -r requirements.txt     # inclou pytest, coverage, boto3
 | Fitxer | Contingut (només noms) |
 |---|---|
 | `env/.env.development` | `SECRET_KEY`, `DEBUG`, `ALLOWED_HOSTS`, `CORS_ALLOW_ALL_ORIGINS`, `CORS_ALLOWED_ORIGINS`, `GOOGLE_APPLICATION_CREDENTIALS`, `DATABASE_URL_APP`, `DATABASE_URL_MIGRATOR` (i, per a proves locals, `TEST_DATABASE_URL_APP`, `TEST_DATABASE_URL_MIGRATOR`) |
-| `env/firebase-service-account.json` | Service account de Firebase. **Ruta fixa** que fa servir `api/firebase_config.py` en local |
+| `env/firebase-service-account.json` | Service account de Firebase. **Ruta fixa** que fa servir `apps/auth/firebase_config.py` en local |
 
 Detall de credencials de Firebase: [firebase-credentials.md](firebase-credentials.md).
 

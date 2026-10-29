@@ -12,7 +12,7 @@
 ## Passos
 1. **Model i migració** segons la nota de dalt. Model de referència amb constraints (`CHECK`, `EXCLUDE`), triggers i RLS: `apps/renovations/models.py` + `migrations/0001_initial.py`.
 2. **Regles**: les mateixes han d'existir al serializer d'entrada i al `CHECK` de la BD (cas `ini_date == fin_date`: un dia és vàlid).
-3. **Dates**: instants `timestamptz` amb el rellotge de la BD; dates de negoci amb `get_madrid_today()` (`api/utils/timezone_utils.py`).
+3. **Dates**: instants `timestamptz` amb el rellotge de la BD; dates de negoci amb `get_madrid_today()` (`apps/core/timezone_utils.py`).
 4. **Media**: desa **claus** R2, no URLs; `media_to_dict` presigna a la resposta.
 5. **Esborrat d'usuari**: decideix la FK `ON DELETE CASCADE`/`SET NULL` al DDL (migració `RunSQL`; vegeu `accounts.0002`) — [deep-dive](../deep-dives/user-deletion.md). Si depèn d'un refugi, la FK cap a `refuges.refuges` l'esborra amb el refugi (`apps/proposals/services.py: _apply_delete`); si guarda fitxers a R2, afegeix-ne la lectura de claus a `_apply_delete`.
 6. **Serializers, selectors, services i vista**: vegeu [add-endpoint.md](add-endpoint.md).

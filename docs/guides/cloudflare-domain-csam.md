@@ -25,7 +25,7 @@
 ## 4. PhotoDNA / NCMEC / Google Content Safety API
 | Servei | Com sol·licitar-lo | On s'integra |
 |---|---|---|
-| Microsoft **PhotoDNA Cloud Service** | Formulari de sol·licitud a Microsoft (cal justificar el servei i acceptar condicions; aprovació manual) | `PhotoDNAProvider` (`api/services/moderation_service.py`): implementar `check()` amb l'API Match i posar `enabled=True` quan hi hagi credencials |
+| Microsoft **PhotoDNA Cloud Service** | Formulari de sol·licitud a Microsoft (cal justificar el servei i acceptar condicions; aprovació manual) | `PhotoDNAProvider` (`apps/moderation/moderation_service.py`): implementar `check()` amb l'API Match i posar `enabled=True` quan hi hagi credencials |
 | **NCMEC** (hash sharing / CyberTipline) | Registre com a *Electronic Service Provider* a NCMEC (orientat a EUA); a Europa, coordinació amb INCIBE / Policia / Guàrdia Civil | Importar hashes a `moderation_hash_blocklist` (camps `sha256`/`phash`, `source='ncmec'`) |
 | **Google Content Safety API** | Sol·licitud a través del programa *Child Safety Toolkit* de Google | `GoogleContentSafetyProvider`: enviar els bytes processats (`ModerationInput.data`) i bloquejar per sobre d'un llindar de prioritat |
 

@@ -10,7 +10,7 @@
 | GET | `/api/refuges/` (sense filtres → punts del mapa) | `RefugeCollectionAPIView.get` | públic; el token és opcional i desbloqueja `images_metadata` (i `visitors` per als admins) |
 | GET | `/api/refuges/?name=&type=&condition=&places_min=&places_max=&altitude_min=&altitude_max=` | idem | idem |
 | GET | `/api/refuges/{id}/` | `RefugeDetailAPIView.get` | públic; l'`id` és un UUID (qualsevol altre format → 404) |
-| GET | `/api/refuges/{id}/renovations/` | `apps.renovations.views.RefugeRenovationsAPIView.get` (chunk 5; ruta a `api/urls.py`; [flux 7](07-renovations.md)) | IsAuthenticated |
+| GET | `/api/refuges/{id}/renovations/` | `apps.renovations.views.RefugeRenovationsAPIView.get` (chunk 5; ruta a `refugis_lliures/urls.py`; [flux 7](07-renovations.md)) | IsAuthenticated |
 
 Taules: `refuges.refuges` (+ `refuge_amenities` 1-1, `refuge_links` amb PK `url`, `refuge_media`) i el catàleg `refuges.refuge_types` (FK de `refuges.type`). No hi ha vista `refuge_map`: la llista sense filtres és una consulta directa a `refuges.refuges` (disseny §5.3, recepta 5). Lectura pública per RLS (`USING (true)`); els mitjans només visibles per a tothom (la resta, autor i admin).
 

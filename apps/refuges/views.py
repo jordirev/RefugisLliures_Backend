@@ -2,7 +2,7 @@
 Vistes de `refuges`: llista/cerca, detall, llista de mitjans i esborrat d'un mitjà.
 
 Les vistes només validen l'entrada, criden els `selectors` (lectures) o els `services` (escriptures) i serialitzen.
-El context de RLS (`app.uid`, `app.is_admin`) el fixa el hook de `api/rls_hook.py` abans dels permisos.
+El context de RLS (`app.uid`, `app.is_admin`) el fixa el hook de `apps/core/rls_hook.py` abans dels permisos.
 El contracte JSON és el d'abans (IDs *string*, `coord: {lat, long}`, `info_comp` 0/1) llevat de `visitors` (només
 admins) i `condition` (0-3, arrodonida half-to-even).
 """
@@ -15,10 +15,10 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from api.permissions import HasProfile, is_firebase_admin
+from apps.auth.permissions import HasProfile, is_firebase_admin
 from apps.audit import services as audit
-from api.services import r2_media_service
-from api.utils.swagger_error_responses import (
+from apps.uploads import r2_media_service
+from apps.core.swagger.error_responses import (
     ERROR_400_INVALID_PARAMS,
     ERROR_401_UNAUTHORIZED,
     ERROR_403_NOT_MEDIA_OWNER,
@@ -26,7 +26,7 @@ from api.utils.swagger_error_responses import (
     ERROR_404_REFUGI_NOT_FOUND,
     ERROR_500_INTERNAL_ERROR,
 )
-from api.utils.swagger_examples import (
+from apps.core.swagger.examples import (
     EXAMPLE_REFUGI_COLOMERS_DETAILED,
     EXAMPLE_REFUGI_MEDIA_LIST,
     EXAMPLE_REFUGI_SEARCH_RESPONSE,

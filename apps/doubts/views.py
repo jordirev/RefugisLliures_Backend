@@ -2,7 +2,7 @@
 Vistes de `doubts`: dubtes d'un refugi i les seves respostes (arbre pla per `parent_answer_id`).
 
 Les vistes només validen l'entrada, criden els `selectors` (lectures) o els `services` (escriptures) i serialitzen.
-El context de RLS el fixa el hook de `api/rls_hook.py`. Dubtes i respostes exigeixen `IsAuthenticated, HasProfile`
+El context de RLS el fixa el hook de `apps/core/rls_hook.py`. Dubtes i respostes exigeixen `IsAuthenticated, HasProfile`
 i, per a les escriptures de contingut (POST), també `IsNotBlocked` i `IsAgeConfirmed` (decisió del PO, 26/10). GET i
 DELETE del que és propi no els exigeixen: un usuari bloquejat pot llegir i esborrar el seu contingut (RGPD). La propietat la comprova el service (403 `not_owner`).
 Ordre de comprovacions: permisos -> validació del cos (400) -> existència (404) -> propietat (403).
@@ -16,8 +16,8 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from api.permissions import HasProfile, IsAgeConfirmed, IsNotBlocked, coded_error, is_firebase_admin
-from api.utils.swagger_error_responses import (
+from apps.auth.permissions import HasProfile, IsAgeConfirmed, IsNotBlocked, coded_error, is_firebase_admin
+from apps.core.swagger.error_responses import (
     ERROR_400_INVALID_DATA,
     ERROR_401_UNAUTHORIZED,
     ERROR_403_FORBIDDEN,
@@ -26,7 +26,7 @@ from api.utils.swagger_error_responses import (
     ERROR_404_REFUGI_NOT_FOUND,
     ERROR_500_INTERNAL_ERROR,
 )
-from api.utils.swagger_examples import EXAMPLE_ANSWER_DETAIL, EXAMPLE_DOUBT_DETAIL, EXAMPLE_DOUBT_LIST
+from apps.core.swagger.examples import EXAMPLE_ANSWER_DETAIL, EXAMPLE_DOUBT_DETAIL, EXAMPLE_DOUBT_LIST
 from apps.core.errors import server_error
 from apps.refuges import selectors as refuge_selectors
 

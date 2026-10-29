@@ -1,4 +1,4 @@
-"""Rutes de `renovations`: s'inclouen des d'`api/urls.py` sota `renovations/` (mateixos paths i `name=` d'abans)."""
+"""Rutes de `renovations`: s'inclouen des de `refugis_lliures/urls.py` sota `renovations/` (mateixos paths i `name=` d'abans)."""
 from django.urls import path
 
 from . import views
@@ -9,4 +9,9 @@ urlpatterns = [
     path('<str:id>/participants/', views.RenovationParticipantsAPIView.as_view(), name='renovation_participants'),   # POST
     path('<str:id>/participants/<str:uid>/', views.RenovationParticipantDetailAPIView.as_view(),
          name='renovation_participant_detail'),                                                                 # DELETE
+]
+
+# GET /refuges/{id}/renovations/ (s'inclou sota `refuges/` des de `refugis_lliures/urls.py`)
+refuge_urlpatterns = [
+    path('<str:id>/renovations/', views.RefugeRenovationsAPIView.as_view(), name='refuge_renovations'),
 ]

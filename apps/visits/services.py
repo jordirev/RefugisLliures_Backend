@@ -18,7 +18,7 @@ from datetime import date, timedelta
 from django.db import connection, transaction
 from django.db.models import Exists, OuterRef
 
-from api.utils.timezone_utils import get_madrid_today
+from apps.core.timezone_utils import get_madrid_today
 from apps.core.rls import system_context
 from apps.refuges import selectors as refuge_selectors
 

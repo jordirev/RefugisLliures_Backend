@@ -6,7 +6,7 @@
 
 Els usuaris **no modifiquen refugis directament**: creen una *proposta* que un admin aprova o rebutja. En aprovar-la, el service aplica el canvi al catàleg dins **una sola transacció**.
 
-## Endpoints (`apps/proposals/views.py`, rutes a `apps/proposals/urls.py`, incloses des d'`api/urls.py`)
+## Endpoints (`apps/proposals/views.py`, rutes a `apps/proposals/urls.py`, incloses des d'`refugis_lliures/urls.py`)
 | Mètode | URL | Vista | Permisos |
 |---|---|---|---|
 | POST | `/api/refuges-proposals/` | `ProposalCollectionAPIView.post` | IsAuthenticated + HasProfile + IsNotBlocked + IsAgeConfirmed |

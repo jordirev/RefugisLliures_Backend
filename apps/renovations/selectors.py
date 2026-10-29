@@ -13,7 +13,7 @@ from django.contrib.postgres.expressions import ArraySubquery
 from django.db import connection
 from django.db.models import F, OuterRef
 
-from api.utils.timezone_utils import get_madrid_today
+from apps.core.timezone_utils import get_madrid_today
 from apps.refuges import selectors as refuge_selectors
 
 from .models import Renovation, RenovationParticipant

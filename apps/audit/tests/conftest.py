@@ -10,7 +10,7 @@ from apps.moderation.tests.helpers import R2Store, make_refuge, make_user
 def r2store():
     """Cap test toca R2 (l'esborrat d'usuari esborra l'avatar i les fotos): client boto3 fals."""
     store = R2Store()
-    with patch('api.services.r2_media_service.get_r2_client', return_value=store.client):
+    with patch('apps.uploads.r2_media_service.get_r2_client', return_value=store.client):
         yield store
 
 

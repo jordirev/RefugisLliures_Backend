@@ -6,7 +6,7 @@
 
 L'usuari es registra a **Firebase Auth des del client** (el backend no crea comptes d'Auth, però sí que els esborra a `DELETE /users/{uid}/`). Després el client crida `POST /api/users/` per crear la fila de `users.users` + `users.user_public_profiles`. **Fins que no ho fa, tot endpoint autenticat (excepte `POST /users/`) respon 403 `profile_required`** (vegeu [flux 12](12-media-moderation.md#permisos-apipermissionspy)).
 
-## Endpoints (`apps/accounts/views.py`, rutes a `apps/accounts/urls.py`, incloses des d'`api/urls.py` sota `users/`)
+## Endpoints (`apps/accounts/views.py`, rutes a `apps/accounts/urls.py`, incloses des d'`refugis_lliures/urls.py` sota `users/`)
 | Mètode | URL | Vista | Permisos |
 |---|---|---|---|
 | POST | `/api/users/` | `UsersCollectionAPIView.post` | `IsAuthenticated` (**sense** `HasProfile`: és l'única via per crear-lo) |

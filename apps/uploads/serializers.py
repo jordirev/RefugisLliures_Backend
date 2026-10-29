@@ -7,8 +7,8 @@ Serializers d'`uploads`: intents de pujada directa i confirmació (contracte JSO
 """
 from rest_framework import serializers
 
-from api.serializers.media_serializer import MediaItemSerializer
-from api.services.image_processing_service import (
+from apps.uploads.media_serializer import MediaItemSerializer
+from apps.uploads.image_processing_service import (
     ALLOWED_IMAGE_CONTENT_TYPES, ALLOWED_VIDEO_CONTENT_TYPES, FAILURE_REASONS, kind_for_content_type,
     max_bytes_for_kind, normalize_content_type)
 

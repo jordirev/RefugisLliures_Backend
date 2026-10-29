@@ -1,0 +1,167 @@
+"""
+Permisos personalitzats per a l'API
+"""
+import logging
+logger = logging.getLogger(__name__)
+from rest_framework import permissions
+
+# Helper per a comprovar si l'usuari és admin
+def is_firebase_admin(request):
+    """
+    Comprova si l'usuari autenticat és un administrador mitjançant custom claims
+    """
+    # Obté els custom claims de l'usuari
+    user_claims = getattr(request, 'user_claims', {})
+    if not user_claims:
+        # Intenta obtenir-los de l'objecte user si no estan a request
+        user_claims = getattr(request.user, 'claims', {})
+    
+    # Comprova si l'usuari té el custom claim 'role' amb valor 'admin'
+    return user_claims.get('role') == 'admin'
+
+
+
+class IsSameUser(permissions.BasePermission):
+    """
+    Permís que comprova si l'usuari autenticat està accedint a les seves pròpies dades
+    basant-se en el paràmetre 'uid' de la URL
+    """
+    
+    def has_permission(self, request, view):
+        """
+        Comprova si l'usuari autenticat està accedint a les seves pròpies dades
+        """
+        # Comprova que l'usuari està autenticat
+        if not request.user or not hasattr(request.user, 'is_authenticated') or not request.user.is_authenticated:
+            return False
+        
+        # Obté el UID del paràmetre de la URL
+        url_uid = view.kwargs.get('uid')
+        
+        # Si no hi ha UID a la URL (per exemple, en endpoints de col·lecció), permet l'accés
+        if not url_uid:
+            return True
+        
+        # Comprova que l'UID de la URL coincideix amb l'UID de l'usuari autenticat
+        return url_uid == request.user.uid
+
+
+class IsFirebaseAdmin(permissions.BasePermission):
+    """
+    Permís que només permet accés als usuaris administradors de Firebase.
+    Utilitza els Custom Claims de Firebase Auth per determinar si un usuari és admin.
+    Un usuari és administrador si té el custom claim 'role' amb valor 'admin'.
+    """
+    
+    def has_permission(self, request, view):
+        """
+        Comprova si l'usuari autenticat és un administrador mitjançant custom claims
+        """
+        # Comprova que l'usuari està autenticat
+        if not request.user or not hasattr(request.user, 'is_authenticated') or not request.user.is_authenticated:
+            return False
+        
+        return is_firebase_admin(request)
+
+
+# ========== Edat i bloqueig (feature images) ==========
+
+from rest_framework import exceptions as drf_exceptions
+
+ERROR_CODE_AGE_NOT_CONFIRMED = 'age_not_confirmed'
+ERROR_CODE_USER_BLOCKED = 'user_blocked'
+ERROR_CODE_PROFILE_REQUIRED = 'profile_required'
+
+
+def coded_error(code: str, message: str) -> dict:
+    """Cos d'error amb codi explícit: {error: code, code: code, message: text}"""
+    return {'error': code, 'code': code, 'message': message}
+
+
+def _request_uid(request):
+    uid = getattr(request, 'user_uid', None)
+    if not uid:
+        uid = getattr(getattr(request, 'user', None), 'uid', None)
+    return uid if isinstance(uid, str) else None
+
+
+def get_user_for_permissions(uid):
+    """Fila de `users.users` de PostgreSQL (la RLS del context de la petició la deixa veure). 1 consulta; sense cache."""
+    if not uid:
+        return None
+    from apps.accounts import selectors
+    return selectors.get_user(uid)
+
+
+_UNSET = object()
+
+
+def _request_account(request):
+    """
+    Usuari (`UserAccount` o `None`) de la petició, llegit **una sola vegada** per petició encara que hi hagi
+    `HasProfile` + `IsNotBlocked` + `IsAgeConfirmed` (§7.3.6). La cau viu a l'objecte `request`, no a Redis.
+    """
+    uid = _request_uid(request)
+    cached = getattr(request, '_account_cache', _UNSET)
+    if cached is not _UNSET and cached[0] == uid:
+        return cached[1]
+    user = get_user_for_permissions(uid)
+    request._account_cache = (uid, user)
+    return user
+
+
+def _is_authenticated(request) -> bool:
+    return bool(request.user and getattr(request.user, 'is_authenticated', False))
+
+
+class HasProfile(permissions.BasePermission):
+    """
+    Requereix que l'usuari autenticat tingui fila a `users.users` (el perfil es crea amb `POST /users/`).
+    Falla amb 403 {error: 'profile_required'}. Va just després d'`IsAuthenticated` a tot endpoint autenticat
+    llevat de `POST /users/`.
+    """
+
+    def has_permission(self, request, view):
+        if not _is_authenticated(request):
+            return False
+        if _request_account(request) is None:
+            raise drf_exceptions.PermissionDenied(coded_error(
+                ERROR_CODE_PROFILE_REQUIRED, "Cal crear el perfil d'usuari abans d'usar l'aplicació."))
+        return True
+
+
+class IsNotBlocked(permissions.BasePermission):
+    """
+    Denega l'accés als usuaris bloquejats per moderació (users.users.is_blocked).
+    Falla amb 403 {error: 'user_blocked'}.
+    """
+
+    def has_permission(self, request, view):
+        # L'autenticació la comprova IsAuthenticated (va abans a la llista); aquí només el bloqueig
+        if not _request_uid(request):
+            return _is_authenticated(request)
+        user = _request_account(request)
+        if user is not None and getattr(user, 'is_blocked', False) is True:
+            raise drf_exceptions.PermissionDenied(coded_error(
+                ERROR_CODE_USER_BLOCKED,
+                "El teu compte està bloquejat per incompliment de les normes de la comunitat."
+            ))
+        return True
+
+
+class IsAgeConfirmed(permissions.BasePermission):
+    """
+    Requereix que l'usuari hagi confirmat que té 16 anys o més (users.users.age_confirmed_at).
+    Falla amb 403 {error: 'age_not_confirmed'}.
+    """
+
+    def has_permission(self, request, view):
+        if not _is_authenticated(request):
+            return False
+        user = _request_account(request)
+        if user is None or not getattr(user, 'age_confirmed_at', None):
+            raise drf_exceptions.PermissionDenied(coded_error(
+                ERROR_CODE_AGE_NOT_CONFIRMED,
+                "Cal confirmar l'edat abans de pujar o denunciar contingut."
+            ))
+        return True

@@ -8,8 +8,8 @@
 |---|---|---|
 | Framework | Django 5.2.18 LTS + Django REST Framework 3.16.1, Python 3.14 | `requirements.txt`, `.python-version` |
 | Base de dades relacional (migració) | **PostgreSQL 17 + PostGIS** (Neon) com a BD `default` de Django amb el rol `app` (`ATOMIC_REQUESTS`, subjecte a RLS) i l'àlies `migrator` (DDL); `psycopg[binary]` 3.2.9, GeoDjango | `refugis_lliures/settings.py` (`DATABASES`), [integrations/neon.md](integrations/neon.md) |
-| Autenticació | Firebase Auth (ID tokens JWT) + custom claim `role`; `firebase-admin` s'usa **només** per a Auth (Firestore eliminat al chunk 11, D43) | `api/middleware/firebase_auth_middleware.py`, `api/permissions.py` |
-| Media | Cloudflare R2 (API S3) via `boto3` | `api/r2_config.py`, `api/services/r2_media_service.py` |
+| Autenticació | Firebase Auth (ID tokens JWT) + custom claim `role`; `firebase-admin` s'usa **només** per a Auth (Firestore eliminat al chunk 11, D43) | `apps/auth/middleware.py`, `apps/auth/permissions.py` |
+| Media | Cloudflare R2 (API S3) via `boto3` | `apps/uploads/r2_config.py`, `apps/uploads/r2_media_service.py` |
 | Cache | Cap cache de dades; `CACHES` = `LocMemCache` per defecte (Redis eliminat al chunk 11, D43) | `refugis_lliures/settings.py` (`CACHES`) |
 | Docs API | `drf_yasg` → `/swagger/`, `/redoc/`, `/swagger.json` | `refugis_lliures/urls.py:45-47` |
 | Servidor | gunicorn (1 worker sync, timeout 30 s) + whitenoise | `gunicorn.conf.py:12-19`, `refugis_lliures/settings.py:68` |
@@ -22,26 +22,16 @@ Si no hi ha cap URL de Postgres (`DATABASE_URL_APP` / `TEST_DATABASE_URL_APP`), 
 ## 2. Estructura de directoris
 
 ```
-refugis_lliures/        settings.py, urls.py (arrel: admin/, api/, swagger/), wsgi/asgi
-api/
-  urls.py               totes les rutes /api/...
-  views/                health_check_views.py (les vistes de domini són a apps/<feature>/views.py)
-  serializers/          validació d'entrada i format de sortida (Serializer, mai ModelSerializer)
-  services/             R2MediaService, image_processing_service, moderation_service, database_health (infraestructura compartida)
-  middleware/           FirebaseAuthenticationMiddleware, HealthDatabaseErrorMiddleware (503 del health si Postgres cau)
-  rls_hook.py           hook de RLS: set_config local a la transacció (uid, is_admin, is_system) per petició DRF
-  authentication.py     FirebaseAuthentication (DRF)
-  permissions.py        HasProfile, IsNotBlocked, IsAgeConfirmed (lectura de `users.users`), IsSameUser, IsFirebaseAdmin, Is*Creator...
-  management/commands/  check_neon (les comandes antigues de refugis s'han eliminat al chunk 2)
-  utils/                swagger_examples, swagger_error_responses, timezone_utils, JSON de dades (els UUID v7 els genera la BD: `uuidv7()`)
-  tests/                tests d'infra compartida: core, infra, security, media, user; els de cada feature a apps/<feature>/tests/
-apps/                   features migrades a PostgreSQL: una app Django per feature (estil HackSoft; substitueix `api/` feature a feature)
-  core/                 nucli de la BD: errors.py (`server_error`: 500 amb `error_id`), rls.py (rls_context, system_context, helpers de polítiques RLS), db_functions.py (`TransactionNow`), migration_utils.py, testing.py, migracions core.0001/0002 (schemas, funcions core.*, grants)
+refugis_lliures/        settings.py, urls.py (arrel: admin/, api/ —inclou el urls.py de cada app—, swagger/), wsgi/asgi
+apps/                   features migrades a PostgreSQL: una app Django per feature (estil HackSoft; la carpeta `api/` ja no existeix)
+  core/                 nucli compartit: rls_hook.py (hook de RLS per petició; `CoreConfig.ready()`), timezone_utils.py, age_utils.py, swagger/ (examples, error_responses), management/commands/check_neon.py, errors.py (`server_error`: 500 amb `error_id`), rls.py (rls_context, system_context, helpers de polítiques RLS), db_functions.py (`TransactionNow`), migration_utils.py, testing.py, migracions core.0001/0002 (schemas, funcions core.*, grants)
+  auth/                 (label `firebase_auth`) Firebase Auth: authentication.py (DRF), permissions.py, middleware.py (FirebaseAuthenticationMiddleware), firebase_config.py (`ready()` inicialitza Firebase Admin), tests/
+  health/               `GET /api/health/`: views, serializers, services (check_database), middleware (HealthDatabaseErrorMiddleware: 503 si Postgres cau), urls, tests/
   accounts/             usuaris (chunk 3): models (UserAccount, UserPublicProfile, UserAvatar, Language, FavouriteRefuge, VisitedRefuge), selectors, services, serializers, views, urls (`users/`), migracions 0001–0002, tests/
   refuges/              models, selectors (lectures), services (escriptures), serializers, views, urls, management/commands/load_refuges.py, migrations, tests/
   experiences/          experiències (chunk 7): models (Experience), selectors, services, serializers, views, urls (`experiences/`), migració 0001 (FK, RLS, trigger de condició), tests/
   proposals/            propostes de refugi (chunk 8): models (RefugeProposal), selectors (llistes), services (crear amb duplicats, aprovar/rebutjar en transacció, esborrat amb R2), serializers (payload validat), views, urls (`refuges-proposals/`, `my-refuges-proposals/`), migració 0001 (CHECK `jsonb`, FK `SET NULL`, RLS, escriptura del catàleg per a admin/sistema), tests/
-  uploads/              pujada directa de mitjans (chunk 7): models (UploadIntent), services (intents, confirmació, `process_and_publish`, purga), serializers, views (rutes a `api/urls.py`), management/commands/purge_upload_intents.py, migració 0001, tests/
+  uploads/              pujada directa de mitjans (chunk 7): models (UploadIntent), services (intents, confirmació, `process_and_publish`, purga), serializers, views (rutes a `refugis_lliures/urls.py`), management/commands/purge_upload_intents.py, migració 0001, tests/
   moderation/           moderació (chunk 9): models (MediaReport, ModerationNotice, HashBlocklistEntry), selectors, services (denunciar, resoldre amb retenció CSAM, `register_upload_block`, purga), serializers, views, urls (`media/reports/`, `admin/media-reports/`, `users/<uid>/moderation-notices/`), management/commands/{purge_moderation,load_hash_blocklist}.py, migració 0001 (RLS, `fn_hash_match`, triggers `legal_hold`), tests/
   audit/                auditoria (chunk 9): model AuditLog, `AuditLogService.log` (mai llança), management/commands/purge_audit_logs.py, migració 0001, tests/
 scripts/                manage_admins.py (custom claims), dev/setup_local_postgres.sh (Postgres local de proves)
@@ -67,13 +57,13 @@ HTTP → FirebaseAuthenticationMiddleware → hook de RLS (set_config) → View 
 | **Serializers** (`serializers.py`) | Contracte JSON (entrada i sortida); sense `ModelSerializer`. |
 | **Migracions** | `RunSQL` amb `reverse_sql` per a FK reals, RLS, grants, triggers i vistes (`apps.core.migration_utils`). |
 
-### 3.2 Infraestructura compartida a `api/` (D43)
-Després de la neteja no queda cap domini amb el patró View → Controller → DAO. A `api/` només hi ha infraestructura compartida: autenticació (`authentication.py`, `middleware/`), permisos, hook de RLS, R2 (`r2_config.py`, `services/r2_media_service.py`), processament d'imatge, moderació automàtica i el health check (`views/health_check_views.py`, que usa `services/database_health.py`). Moure-la a `apps/core` es va descartar com a canvi gran sense benefici funcional ([TECH_DEBT](TECH_DEBT.md)).
+### 3.2 Infraestructura compartida (abans a `api/`)
+Després de la neteja (D43) no queda cap domini amb el patró View → Controller → DAO i la infraestructura compartida vivia a `api/`. D43(4) la va deixar allà («moure-la seria un canvi gran sense benefici»); **per ordre del PO, `api/` s'ha eliminat** i el codi ha passat a les apps: autenticació, permisos, middleware de Firebase i `firebase_config` a `apps/auth/` (label `firebase_auth`); hook de RLS, `timezone_utils`, `age_utils`, Swagger compartit i `check_neon` a `apps/core/`; health check (vista, serializer, servei i middleware 503) a `apps/health/`; R2, processament d'imatge, `MediaMetadata` i `MediaItemSerializer` a `apps/uploads/`; moderació automàtica a `apps/moderation/moderation_service.py`. Les rutes de l'API s'inclouen des de `refugis_lliures/urls.py` amb el prefix `api/` (les URL públiques no han canviat). Els tests van amb el seu codi (`apps/<app>/tests/`).
 
 ### Mapatge error → HTTP [FET]
 Les apps usen excepcions de domini que la vista tradueix a HTTP (i `constraint_name` per als errors de la BD); mai es tria el codi pel text de l'error. Els errors 500 són `{error, error_id}` via `apps.core.errors.server_error`.
 
-## 4. Rutes (`api/urls.py`, prefix `/api/`)
+## 4. Rutes (`refugis_lliures/urls.py` + `apps/<feature>/urls.py`, prefix `/api/`)
 
 | Ruta | Vista | Mètodes | Permisos efectius |
 |---|---|---|---|
@@ -122,13 +112,13 @@ Notes de nomenclatura **[FET]**: URLs en anglès (`refuges`, `favorite-refuges` 
 
 Detall complet a [flows/00-auth-request-pipeline.md](flows/00-auth-request-pipeline.md) i [integrations/firebase-auth.md](integrations/firebase-auth.md).
 
-1. `FirebaseAuthenticationMiddleware` (`refugis_lliures/settings.py:74`) verifica `Authorization: Bearer <idToken>` amb `auth.verify_id_token` i posa `request.user_uid`, `request.user_claims`, `request.firebase_user`, `request.user`. Rutes amb prefix `EXCLUDED_PATHS` (`/api/health/`, `/api/refuges/`, `/swagger/`, `/redoc/`) poden anar sense token (`api/middleware/firebase_auth_middleware.py:20-25`).
-2. `FirebaseAuthentication` (DRF, `api/authentication.py`) reaprofita el que ha posat el middleware.
+1. `FirebaseAuthenticationMiddleware` (`refugis_lliures/settings.py:74`) verifica `Authorization: Bearer <idToken>` amb `auth.verify_id_token` i posa `request.user_uid`, `request.user_claims`, `request.firebase_user`, `request.user`. Rutes amb prefix `EXCLUDED_PATHS` (`/api/health/`, `/api/refuges/`, `/swagger/`, `/redoc/`) poden anar sense token (`apps/auth/middleware.py:20-25`).
+2. `FirebaseAuthentication` (DRF, `apps/auth/authentication.py`) reaprofita el que ha posat el middleware.
 3. Permís per defecte: `AllowAny` (`refugis_lliures/settings.py:161-163`) — **cada vista ha de declarar els seus permisos**.
-4. Admin = custom claim `role == 'admin'` (`api/permissions.py:10-21`). Es gestiona amb `scripts/manage_admins.py`.
+4. Admin = custom claim `role == 'admin'` (`apps/auth/permissions.py:10-21`). Es gestiona amb `scripts/manage_admins.py`.
 5. Gestió d'admins: [guides/admin-management.md](guides/admin-management.md). Per què hi ha middleware **i** classe DRF: [design/decisions.md](design/decisions.md).
-6. **[FET]** Permisos basats en `users.users` (PostgreSQL, chunk 3): `HasProfile` (403 `profile_required`), `IsNotBlocked` (403 `user_blocked`) i `IsAgeConfirmed` (403 `age_not_confirmed`), tots a `has_permission`. Llegeixen la fila amb `selectors.get_user` **una sola vegada per petició** (cau a `request._account_cache`, sense Redis; la RLS limita la lectura a la pròpia fila). Un bloqueig té efecte immediat (cap cache de 10 min). Els errors amb codi tenen la forma `{error, code, message}` (`coded_error`, `api/permissions.py`). Detall: [flows/12-media-moderation.md](flows/12-media-moderation.md).
-7. **[FET] Context de RLS per petició**: `api/rls_hook.py` (instal·lat a `ApiConfig.ready`) embolcalla `APIView.perform_authentication` i, després d'autenticar i abans de `check_permissions`, fixa amb **un sol** `set_config(..., true)` (local a la transacció d'`ATOMIC_REQUESTS`) `app.uid` (de l'usuari verificat), `app.is_admin` (només si el claim verificat `role == 'admin'`) i `app.is_system=false`, a totes les vistes DRF. Detall: [flows/00-auth-request-pipeline.md](flows/00-auth-request-pipeline.md).
+6. **[FET]** Permisos basats en `users.users` (PostgreSQL, chunk 3): `HasProfile` (403 `profile_required`), `IsNotBlocked` (403 `user_blocked`) i `IsAgeConfirmed` (403 `age_not_confirmed`), tots a `has_permission`. Llegeixen la fila amb `selectors.get_user` **una sola vegada per petició** (cau a `request._account_cache`, sense Redis; la RLS limita la lectura a la pròpia fila). Un bloqueig té efecte immediat (cap cache de 10 min). Els errors amb codi tenen la forma `{error, code, message}` (`coded_error`, `apps/auth/permissions.py`). Detall: [flows/12-media-moderation.md](flows/12-media-moderation.md).
+7. **[FET] Context de RLS per petició**: `apps/core/rls_hook.py` (instal·lat a `CoreConfig.ready`) embolcalla `APIView.perform_authentication` i, després d'autenticar i abans de `check_permissions`, fixa amb **un sol** `set_config(..., true)` (local a la transacció d'`ATOMIC_REQUESTS`) `app.uid` (de l'usuari verificat), `app.is_admin` (només si el claim verificat `role == 'admin'`) i `app.is_system=false`, a totes les vistes DRF. Detall: [flows/00-auth-request-pipeline.md](flows/00-auth-request-pipeline.md).
    - **Excepció a `ATOMIC_REQUESTS` (D42)**: `UserDetailAPIView` és `non_atomic_requests` perquè el `DELETE` ha de comprometre les dades *abans* de cridar Firebase Auth (`delete_user` obre la seva transacció i el seu `rls_context`). Per no perdre el context de RLS ni l'atomicitat de GET/PATCH, la vista sobreescriu `dispatch` i els embolcalla en `transaction.atomic()`; `handle_exception` evita que el `set_rollback` de DRF deixi inservible un bloc atòmic extern (tests); `skip_rls_hook` fa que el hook de RLS se salti el `DELETE`. Vegeu [deep-dive](deep-dives/user-deletion.md) i [GOTCHAS #87–88](GOTCHAS.md).
 8. **[FET] Firebase Auth Emulator**: amb `FIREBASE_AUTH_EMULATOR_HOST` Firebase Admin s'inicialitza sense credencials (`projectId` de `GCLOUD_PROJECT`/`GOOGLE_CLOUD_PROJECT` o `demo-refugis-lliures`); prohibit amb `RENDER`/`PRODUCTION` = `true` (Django no arrenca). Només per a e2e locals: [integrations/firebase-auth.md](integrations/firebase-auth.md).
 9. **[FET]** Cap vista crida `check_object_permissions()`, i totes hereten d'`APIView` (no `GenericAPIView`) → **`has_object_permission` d'`IsOwnerOrReadOnly` mai s'executa** (`IsRenovationCreator` s'ha eliminat al chunk 8; reformes comprova la propietat al service) (`IsDoubtCreator` i `IsAnswerCreator` s'han eliminat al chunk 6 i `IsExperienceCreator` al chunk 7: dubtes, respostes i experiències comproven la propietat al service). Només funcionen els permisos basats en `has_permission`: `HasProfile`, `IsNotBlocked`, `IsAgeConfirmed`, `IsSameUser`, `IsFirebaseAdmin`.
@@ -146,7 +136,7 @@ Detall amb diagrames i motivació: [design/patterns.md](design/patterns.md).
 |---|---|
 | Cerca de refugis | una sola consulta SQL (`apps/refuges/selectors.py: search_queryset`), sense estratègies |
 | Aprovació de propostes | `apps/proposals/services.py: approve_proposal`: una transacció amb bloqueig `FOR UPDATE` i `_apply_create/_apply_update/_apply_delete` (les estratègies de Firestore han desaparegut al chunk 8) |
-| Strategy (paths R2) | `RefugiMediaStrategy`, `UserAvatarStrategy` (`api/services/r2_media_service.py:44-145`) |
+| Strategy (paths R2) | `RefugiMediaStrategy`, `UserAvatarStrategy` (`apps/uploads/r2_media_service.py:44-145`) |
 | Llistes d'usuari (preferits/visitats) | `_UserRefugeList` abstracta amb PK composta + funcions `_add`/`_remove` compartides (`apps/accounts/models.py`, `services.py`); el Template method d'`UserController` ha desaparegut |
 
 ## 8. Convencions
@@ -156,14 +146,14 @@ Detall amb diagrames i motivació: [design/patterns.md](design/patterns.md).
 - **IDs**: UUID v7 generat per la BD (`DEFAULT uuidv7()`) exposat com a string opac; l'usuari usa l'UID de Firebase.
 - **Logging**: nivells estàndard de `logging` (els nivells CACHE/FIRESTORE/DAO han desaparegut al chunk 11). El logger `api` mostra `WARNING`+ (`refugis_lliures/settings.py`).
 - **Serializers**: noms `XSerializer` (sortida), `XCreateSerializer`/`XUpdateSerializer` (entrada). Excepcions: `CreateDoubtSerializer`, `CreateAnswerSerializer`, `CreateRefugeVisitSerializer`, `UpdateRefugeVisitSerializer` (prefix en lloc de sufix) (`apps/doubts/serializers.py`, `apps/visits/serializers.py`).
-- **Swagger**: exemples a `api/utils/swagger_examples.py`, respostes d'error com a `openapi.Response` a `api/utils/swagger_error_responses.py`.
+- **Swagger**: exemples a `apps/core/swagger/examples.py`, respostes d'error com a `openapi.Response` a `apps/core/swagger/error_responses.py`.
 
 ## 9. Excepcions al patró [FET]
 
 | Excepció | On |
 |---|---|
 | Permisos que criden DAO/Controller | `HasProfile`/`IsNotBlocked`/`IsAgeConfirmed` criden un selector d'`apps.accounts` (`get_user_for_permissions`) |
-| Body d'error amb un objecte Swagger (`{'error': ERROR_500_INTERNAL_ERROR}`) | ocurrències als models antics (`api/views/`). `ERROR_500_INTERNAL_ERROR` és un `openapi.Response` (`api/utils/swagger_error_responses.py:316`). Com es serialitza a JSON: **[NO VERIFICAT]** |
+| Body d'error amb un objecte Swagger (`{'error': ERROR_500_INTERNAL_ERROR}`) | ocurrències als models antics (`api/views/`). `ERROR_500_INTERNAL_ERROR` és un `openapi.Response` (`apps/core/swagger/error_responses.py:316`). Com es serialitza a JSON: **[NO VERIFICAT]** |
 | Imports erronis de `logger` | resolt als models (B7); `api/models/experience.py` ja no existeix |
 
 ## 10. Tests
@@ -171,13 +161,13 @@ Detall amb diagrames i motivació: [design/patterns.md](design/patterns.md).
 Guia pràctica (comandes, coverage, per què Firebase no s'inicialitza): [guides/testing.md](guides/testing.md).
 
 
-- Config: `pytest.ini` (`DJANGO_SETTINGS_MODULE=refugis_lliures.settings`, `testpaths=api/tests apps`, `--strict-markers`, markers a `pytest.ini`).
-- **Tests contra PostgreSQL (chunk 1)** [FET]: `TEST_DATABASE_URL_APP` / `TEST_DATABASE_URL_MIGRATOR` (Postgres local bootstrapat amb `scripts/dev/setup_local_postgres.sh`, o el servei `postgis/postgis:18-3.6` de CI) tenen prioritat sobre `DATABASE_URL_*` dins pytest (o amb `USE_TEST_DATABASE=1`; fora, s'ignoren: D37); `django_db_setup` (`api/tests/conftest.py`) migra amb `migrator` sobre la BD de proves sense crear `test_*`, i els tests corren com a `app` (RLS activa). La fixture `autouse` `_rls_hook_sense_bd` desactiva el hook als tests sense BD (sense markers `rls`/`django_db`/`db_infra`). Calen GDAL/GEOS; a Windows, contenidor Linux ([guides/testing.md](guides/testing.md)).
-- `conftest.py` (arrel: també `django_db_setup`, `app_db`/`migrator_db`, bloqueig de Firebase Admin real (`_block_real_firebase`: `firebase_admin.get_app` falla), mocks d'audit/permisos (`get_user_for_permissions` retorna un `UserAccount` confirmat i no bloquejat) i `_restore_view_policies`, que restaura `permission_classes`/`authentication_classes` de totes les vistes després de cada test; compartits amb `apps/*/tests`) i `api/tests/conftest.py` fixen `TESTING=true` i variables R2 falses **abans** d'importar res; amb `TESTING`/`pytest` carregat, Firebase **no s'inicialitza** (`api/firebase_config.py:15-17,92-94`).
+- Config: `pytest.ini` (`DJANGO_SETTINGS_MODULE=refugis_lliures.settings`, `testpaths=apps`, `--strict-markers`, markers a `pytest.ini`).
+- **Tests contra PostgreSQL (chunk 1)** [FET]: `TEST_DATABASE_URL_APP` / `TEST_DATABASE_URL_MIGRATOR` (Postgres local bootstrapat amb `scripts/dev/setup_local_postgres.sh`, o el servei `postgis/postgis:18-3.6` de CI) tenen prioritat sobre `DATABASE_URL_*` dins pytest (o amb `USE_TEST_DATABASE=1`; fora, s'ignoren: D37); `django_db_setup` (`conftest.py` de l'arrel) migra amb `migrator` sobre la BD de proves sense crear `test_*`, i els tests corren com a `app` (RLS activa). La fixture `autouse` `_rls_hook_sense_bd` desactiva el hook als tests sense BD (sense markers `rls`/`django_db`/`db_infra`). Calen GDAL/GEOS; a Windows, contenidor Linux ([guides/testing.md](guides/testing.md)).
+- `conftest.py` (arrel: també `django_db_setup`, `app_db`/`migrator_db`, bloqueig de Firebase Admin real (`_block_real_firebase`: `firebase_admin.get_app` falla), mocks d'audit/permisos (`get_user_for_permissions` retorna un `UserAccount` confirmat i no bloquejat) i `_restore_view_policies`, que restaura `permission_classes`/`authentication_classes` de totes les vistes després de cada test; compartits amb `apps/*/tests`) fixa `TESTING=true` i variables R2 falses **abans** d'importar res; amb `TESTING`/`pytest` carregat, Firebase **no s'inicialitza** (`apps/auth/firebase_config.py:15-17,92-94`).
 - Mocks habituals: `firebase_accounts` (conftest arrel) per a `get_user`/`delete_user` de Firebase Auth; `patch.object` sobre `permission_classes` de les vistes; les apps van contra Postgres amb el rol `app`.
-- Estructura: tests de cada feature a `apps/<feature>/tests/` (esquema, constraints, RLS, serializers, selectors i services, vistes de contracte, recomptes de consultes, errors 500 i permisos d'escriptura); infra compartida a `api/tests/{core,infra,security,media,user}` i `api/tests/test_auth_middleware_permissions.py`; `api/tests/infra/test_health_check.py` cobreix el health check.
-- Execució: `pytest`, `pytest apps/renovations`, `pytest -m views`, `tox` (`tox.ini`: `envlist=py314`, genera `coverage.xml`), `python run_tests.py`.
-- Coverage (`.coveragerc`) **exclou `services/` i `utils/`** → `r2_media_service` no compta al coverage.
+- Estructura: tests de cada feature a `apps/<feature>/tests/` (esquema, constraints, RLS, serializers, selectors i services, vistes de contracte, recomptes de consultes, errors 500 i permisos d'escriptura); infra compartida a `apps/{core,auth,health}/tests/` i `apps/auth/tests/test_auth_middleware_permissions.py`; `apps/health/tests/test_health_check.py` cobreix el health check.
+- Execució: `pytest`, `pytest apps/renovations`, `pytest -m views`, `tox` (`tox.ini`: `envlist=py314`, genera `coverage.xml`), (`run_tests.py` s'ha eliminat).
+- Coverage (`.coveragerc`) **exclou `services/` i `utils/`** i, explícitament, els mòduls que hi eren abans de moure'ls (`r2_media_service`, `image_processing_service`, `moderation_service`, `health/services.py`, `timezone_utils`, `age_utils`, `core/swagger/`).
 
 ## 11. Gotchas / què NO fer
 Llista completa: [GOTCHAS.md](GOTCHAS.md). Les més importants:

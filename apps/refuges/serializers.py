@@ -11,8 +11,8 @@ from datetime import date, datetime
 
 from rest_framework import serializers
 
-from api.serializers.media_serializer import MediaItemSerializer
-from api.utils.timezone_utils import get_madrid_timezone
+from apps.uploads.media_serializer import MediaItemSerializer
+from apps.core.timezone_utils import get_madrid_timezone
 
 from .models import RefugeAmenities, RefugeType
 CONDITION_VALUES = (0, 1, 2, 3)

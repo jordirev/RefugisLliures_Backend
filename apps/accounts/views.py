@@ -2,7 +2,7 @@
 Vistes de `accounts`: usuaris i les seves llistes de preferits/visitats (PostgreSQL).
 
 Les vistes només validen l'entrada, criden els `selectors` (lectures) o els `services` (escriptures) i serialitzen.
-El context de RLS (`app.uid`, `app.is_admin`) el fixa el hook de `api/rls_hook.py` abans dels permisos.
+El context de RLS (`app.uid`, `app.is_admin`) el fixa el hook de `apps/core/rls_hook.py` abans dels permisos.
 Tot endpoint autenticat llevat de `POST /users/` exigeix `HasProfile` (403 `profile_required`).
 """
 import logging
@@ -16,9 +16,9 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from api.permissions import HasProfile, IsSameUser, coded_error
-from api.services import r2_media_service
-from api.utils.swagger_error_responses import (
+from apps.auth.permissions import HasProfile, IsSameUser, coded_error
+from apps.uploads import r2_media_service
+from apps.core.swagger.error_responses import (
     ERROR_400_INVALID_DATA,
     ERROR_401_UNAUTHORIZED,
     ERROR_403_FORBIDDEN,
@@ -30,7 +30,7 @@ from api.utils.swagger_error_responses import (
     ERROR_500_INTERNAL_ERROR,
     SUCCESS_204_NO_CONTENT,
 )
-from api.utils.swagger_examples import (
+from apps.core.swagger.examples import (
     EXAMPLE_AGE_CONFIRMATION_REQUEST,
     EXAMPLE_USER_BASIC,
     EXAMPLE_USER_CREATE_REQUEST,
@@ -199,7 +199,7 @@ class UserDetailAPIView(APIView):
         return response
 
     def skip_rls_hook(self, request):
-        """El DELETE no té transacció de petició: `delete_user` fixa el seu propi context de RLS (vegeu `api/rls_hook.py`)."""
+        """El DELETE no té transacció de petició: `delete_user` fixa el seu propi context de RLS (vegeu `apps/core/rls_hook.py`)."""
         return request.method == 'DELETE'
 
     def get_permissions(self):

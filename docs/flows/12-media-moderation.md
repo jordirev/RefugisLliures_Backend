@@ -109,7 +109,7 @@ sequenceDiagram
 - Coincidència (`apps.moderation.services.register_upload_block`, una transacció): el fitxer **no** es publica; l'original es mou a `moderation-hold/<upload_id>` (**sense l'UID**, D41: l'autor ja és a `media_creator_uid`), `is_blocked = true`, denúncia automàtica `child_sexual_abuse` `priority=high` `source=automatic` `legal_hold`, avís `account_blocked` i dues entrades d'auditoria `legal_hold`. L'admin no rep previsualització de l'evidència.
 - Futur (domini propi a Cloudflare + CSAM Scanning Tool + PhotoDNA/NCMEC): [guides/cloudflare-domain-csam.md](../guides/cloudflare-domain-csam.md).
 
-## Permisos (`api/permissions.py`)
+## Permisos (`apps/auth/permissions.py`)
 - `HasProfile` (chunk 3): 403 `profile_required` si no hi ha fila a `users.users`. S'aplica a tot endpoint autenticat llevat de `POST /users/`; va **abans** d'`IsNotBlocked`/`IsAgeConfirmed`.
 - `IsNotBlocked`: 403 `user_blocked` si `users.users.is_blocked`. S'aplica a intents/confirm, denúncies i POST/PATCH/DELETE d'experiències.
 - `IsAgeConfirmed`: 403 `age_not_confirmed` si no hi ha `age_confirmed_at`. Com que `HasProfile` ja ha exigit la fila, el cas «usuari inexistent» només es veu aquí si algú crida el permís sense `HasProfile`.
@@ -118,7 +118,7 @@ sequenceDiagram
 
 ## Edat
 - `POST /api/users/` amb `birth_date`: < 16 → 403 `underage` i **no** es crea l'usuari; ≥ 16 → `age_confirmed_at` + `age_threshold=16` (`services.create_user`); data futura o anterior a 1900 → 400. Sense `birth_date` (p. ex. Google) l'usuari es crea amb `age_confirmed=false` i l'app mostra la pantalla d'edat.
-- `PATCH /api/users/{uid}/age-confirmation/` (`services.confirm_age`, respon 200 amb el perfil propi): mateixa regla. El càlcul (`api/utils/age_utils.py`) usa la data d'avui a Europe/Madrid. La data de naixement no es desa ni es registra a l'auditoria.
+- `PATCH /api/users/{uid}/age-confirmation/` (`services.confirm_age`, respon 200 amb el perfil propi): mateixa regla. El càlcul (`apps/core/age_utils.py`) usa la data d'avui a Europe/Madrid. La data de naixement no es desa ni es registra a l'auditoria.
 
 ## Auditoria (`apps/audit/services.py`)
 Accions: `media.upload_intent`, `media.upload_confirm`, `avatar.upload`, `media.delete`, `media.list`, `media.report`, `moderation.auto_hide`, `moderation.hash_block`, `moderation.user_blocked`, `moderation.resolve`, `moderation.reports_list`, `user.age_confirmed`.

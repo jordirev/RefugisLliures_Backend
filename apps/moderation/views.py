@@ -7,7 +7,7 @@ PATCH /api/admin/media-reports/{id}/             IsAuthenticated + HasProfile + 
 GET   /api/users/{uid}/moderation-notices/       IsAuthenticated + HasProfile + IsSameUser (només el mateix usuari, D41)
 
 Les vistes només validen l'entrada, criden `selectors.x(...)` / `services.x(...)` com a atributs de mòdul i serialitzen
-(el context de RLS el fixa el hook de `api/rls_hook.py`). Ordre: permisos -> validació (400) -> existència (404) -> estat
+(el context de RLS el fixa el hook de `apps/core/rls_hook.py`). Ordre: permisos -> validació (400) -> existència (404) -> estat
 (403/409). Els 500 porten `{error, error_id}` (`server_error`), mai el text de l'excepció.
 """
 import json
@@ -20,13 +20,13 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from api.permissions import HasProfile, IsAgeConfirmed, IsFirebaseAdmin, IsNotBlocked, IsSameUser, coded_error
-from api.services import r2_media_service
-from api.utils.swagger_error_responses import (
+from apps.auth.permissions import HasProfile, IsAgeConfirmed, IsFirebaseAdmin, IsNotBlocked, IsSameUser, coded_error
+from apps.uploads import r2_media_service
+from apps.core.swagger.error_responses import (
     ERROR_400_INVALID_DATA, ERROR_401_UNAUTHORIZED, ERROR_403_ADMIN_ONLY, ERROR_403_FORBIDDEN,
     ERROR_403_REPORT_FORBIDDEN, ERROR_404_MEDIA_NOT_FOUND, ERROR_404_REPORT_NOT_FOUND, ERROR_409_ALREADY_REPORTED,
     ERROR_409_ALREADY_RESOLVED, ERROR_500_INTERNAL_ERROR)
-from api.utils.swagger_examples import (
+from apps.core.swagger.examples import (
     EXAMPLE_ADMIN_MEDIA_REPORT_RESOLVE_REQUEST, EXAMPLE_ADMIN_MEDIA_REPORT_RESOLVE_RESPONSE,
     EXAMPLE_ADMIN_MEDIA_REPORTS_LIST, EXAMPLE_MEDIA_REPORT_REQUEST, EXAMPLE_MEDIA_REPORT_RESPONSE,
     EXAMPLE_MODERATION_NOTICES)

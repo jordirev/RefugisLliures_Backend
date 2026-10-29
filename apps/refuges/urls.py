@@ -1,4 +1,4 @@
-"""Rutes de `refuges`: s'inclouen des d'`api/urls.py` sota `refuges/` (mateixos paths i `name=` d'abans)."""
+"""Rutes de `refuges`: s'inclouen des de `refugis_lliures/urls.py` sota `refuges/` (mateixos paths i `name=` d'abans)."""
 from django.urls import path
 
 from . import views

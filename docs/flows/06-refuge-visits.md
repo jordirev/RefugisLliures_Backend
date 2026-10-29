@@ -7,7 +7,7 @@
 Un usuari indica que anirà a un refugi en una data (amb `num_visitors`). Cada nit, un procés converteix les visites d'ahir en «refugis visitats» (`users.user_visited_refuges`) i purga les antigues.
 
 ## Endpoints (`apps/visits/urls.py`, `apps/visits/views.py`)
-S'inclouen des d'`api/urls.py` a l'arrel de l'API (`path('', include('apps.visits.urls'))`), amb els mateixos paths i `name=` d'abans **[FET]**.
+S'inclouen des d'`refugis_lliures/urls.py` a l'arrel de l'API (`path('', include('apps.visits.urls'))`), amb els mateixos paths i `name=` d'abans **[FET]**.
 
 | Mètode | URL | Vista | Permisos | Body |
 |---|---|---|---|---|

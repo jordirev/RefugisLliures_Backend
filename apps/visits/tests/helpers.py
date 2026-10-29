@@ -51,7 +51,7 @@ def visit_selectors():
 # ---------- Dates (sempre l'avui de Madrid, mai el de la BD ni el d'UTC) ----------
 
 def today():
-    from api.utils.timezone_utils import get_madrid_today
+    from apps.core.timezone_utils import get_madrid_today
     return get_madrid_today()
 
 

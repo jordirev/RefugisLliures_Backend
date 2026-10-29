@@ -17,9 +17,9 @@ from django.db.models.functions import Now
 from firebase_admin import auth as firebase_auth
 
 from apps.audit import services as audit
-from api.services import r2_media_service
-from api.utils.age_utils import is_old_enough
-from api.utils.timezone_utils import get_madrid_timezone
+from apps.uploads import r2_media_service
+from apps.core.age_utils import is_old_enough
+from apps.core.timezone_utils import get_madrid_timezone
 from apps.core.rls import rls_context, system_context
 from apps.experiences.models import Experience
 from apps.refuges import selectors as refuge_selectors

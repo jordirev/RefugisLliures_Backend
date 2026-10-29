@@ -2,7 +2,7 @@
 Vistes de `proposals`: crear, llistar, aprovar i rebutjar propostes de canvi de refugis.
 
 Les vistes només validen l'entrada, criden els `selectors` (lectures) o els `services` (escriptures) com a atributs de
-mòdul i serialitzen. El context de RLS el fixa el hook de `api/rls_hook.py`.
+mòdul i serialitzen. El context de RLS el fixa el hook de `apps/core/rls_hook.py`.
 
 Permisos (decisió del PO, 26/10): crear exigeix `IsAuthenticated, HasProfile, IsNotBlocked, IsAgeConfirmed` (escriptura de
 contingut); llistar tot, aprovar i rebutjar, `IsAuthenticated, HasProfile, IsFirebaseAdmin` (un admin pot aprovar la seva);
@@ -19,8 +19,8 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from api.permissions import HasProfile, IsAgeConfirmed, IsFirebaseAdmin, IsNotBlocked
-from api.utils.swagger_error_responses import (
+from apps.auth.permissions import HasProfile, IsAgeConfirmed, IsFirebaseAdmin, IsNotBlocked
+from apps.core.swagger.error_responses import (
     ERROR_400_INVALID_PARAMS,
     ERROR_401_UNAUTHORIZED,
     ERROR_403_FORBIDDEN,
@@ -28,7 +28,7 @@ from api.utils.swagger_error_responses import (
     ERROR_409_PROPOSAL_ALREADY_REVIEWED,
     ERROR_500_INTERNAL_ERROR,
 )
-from api.utils.swagger_examples import (
+from apps.core.swagger.examples import (
     EXAMPLE_REFUGE_PROPOSAL_RESPONSE,
     EXAMPLE_REFUGE_PROPOSALS_LIST,
 )

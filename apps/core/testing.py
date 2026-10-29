@@ -1,4 +1,4 @@
-"""Ajudes de test compartides pels dos arbres de tests (`api/tests` i `apps/*/tests`)."""
+"""Ajudes de test compartides pels tests (`apps/*/tests`)."""
 
 
 def fetch_all(conn, sql, params=None):
