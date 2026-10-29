@@ -52,7 +52,6 @@ VIDEO_MAX_BYTES = 50 * MB
 
 MEDIA_TYPE_IMAGE = 'image'
 MEDIA_TYPE_VIDEO = 'video'
-VIDEO_EXTENSIONS = ('.mp4', '.mov', '.webm', '.avi', '.m4v')
 
 ALLOWED_IMAGE_CONTENT_TYPES = ('image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif')
 ALLOWED_VIDEO_CONTENT_TYPES = ('video/mp4', 'video/quicktime', 'video/webm')
@@ -137,18 +136,6 @@ def kind_for_content_type(content_type: Optional[str]) -> Optional[str]:
     if ct in ALLOWED_VIDEO_CONTENT_TYPES:
         return MEDIA_TYPE_VIDEO
     return None
-
-
-def infer_media_type(key: Optional[str], content_type: Optional[str] = None) -> str:
-    """Infereix 'image' o 'video' a partir del content type o de l'extensió de la clau (per defecte 'image')."""
-    if content_type:
-        if content_type.startswith('video/'):
-            return MEDIA_TYPE_VIDEO
-        if content_type.startswith('image/'):
-            return MEDIA_TYPE_IMAGE
-    if key and key.lower().endswith(VIDEO_EXTENSIONS):
-        return MEDIA_TYPE_VIDEO
-    return MEDIA_TYPE_IMAGE
 
 
 def max_bytes_for_kind(kind: str) -> int:

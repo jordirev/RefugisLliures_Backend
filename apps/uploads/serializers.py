@@ -9,8 +9,8 @@ Serializers d'`uploads`: intents de pujada directa i confirmació (contracte JSO
 from rest_framework import serializers
 
 from apps.uploads.media.image_processing_service import (
-    ALLOWED_IMAGE_CONTENT_TYPES, ALLOWED_VIDEO_CONTENT_TYPES, FAILURE_REASONS, infer_media_type,
-    kind_for_content_type, max_bytes_for_kind, normalize_content_type)
+    ALLOWED_IMAGE_CONTENT_TYPES, ALLOWED_VIDEO_CONTENT_TYPES, FAILURE_REASONS, kind_for_content_type,
+    max_bytes_for_kind, normalize_content_type)
 
 from .models import UploadTarget
 
@@ -41,8 +41,6 @@ class MediaItemSerializer(serializers.Serializer):
             data['thumb_url'] = data.get('url')
         for field_name in ('width', 'height', 'blurhash', 'taken_at', 'experience_id', 'media_type'):
             data.setdefault(field_name, None)
-        if data.get('media_type') is None:
-            data['media_type'] = infer_media_type(data.get('key'))
         return data
 
 
