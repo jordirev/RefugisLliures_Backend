@@ -1230,7 +1230,7 @@ Els **catàlegs oberts** (idiomes i tipus de refugi) són **taules amb FK** (§2
 | *(catàleg `users.languages`)* | `users.language` (FK) | `ca`, `es`, `en`, `fr` (files inicials) | `UserValidatorMixin.VALID_LANGUAGES` |
 | *(catàleg `refuges.refuge_types`)* | `refuges.type` (FK), `payload.type` (validat pel serializer contra la taula) | `non gardé`, `fermée`, `cabane ouverte mais ocupee par le berger l ete`, `orri`, `emergence`, `key_needed` | `VALID_TYPES` / `ALLOWED_REFUGE_TYPES` (el JSON només porta els 4 primers). Equivalència amb l'UML: `non gardé` = *No guardat*, `fermée` = *Tancat*, `cabane ouverte…` = *Ocupat als estius per pastor*, `orri` = *Orri*, `emergence` = *Emergència*; `key_needed` (refugi amb clau) **no és a l'UML** |
 | (smallint) `condition` | `experiences.condition`; `refuges.condition` (double) | `0` pobre, `1` correcte, `2` bé, `3` excel·lent | `ConditionService.validate_condition_value` |
-| `MediaStatus` | `refuge_media.status` | `visible`, `hidden_pending_review`, `removed` | `media_metadata.MEDIA_STATUSES` |
+| `MediaStatus` | `refuge_media.status` | `visible`, `hidden_pending_review`, `removed` | `media_metadata.MEDIA_STATUSES` (eliminat; ara només el `CHECK` de la BD) |
 | `MediaType` | `refuge_media.media_type` | `image`, `video` | `MEDIA_TYPE_*` |
 | `ProposalAction` | `refuge_proposals.action` | `create`, `update`, `delete` | `RefugeProposalCreateSerializer` |
 | `ProposalStatus` | `refuge_proposals.status` | `pending`, `approved`, `rejected` | `RefugeProposalController.list_proposals` |

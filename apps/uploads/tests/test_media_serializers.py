@@ -3,7 +3,6 @@ Tests del serializer de mitjans (MediaItem)
 """
 import pytest
 
-from apps.uploads.media_metadata import MediaMetadata
 from apps.uploads.media_serializer import MediaItemSerializer
 from apps.refuges.serializers import RefugiSerializer
 
@@ -19,10 +18,10 @@ class TestMediaItemSerializer:
         assert data['thumb_url'] == 'https://u' and data['media_type'] == 'video'
         assert data['width'] is None and data['taken_at'] is None and data['experience_id'] is None
 
-    def test_model_instance(self):
-        item = MediaMetadata(key='k.webp', url='u', thumb_url='t', media_type='image', width=1, height=2,
-                             blurhash='b', creator_uid='c', uploaded_at='x', taken_at='y', experience_id='e')
-        assert MediaItemSerializer(item).data == item.to_dict()
+    def test_full_dict_roundtrip(self):
+        item = {'key': 'k.webp', 'url': 'u', 'thumb_url': 't', 'media_type': 'image', 'width': 1, 'height': 2,
+                'blurhash': 'b', 'creator_uid': 'c', 'uploaded_at': 'x', 'taken_at': 'y', 'experience_id': 'e'}
+        assert dict(MediaItemSerializer(item).data) == item
 
     def test_refuge_detail_images_metadata_shape(self):
         refugi = {'id': 'r', 'name': 'n', 'coord': {'long': 1.0, 'lat': 2.0}, 'info_comp': {},

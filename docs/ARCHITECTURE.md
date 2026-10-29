@@ -136,7 +136,7 @@ Detall amb diagrames i motivació: [design/patterns.md](design/patterns.md).
 |---|---|
 | Cerca de refugis | una sola consulta SQL (`apps/refuges/selectors.py: search_queryset`), sense estratègies |
 | Aprovació de propostes | `apps/proposals/services.py: approve_proposal`: una transacció amb bloqueig `FOR UPDATE` i `_apply_create/_apply_update/_apply_delete` (les estratègies de Firestore han desaparegut al chunk 8) |
-| Strategy (paths R2) | `RefugiMediaStrategy`, `UserAvatarStrategy` (`apps/uploads/r2_media_service.py:44-145`) |
+| Strategy (paths R2) | `RefugiMediaStrategy`, `UserAvatarStrategy` (`apps/uploads/r2_media_service.py`) |
 | Llistes d'usuari (preferits/visitats) | `_UserRefugeList` abstracta amb PK composta + funcions `_add`/`_remove` compartides (`apps/accounts/models.py`, `services.py`); el Template method d'`UserController` ha desaparegut |
 
 ## 8. Convencions

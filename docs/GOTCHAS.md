@@ -44,7 +44,7 @@
 22. `R2MediaService.delete_file` **retorna `False`, no llança**, en cas de `ClientError`. Comprova el booleà; un `try/except` al voltant no detectarà la fallada.
 23. El processament (`confirm`) és síncron: amb 1 worker gunicorn, molts vídeos de 50 MB a la vegada poden acostar-se al timeout **[INFERÈNCIA]**.
 23b. Per escriure una entrada de `media_metadata` usa `FieldPath('media_metadata', key).to_api_repr()` (les claus porten `/`, `.` i `-`) o `DELETE_FIELD` per esborrar-la; mai reescriguis el map sencer **[FET]**.
-23c. Els mitjans tenen `status` (`visible | hidden_pending_review | removed`): qualsevol lectura nova de `media_metadata` cap a l'API ha de filtrar amb `MediaMetadata.is_visible_to(viewer_uid, is_admin)` **[FET]**.
+23c. Els mitjans tenen `status` (`visible | hidden_pending_review | removed`) a `refuges.refuge_media`: qualsevol lectura nova cap a l'API ha de filtrar-lo al selector/SQL (`MediaMetadata.is_visible_to` i les constants `MEDIA_STATUS_*` van desaparèixer amb el codi mort de Firestore) **[FET]**.
 23d. `audit_logs.expire_at` és un **datetime** (Timestamp), no un string ISO: la TTL de Firestore només funciona amb Timestamps. (`upload_intents.expire_at` ja és una columna `timestamptz` de PostgreSQL des del chunk 7: el TTL és el job `purge_upload_intents`, GOTCHAS #74.) **[FET]**
 23e. **Mai** desis la data de naixement: només `age_confirmed_at` i `age_threshold` (minimització) **[FET]**.
 24. No desis URLs a Firestore: es desa la **clau** i la URL presignada (1 h) es genera en llegir (`apps/uploads/r2_media_service.py:228-251`).

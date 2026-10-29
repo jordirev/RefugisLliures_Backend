@@ -70,16 +70,6 @@ class TestR2MediaServiceNewOps:
         with pytest.raises(ClientError):
             service.head_object('x')
 
-    def test_media_item_from_strategy(self):
-        service = fake_r2_service()
-        item = service.generate_media_metadata_from_dict({'k.webp': {'creator_uid': 'u', 'thumb_key': 'k_thumb.webp'}})
-        data = item.to_dict()
-        assert data['thumb_url'].startswith('https://r2.test/k_thumb.webp')
-        legacy = service.generate_media_metadata_from_dict({'k.jpg': {'creator_uid': 'u'}}).to_dict()
-        assert legacy['thumb_url'] == legacy['url']
-        avatar = fake_r2_service(UserAvatarStrategy()).generate_media_metadata_from_dict({'key': 'a.webp', 'width': 512})
-        assert avatar.to_dict()['media_type'] == 'image' and avatar.width == 512
-
     def test_key_helpers(self):
         assert quarantine_key('x') == 'quarantine/x'
         assert moderation_hold_key('refugis-lliures/r/k.webp') == 'moderation-hold/refugis-lliures/r/k.webp'

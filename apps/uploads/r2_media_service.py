@@ -10,7 +10,6 @@ from urllib.parse import urlparse, unquote
 from datetime import datetime
 from botocore.exceptions import ClientError
 from .r2_config import get_r2_client, get_r2_bucket_name, get_r2_endpoint
-from .media_metadata import MediaMetadata, RefugeMediaMetadata
 
 logger = logging.getLogger(__name__)
 
@@ -32,11 +31,6 @@ class MediaPathStrategy(ABC):
     @abstractmethod
     def validate_file(self, content_type: str) -> bool:
         """Valida si el content type és permès."""
-        pass
-
-    @abstractmethod
-    def generate_media_metadata_from_dict(self, metadata_dict: Dict[str, str], service, expiration: int = 3600) -> MediaMetadata:
-        """Genera un objecte MediaMetadata amb URL prefirmada a partir d'un diccionari de metadades."""
         pass
 
 
@@ -70,27 +64,6 @@ class RefugiMediaStrategy(MediaPathStrategy):
     
     def validate_file(self, content_type: str) -> bool:
         return content_type in self.get_allowed_content_types()
-    
-    def generate_media_metadata_from_dict(self, metadata_dict: Dict[str, str], service, expiration: int = 3600) -> MediaMetadata:
-        """
-        Genera un objecte MediaMetadata amb URL prefirmada a partir d'un diccionari de metadades.
-        Per a mitjans de refugi.
-
-        Args:
-            metadata_dict: Diccionari amb keys: {'key': {'creator_uid':, 'uploaded_at': }}
-            service: Instància de R2MediaService per generar URLs
-            expiration: Temps d'expiració de la URL en segons
-        
-        Returns:
-            Objecte MediaMetadata amb URL prefirmada
-        """
-        key = next(iter(metadata_dict)) if metadata_dict else ''
-        key_dict = (metadata_dict[key] or {}) if key else {}
-        url = service.generate_presigned_url(key, expiration) if key else ''
-        thumb_key = key_dict.get('thumb_key')
-        thumb_url = service.generate_presigned_url(thumb_key, expiration) if thumb_key else url
-        
-        return RefugeMediaMetadata.from_stored(key, key_dict, url, thumb_url)
 
 
 class UserAvatarStrategy(MediaPathStrategy):
@@ -116,29 +89,6 @@ class UserAvatarStrategy(MediaPathStrategy):
     
     def validate_file(self, content_type: str) -> bool:
         return content_type in self.get_allowed_content_types()
-    
-    def generate_media_metadata_from_dict(self, metadata_dict: Dict[str, str], service, expiration: int = 3600) -> MediaMetadata:
-        """
-        Genera un objecte MediaMetadata amb URL prefirmada a partir d'un diccionari de metadades.
-        Per a l'avatar d'usuari.
-
-        Args:
-            metadata_dict: Diccionari amb keys: {'key': , 'uploaded_at': }
-            service: Instància de R2MediaService per generar URLs
-            expiration: Temps d'expiració de la URL en segons
-        
-        Returns:
-            Objecte MediaMetadata amb URL prefirmada
-        """
-        key = metadata_dict.get('key', '')
-        url = service.generate_presigned_url(key, expiration) if key else ''
-        thumb_key = metadata_dict.get('thumb_key')
-        thumb_url = service.generate_presigned_url(thumb_key, expiration) if thumb_key else url
-        
-        item = MediaMetadata.from_stored(key, metadata_dict, url, thumb_url)
-        item.media_type = 'image'
-        item.experience_id = None
-        return item
 
 
 class R2MediaService:
@@ -265,55 +215,6 @@ class R2MediaService:
             except Exception as e:
                 logger.warning(f"No s'ha pogut generar URL per {key}: {str(e)}")
         return urls
-    
-    def generate_media_metadata_from_dict(self, metadata_dict: Dict[str, str], expiration: int = 3600) -> MediaMetadata:
-        """
-        Genera un objecte MediaMetadata amb URL prefirmada a partir d'un diccionari de metadades.
-        
-        Args:
-            metadata_dict: Diccionari amb keys: 'key', 'creator_uid', 'uploaded_at'
-            expiration: Temps d'expiració de la URL en segons
-        
-        Returns:
-            Objecte MediaMetadata amb URL prefirmada segons si es Refugi o Avatar (sense creator_uid)
-        """
-        return self.strategy.generate_media_metadata_from_dict(metadata_dict, self, expiration)
-    
-    def generate_media_metadata_list(self, metadata_input, expiration: int = 3600) -> List[MediaMetadata]:
-        """
-        Genera una llista d'objectes MediaMetadata amb URLs prefirmades.
-        Accepta tant diccionari com llista per compatibilitat.
-        
-        Args:
-            metadata_input: Diccionari o llista de diccionaris amb metadades
-            expiration: Temps d'expiració de les URLs en segons
-        
-        Returns:
-            Llista d'objectes MediaMetadata
-        """
-        result = []
-        
-        # Si és un diccionari (nova estructura), processar les entrades
-        if isinstance(metadata_input, dict):
-            for key, metadata in metadata_input.items():
-                try:
-                    # Crear diccionari amb key i metadata
-                    single_key_dict = {key: metadata}
-                    media_metadata = self.strategy.generate_media_metadata_from_dict(single_key_dict, self, expiration)
-                    result.append(media_metadata)
-                except Exception as e:
-                    logger.warning(f"No s'ha pogut generar MediaMetadata per {key}: {str(e)}")
-        
-        # Si és una llista (estructura antiga), processar com abans
-        elif isinstance(metadata_input, list):
-            for metadata_dict in metadata_input:
-                try:
-                    media_metadata = self.generate_media_metadata_from_dict(metadata_dict, expiration)
-                    result.append(media_metadata)
-                except Exception as e:
-                    logger.warning(f"No s'ha pogut generar MediaMetadata per {metadata_dict.get('key', 'unknown')}: {str(e)}")
-        
-        return result
     
     def delete_file(self, key: str) -> bool:
         """
