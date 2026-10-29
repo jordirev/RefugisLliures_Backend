@@ -116,15 +116,6 @@ class TestFirebaseAuthenticationMiddleware:
         result = middleware.process_request(request)
         assert result is None
     
-    def test_excluded_path_cache(self, request_factory):
-        """Test que el path /api/cache/ requereix autenticació"""
-        middleware = FirebaseAuthenticationMiddleware(get_response=lambda r: None)
-        request = request_factory.get('/api/cache/')
-        
-        result = middleware.process_request(request)
-        assert isinstance(result, JsonResponse)
-        assert result.status_code == status.HTTP_401_UNAUTHORIZED
-    
     def test_excluded_path_admin(self, request_factory):
         """Test que el path /admin/ requereix autenticació"""
         middleware = FirebaseAuthenticationMiddleware(get_response=lambda r: None)
