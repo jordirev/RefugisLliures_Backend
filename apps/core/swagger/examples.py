@@ -147,50 +147,6 @@ EXAMPLE_REFUGI_RESTANCA = {
     'condition': 2
 }
 
-EXAMPLE_REFUGI_INFO_COLOMERS = {
-    'id': 'refugi_1',
-    'name': 'Refugi de Colomers',
-    'region': 'Val d\'Aran',
-    'places': 40,
-    'coord': {
-        'long': 0.9833,
-        'lat': 42.6667
-    }
-}
-
-EXAMPLE_REFUGI_INFO_VENTOSA = {
-    'id': 'refugi_2',
-    'name': 'Refugi de Ventosa i Calvell',
-    'region': 'Pallars Sobirà',
-    'places': 30,
-    'coord': {
-        'long': 1.1500,
-        'lat': 42.5833
-    }
-}
-
-EXAMPLE_REFUGI_INFO_RESTANCA = {
-    'id': 'refugi_3',
-    'name': 'Refugi de Restanca',
-    'region': 'Val d\'Aran',
-    'places': 36,
-    'coord': {
-        'long': 0.8167,
-        'lat': 42.6500
-    }
-}
-
-EXAMPLE_REFUGI_INFO_SABOREDO = {
-    'id': 'refugi_5',
-    'name': 'Refugi de Saboredo',
-    'region': 'Val d\'Aran',
-    'places': 80,
-    'coord': {
-        'long': 0.9500,
-        'lat': 42.6333
-    }
-}
-
 # ========== EXEMPLES DE RENOVATIONS ==========
 
 EXAMPLE_RENOVATION_1 = {
@@ -279,72 +235,7 @@ EXAMPLE_USER_UPDATE_REQUEST = {
     'language': 'es'
 }
 
-EXAMPLE_USER_REFUGI_REQUEST = {
-    'refuge_id': 'refugi_restanca'
-}
-
-EXAMPLE_USER_REFUGI_VISITED_REQUEST = {
-    'refuge_id': 'refugi_saboredo'
-}
-
-EXAMPLE_RENOVATION_CREATE_REQUEST = {
-    'refuge_id': 'refugi_ventosa',
-    'ini_date': '2025-12-01',
-    'fin_date': '2025-12-10',
-    'description': 'Renovació completa de la cuina i instal·lació d\'estanteries',
-    'materials_needed': 'Fusta, claus, estanteries, eines diverses',
-    'group_link': 'https://wa.me/group/def789'
-}
-
-EXAMPLE_RENOVATION_UPDATE_REQUEST = {
-    'ini_date': '2025-12-16',
-    'fin_date': '2025-12-22',
-    'description': 'Reparació del sostre, millora de l\'aïllament i pintura interior',
-    'materials_needed': 'Teules, aïllant tèrmic, cargols, pintura'
-}
-
 # ========== EXEMPLES DE RESPOSTES COMPOSTES ==========
-
-EXAMPLE_USER_REFUGI_INFO_RESPONSE_2 = {
-    'count': 2,
-    'results': [
-        EXAMPLE_REFUGI_INFO_COLOMERS,
-        EXAMPLE_REFUGI_INFO_VENTOSA
-    ]
-}
-
-EXAMPLE_USER_REFUGI_INFO_RESPONSE_3 = {
-    'count': 3,
-    'results': [
-        EXAMPLE_REFUGI_INFO_COLOMERS,
-        EXAMPLE_REFUGI_INFO_VENTOSA,
-        EXAMPLE_REFUGI_INFO_RESTANCA
-    ]
-}
-
-EXAMPLE_USER_REFUGI_INFO_RESPONSE_1 = {
-    'count': 1,
-    'results': [
-        EXAMPLE_REFUGI_INFO_COLOMERS
-    ]
-}
-
-EXAMPLE_USER_VISITED_REFUGI_INFO_RESPONSE_2 = {
-    'count': 2,
-    'results': [
-        EXAMPLE_REFUGI_INFO_COLOMERS,
-        EXAMPLE_REFUGI_INFO_RESTANCA
-    ]
-}
-
-EXAMPLE_USER_VISITED_REFUGI_INFO_RESPONSE_3 = {
-    'count': 3,
-    'results': [
-        EXAMPLE_REFUGI_INFO_COLOMERS,
-        EXAMPLE_REFUGI_INFO_RESTANCA,
-        EXAMPLE_REFUGI_INFO_SABOREDO
-    ]
-}
 
 EXAMPLE_REFUGI_SEARCH_RESPONSE = {
     'count': 2,
@@ -553,58 +444,6 @@ EXAMPLE_AGE_CONFIRMATION_REQUEST = {
 
 # ========== EXEMPLES DE PROPOSTES DE REFUGIS ==========
 
-EXAMPLE_REFUGE_PROPOSAL_CREATE = {
-    'action': 'create',
-    'payload': {
-        'name': 'Refugi Nou de Prova',
-        'coord': {
-            'long': 1.234,
-            'lat': 42.567
-        },
-        'altitude': 1800,
-        'places': 15,
-        'remarque': 'Refugi en bon estat',
-        'info_comp': {
-            'manque_un_mur': 0,
-            'cheminee': 1,
-            'poele': 0,
-            'couvertures': 1,
-            'latrines': 1,
-            'bois': 1,
-            'eau': 1,
-            'matelas': 0,
-            'couchage': 1,
-            'bas_flancs': 0,
-            'lits': 1,
-            'mezzanine_etage': 0
-        },
-        'description': 'Refugi de muntanya amb bones condicions',
-        'links': [],
-        'type': 'non gardé',
-        'region': 'Pirineus',
-        'departement': 'Lleida',
-        'condition': 2
-    },
-    'comment': 'He visitat aquest refugi recentment i crec que hauria d\'estar a la base de dades'
-}
-
-EXAMPLE_REFUGE_PROPOSAL_UPDATE = {
-    'refuge_id': 'refugi_colomers',
-    'action': 'update',
-    'payload': {
-        'places': 45,
-        'remarque': 'Refugi guardat a la Vall d\'Aran - Actualització de capacitat',
-        'description': 'Refugi molt ben equipat amb vistes espectaculars. Recentment ampliat.'
-    },
-    'comment': 'He estat al refugi aquest mes i han ampliat la capacitat'
-}
-
-EXAMPLE_REFUGE_PROPOSAL_DELETE = {
-    'refuge_id': 'refugi_antiga',
-    'action': 'delete',
-    'comment': 'Aquest refugi ja no existeix, va ser destruït per una allau'
-}
-
 EXAMPLE_REFUGE_PROPOSAL_RESPONSE = {
     'id': 'proposal_abc123',
     'refuge_id': None,
@@ -730,14 +569,6 @@ EXAMPLE_ANSWER_DETAIL = {
     'parent_answer_id': None
 }
 
-EXAMPLE_ANSWER_REPLY = {
-    'id': 'answer_def456',
-    'creator_uid': 'uid_789ghi',
-    'message': 'Gràcies per la informació! És potable tot l\'any?',
-    'created_at': '2025-12-20T11:15:00+01:00',
-    'parent_answer_id': 'answer_abc123'
-}
-
 EXAMPLE_DOUBT_DETAIL = {
     'id': 'doubt_123abc',
     'refuge_id': 'refugi_colomers',
@@ -746,38 +577,6 @@ EXAMPLE_DOUBT_DETAIL = {
     'created_at': '2025-12-20T09:45:00+01:00',
     'answers_count': 0,
     'answers': []
-}
-
-EXAMPLE_DOUBT_WITH_ANSWERS = {
-    'id': 'doubt_456def',
-    'refuge_id': 'refugi_colomers',
-    'creator_uid': 'uid_123abc',
-    'message': 'Quin és l\'estat de les cobertes actualmente?',
-    'created_at': '2025-12-19T14:20:00+01:00',
-    'answers_count': 3,
-    'answers': [
-        {
-            'id': 'answer_ghi789',
-            'creator_uid': 'uid_456def',
-            'message': 'Hi ha suficients cobertes, però estan una mica desgastades.',
-            'created_at': '2025-12-19T15:10:00+01:00',
-            'parent_answer_id': None
-        },
-        {
-            'id': 'answer_jkl012',
-            'creator_uid': 'uid_789ghi',
-            'message': 'Jo hi vaig anar la setmana passada i n\'hi havia unes 20.',
-            'created_at': '2025-12-19T16:30:00+01:00',
-            'parent_answer_id': None
-        },
-        {
-            'id': 'answer_mno345',
-            'creator_uid': 'uid_123abc',
-            'message': 'Perfecte, gràcies a tots per la informació!',
-            'created_at': '2025-12-19T17:00:00+01:00',
-            'parent_answer_id': 'answer_ghi789'
-        }
-    ]
 }
 
 EXAMPLE_DOUBT_LIST = [

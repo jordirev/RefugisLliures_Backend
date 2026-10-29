@@ -7,7 +7,7 @@ Emmagatzema fotos/vídeos de refugis i avatars d'usuari. Bucket **privat**: l'ac
 ## Fitxers
 | Fitxer | Rol |
 |---|---|
-| `apps/uploads/r2_config.py` | `get_r2_client()` (boto3 `s3`, `region_name='auto'`, `signature_version='s3v4'`, `addressing_style='path'`), `get_r2_bucket_name()`, `get_r2_endpoint()` |
+| `apps/uploads/r2_config.py` | `get_r2_client()` (boto3 `s3`, `region_name='auto'`, `signature_version='s3v4'`, `addressing_style='path'`), `get_r2_bucket_name()` |
 | `apps/uploads/r2_media_service.py` | `R2MediaService` + estratègies de path + `quarantine_key()` / `moderation_hold_key()` |
 | `apps/uploads/image_processing_service.py` | Processament autoritatiu abans de publicar (vegeu [flux 3](../flows/03-refuge-media-upload.md)) |
 | `apps/uploads/media_metadata.py` | només `infer_media_type()` (la fa servir `MediaItemSerializer`); la forma **MediaItem** del contracte la defineix `apps/uploads/media_serializer.py`. Els antics `MediaMetadata`/`RefugeMediaMetadata` (Firestore) s'han eliminat |
@@ -52,7 +52,6 @@ La llista blanca **autoritativa** és la d'`image_processing_service` (imatges j
 | Mètode | Comportament |
 |---|---|
 | `__init__(strategy)` | crea client boto3 **a cada instància** |
-| `upload_file(file, entity_id, content_type, filename=None)` | valida MIME declarat, `put_object`; **la clau és sempre `uuid4()+ext`** (el `filename` s'ignora) |
 | `generate_presigned_url(key, expiration=3600)` | GET presignat |
 | `generate_presigned_put_url(key, content_type, content_length, expiration=600)` | PUT presignat amb `ContentType` i `ContentLength` signats (R2 rebutja un altre tipus o mida) |
 | `build_media_key(entity_id, ext, suffix='', media_id=None)` | clau UUID dins del path de l'estratègia |
@@ -61,7 +60,6 @@ La llista blanca **autoritativa** és la d'`image_processing_service` (imatges j
 | `copy_object(src, dst)` / `move_object(src, dst)` | retornen `bool` (no llancen) |
 | `delete_file(key)` | `delete_object`; **retorna False** en `ClientError` — els callers ho comproven |
 | `delete_files(keys)` | `{deleted, failed}` |
-| `list_files(entity_id)` | un sol `list_objects_v2` (màx. 1000 claus, sense paginació) |
 
 ## Fluxos que l'usen
 [Fotos de refugi](../flows/03-refuge-media-upload.md) · [Avatar](../flows/02-user-avatar.md) · [Experiències](../flows/08-experiences.md) · [Moderació](../flows/12-media-moderation.md) · esborrat d'usuari i de refugi.

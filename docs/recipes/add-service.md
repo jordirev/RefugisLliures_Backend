@@ -18,7 +18,7 @@
    - Llegeix les variables **dins de la funció/constructor**, no a nivell de mòdul, perquè els tests les puguin fixar abans (`apps/uploads/r2_config.py:9-11`).
    - Documenta el **nom** de la variable a `docs/integrations/` i a `render.yaml` (comentari). Mai valors.
 3. **Estat compartit**: evita singletons; si en cal un, que `__init__` no es re-executi (no hi posis inicialitzacions cares).
-4. **Errors**: decideix i documenta si el servei **llança** o **retorna False/None**. El codi actual barreja (`upload_file` llança, `delete_file` retorna False) i això ha trencat rollbacks ([TECH_DEBT A4](../TECH_DEBT.md)). Recomanació: llançar excepcions pròpies i que la vista les tradueixi.
+4. **Errors**: decideix i documenta si el servei **llança** o **retorna False/None**. El codi actual barreja (p. ex. `generate_presigned_url` llança, `delete_file` retorna False) i això ha trencat rollbacks ([TECH_DEBT A4](../TECH_DEBT.md)). Recomanació: llançar excepcions pròpies i que la vista les tradueixi.
 5. **Export**: cap (ja no hi ha `__init__.py` de re-exports; importa el mòdul directament).
 6. **Logging**: nivells estàndard; el logger `api` només mostra `WARNING`+ (`LOGGING['loggers']` a `refugis_lliures/settings.py`).
 7. **Creació mandrosa**: no construeixis clients externs (R2) en constructors si poden fallar per configuració; crea'ls sota demanda.

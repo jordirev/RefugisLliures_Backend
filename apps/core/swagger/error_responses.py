@@ -43,16 +43,6 @@ ERROR_SCHEMA_WITH_DETAILS = openapi.Schema(
     required=['error']
 )
 
-# Schema d'error amb camp "detail" addicional
-ERROR_SCHEMA_WITH_DETAIL = openapi.Schema(
-    type=openapi.TYPE_OBJECT,
-    properties={
-        'error': openapi.Schema(type=openapi.TYPE_STRING, description="Missatge d'error"),
-        'detail': openapi.Schema(type=openapi.TYPE_STRING, description="Informació tècnica addicional")
-    },
-    required=['error']
-)
-
 # Schema per a error 409 amb renovation solapada
 ERROR_SCHEMA_OVERLAP = openapi.Schema(
     type=openapi.TYPE_OBJECT,
@@ -80,18 +70,6 @@ ERROR_SCHEMA_OVERLAP = openapi.Schema(
     required=['error', 'overlapping_renovation']
 )
 
-# Schema per a health check unhealthy
-ERROR_SCHEMA_HEALTH = openapi.Schema(
-    type=openapi.TYPE_OBJECT,
-    properties={
-        'status': openapi.Schema(type=openapi.TYPE_STRING, enum=['healthy', 'unhealthy']),
-        'message': openapi.Schema(type=openapi.TYPE_STRING),
-        'firebase': openapi.Schema(type=openapi.TYPE_BOOLEAN)
-    },
-    required=['status', 'firebase']
-)
-
-
 # ========== ERRORS GENERALS ==========
 
 ERROR_400_INVALID_DATA = openapi.Response(
@@ -117,36 +95,6 @@ ERROR_400_INVALID_PARAMS = openapi.Response(
                 "altitude_min": ["altitude_min ha de ser un enter positiu"],
                 "places_max": ["places_max ha de ser menor o igual que places_min"]
             }
-        }
-    }
-)
-
-ERROR_400_MISSING_ID = openapi.Response(
-    description="ID requerit",
-    schema=ERROR_SCHEMA_SIMPLE,
-    examples={
-        "application/json": {
-            "error": "ID de renovation requerit"
-        }
-    }
-)
-
-ERROR_400_MISSING_PATTERN = openapi.Response(
-    description="Patró no proporcionat",
-    schema=ERROR_SCHEMA_SIMPLE,
-    examples={
-        "application/json": {
-            "error": "Patró no proporcionat"
-        }
-    }
-)
-
-ERROR_400_ALREADY_EXISTS = openapi.Response(
-    description="El recurs ja existeix",
-    schema=ERROR_SCHEMA_SIMPLE,
-    examples={
-        "application/json": {
-            "error": "El refugi ja és als preferits de l'usuari"
         }
     }
 )
@@ -323,63 +271,10 @@ ERROR_500_INTERNAL_ERROR = openapi.Response(
     }
 )
 
-ERROR_500_CACHE_ERROR = openapi.Response(
-    description="Error de cache",
-    schema=ERROR_SCHEMA_WITH_DETAIL,
-    examples={
-        "application/json": {
-            "error": "Error netejant la cache",
-            "detail": "Connection refused"
-        }
-    }
-)
-
-ERROR_503_SERVICE_UNAVAILABLE = openapi.Response(
-    description="Servei no disponible",
-    schema=ERROR_SCHEMA_HEALTH,
-    examples={
-        "application/json": {
-            "status": "unhealthy",
-            "message": "Error connecting to Firebase",
-            "firebase": False
-        }
-    }
-)
-
 # ========== RESPOSTES D'ÈXIT ESPECIALS ==========
 
 SUCCESS_204_NO_CONTENT = openapi.Response(
     description="Recurs eliminat correctament"
-)
-
-SUCCESS_200_CACHE_CLEARED = openapi.Response(
-    description="Cache netejada correctament",
-    schema=openapi.Schema(
-        type=openapi.TYPE_OBJECT,
-        properties={
-            'message': openapi.Schema(type=openapi.TYPE_STRING)
-        }
-    ),
-    examples={
-        "application/json": {
-            "message": "Cache netejada correctament"
-        }
-    }
-)
-
-SUCCESS_200_CACHE_INVALIDATED = openapi.Response(
-    description="Claus eliminades correctament",
-    schema=openapi.Schema(
-        type=openapi.TYPE_OBJECT,
-        properties={
-            'message': openapi.Schema(type=openapi.TYPE_STRING)
-        }
-    ),
-    examples={
-        "application/json": {
-            "message": "Claus amb patró \"refugi_*\" eliminades correctament"
-        }
-    }
 )
 
 # ========== ERRORS ESPECÍFICS DE MITJANS ==========
@@ -465,12 +360,6 @@ ERROR_403_REPORT_FORBIDDEN = openapi.Response(
     description="age_not_confirmed | user_blocked | own_media (l'autor no pot denunciar el seu mitjà)",
     schema=ERROR_SCHEMA_CODED,
     examples={"application/json": _coded('own_media', "No pots denunciar un contingut que has publicat tu")}
-)
-
-ERROR_403_NOT_OWNER = openapi.Response(
-    description="No ets el creador del recurs",
-    schema=ERROR_SCHEMA_CODED,
-    examples={"application/json": _coded('not_owner', "No ets el creador d'aquesta experiència")}
 )
 
 ERROR_403_UNDERAGE = openapi.Response(

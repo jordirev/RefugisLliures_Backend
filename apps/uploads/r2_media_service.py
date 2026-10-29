@@ -5,11 +5,9 @@ Utilitza el patró Strategy per a gestionar diferents tipus de fitxers i destina
 import uuid
 import logging
 from abc import ABC, abstractmethod
-from typing import List, Optional, Dict, BinaryIO
-from urllib.parse import urlparse, unquote
-from datetime import datetime
+from typing import List, Optional, Dict
 from botocore.exceptions import ClientError
-from .r2_config import get_r2_client, get_r2_bucket_name, get_r2_endpoint
+from .r2_config import get_r2_client, get_r2_bucket_name
 
 logger = logging.getLogger(__name__)
 
@@ -23,15 +21,6 @@ class MediaPathStrategy(ABC):
         """Retorna el path base per a un tipus de mitjà."""
         pass
     
-    @abstractmethod
-    def get_allowed_content_types(self) -> List[str]:
-        """Retorna els content types permesos per aquest tipus de mitjà."""
-        pass
-    
-    @abstractmethod
-    def validate_file(self, content_type: str) -> bool:
-        """Valida si el content type és permès."""
-        pass
 
 
 class RefugiMediaStrategy(MediaPathStrategy):
@@ -40,30 +29,9 @@ class RefugiMediaStrategy(MediaPathStrategy):
     Path: refugis-lliures/{refuge_id}/{uuid}.{ext} (+ {uuid}_thumb.webp)
     """
     
-    ALLOWED_IMAGE_TYPES = [
-        'image/jpeg',
-        'image/jpg',
-        'image/png',
-        'image/webp',
-        'image/heic',
-        'image/heif'
-    ]
-    
-    ALLOWED_VIDEO_TYPES = [
-        'video/mp4',
-        'video/quicktime',  # .mov
-        'video/x-msvideo',  # .avi
-        'video/webm'
-    ]
-    
     def get_base_path(self, entity_id: str) -> str:
         return f"refugis-lliures/{entity_id}"
     
-    def get_allowed_content_types(self) -> List[str]:
-        return self.ALLOWED_IMAGE_TYPES + self.ALLOWED_VIDEO_TYPES
-    
-    def validate_file(self, content_type: str) -> bool:
-        return content_type in self.get_allowed_content_types()
 
 
 class UserAvatarStrategy(MediaPathStrategy):
@@ -72,23 +40,9 @@ class UserAvatarStrategy(MediaPathStrategy):
     Path: users-avatars/{uid}/{uuid}.webp
     """
     
-    ALLOWED_IMAGE_TYPES = [
-        'image/jpeg',
-        'image/jpg',
-        'image/png',
-        'image/webp',
-        'image/heic',
-        'image/heif'
-    ]
-    
     def get_base_path(self, entity_id: str) -> str:
         return f"users-avatars/{entity_id}"
     
-    def get_allowed_content_types(self) -> List[str]:
-        return self.ALLOWED_IMAGE_TYPES
-    
-    def validate_file(self, content_type: str) -> bool:
-        return content_type in self.get_allowed_content_types()
 
 
 class R2MediaService:
@@ -107,69 +61,6 @@ class R2MediaService:
         self.strategy = strategy
         self.client = get_r2_client()
         self.bucket_name = get_r2_bucket_name()
-        self.endpoint = get_r2_endpoint()
-    
-    def upload_file(
-        self, 
-        file_content: BinaryIO, 
-        entity_id: str, 
-        content_type: str,
-        filename: Optional[str] = None
-    ) -> Dict[str, str]:
-        """
-        Puja un fitxer al bucket R2.
-        
-        Args:
-            file_content: Contingut binari del fitxer
-            entity_id: ID de l'entitat (refuge_id o uid)
-            content_type: MIME type del fitxer
-            filename: Nom del fitxer (opcional, es genera si no es proporciona)
-        
-        Returns:
-            Dict amb 'key' (path al bucket) i 'url' (URL prefirmada)
-        
-        Raises:
-            ValueError: Si el content type no és vàlid
-            Exception: Si hi ha un error pujant el fitxer
-        """
-        # Validar content type
-        if not self.strategy.validate_file(content_type):
-            raise ValueError(
-                f"Content type '{content_type}' no permès. "
-                f"Tipus permesos: {self.strategy.get_allowed_content_types()}"
-            )
-        
-        # La clau SEMPRE és un UUID (no previsible i sense col·lisions). El paràmetre
-        # filename es manté per compatibilitat però s'ignora (vegeu GOTCHAS).
-        extension = self._get_extension_from_content_type(content_type)
-        filename = f"{uuid.uuid4()}{extension}"
-        
-        # Construir path complet
-        base_path = self.strategy.get_base_path(entity_id)
-        key = f"{base_path}/{filename}"
-        
-        try:
-            # Pujar fitxer amb AWS Signature
-            self.client.put_object(
-                Bucket=self.bucket_name,
-                Key=key,
-                Body=file_content,
-                ContentType=content_type
-            )
-            
-            logger.info(f"Fitxer pujat correctament: {key}")
-            
-            # Generar URL prefirmada
-            presigned_url = self.generate_presigned_url(key)
-            
-            return {
-                'key': key,
-                'url': presigned_url
-            }
-            
-        except ClientError as e:
-            logger.error(f"Error pujant fitxer a R2: {str(e)}")
-            raise Exception(f"Error pujant fitxer: {str(e)}")
     
     def generate_presigned_url(self, key: str, expiration: int = 3600) -> str:
         """
@@ -195,26 +86,6 @@ class R2MediaService:
         except ClientError as e:
             logger.error(f"Error generant URL prefirmada: {str(e)}")
             raise Exception(f"Error generant URL prefirmada: {str(e)}")
-    
-    def generate_presigned_urls(self, keys: List[str], expiration: int = 3600) -> List[str]:
-        """
-        Genera URLs prefirmades per a múltiples fitxers.
-        
-        Args:
-            keys: Llista de paths dels fitxers al bucket
-            expiration: Temps d'expiració en segons (per defecte 1 hora)
-        
-        Returns:
-            Llista d'URLs prefirmades
-        """
-        urls = []
-        for key in keys:
-            try:
-                url = self.generate_presigned_url(key, expiration)
-                urls.append(url)
-            except Exception as e:
-                logger.warning(f"No s'ha pogut generar URL per {key}: {str(e)}")
-        return urls
     
     def delete_file(self, key: str) -> bool:
         """
@@ -378,98 +249,6 @@ class R2MediaService:
         if not self.delete_file(source_key):
             logger.warning(f"Copiat {source_key} a {dest_key} però no s'ha pogut esborrar l'origen")
         return True
-
-    def list_files(self, entity_id: str) -> List[str]:
-        """
-        Llista tots els fitxers d'una entitat (refugi o usuari).
-        
-        Args:
-            entity_id: ID de l'entitat
-        
-        Returns:
-            Llista de keys dels fitxers
-        """
-        base_path = self.strategy.get_base_path(entity_id)
-        
-        try:
-            response = self.client.list_objects_v2(
-                Bucket=self.bucket_name,
-                Prefix=base_path
-            )
-            
-            if 'Contents' in response:
-                return [obj['Key'] for obj in response['Contents']]
-            return []
-            
-        except ClientError as e:
-            logger.error(f"Error llistant fitxers: {str(e)}")
-            return []
-    
-    def delete_all_files(self, entity_id: str) -> Dict[str, List[str]]:
-        """
-        Elimina tots els fitxers d'una entitat.
-        
-        Args:
-            entity_id: ID de l'entitat
-        
-        Returns:
-            Dict amb 'deleted' i 'failed'
-        """
-        keys = self.list_files(entity_id)
-        return self.delete_files(keys)
-    
-    def _extract_key_from_presigned_url(self, presigned_url: str) -> Optional[str]:
-        """
-        Extreu el key (path) d'una URL prefirmada.
-        
-        Args:
-            presigned_url: URL prefirmada
-        
-        Returns:
-            Key del fitxer o None si no es pot extreure
-        """
-        try:
-            parsed = urlparse(presigned_url)
-            # El path inclou el bucket name, hem d'extreure només el key
-            path = parsed.path
-            
-            # Eliminar el "/" inicial i el bucket name si està present
-            if path.startswith('/'):
-                path = path[1:]
-            
-            # Si el path comença amb el bucket name, l'eliminem
-            if path.startswith(f"{self.bucket_name}/"):
-                path = path[len(f"{self.bucket_name}/"):]
-            
-            return unquote(path) if path else None
-            
-        except Exception as e:
-            logger.error(f"Error extraient key de URL: {str(e)}")
-            return None
-    
-    def _get_extension_from_content_type(self, content_type: str) -> str:
-        """
-        Obté l'extensió del fitxer a partir del content type.
-        
-        Args:
-            content_type: MIME type del fitxer
-        
-        Returns:
-            Extensió del fitxer amb punt (ex: '.jpg')
-        """
-        extensions = {
-            'image/jpeg': '.jpg',
-            'image/jpg': '.jpg',
-            'image/png': '.png',
-            'image/webp': '.webp',
-            'image/heic': '.heic',
-            'image/heif': '.heif',
-            'video/mp4': '.mp4',
-            'video/quicktime': '.mov',
-            'video/x-msvideo': '.avi',
-            'video/webm': '.webm'
-        }
-        return extensions.get(content_type, '.bin')
 
 
 # Factory functions per crear instàncies del servei amb diferents estratègies

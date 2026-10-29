@@ -22,12 +22,6 @@ def r2store():
 
 @pytest.mark.unit
 class TestR2MediaServiceNewOps:
-    def test_upload_file_ignores_filename_and_uses_uuid(self):
-        service = fake_r2_service()
-        result = service.upload_file(b'data', 'ref_1', 'image/jpeg', filename='IMG_0001.jpg')
-        assert re.fullmatch(r'refugis-lliures/ref_1/[0-9a-f-]{36}\.jpg', result['key'])
-        assert 'IMG_0001' not in result['key']
-
     def test_build_media_key(self):
         service = fake_r2_service()
         key = service.build_media_key('ref_1', 'webp', suffix='_thumb', media_id='abc')
