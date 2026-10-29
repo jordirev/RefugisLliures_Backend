@@ -49,7 +49,7 @@ apps/<feature>/{views, serializers, selectors, services, models, urls, migration
 
 ## Convencions
 - Català a docstrings, comentaris i la majoria de missatges; identificadors en anglès.
-- Dates: `TIME_ZONE = 'Europe/Madrid'` (decisió del PO, 26/10): «avui» amb `get_madrid_today()`/`timezone.localdate()`, mai `CURRENT_DATE`/`now()::date` al SQL (la sessió de Postgres és UTC; test de guarda `apps/core/tests/test_timezone.py`). Instants `timestamptz` amb el rellotge de la BD (`Now()`/`db_default`); durades amb `madrid_after()` (GOTCHAS #60–62). L'API emet ISO amb desplaçament de Madrid.
+- Dates: `TIME_ZONE = 'Europe/Madrid'` (decisió del PO, 26/10): «avui» amb `get_madrid_today()`/`timezone.localdate()`, mai `CURRENT_DATE`/`now()::date` al SQL (la sessió de Postgres és UTC; test de guarda `apps/core/tests/test_timezone.py`). Instants `timestamptz` amb el rellotge de la BD (`Now()`/`db_default`); durades (TTL d'auditoria, caducitat d'intents) **a la BD**, amb `now()`/`TransactionNow()` + interval (GOTCHAS #60–62). L'API emet ISO amb desplaçament de Madrid.
 - IDs: a les apps migrades, UUID v7 generat per la BD (`DEFAULT uuidv7()`, Postgres 18; `db_default` als models) exposat com a string opac; l'usuari usa l'UID de Firebase.
 - Logs: nivells estàndard de `logging` (els nivells propis CACHE/FIRESTORE/DAO han desaparegut amb la neteja).
 - Swagger: exemples a `apps/core/swagger/examples.py`, errors a `apps/core/swagger/error_responses.py`.

@@ -41,7 +41,7 @@ Les features migrades (`apps/<feature>/`) són **`selectors.py`** (lectures; una
 | On | Interfície | Concrets | Selector |
 |---|---|---|---|
 | Cerca de refugis | _(eliminat al chunk 2: era `api/daos/search_strategies.py` amb 15 estratègies; ara és una sola consulta SQL a `apps/refuges/selectors.py`)_ | — | — |
-| Paths de media — `apps/uploads/r2_media_service.py` | `MediaPathStrategy` (`get_base_path`, `get_allowed_content_types`, `validate_file`, `generate_media_metadata_from_dict`) | `RefugiMediaStrategy`, `UserAvatarStrategy` | factories (vegeu Factory) |
+| Paths de media — `apps/uploads/r2_media_service.py` | `MediaPathStrategy` (`get_base_path`) | `RefugiMediaStrategy`, `UserAvatarStrategy` | factories (vegeu Factory) |
 | Aprovació de propostes — `apps/proposals/services.py` | una transacció amb bloqueig pessimista; una funció per acció | `_apply_create/_apply_update/_apply_delete` | `approve_proposal` (les estratègies de Firestore van desaparèixer al chunk 8) |
 
 **Strategy de moderació (feature images)**: `ModerationProvider` (interfície) amb `HashBlocklistProvider` actiu i stubs desactivats `PhotoDNAProvider` / `GoogleContentSafetyProvider`; `ModerationService` els executa en ordre i el primer que bloqueja guanya (fail-closed si un falla). `apps/moderation/moderation_service.py`, [flux 12](../flows/12-media-moderation.md).
@@ -54,7 +54,7 @@ Cap des del chunk 11: `CacheService` i `FirestoreService` han desaparegut.
 
 ### Template Method (+ hook)
 - (Eliminat al chunk 3: `UserController._manage_refugi_list` i el seu hook de `visitors`. Els preferits i els visitats comparteixen ara la classe abstracta `_UserRefugeList` i les funcions `_add`/`_remove` d'`apps/accounts/services.py`; no hi ha hook: `visitors` surt de `user_visited_refuges`.)
-- `to_dict()` de `RefugeMediaMetadata` crida `super().to_dict()` i hi afegeix `creator_uid`/`experience_id`: la base dona la plantilla, la subclasse l'especialitza.
+- (Eliminat: `RefugeMediaMetadata.to_dict()` cridava `super().to_dict()`; les classes `MediaMetadata`/`RefugeMediaMetadata` ja no existeixen.)
 
 ### Decorator
 - `@swagger_auto_schema` a totes les vistes (totes són `APIView`; `cache_views.py` i `@api_view` han desaparegut).

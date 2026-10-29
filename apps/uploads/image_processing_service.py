@@ -1,14 +1,14 @@
 """
 ImageProcessingService - Processament autoritatiu de mitjans al servidor.
 
-Tot fitxer pujat (presigned PUT + confirm, o multipart antic) passa per aquí abans de
+Tot fitxer pujat (presigned PUT + confirm) passa per aquí abans de
 publicar-se:
   1. Detecció del tipus REAL pels magic bytes (no ens refiem del Content-Type declarat).
   2. Obertura real del fitxer (Pillow / pillow-heif per a imatges, ffmpeg per a vídeos).
   3. Imatges: orientació EXIF aplicada, recodificació a WebP (2048 px de costat llarg,
      512 px per a avatars) + miniatura de 400 px, eliminació de TOTES les metadades
      (EXIF/GPS/XMP/IPTC/ICC/dispositiu), extracció de DateTimeOriginal -> taken_at
-     (només es desa a Firestore), blurhash i pHash per a moderació.
+     (es desa a `refuge_media.taken_at`), blurhash i pHash per a moderació.
   4. Vídeos: remux sense recodificar (-map_metadata -1 -c copy -movflags +faststart)
      i pòster WebP com a miniatura.
 

@@ -103,19 +103,3 @@ def test_cap_sql_calcula_la_data_d_avui():
                 if pattern.search(code):
                     hits.append(f'{path.relative_to(ROOT)}:{n}: {why}')
     assert not hits, "Usa get_madrid_today()/timezone.localdate() i passa la data com a paràmetre:\n" + '\n'.join(hits)
-
-
-def test_madrid_after_suma_durada_real_encara_que_canvii_l_hora():
-    """26/10/2026 (+01:00) + 365 dies travessa el canvi d'estiu: la durada ha de ser exactament 365 dies."""
-    from datetime import timedelta
-    start = datetime(2026, 10, 26, 12, 0, tzinfo=MADRID)
-    end = timezone_utils.madrid_after(start, timedelta(days=365))
-    utc = dt_timezone.utc
-    # (restar dos datetimes amb el mateix ZoneInfo també és de rellotge de paret: cal comparar en UTC)
-    assert end.astimezone(utc) - start.astimezone(utc) == timedelta(days=365)
-    assert end.utcoffset() == timedelta(hours=2)          # 26/10/2027 encara és horari d'estiu
-    # un dia que travessa el canvi d'hora: 24 h reals (no 25)
-    before_dst_end = datetime(2026, 10, 24, 12, 0, tzinfo=MADRID)
-    after = timezone_utils.madrid_after(before_dst_end, timedelta(days=1))
-    assert after.astimezone(utc) - before_dst_end.astimezone(utc) == timedelta(days=1)
-    assert after.hour == 11                               # 24 h reals després, el rellotge de Madrid marca 1 h menys

@@ -34,16 +34,3 @@ def get_r2_client():
 def get_r2_bucket_name():
     """Retorna el nom del bucket R2."""
     return os.getenv("R2_BUCKET_NAME")
-
-
-def get_r2_endpoint():
-    """Retorna l'endpoint R2."""
-    return os.getenv("R2_ENDPOINT")
-
-
-# Mantenim les variables per compatibilitat amb codi existent
-# que pugui importar-les directament (seran None si no estan configurades)
-R2_ACCESS_KEY_ID = None
-R2_SECRET_ACCESS_KEY = None
-R2_ENDPOINT = None
-R2_BUCKET_NAME = None

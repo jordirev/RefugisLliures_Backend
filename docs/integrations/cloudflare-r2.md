@@ -7,10 +7,10 @@ Emmagatzema fotos/vídeos de refugis i avatars d'usuari. Bucket **privat**: l'ac
 ## Fitxers
 | Fitxer | Rol |
 |---|---|
-| `apps/uploads/r2_config.py` | `get_r2_client()` (boto3 `s3`, `region_name='auto'`, `signature_version='s3v4'`, `addressing_style='path'`), `get_r2_bucket_name()`, `get_r2_endpoint()` |
+| `apps/uploads/r2_config.py` | `get_r2_client()` (boto3 `s3`, `region_name='auto'`, `signature_version='s3v4'`, `addressing_style='path'`), `get_r2_bucket_name()` |
 | `apps/uploads/r2_media_service.py` | `R2MediaService` + estratègies de path + `quarantine_key()` / `moderation_hold_key()` |
 | `apps/uploads/image_processing_service.py` | Processament autoritatiu abans de publicar (vegeu [flux 3](../flows/03-refuge-media-upload.md)) |
-| `apps/uploads/media_metadata.py` | `MediaMetadata` / `RefugeMediaMetadata` = forma **MediaItem** del contracte |
+| `apps/uploads/media_metadata.py` | només `infer_media_type()` (la fa servir `MediaItemSerializer`); la forma **MediaItem** del contracte la defineix `apps/uploads/media_serializer.py`. Els antics `MediaMetadata`/`RefugeMediaMetadata` (Firestore) s'han eliminat |
 
 ## Configuració
 Variables (només noms), llegides amb `os.getenv` dins `get_r2_client()`: `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_ENDPOINT`, `R2_BUCKET_NAME`. Si en falta alguna → `ValueError("R2 configuration is incomplete...")`.
@@ -52,17 +52,14 @@ La llista blanca **autoritativa** és la d'`image_processing_service` (imatges j
 | Mètode | Comportament |
 |---|---|
 | `__init__(strategy)` | crea client boto3 **a cada instància** |
-| `upload_file(file, entity_id, content_type, filename=None)` | valida MIME declarat, `put_object`; **la clau és sempre `uuid4()+ext`** (el `filename` s'ignora) |
 | `generate_presigned_url(key, expiration=3600)` | GET presignat |
 | `generate_presigned_put_url(key, content_type, content_length, expiration=600)` | PUT presignat amb `ContentType` i `ContentLength` signats (R2 rebutja un altre tipus o mida) |
 | `build_media_key(entity_id, ext, suffix='', media_id=None)` | clau UUID dins del path de l'estratègia |
 | `head_object(key)` / `get_object_bytes(key, max_bytes)` | `None` si no existeix (404/NoSuchKey); `max_bytes` llegeix com a molt `max_bytes+1` |
 | `put_bytes(key, data, content_type)` | puja bytes processats amb `Cache-Control: private, max-age=31536000, immutable` |
 | `copy_object(src, dst)` / `move_object(src, dst)` | retornen `bool` (no llancen) |
-| `generate_media_metadata_from_dict` / `generate_media_metadata_list` | hidraten MediaItems (URL + `thumb_url` presignades; `thumb_url = url` si no hi ha `thumb_key`) |
 | `delete_file(key)` | `delete_object`; **retorna False** en `ClientError` — els callers ho comproven |
 | `delete_files(keys)` | `{deleted, failed}` |
-| `list_files(entity_id)` | un sol `list_objects_v2` (màx. 1000 claus, sense paginació) |
 
 ## Fluxos que l'usen
 [Fotos de refugi](../flows/03-refuge-media-upload.md) · [Avatar](../flows/02-user-avatar.md) · [Experiències](../flows/08-experiences.md) · [Moderació](../flows/12-media-moderation.md) · esborrat d'usuari i de refugi.
