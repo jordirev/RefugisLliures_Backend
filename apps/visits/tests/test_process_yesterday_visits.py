@@ -4,18 +4,19 @@ Job diari `python manage.py process_yesterday_visits` (chunk 4; recepta 9 i §8.
 Contracte:
 - Comanda a `apps/visits/management/commands/process_yesterday_visits.py` (la de `api/management/commands` desapareix);
   delega en `apps.visits.services`:
-    `process_yesterday_visits() -> dict` amb `processed_visits`, `deleted_visits`, `updated_refuges`,
+    `process_yesterday_visits() -> dict` amb `processed_visits`, `updated_refuges`,
     `total_visitors_added` (mateixes claus que avui) i `purge_old_visits() -> int` (visites purgades).
   Tots dos s'executen amb `system_context()` propi: es poden cridar sense cap context de RLS (no hi ha usuari).
 - «Ahir» es la data de Madrid (`get_madrid_today() - 1 dia`), mai la d'UTC ni `CURRENT_DATE`.
 - Per a cada participant de les visites d'ahir: `INSERT INTO users.user_visited_refuges … ON CONFLICT DO NOTHING`
   (idempotent: conserva el `created_at` original; equivalent a `apps.accounts.services.add_visited`). No toca Firestore.
-- Les visites d'ahir **buides** (sense participants) s'esborren; les que tenen participants **no** (decisio 13).
+- El job **ja no esborra** visites buides: ho fa un trigger de la BD en treure l'ultim participant (migracio
+  `visits.0002`); les visites amb participants no s'esborren tampoc (decisio 13).
 - Purga (§8.3, decisio 13): visites amb `visit_date < avui − 12 mesos` (els participants cauen en cascada); la data
   exactament de fa 12 mesos es conserva. `user_visited_refuges` no es purga mai. La fa la mateixa comanda diaria.
 - Sortida de la comanda (mateixes linies que avui, mes la purga):
       Visites d'ahir processades correctament
-      Visites processades: N / Visites buides eliminades: N / Refugis actualitzats: N / Total visitants afegits: N
+      Visites processades: N / Refugis actualitzats: N / Total visitants afegits: N
       Visites antigues purgades: N
   `updated_refuges` = visites d'ahir amb participants; `total_visitors_added` = nombre de participants d'aquestes visites.
 """
@@ -82,14 +83,15 @@ def test_es_idempotent_i_conserva_el_created_at_original(scene):
     assert rows == [(datetime(2020, 1, 1, tzinfo=dt_tz.utc),)]
 
 
-def test_les_visites_amb_participants_no_s_esborren_i_les_buides_si(scene):
+def test_el_job_no_esborra_visites_ni_les_amb_participants_ni_les_buides(scene):
+    """Les buides les esborra un trigger en treure l'últim participant (test_empty_visit_trigger.py), no el job."""
     r1, r2, _ = scene
     full = make_visit(r1, day(-1), {'u1': 3})
-    make_visit(r2, day(-1))                                    # buida
+    empty = make_visit(r2, day(-1))                            # inserida a mà: el job ja no la toca
     out = run()
-    assert [r[0] for r in visit_rows()] == [full]
+    assert {r[0] for r in visit_rows()} == {full, empty}
     assert participant_rows(full) == {'u1': 3}
-    assert 'Visites processades: 2' in out and 'Visites buides eliminades: 1' in out
+    assert 'Visites processades: 2' in out and 'Visites buides' not in out
 
 
 def test_no_esborra_les_visites_buides_d_altres_dies(scene):
@@ -107,7 +109,7 @@ def test_estadistiques_del_servei(scene):
     make_visit(r2, day(-1), {'u3': 2})
     make_visit(r3, day(-1))
     stats = visit_services().process_yesterday_visits()
-    assert stats['processed_visits'] == 3 and stats['deleted_visits'] == 1
+    assert stats['processed_visits'] == 3 and 'deleted_visits' not in stats
     assert stats['updated_refuges'] == 2 and stats['total_visitors_added'] == 3
 
 
@@ -115,7 +117,7 @@ def test_sortida_de_la_comanda(scene):
     r1, _, _ = scene
     make_visit(r1, day(-1), {'u1': 3})
     out = run()
-    for line in ("Visites d'ahir processades correctament", 'Visites processades: 1', 'Visites buides eliminades: 0',
+    for line in ("Visites d'ahir processades correctament", 'Visites processades: 1',
                  'Refugis actualitzats: 1', 'Total visitants afegits: 1', 'Visites antigues purgades: 0'):
         assert line in out, out
 

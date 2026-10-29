@@ -266,13 +266,12 @@ def test_delete_treu_el_visitant_200_amb_missatge(client, scene):
     assert participant_rows(vid) == {'u2': 2} and total_of(vid) == 2
 
 
-def test_delete_l_ultim_visitant_deixa_la_visita_amb_total_0(client, scene):
+def test_delete_l_ultim_visitant_esborra_la_visita(client, scene):
     r1, _ = scene
     vid = make_visit(r1, day(3), {'u1': 4})
     assert api_delete(client, visit_url(r1.pk, day(3)), user_claims('u1')).status_code == 200
-    assert visit_dates(r1) == [day(3)] and total_of(vid) == 0
-    item = body(api_get(client, refuge_visits_url(r1.pk), user_claims('u1')))['result'][0]
-    assert (item['total_visitors'], item['is_visitor']) == (0, False)
+    assert visit_dates(r1) == [] and total_of(vid) == 0
+    assert body(api_get(client, refuge_visits_url(r1.pk), user_claims('u1'))) == {'result': []}
 
 
 def test_delete_no_registrat_400(client, scene):

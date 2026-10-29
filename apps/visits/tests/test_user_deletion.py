@@ -31,7 +31,7 @@ def test_delete_usuari_cascadeja_els_participants_i_deixa_els_totals_correctes(c
     assert participant_rows(v) == {'u2': 2} and participant_rows(other) == {}
     assert total_of(v) == 2                                              # M3: -3 (num_visitors), no -1
     assert total_of(other) == 0
-    assert len(visit_rows()) == 2                                        # les visites es conserven
+    assert [r[0] for r in visit_rows()] == [v]                           # la que s'ha quedat buida s'esborra (trigger)
 
 
 def test_el_total_visible_a_l_api_despres_d_esborrar_un_usuari(client):
