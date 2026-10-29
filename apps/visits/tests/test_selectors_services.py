@@ -19,7 +19,8 @@ Contracte (`apps/visits/services.py`; `visit_date` es un `datetime.date`; cap tu
 - `update_visit(uid, refuge_id, visit_date, num_visitors) -> VisitSummary`: `VisitNotFound` (visita o refugi
   inexistents, **sense** comprovar la data), `NotRegistered`;
 - `remove_visitor(uid, refuge_id, visit_date) -> None`: `VisitNotFound`, `NotRegistered`; la visita es conserva
-  encara que es quedi sense participants (`app` no pot esborrar `refuge_visits`, §2.10; ho fa el job);
+  i, si era l'últim participant, la visita s'esborra (trigger `participants_drop_empty_visit`, vegeu
+  `test_empty_visit_trigger.py`);
 - `process_yesterday_visits() -> dict` i `purge_old_visits() -> int`: vegeu `test_process_yesterday_visits.py`.
 Les funcions s'executen dins el context de RLS de la peticio (`rls_context(uid=…)` als tests).
 """
@@ -219,12 +220,12 @@ def test_remove_visitor_treu_nomes_l_usuari(S, scene):
     assert participant_rows(vid) == {'u2': 2}
 
 
-def test_remove_visitor_l_ultim_deixa_la_visita_buida_sense_esborrar_la(S, scene):
+def test_remove_visitor_l_ultim_esborra_la_visita(S, scene):
     r1, _ = scene
     vid = make_visit(r1, day(2), {'u1': 3})
     with rls_context(uid='u1'):
         S.remove_visitor('u1', r1.pk, day(2))
-    assert participant_rows(vid) == {} and len(visit_rows(r1)) == 1
+    assert participant_rows(vid) == {} and visit_rows(r1) == []
 
 
 def test_remove_visitor_errors(S, scene):
