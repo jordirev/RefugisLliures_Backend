@@ -34,15 +34,6 @@ class MediaItemSerializer(serializers.Serializer):
     taken_at = serializers.CharField(required=False, allow_null=True)
     experience_id = serializers.CharField(required=False, allow_null=True)
 
-    def to_representation(self, instance):
-        data = super().to_representation(instance)
-        # Compatibilitat: items antics sense miniatura → thumb_url = url
-        if not data.get('thumb_url'):
-            data['thumb_url'] = data.get('url')
-        for field_name in ('width', 'height', 'blurhash', 'taken_at', 'experience_id', 'media_type'):
-            data.setdefault(field_name, None)
-        return data
-
 
 class UploadFileSpecSerializer(serializers.Serializer):
     content_type = serializers.CharField(max_length=100)
