@@ -26,7 +26,7 @@ pip install -r requirements.txt     # inclou pytest, coverage, boto3
 ```
 
 ## 2. Configurar `env/` (no versionat)
-`refugis_lliures/settings.py:20-34` llegeix `env/.env.development` (o `env/.env.production` si existeix `RENDER`/`PRODUCTION`) amb `decouple` **[FET]**.
+`refugis_lliures/settings.py:20-34` llegeix `env/.env.development` (o `env/.env.production` si `RENDER`/`PRODUCTION` valen `true`/`1`/`yes`/`on`; `PRODUCTION=false` no compta) amb `decouple` **[FET]**.
 
 | Fitxer | Contingut (només noms) |
 |---|---|

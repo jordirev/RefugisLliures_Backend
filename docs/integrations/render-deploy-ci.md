@@ -13,7 +13,7 @@
 `bind 0.0.0.0:$PORT`, **1 worker** `sync`, `timeout 30`, `max_requests 1000` (+jitter 100), `preload_app=True`, logs a stdout/stderr (L7-37).
 
 ## Selecció d'entorn (`refugis_lliures/settings.py:20-34`)
-Si existeix `RENDER` o `PRODUCTION` → `env/.env.production`; si no → `env/.env.development`; si el fitxer no existeix → `decouple.config` normal (variables d'entorn). A Render, `env/` no existeix (no versionat) → es llegeixen les variables d'entorn del servei **[INFERÈNCIA]**.
+Si `RENDER` o `PRODUCTION` valen `true`/`1`/`yes`/`on` (sense distingir majúscules; `PRODUCTION=false` **no** compta, igual que a `firebase_config`) → `env/.env.production`; si no → `env/.env.development`; si el fitxer no existeix → `decouple.config` normal (variables d'entorn). A Render, `env/` no existeix (no versionat) → es llegeixen les variables d'entorn del servei **[INFERÈNCIA]**.
 
 Variables (noms) a `env/.env.development` i `env/.env.production`: `SECRET_KEY, DEBUG, ALLOWED_HOSTS, CORS_ALLOW_ALL_ORIGINS, CORS_ALLOWED_ORIGINS, GOOGLE_APPLICATION_CREDENTIALS` (`REDIS_URL` ja no cal: eliminada al chunk 11). `env/api-keys.env` conté les mateixes claus i **cap fitxer del codi el referencia** **[FET]**.
 

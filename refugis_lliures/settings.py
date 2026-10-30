@@ -33,8 +33,13 @@ if os.name == 'nt':
         if (_osgeo_bin / 'geos_c.dll').exists():
             GEOS_LIBRARY_PATH = str(_osgeo_bin / 'geos_c.dll')
 
+def _env_flag(name):
+    """Interpreta una variable com a booleana (`true`, `1`, `yes`, `on`); `PRODUCTION=false` no és producció."""
+    return (os.environ.get(name) or '').strip().lower() in ('true', '1', 'yes', 'on')
+
+
 # Detect environment and load appropriate .env file
-if os.environ.get('RENDER') or os.environ.get('PRODUCTION'):
+if _env_flag('RENDER') or _env_flag('PRODUCTION'):
     # Production environment (Render or other production)
     env_file = BASE_DIR / 'env' / '.env.production'
 else:
