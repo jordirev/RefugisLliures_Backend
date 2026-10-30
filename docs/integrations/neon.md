@@ -1,7 +1,7 @@
 # Integració — Neon (Postgres + PostGIS)
 
 > **[FET]** comprovat al codi o a Neon · **[INFERÈNCIA]** deducció · **[NO VERIFICAT]** depèn de config externa.
-> Estat: **migració Firestore → PostgreSQL, chunks 1 (Infraestructura) i 2 (Refugis) fets**. Postgres/PostGIS és la BD `default` de Django amb el rol `app`; els **refugis** (catàleg, serveis, enllaços i mitjans) i el mínim d'`accounts` viuen a PostgreSQL (`apps/refuges`, `apps/accounts`), mentre que la resta del domini es va migrar als chunks següents; **des del chunk 11 (D43) Firestore ja no s'usa enlloc** **[FET]**. El **projecte Neon és ara el de Postgres 18** (`refugislliures`, 25/10/2026): té el *bootstrap* fet a `production` i `dev`, però **cap migració ni càrrega de refugis** (`migrate --database=migrator` i `load_refuges` s'han de tornar a executar a cada branca) **[FET]**. El projecte antic de PG17 existeix encara a Neon i les seves credencials ja no són a `env/` **[FET]**. Pla: [migration/PLAN.md](../migration/PLAN.md); disseny físic: [design/postgres-schema.md](../design/postgres-schema.md) §1 i §7.
+> Estat: **migració Firestore → PostgreSQL, chunks 1 (Infraestructura) i 2 (Refugis) fets**. Postgres/PostGIS és la BD `default` de Django amb el rol `app`; els **refugis** (catàleg, serveis, enllaços i mitjans) i el mínim d'`accounts` viuen a PostgreSQL (`apps/refuges`, `apps/accounts`), mentre que la resta del domini es va migrar als chunks següents; **des del chunk 11 (D43) Firestore ja no s'usa enlloc** **[FET]**. El **projecte Neon és el de Postgres 18** (`refugislliures`): `dev` i `production` tenen el *bootstrap*, les 33 migracions i els 1.542 refugis carregats (`dev`: PO; `production`: 30/10/2026, amb `PRODUCTION=true`, vegeu «Migracions») **[FET]**. El projecte antic de PG17 existeix encara a Neon i les seves credencials ja no són a `env/` **[FET]**. Pla: [migration/PLAN.md](../migration/PLAN.md); disseny físic: [design/postgres-schema.md](../design/postgres-schema.md) §1 i §7.
 
 ## Projecte
 - Projecte `refugislliures`, regió AWS Frankfurt (`aws-eu-central-1`), BD `refugisdb`, **Postgres 18.6**, PostGIS 3.6.4 (projecte `jolly-wind-01114119`; el de PG17, `calm-sun-72437063`, queda abandonat) **[FET]**.
@@ -37,6 +37,14 @@ Creats amb SQL (no amb el CLI, que els faria membres de `neon_superuser`) a `pro
 ```bash
 python manage.py migrate --database=migrator
 ```
+**Neon `production` des d'un entorn local [FET, 30/10/2026]**: `PRODUCTION=true` fa que `settings.py` llegeixi `env/.env.production` (sense llegir-lo ni imprimir-lo):
+```bash
+PRODUCTION=true python manage.py check_neon --alias migrator      # ha de mostrar el host ep-…(production)
+PRODUCTION=true python manage.py migrate --database=migrator
+PYTHONUTF8=1 PRODUCTION=true python manage.py load_refuges --dry-run   # i, si quadra, sense --dry-run (una sola vegada)
+```
+Abans no funcionava: `FirebaseAuthConfig.ready()` exigia `FIREBASE_SERVICE_ACCOUNT_KEY` a `os.environ` (que `decouple` no omple) i fallava abans de connectar. Ara les comandes de gestió que no usen Firebase se'n salten la inicialització (GOTCHAS #94); gunicorn i `runserver` continuen exigint-la.
+
 El rol `app` no té permisos de DDL: un `migrate` sense `--database=migrator` fallaria (i, si algú li donés DDL, deixaria objectes que no són del propietari). `apps/core` (`core.0001`, `core.0002`) crea els schemas (`core`, `refuges`, `users`, `activity`, `proposals`, `moderation`, `audit`), les funcions de `core` (`uid()`, `is_admin()`, `is_system()`, `immutable_unaccent`, `norm_name`, `round_half_even`; disseny §2.0) i els grants base de `app` (§7.1), amb `reverse_sql`. Requereix el *bootstrap* previ del propietari (§1.3).
 
 ## RLS i context de la petició [FET]
@@ -47,7 +55,7 @@ El rol `app` no té permisos de DDL: un `migrate` sense `--database=migrator` fa
 `core.0001` (schemas, funcions, grants) i `core.0002` (SELECT de `app` a `django_migrations`) → `accounts.0001` (`users.languages`, `users.users`, `users.user_public_profiles`, `users.user_avatars`) → `refuges.0001` (`refuges.refuge_types`, `refuges.refuges`, `refuge_amenities`, `refuge_links`, `refuge_media`; sense vista `refuge_map`; índexs GIN trigram, RLS, grants) → `accounts.0002` (chunk 3: `users.user_favourite_refuges` i `users.user_visited_refuges`, PK composta, FK reals `ON DELETE CASCADE` per `RunSQL`, RLS i grants `SELECT, INSERT, DELETE` a `app`). Les taules les crea `migrator`; `app` només fa DML subjecte a RLS.
 
 ## Càrrega inicial del catàleg [FET]
-`python manage.py load_refuges [--dry-run]` (rol `migrator` per defecte) carrega `apps/refuges/data/final_data_refuges.json` (1.542 refugis) **una sola vegada**: si ja hi ha refugis acaba amb `CommandError` sense escriure res. A Neon `dev`/`production` el PO l'ha d'executar un cop després del primer `migrate` **[NO VERIFICAT]**.
+`python manage.py load_refuges [--dry-run]` (rol `migrator` per defecte) carrega `apps/refuges/data/final_data_refuges.json` (1.542 refugis) **una sola vegada**: si ja hi ha refugis acaba amb `CommandError` sense escriure res. Ja s'ha executat una vegada a Neon `dev` (PO) i a `production` (30/10/2026: 1.542 refugis, 1.542 *amenities*, 2.075 enllaços; condició inicial 0→605, 1→565, 2→332, 3→40); **no s'ha de repetir** **[FET]**. A Windows cal `PYTHONUTF8=1`: el resum imprimeix `→` i la consola `cp1252` fa saltar `UnicodeEncodeError` (després de validar, abans d'escriure res en `--dry-run`).
 
 ## Identificadors
 Les PK substitutes són UUID v7 (RFC 9562) generats per la BD amb `DEFAULT uuidv7()` de Postgres 18 (`db_default` a Django 5.2; disseny §1.4; l'helper `api/utils/ids.py` s'ha eliminat, chunk 2) **[FET]**. `Refuge` n'és un exemple; `RefugeLink` té PK `url`, `RefugeAmenities` reutilitza la PK del refugi, `RefugeMedia` i `UserAvatar` tenen la clau R2 i `UserAccount` l'UID de Firebase; les taules d'unió sense FK entrant tenen PK composta (disseny §1.4) **[FET]**. L'API exposa els UUID com a *string* opac; **no coincideixen** amb els IDs de Firestore.
@@ -60,6 +68,6 @@ python manage.py check_neon --alias default    # rol app, endpoint amb pooler
 Mostra la versió de Postgres i PostGIS, `similarity` amb `unaccent` i una consulta `ST_DWithin`; usa una taula temporal i la neteja **[FET]**. Els àlies vàlids són `default` i `migrator` (abans `neon`/`neon_migrator`). **Es connecta sempre a Neon** amb `DATABASE_URL_APP` / `DATABASE_URL_MIGRATOR` (ignora `TEST_DATABASE_URL_*`, que apunten al Docker local i, dins pytest o amb `USE_TEST_DATABASE=1`, tenen prioritat a `DATABASES`), mostra el host i la versió, i **avisa si el servidor és < Postgres 18** **[FET]**. A més comprova el *bootstrap* del propietari (§1.3 del disseny) i **avisa** (`Bootstrap incomplet: ...`) si falten extensions (`postgis`, `pg_trgm`, `unaccent`, `btree_gist`), `GRANT CREATE ON DATABASE` o `GRANT CREATE ON SCHEMA public`: **executa'l amb `--alias migrator` abans del primer `migrate` a Neon** **[FET]**.
 
 ## Pendent
-- Executar `check_neon --alias migrator` (avisa del *bootstrap* incomplet), verificar el `GRANT CREATE ON SCHEMA public` a Neon `dev` i executar el primer `migrate --database=migrator` **[NO VERIFICAT]**.
-- Validar contra Neon (pooler PgBouncer, PG18) el que només s'ha provat en local (Postgres 18 en Docker, sense pooler): el PO ha d'executar `scripts/e2e/` des d'una màquina amb accés TCP ([migration/DECISIONS_AUTONOMES.md](../migration/DECISIONS_AUTONOMES.md) D3) **[NO VERIFICAT]**.
-- Imatge/entorn de desplegament amb GDAL/GEOS, pas a Launch i compute 0,25–2 CU **[NO VERIFICAT]**.
+- **Validat contra Neon `dev` (30/10/2026) [FET]**: `check_neon` (pooler i directe), les 33 migracions, 1.542 refugis i els e2e `scripts/e2e/e2e_chunk1..10.sh` amb servidor local + Firebase Auth Emulator contra la branca `dev` (pooler PgBouncer, PG18; vegeu [guides/testing.md](../guides/testing.md)). `production` té les mateixes migracions i dades; els e2e no s'hi executen mai.
+- Credencials: el PO ja les va rotar (després que s'enviessin pel xat) i el 30/10/2026 va decidir **no fer-ne una segona rotació**: cap connector pot rotar-les sense que les contrasenyes noves passin per la conversa. En desplegar, `DATABASE_URL_APP` / `DATABASE_URL_MIGRATOR` s'han de posar als secrets del nou entorn (Cloud Run / Oracle) i a GitHub Actions si es manté el job de visites (TECH_DEBT U3) **[NO VERIFICAT]**.
+- Imatge/entorn de desplegament amb GDAL/GEOS: decisió del PO (30/10/2026) de desplegar a **Cloud Run o Oracle** (Dockerfile amb GDAL), no a Render; pas a Launch i compute 0,25–2 CU **[NO VERIFICAT]**.
