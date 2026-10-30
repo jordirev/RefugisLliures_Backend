@@ -9,7 +9,7 @@ Documentació detallada a [`docs/`](docs/README.md). Llegenda als docs: **[FET]*
 - **Firebase Auth** (única dependència de Firebase; `firebase-admin` només per a Auth i `scripts/manage_admins.py`): ID token `Bearer` verificat al middleware; admin = custom claim `role == 'admin'`. Un hook (`apps/core/rls_hook.py`) fixa el context de RLS (`app.uid`, `app.is_admin`) a la transacció de cada petició. Per a e2e locals, `FIREBASE_AUTH_EMULATOR_HOST` (mai en producció).
 - **Cloudflare R2** (boto3) per a media; bucket privat, URLs presignades d'1 h.
 - **Sense Redis ni cache de dades** (D43): `CACHES` és un `LocMemCache` per defecte (Django en necessita un) i l'aplicació no hi desa res.
-- Deploy a **Render** (gunicorn, 1 worker); CI, ping i procés diari a **GitHub Actions**.
+- Deploy actual a **Render** (gunicorn, 1 worker), a substituir per **Cloud Run o Oracle** (decisió del PO, 30/10/2026; cal Dockerfile amb GDAL/GEOS); CI, ping i procés diari a **GitHub Actions**. Neon `dev` i `production` ja estan migrades i amb els refugis carregats.
 
 ## Comandes
 ```bash
@@ -18,7 +18,8 @@ pip install -r requirements.txt
 python manage.py runserver            # requereix env/ local + Postgres (DATABASE_URL_APP) + GDAL; R2_* només per als endpoints de media
 python manage.py migrate --database=migrator   # SEMPRE amb el rol migrator (app no té DDL)
 python manage.py check_neon --alias default    # (o migrator) comprova Postgres/PostGIS
-python manage.py load_refuges [--dry-run]      # UNA sola vegada: càrrega del catàleg de refugis (1.542) amb el rol migrator; error si ja hi ha refugis
+python manage.py load_refuges [--dry-run]      # UNA sola vegada: càrrega del catàleg de refugis (1.542) amb el rol migrator; error si ja hi ha refugis (fet a Neon dev i production)
+PRODUCTION=true python manage.py migrate --database=migrator   # carrega env/.env.production (Neon production); migrate/load_refuges no demanen Firebase (GOTCHAS #94); a Windows, PYTHONUTF8=1 per a load_refuges
 pytest                                # tots els tests (apps/*/tests); els de BD volen TEST_DATABASE_URL_APP/MIGRATOR (scripts/dev/setup_local_postgres.sh); a Windows, en un contenidor Linux amb GDAL (docs/guides/testing.md)
 pytest apps/core apps/auth apps/health -q   # infra compartida: RLS/BD, autenticació i health
 pytest apps/refuges -q                # una app migrada (també apps/accounts, apps/visits, apps/renovations, apps/doubts, apps/experiences, apps/uploads, apps/proposals, apps/moderation, apps/audit)

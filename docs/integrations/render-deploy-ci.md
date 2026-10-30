@@ -53,12 +53,12 @@ Variables (noms) a `env/.env.development` i `env/.env.production`: `SECRET_KEY, 
 ## Neon (variables d'entorn) [FET]
 `DATABASE_URL_APP` (rol `app`, pooler), `DATABASE_URL_MIGRATOR` (rol `migrator`, directa) i `NEON_BRANCH`. Es llegeixen de `env/.env.*` (o de l'entorn) amb `decouple`; `TEST_DATABASE_URL_APP` / `TEST_DATABASE_URL_MIGRATOR` (Postgres de proves) tenen prioritat només dins pytest o amb `USE_TEST_DATABASE=1` (D37). `default` és Postgres si hi ha alguna URL `app`; l'àlies `migrator` només existeix si hi ha la URL del migrator. CI defineix només les `TEST_*` (cap secret). `NEON_USE_POSTGIS_ENGINE` ja no existeix. Detall: [neon.md](neon.md).
 
-**Pendent de desplegament [NO VERIFICAT]**: ni `build.sh` ni `render.yaml` instal·len GDAL/GEOS ni defineixen `DATABASE_URL_APP`; amb `django.contrib.gis` sempre actiu, un desplegament a Render sense GDAL no arrencaria. El desplegament (Cloud Run amb imatge Docker amb GDAL, segons l'arquitectura) queda fora del chunk 1 ([TECH_DEBT.md](../TECH_DEBT.md) P1). Les migracions no s'executen al build: `python manage.py migrate --database=migrator`.
+**Pendent de desplegament [NO VERIFICAT]**: ni `build.sh` ni `render.yaml` instal·len GDAL/GEOS ni defineixen `DATABASE_URL_APP`; amb `django.contrib.gis` sempre actiu, un desplegament a Render sense GDAL no arrencaria. El PO ha decidit (30/10/2026) desplegar a **Cloud Run o Oracle**, no a Render: GDAL/GEOS entren al Dockerfile del nou entorn i Render deixa de ser el destí. El desplegament queda fora del chunk 1 ([TECH_DEBT.md](../TECH_DEBT.md) P1). Les migracions no s'executen al build: `python manage.py migrate --database=migrator`.
 
 ## Accions pendents del PO (neteja, chunk 11, D43)
 El codi ja no usa Redis ni Firestore; aquestes accions són a la consola/dashboard i no es poden fer des del codi:
-1. **Render**: eliminar la variable `REDIS_URL` i l'add-on/instància de Redis, si n'hi ha.
-2. **Firebase Console**: quan es consideri oportú (després de validar la migració), esborrar les dades de Firestore (col·leccions antigues). Només després d'una còpia si es vol conservar l'històric.
+1. **Render**: eliminar la variable `REDIS_URL` i l'add-on/instància de Redis, si n'hi ha. **Fet pel PO el 30/10/2026.**
+2. **Firebase Console**: quan es consideri oportú (després de validar la migració), esborrar les dades de Firestore (col·leccions antigues). Només després d'una còpia si es vol conservar l'històric. **Fet pel PO el 30/10/2026.**
 3. **Mantenir** les credencials de Firebase Auth (`FIREBASE_SERVICE_ACCOUNT_KEY`, o el fitxer local): `firebase-admin` encara verifica tokens i gestiona usuaris i claims.
 
 ## Guies relacionades
