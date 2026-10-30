@@ -19,19 +19,16 @@
 | `apps/auth/permissions.py:10-21,86-101` | `is_firebase_admin`, `IsFirebaseAdmin` |
 | `scripts/manage_admins.py` | Afegir/treure/consultar/llistar admins via custom claims |
 
-## Inicialització (`apps/auth/firebase_config.py:80-106`)
-| Entorn (detecció) | Credencials | Línies |
-|---|---|---|
-| Tests: `'pytest' in sys.modules` o `TESTING=true` | **No s'inicialitza** | L15-17, L92-94 |
-| **Firebase Auth Emulator**: `FIREBASE_AUTH_EMULATOR_HOST` definida (té prioritat sobre la resta, excepte tests) | Cap credencial: només un `projectId` | vegeu «Firebase Auth Emulator» |
-| Producció: `RENDER=='true'` o `PRODUCTION=='true'` o `CI=='true'` | JSON a la variable `FIREBASE_SERVICE_ACCOUNT_KEY` | L24-47 |
-| Local (resta) | `load_dotenv(env/.env.development)` + fitxer fix `env/firebase-service-account.json` | L50-77 |
+## Inicialització (`apps/auth/firebase_config.py`)
+| Entorn (detecció) | Credencials |
+|---|---|
+| Tests: `'pytest' in sys.modules` o `TESTING=true` | **No s'inicialitza** |
+| **Firebase Auth Emulator**: `FIREBASE_AUTH_EMULATOR_HOST` definida (té prioritat, excepte tests) | Cap credencial: només un `projectId` (vegeu «Firebase Auth Emulator») |
+| La resta (dev, producció, CI, scripts) | JSON a `FIREBASE_SERVICE_ACCOUNT_KEY`, via `settings` (`decouple`): variable d'entorn real o `env/.env.<entorn>` |
 
-Des del chunk 11 (D43) només hi ha una ruta d'inicialització (`apps/auth/firebase_config.py`): `FirestoreService` i la seva ruta de fallback han desaparegut. `firebase-admin` s'usa només per a Auth (verificar tokens, usuaris, claims) **[FET]**. `settings.GOOGLE_APPLICATION_CREDENTIALS` el llegeix `scripts/manage_admins.py`.
+Només hi ha un camí amb credencials **[FET]**: ja no hi ha ruta «local» amb el fitxer fix `env/firebase-service-account.json` ni `GOOGLE_APPLICATION_CREDENTIALS`; dev i producció només difereixen en quin `env/.env.*` carrega `settings.py` (`PRODUCTION`/`RENDER`). Per això `PRODUCTION=true python manage.py migrate` i `PRODUCTION=true python scripts/manage_admins.py …` funcionen des de l'ordinador amb el service account de producció a `env/.env.production`. `firebase-admin` s'usa només per a Auth (verificar tokens, usuaris, claims) **[FET]**.
 
-Variables (només noms): `FIREBASE_SERVICE_ACCOUNT_KEY`, `GOOGLE_APPLICATION_CREDENTIALS`, `RENDER`, `PRODUCTION`, `CI`, `TESTING`. Fitxers presents a `env/` (no versionats): `firebase-service-account.json`, `firebase-service-account-dev.json`, `firebase-service-account-prod.json`. Quin projecte Firebase apunta cadascun: **[NO VERIFICAT]** (no s'han llegit els valors).
-
-**Comandes de gestió sense Firebase [FET]**: `FirebaseAuthConfig.ready()` (`apps/auth/apps.py`) no inicialitza Firebase quan el procés és `manage.py <comanda>` amb una comanda de `COMMANDS_WITHOUT_FIREBASE` (migracions, `load_refuges`, `check_neon`, purgues, `process_yesterday_visits`…). Així `PRODUCTION=true python manage.py migrate --database=migrator` funciona des d'un entorn local que només té les URL de la BD. El servidor continua fallant fort sense `FIREBASE_SERVICE_ACCOUNT_KEY` (GOTCHAS #94).
+Variables (només noms): `FIREBASE_SERVICE_ACCOUNT_KEY`, `RENDER`, `PRODUCTION`, `TESTING`, `FIREBASE_AUTH_EMULATOR_HOST`. Detall: [guides/firebase-credentials.md](../guides/firebase-credentials.md).
 
 ## Firebase Auth Emulator (e2e locals) [FET]
 - Amb `FIREBASE_AUTH_EMULATOR_HOST` (p. ex. `localhost:9099`) `initialize_firebase()` crida `firebase_admin.initialize_app(options={'projectId': ...})` **sense service account** (`_initialize_firebase_emulator`, `apps/auth/firebase_config.py`). El `projectId` ve de `GCLOUD_PROJECT`, si no de `GOOGLE_CLOUD_PROJECT`, si no `demo-refugis-lliures`. L'SDK detecta la variable i verifica els tokens contra l'emulador (sense signatura).
@@ -51,11 +48,9 @@ Variables (només noms): `FIREBASE_SERVICE_ACCOUNT_KEY`, `GOOGLE_APPLICATION_CRE
 Vegeu [flows/00-auth-request-pipeline.md](../flows/00-auth-request-pipeline.md).
 
 ## Gotchas
-- `render.yaml` posa `RENDER="1"` però `firebase_config` compara amb `'true'`; si Render no el sobreescriu, s'aniria a la ruta local i petaria per falta del fitxer **[NO VERIFICAT]**.
-- `_is_render_environment` i `_is_production_environment` ara interpreten `RENDER`/`PRODUCTION`/`CI` com a booleans (`true`, `1`, `yes`, `on`), de manera que el `RENDER="1"` de `render.yaml` ja compta com a Render **[FET]** (això matisa el primer gotcha d'aquesta llista).
-- `settings.py` considera producció només `RENDER`/`PRODUCTION` (`refugis_lliures/settings.py:21`), però `firebase_config` també `CI` → a GitHub Actions CI els settings carreguen `.env.development` mentre Firebase espera `FIREBASE_SERVICE_ACCOUNT_KEY` (als tests no importa perquè no s'inicialitza) **[FET]**.
+- `_env_flag` interpreta `RENDER`/`PRODUCTION` com a booleans (`true`, `1`, `yes`, `on`); només serveix a la guarda de l'emulador (a `settings.py`, per triar `env/.env.*`) **[FET]**.
+- A GitHub Actions `process-visits.yml` posa `PRODUCTION='true'` perquè `settings.py` triï `env/.env.production`; la clau, però, ve del secret `FIREBASE_SERVICE_ACCOUNT_KEY` **[FET]**.
 - `verify_id_token` sense `check_revoked=True`: un token revocat continua sent vàlid fins que caduca (≈1 h) **[INFERÈNCIA sobre l'SDK]**.
-- Dues rutes d'inicialització amb criteris diferents → possible confusió de credencials **[FET]**.
 - Versions antigues de la documentació parlaven de `admin: true` o de `FIREBASE_ADMIN_UIDS`: **obsolet** ([design/decisions.md ADR-3](../design/decisions.md)).
 
 ## Guies relacionades
