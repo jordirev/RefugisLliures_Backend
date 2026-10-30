@@ -14,7 +14,8 @@ _ENV_NETEJA = ('RENDER', 'PRODUCTION', 'CI', 'FIREBASE_SERVICE_ACCOUNT_KEY', 'FI
 
 
 @pytest.fixture
-def entorn_net(monkeypatch):
+def entorn_net(monkeypatch, settings):
+    settings.FIREBASE_SERVICE_ACCOUNT_KEY = None
     for v in _ENV_NETEJA:
         monkeypatch.delenv(v, raising=False)
     monkeypatch.setattr(firebase_config, '_is_testing_environment', lambda: False)
@@ -68,8 +69,10 @@ def test_amb_emulador_no_reinicialitza_si_ja_hi_ha_app(entorn_net):
     mock_init.assert_not_called()
 
 
-def test_sense_emulador_en_ci_continua_exigint_service_account(entorn_net):
-    entorn_net.setenv('CI', 'true')
+@pytest.mark.parametrize('var', [None, 'CI', 'PRODUCTION', 'RENDER'])
+def test_sense_emulador_exigeix_service_account(entorn_net, var):
+    if var:
+        entorn_net.setenv(var, 'true')
     with patch('firebase_admin.initialize_app') as mock_init:
         with pytest.raises(ValueError):
             firebase_config.initialize_firebase()
@@ -79,6 +82,24 @@ def test_sense_emulador_en_ci_continua_exigint_service_account(entorn_net):
 def test_emulador_buit_es_tracta_com_no_definit(entorn_net):
     entorn_net.setenv('FIREBASE_AUTH_EMULATOR_HOST', '')
     entorn_net.setenv('CI', 'true')
+    with patch('firebase_admin.initialize_app') as mock_init:
+        with pytest.raises(ValueError):
+            firebase_config.initialize_firebase()
+    mock_init.assert_not_called()
+
+
+def test_inicialitza_amb_el_json_de_firebase_service_account_key(entorn_net, settings):
+    """Mateix camí a dev, producció i CI: la clau ve de `settings` (entorn real o `env/.env.<entorn>`)."""
+    settings.FIREBASE_SERVICE_ACCOUNT_KEY = '{"type": "service_account", "project_id": "proj-x"}'
+    with patch.object(credentials, 'Certificate') as cert, patch('firebase_admin.initialize_app') as mock_init:
+        firebase_config.initialize_firebase()
+    cert.assert_called_once_with({'type': 'service_account', 'project_id': 'proj-x'})
+    _, options = _init_args(mock_init)
+    assert options == {'projectId': 'proj-x'}
+
+
+def test_json_invalid_a_firebase_service_account_key_falla(entorn_net, settings):
+    settings.FIREBASE_SERVICE_ACCOUNT_KEY = 'no-es-json'
     with patch('firebase_admin.initialize_app') as mock_init:
         with pytest.raises(ValueError):
             firebase_config.initialize_firebase()

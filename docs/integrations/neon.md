@@ -43,7 +43,7 @@ PRODUCTION=true python manage.py check_neon --alias migrator      # ha de mostra
 PRODUCTION=true python manage.py migrate --database=migrator
 PYTHONUTF8=1 PRODUCTION=true python manage.py load_refuges --dry-run   # i, si quadra, sense --dry-run (una sola vegada)
 ```
-Abans no funcionava: `FirebaseAuthConfig.ready()` exigia `FIREBASE_SERVICE_ACCOUNT_KEY` a `os.environ` (que `decouple` no omple) i fallava abans de connectar. Ara les comandes de gestió que no usen Firebase se'n salten la inicialització (GOTCHAS #94); gunicorn i `runserver` continuen exigint-la.
+`FirebaseAuthConfig.ready()` llegeix `FIREBASE_SERVICE_ACCOUNT_KEY` via `settings` (`decouple`), així que amb el JSON a `env/.env.production` totes les comandes, `migrate` inclòs, hi funcionen; sense la clau fallen abans de connectar ([firebase-credentials.md](../guides/firebase-credentials.md)).
 
 El rol `app` no té permisos de DDL: un `migrate` sense `--database=migrator` fallaria (i, si algú li donés DDL, deixaria objectes que no són del propietari). `apps/core` (`core.0001`, `core.0002`) crea els schemas (`core`, `refuges`, `users`, `activity`, `proposals`, `moderation`, `audit`), les funcions de `core` (`uid()`, `is_admin()`, `is_system()`, `immutable_unaccent`, `norm_name`, `round_half_even`; disseny §2.0) i els grants base de `app` (§7.1), amb `reverse_sql`. Requereix el *bootstrap* previ del propietari (§1.3).
 

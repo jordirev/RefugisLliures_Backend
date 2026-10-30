@@ -19,7 +19,7 @@ python manage.py runserver            # requereix env/ local + Postgres (DATABAS
 python manage.py migrate --database=migrator   # SEMPRE amb el rol migrator (app no té DDL)
 python manage.py check_neon --alias default    # (o migrator) comprova Postgres/PostGIS
 python manage.py load_refuges [--dry-run]      # UNA sola vegada: càrrega del catàleg de refugis (1.542) amb el rol migrator; error si ja hi ha refugis (fet a Neon dev i production)
-PRODUCTION=true python manage.py migrate --database=migrator   # carrega env/.env.production (Neon production); migrate/load_refuges no demanen Firebase (GOTCHAS #94); a Windows, PYTHONUTF8=1 per a load_refuges
+PRODUCTION=true python manage.py migrate --database=migrator   # carrega env/.env.production (Neon production); la clau de Firebase també ve d'aquest fitxer (`FIREBASE_SERVICE_ACCOUNT_KEY`); a Windows, PYTHONUTF8=1 per a load_refuges
 pytest                                # tots els tests (apps/*/tests); els de BD volen TEST_DATABASE_URL_APP/MIGRATOR (scripts/dev/setup_local_postgres.sh); a Windows, en un contenidor Linux amb GDAL (docs/guides/testing.md)
 pytest apps/core apps/auth apps/health -q   # infra compartida: RLS/BD, autenticació i health
 pytest apps/refuges -q                # una app migrada (també apps/accounts, apps/visits, apps/renovations, apps/doubts, apps/experiences, apps/uploads, apps/proposals, apps/moderation, apps/audit)

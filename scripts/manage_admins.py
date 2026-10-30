@@ -12,16 +12,9 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'refugis_lliures.settings')
 django.setup()
 
 from firebase_admin import auth
-import firebase_admin
 
-# Inicialitzar Firebase (si no està ja inicialitzat)
-if not firebase_admin._apps:
-    from django.conf import settings
-    import firebase_admin
-    from firebase_admin import credentials
-    
-    cred = credentials.Certificate(settings.GOOGLE_APPLICATION_CREDENTIALS)
-    firebase_admin.initialize_app(cred)
+# `django.setup()` ja ha inicialitzat Firebase Admin (`FirebaseAuthConfig.ready()`) amb FIREBASE_SERVICE_ACCOUNT_KEY:
+# `PRODUCTION=true python scripts/manage_admins.py ...` usa el service account de `env/.env.production`.
 
 
 def add_admin(uid):

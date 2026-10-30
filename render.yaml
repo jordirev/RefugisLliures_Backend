@@ -19,4 +19,4 @@ services:
       # - SECURE_SSL_REDIRECT=True
       # - SESSION_COOKIE_SECURE=True
       # - CSRF_COOKIE_SECURE=True
-      # - GOOGLE_APPLICATION_CREDENTIALS=env/firebase-service-account-prod.json
+      # - FIREBASE_SERVICE_ACCOUNT_KEY (JSON del service account en una sola línia)

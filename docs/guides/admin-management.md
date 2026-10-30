@@ -15,7 +15,7 @@ Endpoints que el requereixen: `GET /api/refuges-proposals/`, `POST /api/refuges-
 - Des del client: `auth.currentUser.uid`.
 
 ## 2. Afegir / treure / consultar admins (`scripts/manage_admins.py`)
-Requereix credencials locals (el script fa `django.setup()` i, si cal, inicialitza Firebase amb `settings.GOOGLE_APPLICATION_CREDENTIALS`) — vegeu [firebase-credentials.md](firebase-credentials.md).
+Requereix `FIREBASE_SERVICE_ACCOUNT_KEY` a `env/.env.development` (el script fa `django.setup()`, que inicialitza Firebase); amb `PRODUCTION=true` davant usa el de `env/.env.production` — vegeu [firebase-credentials.md](firebase-credentials.md).
 ```bash
 python scripts/manage_admins.py add <uid>      # posa role='admin' (conserva la resta de claims) i crea la fila de users + perfil a PostgreSQL
 python scripts/manage_admins.py remove <uid>   # elimina el claim 'role'

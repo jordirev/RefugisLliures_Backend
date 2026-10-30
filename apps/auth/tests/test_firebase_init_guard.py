@@ -10,9 +10,10 @@ pytestmark = pytest.mark.unit
 
 
 @pytest.mark.parametrize('var', ['RENDER', 'PRODUCTION'])
-def test_emulador_prohibit_en_produccio(monkeypatch, var):
+def test_emulador_prohibit_en_produccio(monkeypatch, settings, var):
     for v in ('RENDER', 'PRODUCTION', 'CI', 'FIREBASE_SERVICE_ACCOUNT_KEY'):
         monkeypatch.delenv(v, raising=False)
+    settings.FIREBASE_SERVICE_ACCOUNT_KEY = None
     monkeypatch.setattr(firebase_config, '_is_testing_environment', lambda: False)
     monkeypatch.setattr(firebase_admin, '_apps', {})
     monkeypatch.setenv('FIREBASE_AUTH_EMULATOR_HOST', 'localhost:9099')

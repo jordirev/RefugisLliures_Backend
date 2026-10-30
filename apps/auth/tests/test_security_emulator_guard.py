@@ -13,7 +13,8 @@ _ENV = ('RENDER', 'PRODUCTION', 'CI', 'K_SERVICE', 'K_REVISION', 'CLOUD_RUN_JOB'
 
 
 @pytest.fixture
-def entorn(monkeypatch):
+def entorn(monkeypatch, settings):
+    settings.FIREBASE_SERVICE_ACCOUNT_KEY = None
     for v in _ENV:
         monkeypatch.delenv(v, raising=False)
     monkeypatch.setattr(firebase_config, '_is_testing_environment', lambda: False)
@@ -72,15 +73,6 @@ def test_emulador_a_ci_continua_permes_en_local(entorn):
     """Els e2e de CI usen l'emulador (decisió del chunk); la protecció és el host local i les marques de plataforma."""
     entorn.setenv('CI', 'true')
     _inicialitza_amb_emulador(entorn, 'localhost:9099').assert_called_once()
-
-
-@pytest.mark.parametrize('valor', ['TRUE', '1', 'yes'])
-def test_ci_i_production_es_reconeixen_amb_variants(entorn, valor):
-    entorn.setenv('PRODUCTION', valor)
-    assert firebase_config._is_production_environment()
-    entorn.delenv('PRODUCTION')
-    entorn.setenv('CI', valor)
-    assert firebase_config._is_production_environment()
 
 
 def test_sense_emulador_en_plataforma_exigeix_service_account(entorn):

@@ -30,8 +30,8 @@ pip install -r requirements.txt     # inclou pytest, coverage, boto3
 
 | Fitxer | Contingut (només noms) |
 |---|---|
-| `env/.env.development` | `SECRET_KEY`, `DEBUG`, `ALLOWED_HOSTS`, `CORS_ALLOW_ALL_ORIGINS`, `CORS_ALLOWED_ORIGINS`, `GOOGLE_APPLICATION_CREDENTIALS`, `DATABASE_URL_APP`, `DATABASE_URL_MIGRATOR` (i, per a proves locals, `TEST_DATABASE_URL_APP`, `TEST_DATABASE_URL_MIGRATOR`) |
-| `env/firebase-service-account.json` | Service account de Firebase. **Ruta fixa** que fa servir `apps/auth/firebase_config.py` en local |
+| `env/.env.development` | `SECRET_KEY`, `DEBUG`, `ALLOWED_HOSTS`, `CORS_ALLOW_ALL_ORIGINS`, `CORS_ALLOWED_ORIGINS`, `FIREBASE_SERVICE_ACCOUNT_KEY` (JSON del service account en una línia), `DATABASE_URL_APP`, `DATABASE_URL_MIGRATOR` (i, per a proves locals, `TEST_DATABASE_URL_APP`, `TEST_DATABASE_URL_MIGRATOR`) |
+| `env/.env.production` | Les mateixes variables amb els valors de producció (només per a `PRODUCTION=true`, §5b) |
 
 Detall de credencials de Firebase: [firebase-credentials.md](firebase-credentials.md).
 
@@ -92,14 +92,14 @@ python manage.py load_refuges               # UNA sola vegada: 1.542 refugis, 1.
 És **d'un sol ús** i va pel rol propietari (`--database migrator`, per defecte): si la BD ja té refugis acaba amb `CommandError` sense escriure res (no hi ha `--overwrite`). Valida tot el JSON abans (informa de tots els registres invàlids) i fixa la condició inicial amb `puntua_refugi` (`n = 0`). Disseny: [postgres-schema.md §9](../design/postgres-schema.md). Les comandes antigues de Firestore (`upload_refugis_to_firestore`, `assign_conditions`) s'han eliminat; `extract_coords_to_firestore` i `verify_conditions` també s'han eliminat.
 
 ## 5b. Neon `production` des de l'entorn local (migrar i carregar) [FET, 30/10/2026]
-Amb `PRODUCTION=true` `settings.py` llegeix `env/.env.production` (URLs de la branca `production` de Neon); no cal llegir-lo ni imprimir-lo. Les comandes de gestió que no usen Firebase (`migrate`, `load_refuges`, `check_neon`…) no demanen `FIREBASE_SERVICE_ACCOUNT_KEY` (GOTCHAS #94):
+Amb `PRODUCTION=true` `settings.py` llegeix `env/.env.production` (URLs de la branca `production` de Neon); no cal llegir-lo ni imprimir-lo. `FIREBASE_SERVICE_ACCOUNT_KEY` també ve d'aquest fitxer (el service account de producció), així que qualsevol comanda hi funciona, també `scripts/manage_admins.py`:
 ```bash
 PRODUCTION=true python manage.py check_neon --alias migrator     # comprova que el host és el de production
 PRODUCTION=true python manage.py migrate --database=migrator
 PYTHONUTF8=1 PRODUCTION=true python manage.py load_refuges --dry-run
 PYTHONUTF8=1 PRODUCTION=true python manage.py load_refuges       # una sola vegada
 ```
-A Windows, `PYTHONUTF8=1` evita el `UnicodeEncodeError` de la consola `cp1252` en el resum de `load_refuges`. **No** arrenquis `runserver` amb `PRODUCTION=true` per provar: exigeix `FIREBASE_SERVICE_ACCOUNT_KEY` a `os.environ` i tocaria dades reals.
+A Windows, `PYTHONUTF8=1` evita el `UnicodeEncodeError` de la consola `cp1252` en el resum de `load_refuges`. **No** arrenquis `runserver` amb `PRODUCTION=true` per provar: tocaria dades reals.
 
 ## 6. Arrencar
 ```bash
@@ -114,7 +114,7 @@ python manage.py runserver
 | Símptoma | Causa probable |
 |---|---|
 | `R2 configuration is incomplete` | Variables `R2_*` no exportades (pas 3) |
-| `FileNotFoundError ... firebase-service-account.json` | Falta el fitxer de la ruta fixa (pas 2) |
+| `Variable d'entorn FIREBASE_SERVICE_ACCOUNT_KEY no trobada` | Falta la clau a `env/.env.development` (pas 2) |
 | Health check 503 | Postgres inaccessible (`database: false`) **o** Firebase Admin no inicialitzat (`firebase: false`: falta el service account) ([flux 11](../flows/11-admin-cache-health.md)); la config R2 ja no hi influeix |
 | `ImproperlyConfigured: Could not find the GDAL library` (o GEOS) | Falta GDAL/GEOS al sistema: a Windows instal·la OSGeo4W (§ Requisits; `OSGEO4W_ROOT` si no és a la ruta per defecte) o executa en un contenidor Linux (§ PostgreSQL) |
 | `permission denied for schema public` en migrar | Falta `GRANT CREATE ON SCHEMA public TO migrator` (PG15+) al *bootstrap* |
