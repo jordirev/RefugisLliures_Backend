@@ -31,6 +31,8 @@ Des del chunk 11 (D43) només hi ha una ruta d'inicialització (`apps/auth/fireb
 
 Variables (només noms): `FIREBASE_SERVICE_ACCOUNT_KEY`, `GOOGLE_APPLICATION_CREDENTIALS`, `RENDER`, `PRODUCTION`, `CI`, `TESTING`. Fitxers presents a `env/` (no versionats): `firebase-service-account.json`, `firebase-service-account-dev.json`, `firebase-service-account-prod.json`. Quin projecte Firebase apunta cadascun: **[NO VERIFICAT]** (no s'han llegit els valors).
 
+**Comandes de gestió sense Firebase [FET]**: `FirebaseAuthConfig.ready()` (`apps/auth/apps.py`) no inicialitza Firebase quan el procés és `manage.py <comanda>` amb una comanda de `COMMANDS_WITHOUT_FIREBASE` (migracions, `load_refuges`, `check_neon`, purgues, `process_yesterday_visits`…). Així `PRODUCTION=true python manage.py migrate --database=migrator` funciona des d'un entorn local que només té les URL de la BD. El servidor continua fallant fort sense `FIREBASE_SERVICE_ACCOUNT_KEY` (GOTCHAS #94).
+
 ## Firebase Auth Emulator (e2e locals) [FET]
 - Amb `FIREBASE_AUTH_EMULATOR_HOST` (p. ex. `localhost:9099`) `initialize_firebase()` crida `firebase_admin.initialize_app(options={'projectId': ...})` **sense service account** (`_initialize_firebase_emulator`, `apps/auth/firebase_config.py`). El `projectId` ve de `GCLOUD_PROJECT`, si no de `GOOGLE_CLOUD_PROJECT`, si no `demo-refugis-lliures`. L'SDK detecta la variable i verifica els tokens contra l'emulador (sense signatura).
 - **Guarda (`_initialize_firebase_emulator`)** **[FET]**: l'emulador accepta tokens sense signatura (qui en controli el host pot fer-se passar per qualsevol usuari, admin inclòs), així que `initialize_firebase()` **llança `ValueError` i Django no arrenca** (`FirebaseAuthConfig.ready`) si:
