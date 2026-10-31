@@ -103,11 +103,11 @@ def test_mitjans_amagats_nomes_per_a_l_autor_i_els_admins(client, world, claims,
     items = api_get(client, list_url(r.pk), claims).json()['experiences'][0]['images_metadata']
     keys = [i['key'] for i in items]
     if claims['uid'] == 'adm':
-        assert keys == ['k/visible.webp', 'k/hidden.webp', 'k/removed.webp']
+        assert keys == ['k/removed.webp', 'k/hidden.webp', 'k/visible.webp']
     elif claims['uid'] == 'u2':                          # autor de visible i removed
-        assert keys == ['k/visible.webp', 'k/removed.webp']
+        assert keys == ['k/removed.webp', 'k/visible.webp']
     elif sees:
-        assert keys == ['k/visible.webp', 'k/hidden.webp']
+        assert keys == ['k/hidden.webp', 'k/visible.webp']
     else:
         assert keys == ['k/visible.webp']
 

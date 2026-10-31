@@ -63,8 +63,8 @@ def test_list_experiences_carrega_els_mitjans_visibles_per_a_qui_mira(selectors,
     make_exp_media(r, 'u1', e, key='k/v.webp', minutes=1)
     make_exp_media(r, 'u1', e, key='k/h.webp', status='hidden_pending_review', minutes=2)
     make_media(r, 'u1', key='k/foto.webp', minutes=3)
-    for viewer, admin, expected in (('u2', False, ['k/v.webp']), ('u1', False, ['k/v.webp', 'k/h.webp']),
-                                    ('adm', True, ['k/v.webp', 'k/h.webp']), (None, False, ['k/v.webp'])):
+    for viewer, admin, expected in (('u2', False, ['k/v.webp']), ('u1', False, ['k/h.webp', 'k/v.webp']),
+                                    ('adm', True, ['k/h.webp', 'k/v.webp']), (None, False, ['k/v.webp'])):
         with rls_context(uid=viewer or '', is_admin=admin):
             got = selectors.list_experiences(r.pk, viewer, admin)
             assert [m.key for m in got[0].media_list] == expected, (viewer, admin)

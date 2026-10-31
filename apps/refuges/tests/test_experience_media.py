@@ -41,9 +41,9 @@ def test_la_llista_de_mitjans_inclou_els_d_experiencia_amb_experience_id(client,
     resp = api_get(client, f'{detail(r)}media/', user_claims('u2'))
     assert resp.status_code == 200
     items = resp.json()['media']
-    assert [(i['key'], i['experience_id']) for i in items] == [('k/foto.webp', None), ('k/exp.webp', e)]
+    assert [(i['key'], i['experience_id']) for i in items] == [('k/exp.webp', e), ('k/foto.webp', None)]
     assert all(set(i) == MEDIA_ITEM_KEYS for i in items)
-    exp = items[1]
+    exp = items[0]
     assert isinstance(exp['experience_id'], str) and exp['thumb_url'] == 'https://r2.test/k/exp_t.webp?sig=1'
     assert (exp['width'], exp['height'], exp['creator_uid']) == (640, 480, 'u1')
 
@@ -53,7 +53,7 @@ def test_el_detall_autenticat_inclou_els_mitjans_d_experiencia(client, scene):
     make_exp_media(r, 'u1', e, key='k/exp.webp', minutes=1)
     make_media(r, 'u2', key='k/foto.webp', minutes=2)
     d = api_get(client, detail(r), user_claims('u2')).json()
-    assert [(i['key'], i['experience_id']) for i in d['images_metadata']] == [('k/exp.webp', e), ('k/foto.webp', None)]
+    assert [(i['key'], i['experience_id']) for i in d['images_metadata']] == [('k/foto.webp', None), ('k/exp.webp', e)]
 
 
 def test_el_detall_anonim_continua_sense_mitjans(client, scene):
@@ -83,8 +83,8 @@ def test_la_cerca_amb_filtres_inclou_els_mitjans_d_experiencia_a_images_metadata
     make_media(r, 'u2', key='k/foto.webp', minutes=2)
     data = api_get(client, URL + '?type=non gardé', user_claims('u2')).json()
     (item,) = data['results']
-    assert [(i['key'], i['experience_id']) for i in item['images_metadata']] == [('k/exp.webp', e),
-                                                                                ('k/foto.webp', None)]
+    assert [(i['key'], i['experience_id']) for i in item['images_metadata']] == [('k/foto.webp', None),
+                                                                                ('k/exp.webp', e)]
 
 
 def test_delete_d_un_mitja_d_experiencia_per_l_autor_conserva_l_experiencia(client, scene, RM):
