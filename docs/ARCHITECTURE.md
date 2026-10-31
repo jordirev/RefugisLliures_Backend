@@ -69,6 +69,7 @@ Les apps usen excepcions de domini que la vista tradueix a HTTP (i `constraint_n
 |---|---|---|---|
 | `health/` | `HealthCheckAPIView` | GET | públic |
 | `refuges/` | `apps.refuges.views.RefugeCollectionAPIView` | GET | públic (token opcional: `images_metadata`; `visitors` només admins) |
+| `refuges/elevation/?lat=&lng=` | `apps.refuges.views.RefugeElevationAPIView` | GET | IsAuthenticated + HasProfile; el servidor consulta Open-Elevation (RGPD: el client no exposa la IP a tercers); lat/lng invàlids → 400; proveïdor caigut → 500 amb `error_id` |
 | `refuges/<id>/` | `apps.refuges.views.RefugeDetailAPIView` | GET | públic (id UUID; un altre format → 404) |
 | `refuges/<id>/renovations/` | `apps.renovations.views.RefugeRenovationsAPIView` | GET | IsAuthenticated + HasProfile; `?active_only=true` o `1` només vigents (D32); refugi inexistent o id no UUID → 404 |
 | `refuges/<refuge_id>/visits/` | `apps.visits.views.RefugeVisitsAPIView` | GET | IsAuthenticated + HasProfile |

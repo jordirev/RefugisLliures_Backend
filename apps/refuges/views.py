@@ -7,6 +7,7 @@ El contracte JSON és el d'abans (IDs *string*, `coord: {lat, long}`, `info_comp
 admins) i `condition` (0-3, arrodonida half-to-even).
 """
 import logging
+import math
 
 from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
@@ -34,7 +35,7 @@ from apps.core.swagger.examples import (
 
 from apps.core.errors import server_error
 
-from . import selectors, services
+from . import elevation, selectors, services
 from .serializers import (
     RefugeMapResponseSerializer,
     RefugeMediaDeleteResponseSerializer,
@@ -71,6 +72,7 @@ ERR_MEDIA_DB = 'Error de base de dades en obtenir els mitjans del refugi'
 ERR_PRESIGN = 'Error en generar la URL de la imatge'
 ERR_R2_DELETE = 'Error en esborrar el fitxer a R2'
 ERR_DELETE = 'Error de base de dades en esborrar el mitjà'
+ERR_ELEVATION = "Error en obtenir l'altitud del proveïdor extern"
 
 
 class RefugeCollectionAPIView(APIView):
@@ -191,6 +193,37 @@ class RefugeDetailAPIView(APIView):
                 return server_error(ERR_PRESIGN, exc, logger=logger)
         data = refuge_to_dict(refuge, media=media, visitors=selectors.get_visitor_uids(refuge.pk) if admin else None)
         return Response(RefugiSerializer(data, context={'is_authenticated': authenticated}).data)
+
+
+class RefugeElevationAPIView(APIView):
+    """GET /api/refuges/elevation/?lat=&lng=: altitud (m) d'unes coordenades; la crida externa la fa el servidor (RGPD)."""
+    permission_classes = [IsAuthenticated, HasProfile]
+
+    @swagger_auto_schema(
+        tags=['Refuges'],
+        operation_description=(
+            "Retorna l'altitud en metres d'unes coordenades (`elevation` és `null` si el proveïdor no en té). "
+            "El servidor consulta Open-Elevation perquè el client no exposi la seva IP a tercers. Requereix autenticació."
+        ),
+        manual_parameters=[
+            openapi.Parameter('lat', openapi.IN_QUERY, type=openapi.TYPE_NUMBER, required=True),
+            openapi.Parameter('lng', openapi.IN_QUERY, type=openapi.TYPE_NUMBER, required=True),
+        ],
+        responses={200: openapi.Response(description='Altitud'), 400: 'Coordenades invàlides',
+                   401: ERROR_401_UNAUTHORIZED, 500: ERROR_500_INTERNAL_ERROR},
+    )
+    def get(self, request):
+        try:
+            lat, lng = float(request.query_params['lat']), float(request.query_params['lng'])
+        except (KeyError, ValueError):
+            return Response({'error': 'lat i lng han de ser números'}, status=status.HTTP_400_BAD_REQUEST)
+        if not (math.isfinite(lat) and math.isfinite(lng) and -90 <= lat <= 90 and -180 <= lng <= 180):
+            return Response({'error': 'lat o lng fora de rang'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            value = elevation.get_elevation(lat, lng)
+        except elevation.ElevationUnavailable as exc:
+            return server_error(ERR_ELEVATION, exc, logger=logger)
+        return Response({'elevation': value})
 
 
 class RefugeMediaListAPIView(APIView):
