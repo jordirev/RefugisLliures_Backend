@@ -72,3 +72,7 @@ sequenceDiagram
 - `GET /refuges/{id}/renovations/`: des del chunk 5 és a PostgreSQL i llegeix `?active_only=` (D32: `true`/`1` només vigents; per defecte totes); refugi inexistent → 404 ([flux 7](07-renovations.md)) **[FET]**.
 - Cap domini consulta ja el catàleg antic de Firestore: el `RefugiLliureDAO` ha desaparegut al chunk 11 (D43) i la moderació comprova els refugis a PostgreSQL.
 - `load_refuges` és d'un sol ús: vegeu [local-setup](../guides/local-setup.md).
+
+## Altitud (RGPD)
+
+`GET /api/refuges/elevation/?lat=&lng=` (autenticat) retorna `{elevation: <m>|null}`. La crida a Open-Elevation la fa el servidor (`apps/refuges/elevation.py`, timeout 5 s) perquè el client no exposi la seva IP a tercers; només s'hi envien les coordenades. **[FET]**
