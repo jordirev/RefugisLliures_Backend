@@ -138,10 +138,11 @@ def public_profile_to_dict(profile, presign):
 
 
 def refuge_summary_to_dict(refuge, first_media, presign):
-    """Refugi d'una llista d'usuari -> `{id, name, region, places, coord, images_metadata: [1a foto visible] | null}`."""
+    """Refugi d'una llista d'usuari -> `{id, name, type, region, places, coord, images_metadata: [1a foto visible] | null}`."""
     return {
         'id': str(refuge.pk),
         'name': refuge.name,
+        'type': refuge.type_id,                  # el client tria la imatge per defecte segons el tipus
         'region': refuge.region,
         'places': refuge.places,
         'coord': {'lat': refuge.coord.y, 'long': refuge.coord.x},
@@ -174,6 +175,7 @@ class PublicUserSerializer(serializers.Serializer):
 class UserRefugeInfoSerializer(serializers.Serializer):
     id = serializers.CharField()
     name = serializers.CharField()
+    type = serializers.CharField()
     region = serializers.CharField(allow_null=True)
     places = serializers.IntegerField(allow_null=True)
     coord = CoordinatesSerializer()

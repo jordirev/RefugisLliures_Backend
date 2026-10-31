@@ -28,7 +28,7 @@ OWN_KEYS = {'uid', 'username', 'avatar_metadata', 'language', 'favourite_refuges
             'uploaded_photos_keys', 'num_shared_experiences', 'num_renovated_refuges', 'created_at',
             'age_confirmed'}
 PUBLIC_KEYS = {'uid', 'username', 'avatar_metadata'}
-LIST_ITEM_KEYS = {'id', 'name', 'region', 'places', 'coord', 'images_metadata'}
+LIST_ITEM_KEYS = {'id', 'name', 'type', 'region', 'places', 'coord', 'images_metadata'}
 
 FAV = 'favorite-refuges'
 VIS = 'visited-refuges'

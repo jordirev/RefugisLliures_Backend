@@ -50,6 +50,18 @@ def test_forma_de_cada_element(client, two, kind):
 
 
 @pytest.mark.parametrize('kind', KINDS)
+def test_el_tipus_del_refugi_surt_a_cada_element(client, two, kind):
+    """El client tria la imatge per defecte segons el tipus: ha de venir a la llista i al POST."""
+    r = make_refuge(name='Orri', type='orri')
+    d = make_refuge(name='Per defecte', lat=43)
+    add_list_row(kind, 'u1', r)
+    resp = api_get(client, url('u1', kind), user_claims('u1'))
+    assert [i['type'] for i in resp.json()['results']] == ['orri']
+    posted = api_post(client, url('u1', kind), user_claims('u1'), {'refuge_id': str(d.pk)}).json()
+    assert posted['type'] == 'non gardé'
+
+
+@pytest.mark.parametrize('kind', KINDS)
 def test_places_i_region_nuls_es_retornen_null(client, two, kind):
     """§12 #5: `places` pot ser `null` (abans el mapper posava `0`)."""
     r = make_refuge(name='Sense dades')
