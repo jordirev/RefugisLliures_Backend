@@ -30,12 +30,12 @@ sequenceDiagram
     S->>SEL: parse_refuge_id + refuge_exists (404 si no és UUID o no existeix)
     S->>DB: INSERT ... ON CONFLICT DO NOTHING (bulk_create ignore_conflicts)
     V->>SEL: get_refuge_with_first_media (2 consultes)
-    V-->>C: 200 {id, name, region, places, coord, images_metadata:[1a foto visible] | null}
+    V-->>C: 200 {id, name, type, region, places, coord, images_metadata:[1a foto visible] | null}
 
     C->>V: GET /api/users/{uid}/visited-refuges/
     V->>SEL: list_refuges('visited', uid)
     SEL->>DB: 1 JOIN amb refugis + 1 consulta (DISTINCT ON refuge_id) de la 1a imatge visible
-    V-->>C: 200 {count, results:[{id, name, region, places, coord, images_metadata}]}
+    V-->>C: 200 {count, results:[{id, name, type, region, places, coord, images_metadata}]}
 
     C->>V: DELETE /api/users/{uid}/visited-refuges/{id}/
     V->>S: remove_visited → DELETE WHERE (user_uid, refuge_id)
