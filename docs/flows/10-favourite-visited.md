@@ -44,7 +44,7 @@ sequenceDiagram
 
 ## Passos
 - Afegir és **idempotent** (`INSERT … ON CONFLICT DO NOTHING`): repetir-ho no duplica ni canvia `created_at`; no hi ha carreres. Treure també és idempotent: 204 encara que l'element no hi fos (D23). Refugi inexistent o `refuge_id` invàlid: 404.
-- Ordre de les llistes: `(created_at, refuge_id)` (les taules no tenen `id`). Pressupost de consultes constant (≤ 3 per llista) amb tests de recompte.
+- Ordre de les llistes: de més recent a menys, `(created_at DESC, refuge_id DESC)` (decisió del PO) (les taules no tenen `id`). Pressupost de consultes constant (≤ 3 per llista) amb tests de recompte.
 - RLS: preferits, només el propi usuari; visitats, el propi usuari **o admin** (per a `visitors`) o sistema.
 - **Procés diari** (`process_yesterday_visits`): afegeix els visitants a `user_visited_refuges` amb `add_visited` dins `system_context()` (el job no té context d'usuari); un `refuge_id` d'una visita antiga de Firestore que no és UUID o no existeix es **salta amb warning** ([flux 6](06-refuge-visits.md)). L'array `visitors` del refugi legacy de Firestore encara s'hi actualitza, però ningú no el llegeix.
 - **Cap cache**: `user_refugis_info` ha desaparegut.

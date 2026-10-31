@@ -42,11 +42,11 @@ def _avatar_json(outer: str = 'pk'):
 def get_own_profile(uid: str) -> Optional[UserAccount]:
     """
     Perfil complet del propi usuari (1 consulta): `users` + `user_public_profiles` (JOIN) i, com a subconsultes, les
-    llistes de refugis (`favourite_ids`, `visited_ids`, ordenades per `(created_at, refuge_id)`), les claus de les
+    llistes de refugis (`favourite_ids`, `visited_ids`, ordenades de més recent a menys, per `(created_at DESC, refuge_id DESC)`), les claus de les
     fotos pujades (`photo_keys`, tots els estats, per `(uploaded_at, key)`) i l'avatar (`avatar_json`).
     """
     def ids(model):
-        return ArraySubquery(model.objects.filter(user_id=OuterRef('pk')).order_by('created_at', 'refuge_id')
+        return ArraySubquery(model.objects.filter(user_id=OuterRef('pk')).order_by('-created_at', '-refuge_id')
                              .values('refuge_id'))
 
     photo_keys = ArraySubquery(RefugeMedia.objects.filter(creator_id=OuterRef('pk'))
@@ -69,13 +69,13 @@ def get_avatar(uid: str) -> Optional[UserAvatar]:
 
 def list_refuges(kind: str, uid: str) -> list:
     """
-    Preferits (`'favourite'`) o visitats (`'visited'`) de l'usuari, per `(created_at, refuge_id)`.
+    Preferits (`'favourite'`) o visitats (`'visited'`) de l'usuari, de més recent a menys: `(created_at DESC, refuge_id DESC)`.
 
     Retorna `[(refuge, first_media | None)]`: 1 consulta amb JOIN als refugis + 1 amb la primera imatge **visible** de
     cada refugi (`DISTINCT ON (refuge_id)`), sense N+1.
     """
     rows = list(LIST_MODELS[kind].objects.filter(user_id=uid).select_related('refuge')
-                .order_by('created_at', 'refuge_id'))
+                .order_by('-created_at', '-refuge_id'))
     refuges = [r.refuge for r in rows]
     first = first_visible_media([r.pk for r in refuges])
     return [(r, first.get(r.pk)) for r in refuges]

@@ -59,15 +59,15 @@ def test_places_i_region_nuls_es_retornen_null(client, two, kind):
 
 
 @pytest.mark.parametrize('kind', KINDS)
-def test_ordre_d_afegit_i_desempat_per_refuge_id(client, two, kind):
+def test_ordre_mes_recent_primer_i_desempat_per_refuge_id(client, two, kind):
     a, b, c, d = (make_refuge(name=n, lat=42 + i / 10) for i, n in enumerate('ABCD'))
     add_list_row(kind, 'u1', c, 1)
     add_list_row(kind, 'u1', a, 3)
     add_list_row(kind, 'u1', b, 2)
     add_list_row(kind, 'u1', d, 2)                      # mateix created_at que `b`: desempat per refuge_id
     ids = [i['id'] for i in api_get(client, url('u1', kind), user_claims('u1')).json()['results']]
-    tied = sorted([str(b.pk), str(d.pk)])
-    assert ids == [str(c.pk), *tied, str(a.pk)]
+    tied = sorted([str(b.pk), str(d.pk)], reverse=True)
+    assert ids == [str(a.pk), *tied, str(c.pk)]
 
 
 @pytest.mark.parametrize('kind', KINDS)
@@ -232,11 +232,11 @@ def test_delete_anonim_401(client, two, kind):
 
 
 @pytest.mark.parametrize('kind', KINDS)
-def test_esborrar_i_tornar_a_afegir_posa_la_data_nova_al_final(client, two, kind):
+def test_esborrar_i_tornar_a_afegir_posa_la_data_nova_al_principi(client, two, kind):
     a, b = make_refuge(name='A'), make_refuge(name='B', lat=43)
     add_list_row(kind, 'u1', a, 0)
     add_list_row(kind, 'u1', b, 1)
     api_delete(client, url('u1', kind, a.pk), user_claims('u1'))
     api_post(client, url('u1', kind), user_claims('u1'), {'refuge_id': str(a.pk)})
     ids = [i['id'] for i in api_get(client, url('u1', kind), user_claims('u1')).json()['results']]
-    assert ids == [str(b.pk), str(a.pk)]
+    assert ids == [str(a.pk), str(b.pk)]

@@ -1283,7 +1283,7 @@ Aquests valors no es desen (l'única excepció és `condition`/`num_contributed_
 | `num_shared_experiences` (usuari) | `SELECT count(*) FROM activity.experiences WHERE creator_uid = :uid` | `experiences (creator_uid, modified_at DESC)` |
 | `num_renovated_refuges` (usuari) | `(SELECT count(*) FROM activity.renovations WHERE creator_uid = :uid) + (SELECT count(*) FROM activity.renovation_participants WHERE user_uid = :uid)` — **compta reformes (creades + unides), com el comptador actual** (`increment` en crear i en unir-se; decisió 14) | `renovations (creator_uid, fin_date)`, `renovation_participants (user_uid, renovation_id)` |
 | `uploaded_photos_keys` (usuari, només el propi) | `SELECT array_agg(key ORDER BY uploaded_at, key) FROM refuges.refuge_media WHERE creator_uid = :uid` (**tots els estats**, com l'array actual) | `refuge_media (creator_uid, uploaded_at)` |
-| `favourite_refuges` / `visited_refuges` (usuari, només el propi) | `array_agg(refuge_id ORDER BY created_at, refuge_id)` | PK `(user_uid, refuge_id)` + `(user_uid, created_at DESC, refuge_id)` |
+| `favourite_refuges` / `visited_refuges` (usuari, només el propi) | `array_agg(refuge_id ORDER BY created_at DESC, refuge_id DESC)` | PK `(user_uid, refuge_id)` + `(user_uid, created_at DESC, refuge_id)` |
 | `visitors` (refugi; només admins, decisió 5) | `array_agg(user_uid) FROM users.user_visited_refuges WHERE refuge_id = :id` | `user_visited_refuges (refuge_id, user_uid)` |
 | `answers_count` (dubte) | `count(*)` d'`answers` del dubte | `answers (doubt_id, created_at, id)` |
 | `total_visitors` (visita) | vista `activity.refuge_visit_totals` (a baix) | `UNIQUE (visit_id, user_uid)` |

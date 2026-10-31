@@ -162,8 +162,8 @@ def test_get_propi_forma_completa_i_valors(client, RM, legacy_counts):
     data = api_get(client, url('u1'), user_claims('u1')).json()
     assert set(data) == OWN_KEYS
     assert (data['uid'], data['username'], data['language']) == ('u1', 'Anna', 'ca')
-    assert data['favourite_refuges'] == [str(r1.pk), str(r2.pk)]                 # ordre d'afegit (created_at)
-    assert data['visited_refuges'] == [str(r1.pk), str(r3.pk)]
+    assert data['favourite_refuges'] == [str(r2.pk), str(r1.pk)]                 # més recent primer (created_at DESC)
+    assert data['visited_refuges'] == [str(r3.pk), str(r1.pk)]
     assert data['uploaded_photos_keys'] == ['k/c.webp', 'k/a.webp', 'k/b.webp']        # (uploaded_at, key)
     assert (data['num_shared_experiences'], data['num_renovated_refuges']) == (3, 2)
     assert data['age_confirmed'] is True
