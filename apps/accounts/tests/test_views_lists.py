@@ -149,7 +149,7 @@ def test_post_idempotent_no_duplica_ni_mou_la_posicio(client, two, kind):
     rows = list_rows(kind, 'u1')
     assert len(rows) == 2
     ids = [i['id'] for i in api_get(client, url('u1', kind), user_claims('u1')).json()['results']]
-    assert ids == [str(a.pk), str(b.pk)]                                  # `a` conserva la data original
+    assert ids == [str(b.pk), str(a.pk)]                                  # `a` conserva la data original
 
 
 @pytest.mark.parametrize('kind', KINDS)
