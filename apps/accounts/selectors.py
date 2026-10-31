@@ -43,14 +43,14 @@ def get_own_profile(uid: str) -> Optional[UserAccount]:
     """
     Perfil complet del propi usuari (1 consulta): `users` + `user_public_profiles` (JOIN) i, com a subconsultes, les
     llistes de refugis (`favourite_ids`, `visited_ids`, ordenades de més recent a menys, per `(created_at DESC, refuge_id DESC)`), les claus de les
-    fotos pujades (`photo_keys`, tots els estats, per `(uploaded_at, key)`) i l'avatar (`avatar_json`).
+    fotos pujades (`photo_keys`, tots els estats, de més recent a menys: `(uploaded_at DESC, key DESC)`) i l'avatar (`avatar_json`).
     """
     def ids(model):
         return ArraySubquery(model.objects.filter(user_id=OuterRef('pk')).order_by('-created_at', '-refuge_id')
                              .values('refuge_id'))
 
     photo_keys = ArraySubquery(RefugeMedia.objects.filter(creator_id=OuterRef('pk'))
-                               .order_by('uploaded_at', 'key').values('key'))
+                               .order_by('-uploaded_at', '-key').values('key'))
     return (UserAccount.objects.filter(pk=uid).select_related('public_profile')
             .annotate(favourite_ids=ids(FavouriteRefuge), visited_ids=ids(VisitedRefuge), photo_keys=photo_keys,
                       avatar_json=_avatar_json())
@@ -82,11 +82,11 @@ def list_refuges(kind: str, uid: str) -> list:
 
 
 def first_visible_media(refuge_ids: list) -> dict:
-    """`{refuge_id: primera imatge visible}` (1 consulta; `uploaded_at, key` com a ordre determinista)."""
+    """`{refuge_id: imatge visible més recent}` (1 consulta; `uploaded_at DESC, key DESC` com a ordre determinista)."""
     if not refuge_ids:
         return {}
     qs = (RefugeMedia.objects.filter(refuge_id__in=refuge_ids, status='visible')
-          .order_by('refuge_id', 'uploaded_at', 'key').distinct('refuge_id'))
+          .order_by('refuge_id', '-uploaded_at', '-key').distinct('refuge_id'))
     return {m.refuge_id: m for m in qs}
 
 

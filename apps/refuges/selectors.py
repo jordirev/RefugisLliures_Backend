@@ -41,7 +41,7 @@ def media_visible_to(viewer_uid: Optional[str], is_admin: bool) -> Q:
 
 
 def _ordered_media(viewer_uid: Optional[str], is_admin: bool) -> QuerySet:
-    return RefugeMedia.objects.filter(media_visible_to(viewer_uid, is_admin)).order_by('uploaded_at', 'key')
+    return RefugeMedia.objects.filter(media_visible_to(viewer_uid, is_admin)).order_by('-uploaded_at', '-key')
 
 
 def _with_links(qs: QuerySet) -> QuerySet:
@@ -67,7 +67,7 @@ def refuge_exists(refuge_id) -> bool:
 
 
 def get_refuge_media(refuge_id, viewer_uid: Optional[str] = None, is_admin: bool = False) -> list:
-    """Mitjans d'un refugi ordenats per `(uploaded_at, key)` (determinista)."""
+    """Mitjans d'un refugi de més recent a menys, per `(uploaded_at DESC, key DESC)` (determinista)."""
     return list(_ordered_media(viewer_uid, is_admin).filter(refuge_id=refuge_id))
 
 

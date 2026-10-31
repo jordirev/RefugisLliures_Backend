@@ -82,7 +82,7 @@ def test_images_metadata_amb_la_forma_de_mediaitem_i_experience_id(client, world
     resp = api_get(client, list_url(r.pk), user_claims('u3'))
     by_id = {x['id']: x for x in resp.json()['experiences']}
     items = by_id[e]['images_metadata']
-    assert [i['key'] for i in items] == ['k/a.webp', 'k/b.webp']                # (uploaded_at, key)
+    assert [i['key'] for i in items] == ['k/b.webp', 'k/a.webp']                # (uploaded_at DESC, key DESC)
     assert all(set(i) == MEDIA_ITEM_KEYS for i in items)
     assert all(i['experience_id'] == e and i['creator_uid'] == 'u1' for i in items)
     b = items[1]

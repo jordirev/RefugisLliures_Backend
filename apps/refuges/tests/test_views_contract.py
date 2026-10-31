@@ -229,9 +229,9 @@ def test_media_list_forma_i_ordre(client, refuge):
     r = api_get(client, f'{detail(refuge)}media/', user_claims('u2'))
     assert r.status_code == 200
     media = r.json()['media']
-    assert [m['key'] for m in media] == ['k/c.mp4', 'k/b.webp', 'k/a.webp']      # (uploaded_at, key)
+    assert [m['key'] for m in media] == ['k/a.webp', 'k/b.webp', 'k/c.mp4']      # (uploaded_at DESC, key DESC)
     assert all(set(m) == MEDIA_ITEM_KEYS for m in media)
-    assert media[0]['media_type'] == 'video'
+    assert media[-1]['media_type'] == 'video'
 
 
 def test_media_list_refugi_inexistent_404(client, RM):
