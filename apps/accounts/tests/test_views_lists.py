@@ -76,8 +76,8 @@ def test_primera_imatge_visible_en_forma_media_item(client, two, kind):
     add_list_row(kind, 'u1', r)
     make_media(r, 'u2', key='k/hidden.webp', status='hidden_pending_review', minutes=0)
     make_media(r, 'u2', key='k/removed.webp', status='removed', minutes=1)
-    make_media(r, 'u2', key='k/second.webp', minutes=3)
-    make_media(r, 'u2', key='k/first.webp', minutes=2, thumb_key='k/first_t.webp')
+    make_media(r, 'u2', key='k/second.webp', minutes=2)
+    make_media(r, 'u2', key='k/first.webp', minutes=3, thumb_key='k/first_t.webp')
     imgs = api_get(client, url('u1', kind), user_claims('u1')).json()['results'][0]['images_metadata']
     assert isinstance(imgs, list) and len(imgs) == 1                  # nomes la primera
     assert set(imgs[0]) == MEDIA_ITEM_KEYS

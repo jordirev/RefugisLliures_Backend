@@ -28,7 +28,7 @@ def parse_id(value) -> Optional[uuid.UUID]:
 
 
 def _visible_media(viewer_uid: Optional[str], is_admin: bool):
-    return RefugeMedia.objects.filter(media_visible_to(viewer_uid, is_admin)).order_by('uploaded_at', 'key')
+    return RefugeMedia.objects.filter(media_visible_to(viewer_uid, is_admin)).order_by('-uploaded_at', '-key')
 
 
 def get_experience(experience_id) -> Optional[Experience]:
@@ -38,14 +38,14 @@ def get_experience(experience_id) -> Optional[Experience]:
 
 
 def get_experience_media(experience_id, viewer_uid: Optional[str] = None, is_admin: bool = False) -> List[RefugeMedia]:
-    """Mitjans d'una experiència visibles per a qui mira, per `(uploaded_at, key)` (1 consulta)."""
+    """Mitjans d'una experiència visibles per a qui mira, de més recent a menys: `(uploaded_at DESC, key DESC)` (1 consulta)."""
     return list(_visible_media(viewer_uid, is_admin).filter(experience_id=experience_id))
 
 
 def list_experiences(refuge_id, viewer_uid: Optional[str] = None, is_admin: bool = False) -> List[Experience]:
     """
     Experiències d'un refugi per `(modified_at, id)` descendent, cadascuna amb `media_list` = els seus mitjans visibles per
-    a qui mira (`status = 'visible'`, els propis o tots si és admin) per `(uploaded_at, key)`: 2 consultes amb qualsevol
+    a qui mira (`status = 'visible'`, els propis o tots si és admin) per `(uploaded_at DESC, key DESC)`: 2 consultes amb qualsevol
     nombre de files. Refugi inexistent o ID que no és UUID: llista buida (l'existència la comprova la vista).
     """
     pk = parse_id(refuge_id)

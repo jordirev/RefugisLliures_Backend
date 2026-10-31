@@ -164,7 +164,7 @@ def test_get_propi_forma_completa_i_valors(client, RM, legacy_counts):
     assert (data['uid'], data['username'], data['language']) == ('u1', 'Anna', 'ca')
     assert data['favourite_refuges'] == [str(r2.pk), str(r1.pk)]                 # més recent primer (created_at DESC)
     assert data['visited_refuges'] == [str(r3.pk), str(r1.pk)]
-    assert data['uploaded_photos_keys'] == ['k/c.webp', 'k/a.webp', 'k/b.webp']        # (uploaded_at, key)
+    assert data['uploaded_photos_keys'] == ['k/b.webp', 'k/a.webp', 'k/c.webp']        # (uploaded_at DESC, key DESC)
     assert (data['num_shared_experiences'], data['num_renovated_refuges']) == (3, 2)
     assert data['age_confirmed'] is True
     assert data['created_at'] == '2025-01-15T11:00:00+01:00'                      # Europe/Madrid
@@ -178,7 +178,7 @@ def test_get_propi_photo_keys_ordenades_per_uploaded_at_i_key(client):
     make_media(r, 'u1', key='k/b.webp', minutes=2)
     make_media(r, 'u1', key='k/a.webp', minutes=2)
     data = api_get(client, url('u1'), user_claims('u1')).json()
-    assert data['uploaded_photos_keys'] == ['k/z.webp', 'k/a.webp', 'k/b.webp']
+    assert data['uploaded_photos_keys'] == ['k/b.webp', 'k/a.webp', 'k/z.webp']
 
 
 def test_get_propi_amb_avatar_en_forma_media_item(client):

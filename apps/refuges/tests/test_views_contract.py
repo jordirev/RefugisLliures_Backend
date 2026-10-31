@@ -122,8 +122,8 @@ def test_detall_mitjans_ocults_nomes_per_autor_i_admin(client, refuge):
     def keys(claims):
         return [m['key'] for m in api_get(client, detail(refuge), claims).json()['images_metadata']]
     assert keys(user_claims('u2')) == ['k/vis.webp']
-    assert keys(user_claims('u1')) == ['k/vis.webp', 'k/hid.webp', 'k/rem.webp']
-    assert keys(admin_claims()) == ['k/vis.webp', 'k/hid.webp', 'k/rem.webp']
+    assert keys(user_claims('u1')) == ['k/rem.webp', 'k/hid.webp', 'k/vis.webp']
+    assert keys(admin_claims()) == ['k/rem.webp', 'k/hid.webp', 'k/vis.webp']
 
 
 def test_detall_inexistent_404(client, RM):
@@ -229,9 +229,9 @@ def test_media_list_forma_i_ordre(client, refuge):
     r = api_get(client, f'{detail(refuge)}media/', user_claims('u2'))
     assert r.status_code == 200
     media = r.json()['media']
-    assert [m['key'] for m in media] == ['k/c.mp4', 'k/b.webp', 'k/a.webp']      # (uploaded_at, key)
+    assert [m['key'] for m in media] == ['k/a.webp', 'k/b.webp', 'k/c.mp4']      # (uploaded_at DESC, key DESC)
     assert all(set(m) == MEDIA_ITEM_KEYS for m in media)
-    assert media[0]['media_type'] == 'video'
+    assert media[-1]['media_type'] == 'video'
 
 
 def test_media_list_refugi_inexistent_404(client, RM):

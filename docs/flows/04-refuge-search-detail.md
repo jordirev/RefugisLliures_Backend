@@ -36,7 +36,7 @@ sequenceDiagram
         V->>SEL: search_refuges(filters, viewer, authenticated)
         SEL->>DB: Q1: refuges + amenities (JOIN) + ARRAY(links) amb WHERE (nom trigram, type, places, altitude, round_half_even(condition))
         opt autenticat
-            SEL->>DB: Q2: refuge_media dels refugis trobats (Prefetch, ordre uploaded_at, key)
+            SEL->>DB: Q2: refuge_media dels refugis trobats (Prefetch, ordre uploaded_at DESC, key DESC: la primera imatge és la més recent)
         end
         V-->>C: 200 {count, results:[RefugiSerializer]}
     end
