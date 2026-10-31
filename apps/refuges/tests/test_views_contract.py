@@ -122,8 +122,8 @@ def test_detall_mitjans_ocults_nomes_per_autor_i_admin(client, refuge):
     def keys(claims):
         return [m['key'] for m in api_get(client, detail(refuge), claims).json()['images_metadata']]
     assert keys(user_claims('u2')) == ['k/vis.webp']
-    assert keys(user_claims('u1')) == ['k/vis.webp', 'k/hid.webp', 'k/rem.webp']
-    assert keys(admin_claims()) == ['k/vis.webp', 'k/hid.webp', 'k/rem.webp']
+    assert keys(user_claims('u1')) == ['k/rem.webp', 'k/hid.webp', 'k/vis.webp']
+    assert keys(admin_claims()) == ['k/rem.webp', 'k/hid.webp', 'k/vis.webp']
 
 
 def test_detall_inexistent_404(client, RM):

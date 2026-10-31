@@ -85,10 +85,10 @@ def test_images_metadata_amb_la_forma_de_mediaitem_i_experience_id(client, world
     assert [i['key'] for i in items] == ['k/b.webp', 'k/a.webp']                # (uploaded_at DESC, key DESC)
     assert all(set(i) == MEDIA_ITEM_KEYS for i in items)
     assert all(i['experience_id'] == e and i['creator_uid'] == 'u1' for i in items)
-    b = items[1]
+    b = items[0]
     assert b['url'] == 'https://r2.test/k/b.webp?sig=1' and b['thumb_url'] == 'https://r2.test/k/b_thumb.webp?sig=1'
     assert (b['width'], b['height'], b['blurhash'], b['media_type']) == (800, 600, 'LKO2', 'image')
-    assert items[0]['thumb_url'] == items[0]['url']                             # sense miniatura: thumb_url = url
+    assert items[1]['thumb_url'] == items[1]['url']                             # sense miniatura: thumb_url = url
     assert [i['key'] for i in by_id[other]['images_metadata']] == ['k/o.webp']
 
 
@@ -257,10 +257,10 @@ def test_patch_retorna_els_mitjans_visibles_per_a_qui_demana(client, world):
     make_exp_media(r, 'u1', e, key='k/v.webp', minutes=1)
     make_exp_media(r, 'u1', e, key='k/h.webp', status='hidden_pending_review', minutes=2)
     items = api_patch(client, exp_url(e), user_claims('u1'), {'comment': 'x'}).json()['experience']['images_metadata']
-    assert [i['key'] for i in items] == ['k/v.webp', 'k/h.webp']                # l'autor veu els seus amagats
+    assert [i['key'] for i in items] == ['k/h.webp', 'k/v.webp']                # l'autor veu els seus amagats
     items = api_patch(client, exp_url(e), admin_claims('adm'), {'comment': 'moderat'}).json()['experience'][
         'images_metadata']
-    assert [i['key'] for i in items] == ['k/v.webp', 'k/h.webp']
+    assert [i['key'] for i in items] == ['k/h.webp', 'k/v.webp']
 
 
 def test_patch_no_pot_canviar_refugi_ni_creador(client, world):

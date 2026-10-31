@@ -178,7 +178,7 @@ def test_get_propi_photo_keys_ordenades_per_uploaded_at_i_key(client):
     make_media(r, 'u1', key='k/b.webp', minutes=2)
     make_media(r, 'u1', key='k/a.webp', minutes=2)
     data = api_get(client, url('u1'), user_claims('u1')).json()
-    assert data['uploaded_photos_keys'] == ['k/z.webp', 'k/a.webp', 'k/b.webp']
+    assert data['uploaded_photos_keys'] == ['k/b.webp', 'k/a.webp', 'k/z.webp']
 
 
 def test_get_propi_amb_avatar_en_forma_media_item(client):

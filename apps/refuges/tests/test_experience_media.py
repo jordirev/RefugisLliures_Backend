@@ -64,8 +64,8 @@ def test_el_detall_anonim_continua_sense_mitjans(client, scene):
 
 @pytest.mark.parametrize('claims,expected', [
     (user_claims('u2'), ['k/vis.webp']),
-    (user_claims('u1'), ['k/vis.webp', 'k/hid.webp', 'k/rem.webp']),
-    (admin_claims(), ['k/vis.webp', 'k/hid.webp', 'k/rem.webp']),
+    (user_claims('u1'), ['k/rem.webp', 'k/hid.webp', 'k/vis.webp']),
+    (admin_claims(), ['k/rem.webp', 'k/hid.webp', 'k/vis.webp']),
 ])
 def test_visibilitat_per_estat_dels_mitjans_d_experiencia(client, scene, claims, expected):
     r, e = scene

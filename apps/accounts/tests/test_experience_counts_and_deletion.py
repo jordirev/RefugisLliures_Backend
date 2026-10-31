@@ -94,7 +94,7 @@ def test_uploaded_photos_keys_inclou_els_mitjans_d_experiencia_propis(client, wo
     make_media(r, 'u1', key='k/foto.webp', minutes=1)
     make_exp_media(r, 'u1', e, key='k/exp.webp', minutes=2)
     make_exp_media(r, 'u2', e, key='k/altre.webp', minutes=3)                 # d'un altre usuari: no surt
-    assert own_profile(client, 'u1')['uploaded_photos_keys'] == ['k/foto.webp', 'k/exp.webp']
+    assert own_profile(client, 'u1')['uploaded_photos_keys'] == ['k/exp.webp', 'k/foto.webp']
 
 
 def test_perfil_alie_no_te_comptadors(client, world):
